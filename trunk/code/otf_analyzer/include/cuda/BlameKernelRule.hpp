@@ -27,7 +27,7 @@ namespace cdm
         bool apply(AnalysisEngine *analysis, Node *node)
         {
             // applied at sync
-            if (!node->isSync() || !node->isGraphNode())
+            if (!node->isCUDASync() || !node->isGraphNode())
                 return false;
 
             // get the complete execution

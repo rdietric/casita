@@ -14,6 +14,7 @@
 #include <list>
 #include <iostream>
 #include <map>
+#include <math.h>
 
 #include "graph/GraphNode.hpp"
 #include "graph/Edge.hpp"
@@ -43,7 +44,7 @@ namespace cdm
             MPIType mpiType;
             uint32_t partnerId; // process or process group
         } MPICommRecord;
-        
+
         typedef std::vector<MPICommRecord> MPICommRecordList;
 
         //typedef std::set<Node*, nodeCompareLess> SortedNodeList;
@@ -51,7 +52,7 @@ namespace cdm
 
         typedef std::vector<Node*> SortedNodeList;
         typedef std::vector<GraphNode*> SortedGraphNodeList;
-        
+
     private:
 
         typedef struct
@@ -71,7 +72,7 @@ namespace cdm
         remoteProcess(remoteProcess),
         lastNode(NULL)
         {
-            for (int i = 0; i < GRAPH_MAX; ++i)
+            for (size_t i = 0; i < NODE_PARADIGM_COUNT; ++i)
             {
                 graphData[i].firstNode = NULL;
                 graphData[i].lastNode = NULL;
@@ -134,31 +135,41 @@ namespace cdm
 
         GraphNode *getLastGraphNode() const
         {
-            if (graphData[GRAPH_CUDA].lastNode == NULL)
-                return graphData[GRAPH_MPI].lastNode;
-            
-            if (graphData[GRAPH_MPI].lastNode == NULL)
-                return graphData[GRAPH_CUDA].lastNode;
-            
-            if (Node::compareLess(graphData[GRAPH_CUDA].lastNode,
-                    graphData[GRAPH_MPI].lastNode))
+            size_t i = 0;
+            GraphNode *tmpLastNode = NULL;
+
+            for (i = 0; i < NODE_PARADIGM_COUNT; ++i)
+                if (graphData[i].lastNode)
+                {
+                    tmpLastNode = graphData[i].lastNode;
+                    break;
+                }
+
+            i++;
+
+            for (; i < NODE_PARADIGM_COUNT; ++i)
             {
-                return graphData[GRAPH_MPI].lastNode;
-            } else
-                return graphData[GRAPH_CUDA].lastNode;
+                if (graphData[i].lastNode &&
+                        Node::compareLess(graphData[i].lastNode, tmpLastNode))
+                {
+                    tmpLastNode = graphData[i].lastNode;
+                }
+            }
+
+            return tmpLastNode;
         }
 
-        GraphNode *getLastGraphNode(GraphNodeType g) const
+        GraphNode *getLastGraphNode(Paradigm paradigm) const
         {
-            if (g == GRAPH_MAX)
+            if (paradigm == PARADIGM_ALL)
                 return getLastGraphNode();
             else
-                return graphData[g].lastNode;
+                return graphData[(size_t) log2(paradigm)].lastNode;
         }
 
-        GraphNode *getFirstGraphNode(GraphNodeType g) const
+        GraphNode *getFirstGraphNode(Paradigm paradigm) const
         {
-            return graphData[g].firstNode;
+            return graphData[(int) log2(paradigm)].firstNode;
         }
 
         uint64_t getLastEventTime() const
@@ -171,52 +182,57 @@ namespace cdm
 
         void addGraphNode(GraphNode *node, GraphNode **predCUDA, GraphNode **predMPI)
         {
-            GraphNode * oldNode[GRAPH_MAX] = {NULL, NULL};
-            GraphNodeType g = node->getGraphNodeType();
+            GraphNode * oldNode[NODE_PARADIGM_COUNT];
+            for (size_t i = 0; i < NODE_PARADIGM_COUNT; ++i)
+                oldNode[i] = NULL;
 
-            for (int o = GRAPH_CUDA; o < GRAPH_MAX; ++o)
+            Paradigm nodeParadigm = node->getParadigm();
+
+            for (size_t o = 1; o < NODE_PARADIGM_INVALID; o *= 2)
             {
-                GraphNodeType og = (GraphNodeType) o;
-                oldNode[og] = getLastGraphNode(og);
+                Paradigm oparadigm = (Paradigm) o;
+                size_t paradigm_index = (size_t) log2(oparadigm);
 
-                if (node->hasGraphNodeType(og))
+                oldNode[paradigm_index] = getLastGraphNode(oparadigm);
+
+                if (node->hasParadigm(oparadigm))
                 {
-                    if (oldNode[og] && Node::compareLess(node, oldNode[og]))
+                    if (oldNode[paradigm_index] && Node::compareLess(node, oldNode[paradigm_index]))
                         throw RTException("Can't add graph node (%s) before last graph node (%s)",
                             node->getUniqueName().c_str(),
-                            oldNode[og]->getUniqueName().c_str());
+                            oldNode[paradigm_index]->getUniqueName().c_str());
 
-                    if (graphData[og].firstNode == NULL)
-                        graphData[og].firstNode = node;
+                    if (graphData[paradigm_index].firstNode == NULL)
+                        graphData[paradigm_index].firstNode = node;
 
-                    graphData[og].lastNode = node;
+                    graphData[paradigm_index].lastNode = node;
                 }
             }
 
             addNodeInternal(nodes, node);
 
-            if (g == GRAPH_MPI)
+            if (nodeParadigm == PARADIGM_MPI)
             {
-                GraphNode *lastCuda = getLastGraphNode(GRAPH_CUDA);
-                node->setCUDALinkLeft(lastCuda);
+                GraphNode *lastCuda = getLastGraphNode(PARADIGM_CUDA);
+                node->setLinkLeft(lastCuda);
                 unlinkedMPINodes.push_back(node);
             }
 
-            if ((g == GRAPH_CUDA) && (node->isEnter()))
+            if ((nodeParadigm == PARADIGM_CUDA) && (node->isEnter()))
             {
                 for (SortedGraphNodeList::const_iterator iter = unlinkedMPINodes.begin();
                         iter != unlinkedMPINodes.end(); ++iter)
                 {
-                    (*iter)->setCUDALinkRight(node);
+                    (*iter)->setLinkRight(node);
                 }
                 unlinkedMPINodes.clear();
             }
 
             if (predCUDA)
-                *predCUDA = oldNode[GRAPH_CUDA];
+                *predCUDA = oldNode[(size_t) log2(PARADIGM_CUDA)];
 
             if (predMPI)
-                *predMPI = oldNode[GRAPH_MPI];
+                *predMPI = oldNode[(size_t) log2(PARADIGM_MPI)];
         }
 
         void insertGraphNode(GraphNode *node,
@@ -234,13 +250,13 @@ namespace cdm
             {
                 SortedNodeList::iterator next = iter;
                 ++next;
-                
+
                 if (next == nodes.end())
                 {
                     nodes.push_back(node);
                     break;
                 }
-                
+
                 if (Node::compareLess(node, *next))
                 {
                     result = nodes.insert(next, node);
@@ -250,10 +266,10 @@ namespace cdm
 
             SortedNodeList::iterator current;
 
-            // find previous CUDA node
-            if (predNodeCUDA)
+            for (size_t paradigm = 1; paradigm < NODE_PARADIGM_INVALID; paradigm *= 2)
             {
-                *predNodeCUDA = NULL;
+                // find previous node
+                GraphNode *predNode = NULL;
                 current = result;
                 while (current != nodes.begin())
                 {
@@ -261,97 +277,82 @@ namespace cdm
                     if ((*current)->isGraphNode())
                     {
                         GraphNode *gNode = (GraphNode*) (*current);
-                        if (gNode->hasGraphNodeType(GRAPH_CUDA))
+                        if (gNode->hasParadigm((Paradigm)paradigm))
                         {
-                            *predNodeCUDA = gNode;
+                            predNode = gNode;
                             break;
                         }
                     }
                 }
+
+                switch ((Paradigm) paradigm)
+                {
+                    case PARADIGM_CUDA:
+                        if (predNodeCUDA)
+                            *predNodeCUDA = predNode;
+                        break;
+
+                    case PARADIGM_MPI:
+                        if (predNodeMPI)
+                            *predNodeMPI = predNode;
+                        break;
+                        
+                    default:
+                        break;
+                }
             }
 
-            // find previous MPI node
-            if (predNodeMPI)
+            // find next node
+            bool hasNextNode[NODE_PARADIGM_COUNT];
+
+            for (size_t paradigm = 1; paradigm < NODE_PARADIGM_INVALID; paradigm *= 2)
             {
-                *predNodeMPI = NULL;
                 current = result;
-                while (current != nodes.begin())
+                SortedNodeList::iterator next = ++current;
+                size_t paradigm_index = (size_t) log2(paradigm);
+                hasNextNode[paradigm_index] = false;
+
+                GraphNode *nextNode = NULL;
+
+                while (next != nodes.end())
                 {
-                    --current;
-                    if ((*current)->isGraphNode())
+                    if ((*next)->isGraphNode())
                     {
-                        GraphNode *gNode = (GraphNode*) (*current);
-                        if (gNode->hasGraphNodeType(GRAPH_MPI))
+                        GraphNode *gNode = (GraphNode*) (*next);
+                        if (gNode->hasParadigm((Paradigm)paradigm))
                         {
-                            *predNodeMPI = gNode;
+                            nextNode = gNode;
+                            hasNextNode[paradigm_index] = true;
                             break;
                         }
                     }
+                    ++next;
                 }
-            }
 
-            // find next CUDA node
-            current = result;
-            SortedNodeList::iterator next = ++current;
-            bool hasNextNodeCUDA = false;
-            if (nextNodeCUDA)
-                *nextNodeCUDA = NULL;
-
-            while (next != nodes.end())
-            {
-                if ((*next)->isGraphNode())
+                switch ((Paradigm) paradigm)
                 {
-                    GraphNode *gNode = (GraphNode*) (*next);
-                    if (gNode->hasGraphNodeType(GRAPH_CUDA))
-                    {
+                    case PARADIGM_CUDA:
                         if (nextNodeCUDA)
-                            *nextNodeCUDA = gNode;
-                        hasNextNodeCUDA = true;
+                            *nextNodeCUDA = nextNode;
                         break;
-                    }
-                }
-                ++next;
-            }
 
-            // find next MPI node
-            current = result;
-            next = ++current;
-            bool hasNextNodeMPI = false;
-            if (nextNodeMPI)
-                *nextNodeMPI = NULL;
-
-            while (next != nodes.end())
-            {
-                if ((*next)->isGraphNode())
-                {
-                    GraphNode *gNode = (GraphNode*) (*next);
-                    if (gNode->hasGraphNodeType(GRAPH_MPI))
-                    {
+                    case PARADIGM_MPI:
                         if (nextNodeMPI)
-                            *nextNodeMPI = gNode;
-                        hasNextNodeMPI = true;
+                            *nextNodeMPI = nextNode;
                         break;
-                    }
+                        
+                    default:
+                        break;
                 }
-                ++next;
-            }
 
-            if (node->hasGraphNodeType(GRAPH_CUDA))
-            {
-                if (!graphData[GRAPH_CUDA].firstNode)
-                    graphData[GRAPH_CUDA].firstNode = node;
+                if (node->hasParadigm((Paradigm)paradigm))
+                {
+                    if (!graphData[paradigm_index].firstNode)
+                        graphData[paradigm_index].firstNode = node;
 
-                if (!hasNextNodeCUDA)
-                    graphData[GRAPH_CUDA].lastNode = node;
-            }
-
-            if (node->hasGraphNodeType(GRAPH_MPI))
-            {
-                if (!graphData[GRAPH_MPI].firstNode)
-                    graphData[GRAPH_MPI].firstNode = node;
-
-                if (!hasNextNodeMPI)
-                    graphData[GRAPH_MPI].lastNode = node;
+                    if (!hasNextNode[paradigm_index])
+                        graphData[paradigm_index].lastNode = node;
+                }
             }
         }
 
@@ -397,7 +398,7 @@ namespace cdm
             MPICommRecord record;
             record.mpiType = mpiType;
             record.partnerId = partnerId;
-            
+
             mpiCommRecords.push_back(record);
         }
 
@@ -408,14 +409,14 @@ namespace cdm
             mpiCommRecords.clear();
             return copyList;
         }
-        
+
         Edge::TimeProfileMap *newTimeProfile()
         {
             currentTimeProfile = new Edge::TimeProfileMap();
-            
+
             return getTimeProfile();
         }
-        
+
         Edge::TimeProfileMap *getTimeProfile()
         {
             return currentTimeProfile;
@@ -431,12 +432,12 @@ namespace cdm
         SortedGraphNodeList pendingKernels; // list of unsynchronized kernels (leave records)
 
         Node *lastNode;
-        GraphData graphData[GRAPH_MAX];
+        GraphData graphData[NODE_PARADIGM_COUNT];
         SortedNodeList nodes;
         SortedGraphNodeList unlinkedMPINodes;
 
         MPICommRecordList mpiCommRecords;
-        
+
         Edge::TimeProfileMap *currentTimeProfile;
 
         void addNodeInternal(SortedNodeList& nodes, Node *node)

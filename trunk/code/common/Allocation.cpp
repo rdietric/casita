@@ -62,7 +62,7 @@ void Allocation::getAllProcesses(ProcessList &procs) const
     procs.insert(procs.end(), deviceProcesses.begin(), deviceProcesses.end());
 }
 
-void Allocation::getAllProcesses(ProcessList &procs, GraphNodeType g) const
+void Allocation::getAllProcesses(ProcessList &procs, Paradigm paradigm) const
 {
     procs.clear();
     procs.assign(hostProcesses.begin(), hostProcesses.end());
@@ -76,7 +76,7 @@ void Allocation::getAllProcesses(ProcessList &procs, GraphNodeType g) const
         iter++;
 
         Process *p = *current;
-        GraphNode *lastGNode = p->getLastGraphNode(g);
+        GraphNode *lastGNode = p->getLastGraphNode(paradigm);
         if (!lastGNode || (lastGNode->isProcess()))
             procs.erase(current);
     }

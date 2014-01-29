@@ -84,7 +84,7 @@ namespace cdm
 
             uint32_t recvLeaveId = buffer[5];
             GraphNode *remoteNode = analysis->addNewRemoteNode(recvEndTime, partnerProcessId,
-                    recvLeaveId, NT_RT_LEAVE | NT_FT_MPI_RECV, partnerMPIRank);
+                    recvLeaveId, PARADIGM_MPI, RECORD_LEAVE, MPI_RECV, partnerMPIRank);
             analysis->newEdge(remoteNode, send.second, false, NULL);
 
             return true;

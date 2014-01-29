@@ -29,8 +29,9 @@ namespace cdm
         };
 
         EventNode(uint64_t time, uint32_t processId, uint32_t eventId,
-                FunctionResultType fResult, const std::string name, int nodeType) :
-        GraphNode(time, processId, name, nodeType),
+                FunctionResultType fResult, const std::string name,
+                Paradigm paradigm, NodeRecordType recordType, int nodeType) :
+        GraphNode(time, processId, name, paradigm, recordType, nodeType),
         eventId(eventId),
         fResult(fResult)
         {

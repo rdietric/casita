@@ -91,7 +91,7 @@ const Graph::EdgeList &Graph::getInEdges(GraphNode *node) const
             node->getUniqueName().c_str());
 }
 
-Graph::EdgeList Graph::getInEdges(GraphNode *node, GraphNodeType g) const
+Graph::EdgeList Graph::getInEdges(GraphNode *node, Paradigm paradigm) const
 {
     EdgeList edges;
     NodeEdges::const_iterator iter = inEdges.find(node);
@@ -100,7 +100,7 @@ Graph::EdgeList Graph::getInEdges(GraphNode *node, GraphNodeType g) const
         for (EdgeList::const_iterator eIter = iter->second.begin();
                 eIter != iter->second.end(); ++eIter)
         {
-            if ((*eIter)->getStartNode()->hasGraphNodeType(g))
+            if ((*eIter)->getStartNode()->hasParadigm(paradigm))
                 edges.push_back(*eIter);
         }
     }
@@ -118,7 +118,7 @@ const Graph::EdgeList &Graph::getOutEdges(GraphNode *node) const
             node->getUniqueName().c_str());
 }
 
-Graph::EdgeList Graph::getOutEdges(GraphNode *node, GraphNodeType g) const
+Graph::EdgeList Graph::getOutEdges(GraphNode *node, Paradigm paradigm) const
 {
     EdgeList edges;
     NodeEdges::const_iterator iter = outEdges.find(node);
@@ -127,7 +127,7 @@ Graph::EdgeList Graph::getOutEdges(GraphNode *node, GraphNodeType g) const
         for (EdgeList::const_iterator eIter = iter->second.begin();
                 eIter != iter->second.end(); ++eIter)
         {
-            if ((*eIter)->getEndNode()->hasGraphNodeType(g))
+            if ((*eIter)->getEndNode()->hasParadigm(paradigm))
                 edges.push_back(*eIter);
         }
     }
@@ -201,7 +201,7 @@ BoostGraphType *Graph::getBoostGraph(const std::set<GraphNode*> *cpnodes)
     return g;
 }
 
-Graph *Graph::getSubGraph(GraphNodeType g)
+Graph *Graph::getSubGraph(Paradigm paradigm)
 {
     VT_TRACER("getSubGraph");
     Graph *subGraph = new Graph();
@@ -210,20 +210,21 @@ Graph *Graph::getSubGraph(GraphNodeType g)
             iter != nodes.end(); ++iter)
     {
         GraphNode *node = *iter;
-        if (!node->hasGraphNodeType(g))
+        
+        if (!node->hasParadigm(paradigm))
             continue;
-
+        
         subGraph->addNode(node);
 
         if (hasOutEdges(node))
         {
-            EdgeList edges = getOutEdges(node, g);
+            EdgeList edges = getOutEdges(node, paradigm);
             for (EdgeList::const_iterator eIter = edges.begin();
                     eIter != edges.end(); ++eIter)
             {
                 Edge *edge = *eIter;
 
-                if ((edge->getEdgeType() == GRAPH_MAX) || (edge->getEdgeType() == g))
+                if (edge->hasEdgeType(paradigm))
                     subGraph->addEdge(*eIter);
             }
         }

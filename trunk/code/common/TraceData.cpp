@@ -6,11 +6,13 @@
  */
 
 #include <stdio.h>
+#include <utility>
 
 #include "TraceData.hpp"
 #include "FunctionTable.hpp"
 #include "otf/OTF1TraceWriter.hpp"
 #include "common.hpp"
+#include "include/graph/Node.hpp"
 
 using namespace cdm;
 using namespace cdm::io;
@@ -18,7 +20,7 @@ using namespace cdm::io;
 TraceData::TraceData() :
 ticksPerSecond(1000)
 {
-    globalSourceNode = newGraphNode(0, 0, "START", NT_RT_ATOMIC | NT_FT_MIXED);
+    globalSourceNode = newGraphNode(0, 0, "START", PARADIGM_ALL, RECORD_ATOMIC, MISC_PROCESS);
 
     ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_BLAME);
     ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_WAITSTATE);
@@ -42,15 +44,15 @@ TraceData::~TraceData()
 
 Process* TraceData::newProcess(uint32_t id, uint32_t parentId,
         const std::string name, Process::ProcessType processType,
-        GraphNodeType g, bool remoteProcess)
+        Paradigm paradigm, bool remoteProcess)
 {
     Process *p = new Process(id, parentId, name, processType, remoteProcess);
     processMap[id] = p;
 
     if (processType == Process::PT_HOST)
     {
-        GraphNode *startNode = newGraphNode(0, id, name,
-                NT_FT_PROCESS | NT_RT_ATOMIC | NT_FT_MIXED);
+        GraphNode *startNode = newGraphNode(0, id, name, PARADIGM_ALL,
+                RECORD_ATOMIC, MISC_PROCESS);
         p->addGraphNode(startNode, NULL, NULL);
         newEdge(globalSourceNode, startNode, false);
 
@@ -68,44 +70,70 @@ Process* TraceData::newProcess(uint32_t id, uint32_t parentId,
     return p;
 }
 
-int TraceData::getFunctionType(const char *name, Process *process)
+bool TraceData::getFunctionType(uint32_t id, const char *name, Process *process, FunctionDescriptor *descr)
 {
-    NodeType apiType = FunctionTable::getAPIFunctionType(name);
+    assert(name);
+    assert(descr);
+    assert(process);
 
-    switch (apiType)
+    if (FunctionTable::getAPIFunctionType(name, descr))
     {
-        case NT_FT_COLLSYNC:
-            return NT_FT_COLLSYNC | NT_FT_SYNC;
+        switch (descr->paradigm)
+        {
+            case PARADIGM_CUDA:
+                switch (descr->type)
+                {
+                    case CUDA_COLLSYNC:
+                        descr->type = CUDA_COLLSYNC | CUDA_SYNC;
+                        return true;
 
-        case NT_FT_SYNC:
-        case NT_FT_LAUNCH:
-        case NT_FT_EV_LAUNCH:
-        case NT_FT_EV_SYNC:
-        case NT_FT_QUERY:
-        case NT_FT_EV_QUERY:
-        case NT_FT_STREAMWAIT:
+                    case CUDA_SYNC:
+                    case CUDA_KERNEL_LAUNCH:
+                    case CUDA_EV_LAUNCH:
+                    case CUDA_EV_SYNC:
+                    case CUDA_QUERY:
+                    case CUDA_EV_QUERY:
+                    case CUDA_STREAMWAIT:
+                        return true;
+                }
 
-        case NT_FT_MPI_COLL:
-        case NT_FT_MPI_WAIT:
-        case NT_FT_MPI_SENDRECV:
-        case NT_FT_MPI_RECV:
-        case NT_FT_MPI_SEND:
-        case NT_FT_MPI_MISC:
-            return apiType;
+            case PARADIGM_MPI:
+                switch (descr->type)
+                {
+                    case MPI_COLL:
+                    case MPI_WAIT:
+                    case MPI_SENDRECV:
+                    case MPI_RECV:
+                    case MPI_SEND:
+                    case MPI_MISC:
+                        return true;
+                }
 
-        default:
-            break;
+            default:
+                break;
+        }
     }
-    // not a CUDA API function
+    // not an MPI or CUDA API function
 
     // kernel ?
     if (process->isDeviceNullProcess())
-        return (NT_FT_KERNEL | NT_FT_SYNC | NT_FT_COLLSYNC);
+    {
+        descr->type = (CUDA_KERNEL | CUDA_SYNC | CUDA_COLLSYNC);
+        descr->paradigm = PARADIGM_CUDA;
+        return true;
+    }
+
     if (process->isDeviceProcess())
-        return NT_FT_KERNEL;
+    {
+        descr->type = CUDA_KERNEL;
+        descr->paradigm = PARADIGM_CUDA;
+        return true;
+    }
 
     // anything else
-    return NT_FT_CPU;
+    descr->paradigm = PARADIGM_CPU;
+    descr->type = MISC_CPU;
+    return false;
 }
 
 Graph& TraceData::getGraph()
@@ -113,9 +141,9 @@ Graph& TraceData::getGraph()
     return graph;
 }
 
-Graph* TraceData::getGraph(GraphNodeType g)
+Graph* TraceData::getGraph(Paradigm p)
 {
-    return graph.getSubGraph(g);
+    return graph.getSubGraph(p);
 }
 
 Process* TraceData::getProcess(uint32_t id) const
@@ -146,9 +174,9 @@ void TraceData::getLocalProcesses(Allocation::ProcessList& procs) const
     }
 }
 
-void TraceData::getProcesses(Allocation::ProcessList& procs, GraphNodeType g) const
+void TraceData::getProcesses(Allocation::ProcessList& procs, Paradigm paradigm) const
 {
-    allocation.getAllProcesses(procs, g);
+    allocation.getAllProcesses(procs, paradigm);
 }
 
 const Allocation::ProcessList& TraceData::getHostProcesses() const
@@ -193,42 +221,45 @@ const Graph::EdgeList& TraceData::getOutEdges(GraphNode *n) const
 }
 
 Node* TraceData::newNode(uint64_t time, uint32_t processId,
-        const std::string name, int nodeType)
+        const std::string name, Paradigm paradigm, NodeRecordType recordType,
+        int nodeType)
 {
-    return new Node(time, processId, name, nodeType);
+    return new Node(time, processId, name, paradigm, recordType, nodeType);
 }
 
 GraphNode* TraceData::newGraphNode(uint64_t time, uint32_t processId,
-        const std::string name, int nodeType)
+        const std::string name, Paradigm paradigm, NodeRecordType recordType,
+        int nodeType)
 {
-    GraphNode *n = new GraphNode(time, processId, name, nodeType);
+    GraphNode *n = new GraphNode(time, processId, name, paradigm, recordType, nodeType);
     graph.addNode(n);
     return n;
 }
 
 EventNode* TraceData::newEventNode(uint64_t time, uint32_t processId,
         uint32_t eventId, EventNode::FunctionResultType fResult,
-        const std::string name, int nodeType)
+        const std::string name, Paradigm paradigm, NodeRecordType recordType,
+        int nodeType)
 {
     EventNode *n = new EventNode(time,
-            processId, eventId, fResult, name, nodeType);
+            processId, eventId, fResult, name, paradigm, recordType, nodeType);
     graph.addNode(n);
     return n;
 }
 
 Edge* TraceData::newEdge(GraphNode* n1, GraphNode *n2, bool isBlocking,
-        GraphNodeType *edgeType)
+        Paradigm *edgeType)
 {
-    GraphNodeType g = GRAPH_MAX;
+    Paradigm paradigm = PARADIGM_ALL;
     if (edgeType)
-        g = *edgeType;
+        paradigm = *edgeType;
     else
     {
-        if (n1->getGraphNodeType() == n2->getGraphNodeType())
-            g = n1->getGraphNodeType();
+        if (n1->getParadigm() == n2->getParadigm())
+            paradigm = n1->getParadigm();
     }
 
-    Edge *e = new Edge(n1, n2, n2->getTime() - n1->getTime(), isBlocking, g);
+    Edge *e = new Edge(n1, n2, n2->getTime() - n1->getTime(), isBlocking, paradigm);
     graph.addEdge(e);
 
     return e;
@@ -285,9 +316,9 @@ GraphNode* TraceData::getLastGraphNode() const
 {
     GraphNode *lastNode = NULL;
 
-    for (int i = 0; i < GRAPH_MAX; ++i)
+    for (size_t paradigm = 1; paradigm < NODE_PARADIGM_INVALID; paradigm *= 2)
     {
-        GraphNode *lastNodeG = getLastGraphNode((GraphNodeType) i);
+        GraphNode *lastNodeG = getLastGraphNode((Paradigm) paradigm);
         if (!lastNode)
             lastNode = lastNodeG;
         else
@@ -300,7 +331,7 @@ GraphNode* TraceData::getLastGraphNode() const
     return lastNode;
 }
 
-GraphNode* TraceData::getFirstTimedGraphNode(GraphNodeType g) const
+GraphNode* TraceData::getFirstTimedGraphNode(Paradigm paradigm) const
 {
     GraphNode *firstNode = NULL;
     Allocation::ProcessList procs;
@@ -312,15 +343,15 @@ GraphNode* TraceData::getFirstTimedGraphNode(GraphNodeType g) const
         Process *p = *iter;
         Process::SortedNodeList &nodes = p->getNodes();
         GraphNode *firstProcGNode = NULL;
-        
+
         for (Process::SortedNodeList::const_iterator nIter = nodes.begin();
                 nIter != nodes.end(); ++nIter)
         {
             Node *n = *nIter;
             if ((n->isGraphNode()) && (n->getTime() > 0) && (!n->isAtomic()))
             {
-                GraphNode *gn = (GraphNode*)n;
-                if (gn->hasGraphNodeType(g))
+                GraphNode *gn = (GraphNode*) n;
+                if (gn->hasParadigm(paradigm))
                 {
                     firstProcGNode = gn;
                     break;
@@ -341,7 +372,7 @@ GraphNode* TraceData::getFirstTimedGraphNode(GraphNodeType g) const
     return firstNode;
 }
 
-GraphNode* TraceData::getLastGraphNode(GraphNodeType g) const
+GraphNode* TraceData::getLastGraphNode(Paradigm paradigm) const
 {
     GraphNode *lastNode = NULL;
     Allocation::ProcessList procs;
@@ -351,7 +382,7 @@ GraphNode* TraceData::getLastGraphNode(GraphNodeType g) const
             iter != procs.end(); ++iter)
     {
         Process *p = *iter;
-        GraphNode *lastProcGNode = p->getLastGraphNode(g);
+        GraphNode *lastProcGNode = p->getLastGraphNode(paradigm);
 
         if (lastProcGNode)
         {
@@ -466,13 +497,13 @@ uint64_t TraceData::getDeltaTicks()
 }
 
 void TraceData::getCriticalPath(GraphNode *sourceNode, GraphNode * lastNode,
-        GraphNode::GraphNodeList *cpath, GraphNodeType g)
+        GraphNode::GraphNodeList *cpath, Paradigm paradigm)
 {
-    if (g == GRAPH_MAX)
+    if (paradigm == PARADIGM_ALL)
         graph.getLongestPath(sourceNode, lastNode, *cpath);
     else
     {
-        Graph *subgraph = graph.getSubGraph(g);
+        Graph *subgraph = graph.getSubGraph(paradigm);
         subgraph->getLongestPath(sourceNode, lastNode, *cpath);
         delete subgraph;
     }
@@ -609,7 +640,7 @@ void TraceData::saveAllocationToFile(const char* filename,
                         node->getProcessId(), node->getFunctionId());
             }
 
-            if (node->isEnter() || node->isLeave() || node->isMarker())
+            if (node->isEnter() || node->isLeave())
             {
                 if (node->isEnter() || node->isLeave())
                 {
@@ -619,7 +650,7 @@ void TraceData::saveAllocationToFile(const char* filename,
                         knownFunctions.insert(functionId);
 
                         ITraceWriter::FunctionGroup fg = ITraceWriter::FG_CUDA_API;
-                        if (node->isKernel())
+                        if (node->isCUDAKernel())
                             fg = ITraceWriter::FG_KERNEL;
 
                         if (node->isWaitstate())
@@ -644,106 +675,109 @@ void TraceData::saveAllocationToFile(const char* filename,
 }
 
 void TraceData::addNewGraphNodeInternal(GraphNode *node, Process *process,
-        Edge **resultEdgeCUDA, Edge **resultEdgeMPI)
+        ParadigmEdgeMap *resultEdges)
 {
-    GraphNodePtr predNodes[GRAPH_MAX];
-    GraphNodePtr nextNodes[GRAPH_MAX];
+    GraphNodePtr predNodes[NODE_PARADIGM_COUNT];
+    GraphNodePtr nextNodes[NODE_PARADIGM_COUNT];
     typedef Edge* EdgePtr;
-    EdgePtr edges[GRAPH_MAX];
+    EdgePtr edges[NODE_PARADIGM_COUNT];
 
-    for (int g = 0; g < GRAPH_MAX; ++g)
+    for (size_t p = 0; p < NODE_PARADIGM_COUNT; ++p)
     {
-        predNodes[g] = NULL;
-        nextNodes[g] = NULL;
-        edges[g] = NULL;
+        predNodes[p] = NULL;
+        nextNodes[p] = NULL;
+        edges[p] = NULL;
     }
+
+    size_t paradigm_cuda_index = (size_t) log2(PARADIGM_CUDA);
+    size_t paradigm_mpi_index = (size_t) log2(PARADIGM_MPI);
 
     if (!process->getLastNode() || Node::compareLess(process->getLastNode(), node))
     {
-        process->addGraphNode(node, &(predNodes[0]), &(predNodes[1]));
+        process->addGraphNode(node, &(predNodes[paradigm_cuda_index]), &(predNodes[paradigm_mpi_index]));
     } else
     {
-        process->insertGraphNode(node, &(predNodes[0]), &(nextNodes[0]),
-                &(predNodes[1]), &(nextNodes[1]));
+        process->insertGraphNode(node, &(predNodes[paradigm_cuda_index]), &(nextNodes[paradigm_cuda_index]),
+                &(predNodes[paradigm_mpi_index]), &(nextNodes[paradigm_mpi_index]));
     }
 
     //std::cout << "added node " << node->getUniqueName().c_str() << std::endl;
 
-    for (int g = 0; g < GRAPH_MAX; ++g)
+    for (size_t p_index = 0; p_index < NODE_PARADIGM_COUNT; ++p_index)
     {
-        GraphNodeType gType = (GraphNodeType) g;
-        if (predNodes[g])
+        Paradigm paradigm = (Paradigm) (1 << p_index);
+        if (predNodes[p_index])
         {
-            if ((predNodes[g]->getGraphNodeType() == node->getGraphNodeType()) &&
-                    ((predNodes[g]->isEnter() && node->isEnter()) ||
-                    (predNodes[g]->isLeave() && node->isLeave())))
+            if ((predNodes[p_index]->getParadigm() == node->getParadigm()) &&
+                    ((predNodes[p_index]->isEnter() && node->isEnter()) ||
+                    (predNodes[p_index]->isLeave() && node->isLeave())))
             {
                 throw RTException("Node matching failed in process %u (%s): no matching "
                         "ENTER/LEAVE pair found, old: '%s' new: '%s'",
                         process->getId(),
                         process->getName(),
-                        predNodes[g]->getUniqueName().c_str(),
+                        predNodes[p_index]->getUniqueName().c_str(),
                         node->getUniqueName().c_str());
             }
 
             bool isBlocking = false;
 
-            if (predNodes[g]->isEnter() && node->isLeave())
+            if (predNodes[p_index]->isEnter() && node->isLeave())
             {
-                node->setPartner(predNodes[g]);
-                predNodes[g]->setPartner(node);
+                node->setPartner(predNodes[p_index]);
+                predNodes[p_index]->setPartner(node);
 
-                isBlocking = (predNodes[g]->isWaitstate() && node->isWaitstate());
+                isBlocking = (predNodes[p_index]->isWaitstate() && node->isWaitstate());
 
                 if (!process->isRemoteProcess())
-                    activities.push_back(new Activity(predNodes[g], node));
+                    activities.push_back(new Activity(predNodes[p_index], node));
             }
 
-            edges[g] = newEdge(predNodes[g], node, isBlocking, &gType);
+            edges[p_index] = newEdge(predNodes[p_index], node, isBlocking, &paradigm);
             //std::cout << " linked to " << predNodes[g]->getUniqueName().c_str() << std::endl;
 
-            if (nextNodes[g])
+            if (nextNodes[p_index])
             {
-                Edge *oldEdge = getEdge(predNodes[g], nextNodes[g]);
+                Edge *oldEdge = getEdge(predNodes[p_index], nextNodes[p_index]);
                 if (!oldEdge)
                 {
                     graph.saveToFile("error_dump.dot", NULL);
                     throw RTException("No edge between %s (p %u) and %s (p %u)",
-                            predNodes[g]->getUniqueName().c_str(),
-                            predNodes[g]->getProcessId(),
-                            nextNodes[g]->getUniqueName().c_str(),
-                            nextNodes[g]->getProcessId());
+                            predNodes[p_index]->getUniqueName().c_str(),
+                            predNodes[p_index]->getProcessId(),
+                            nextNodes[p_index]->getUniqueName().c_str(),
+                            nextNodes[p_index]->getProcessId());
                 }
                 removeEdge(oldEdge);
                 // can't be a blocking edge, as we never insert leave nodes
                 // before enter nodes from the same function
-                newEdge(node, nextNodes[g], false, &gType);
+                newEdge(node, nextNodes[p_index], false, &paradigm);
             }
         }
+        
+        if (resultEdges)
+            resultEdges->insert(std::make_pair(paradigm, edges[p_index]));
     }
-
-    if (resultEdgeCUDA)
-        *resultEdgeCUDA = edges[0];
-
-    if (resultEdgeMPI)
-        *resultEdgeMPI = edges[1];
 }
 
 GraphNode *TraceData::addNewGraphNode(uint64_t time, Process *process,
-        const char *name, int nodeType, Edge **resultEdgeCUDA, Edge **resultEdgeMPI)
+        const char *name, Paradigm paradigm, NodeRecordType recordType,
+        int nodeType, ParadigmEdgeMap *resultEdges)
 {
-    GraphNode *node = newGraphNode(time, process->getId(), name, nodeType);
-    addNewGraphNodeInternal(node, process, resultEdgeCUDA, resultEdgeMPI);
+    GraphNode *node = newGraphNode(time, process->getId(), name,
+            paradigm, recordType, nodeType);
+    addNewGraphNodeInternal(node, process, resultEdges);
 
     return node;
 }
 
 EventNode *TraceData::addNewEventNode(uint64_t time, uint32_t eventId,
         EventNode::FunctionResultType fResult, Process *process,
-        const char *name, int nodeType, Edge **resultEdgeCUDA, Edge **resultEdgeMPI)
+        const char *name, Paradigm paradigm, NodeRecordType recordType,
+        int nodeType, ParadigmEdgeMap *resultEdges)
 {
     EventNode *node = newEventNode(time, process->getId(), eventId,
-            fResult, name, nodeType);
-    addNewGraphNodeInternal(node, process, resultEdgeCUDA, resultEdgeMPI);
+            fResult, name, paradigm, recordType, nodeType);
+    addNewGraphNodeInternal(node, process, resultEdges);
     return node;
 }

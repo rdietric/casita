@@ -36,7 +36,7 @@ namespace cdm
         typedef std::map<uint32_t, EventNode::EventNodeList> IdEventsListMap;
         typedef std::list<StreamWaitTagged*> NullStreamWaitList;
         typedef std::map<uint32_t, GraphNode::GraphNodeList > KernelLaunchListMap;
-
+        
         AnalysisEngine(uint32_t mpiRank, uint32_t mpiSize);
         virtual ~AnalysisEngine();
 
@@ -52,12 +52,14 @@ namespace cdm
         const char *getFunctionName(uint32_t id);
 
         GraphNode* newGraphNode(uint64_t time, uint32_t processId,
-                const std::string name, int nodeType);
+                const std::string name, Paradigm paradigm,
+                NodeRecordType recordType, int nodeType);
         GraphNode* addNewGraphNode(uint64_t time, Process *process,
-                const char *name, int nodeType, Edge **resultEdgeCUDA,
-                Edge **resultEdgeMPI);
+                const char *name, Paradigm paradigm, NodeRecordType recordType,
+                int nodeType, ParadigmEdgeMap *resultEdges);
         RemoteGraphNode *addNewRemoteNode(uint64_t time, uint32_t remoteProcId,
-                uint32_t remoteNodeId, int nodeType, uint32_t mpiRank);
+                uint32_t remoteNodeId, Paradigm paradigm, NodeRecordType recordType,
+                int nodeType, uint32_t mpiRank);
 
         void addRule(AbstractRule *rule);
         void removeRules();

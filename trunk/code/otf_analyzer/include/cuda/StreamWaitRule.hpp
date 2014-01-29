@@ -29,7 +29,7 @@ namespace cdm
                 return false;
 
             // applied at streamWaitEvent leave
-            if (node->isEventNode() && node->isStreamWaitEvent())
+            if (node->isEventNode() && node->isCUDAStreamWaitEvent())
             {
                 uint32_t referencedDevWaitProc = node->getReferencedProcessId();
                 if (!referencedDevWaitProc)
@@ -57,7 +57,7 @@ namespace cdm
             }
 
             // ... and applied at kernel leave
-            if (node->isKernel())
+            if (node->isCUDAKernel())
             {
                 // get the complete execution of this kernel
                 GraphNode::GraphNodePair waitingKernel = ((GraphNode*) node)->getGraphPair();
@@ -186,7 +186,7 @@ namespace cdm
                         if (n->isMPI())
                             continue;
 
-                        if (n->getTime() <= node->getTime() && n != node && n->isGraphNode() && n->isLeave() && n->isKernel())
+                        if (n->getTime() <= node->getTime() && n != node && n->isGraphNode() && n->isLeave() && n->isCUDAKernel())
                         {
                             uint64_t lastLeaveNodeTime = n->getTime();
                             lastLeaveNode = (GraphNode*) n;
@@ -216,14 +216,14 @@ namespace cdm
                                 waitStateEnterTime,
                                 waitingDevProc,
                                 NAME_WAITSTATE,
-                                NT_RT_ENTER | NT_FT_WAITSTATE_CUDA,
-                                NULL, NULL);
+                                PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE,
+                                NULL);
                         GraphNode *waitLeave = analysis->addNewGraphNode(
                                 lastSyncKernelLeave->getTime(),
                                 waitingDevProc,
                                 NAME_WAITSTATE,
-                                NT_RT_LEAVE | NT_FT_WAITSTATE_CUDA,
-                                NULL, NULL);
+                                PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE,
+                                NULL);
 
                         analysis->newEdge(lastLeaveNode, waitEnter, false);
                         analysis->newEdge(waitEnter, waitLeave, true);

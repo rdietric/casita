@@ -154,12 +154,6 @@ void OTF1TraceWriter::writeNode(const Node *node, CounterTable &ctrTable, bool l
         }
     }
 
-    if (node->isMarker())
-    {
-        OTF_CHECK(OTF_WStream_writeMarker(wstream, node->getTime(), node->getProcessId(),
-                MG_Marker, node->getName()));
-    }
-
     CounterTable::CtrIdSet ctrIdSet = ctrTable.getAllCounterIDs();
     for (CounterTable::CtrIdSet::const_iterator iter = ctrIdSet.begin();
             iter != ctrIdSet.end(); ++iter)

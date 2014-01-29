@@ -27,71 +27,94 @@ namespace cdm
     typedef uint32_t LocalID;
     typedef uint64_t GlobalID;
 
-    enum NodeType
+    enum NodeRecordType
     {
-        // record types
-        NT_RT_ENTER = 1 << 1,
-        NT_RT_LEAVE = 1 << 2,
-        NT_RT_ATOMIC = 1 << 3,
-        // function types
-        NT_FT_CPU = 1 << 4,
-        // CUDA
-        NT_FT_SYNC = 1 << 5,
-        NT_FT_COLLSYNC = 1 << 6,
-        NT_FT_EV_SYNC = 1 << 7,
-        NT_FT_WAITSTATE_CUDA = 1 << 8,
-        NT_FT_KERNEL = 1 << 9,
-        NT_FT_PROCESS = 1 << 10,
-        NT_FT_LAUNCH = 1 << 11,
-        NT_FT_EV_LAUNCH = 1 << 12,
-        NT_FT_MARKER = 1 << 13,
-        NT_FT_QUERY = 1 << 14,
-        NT_FT_EV_QUERY = 1 << 15,
-        NT_FT_STREAMWAIT = 1 << 16,
-        // MPI
-        NT_FT_MPI_RECV = 1 << 17,
-        NT_FT_MPI_SEND = 1 << 18,
-        NT_FT_MPI_WAIT = 1 << 19,
-        NT_FT_MPI_COLL = 1 << 20,
-        NT_FT_MPI_SENDRECV = 1 << 21,
-        NT_FT_MPI_MISC = 1 << 22,
-        NT_RT_MPI_EXIT = 1 << 23,
-        NT_FT_WAITSTATE_MPI = 1 << 24,
+        RECORD_ATOMIC,
+        RECORD_ENTER,
+        RECORD_LEAVE
+    };
 
-        NT_FT_MIXED = 1 << 31
+    enum Paradigm
+    {
+        PARADIGM_CPU = (1 << 0),
+        PARADIGM_CUDA = (1 << 1),
+        PARADIGM_MPI = (1 << 2),
+        PARADIGM_OMP = (1 << 3),
+        
+        PARADIGM_ALL = (PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_MPI | PARADIGM_OMP)
+    };
+    
+    const size_t NODE_PARADIGM_COUNT = 4;
+    const size_t NODE_PARADIGM_INVALID = (1 << 4);
+
+    enum NodeTypeMisc
+    {
+        MISC_CPU = (1 << 1),
+        MISC_PROCESS = (1 << 2)
+    };
+
+    enum NodeTypeCUDA
+    {
+        CUDA_SYNC = (1 << 1),
+        CUDA_COLLSYNC = (1 << 2),
+        CUDA_WAITSTATE = (1 << 3),
+        CUDA_KERNEL = (1 << 4),
+        CUDA_KERNEL_LAUNCH = (1 << 5),
+        CUDA_EV_SYNC = (1 << 6),
+        CUDA_EV_LAUNCH = (1 << 7),
+        CUDA_EV_QUERY = (1 << 8),
+        CUDA_QUERY = (1 << 9),
+        CUDA_STREAMWAIT = (1 << 10)
+    };
+
+    enum NodeTypeMPI
+    {
+        MPI_RECV = (1 << 1),
+        MPI_SEND = (1 << 2),
+        MPI_WAIT = (1 << 3),
+        MPI_COLL = (1 << 4),
+        MPI_SENDRECV = (1 << 5),
+        MPI_MISC = (1 << 6),
+        MPI_EXIT = (1 << 7),
+        MPI_WAITSTATE = (1 << 8)
     };
 
     typedef struct
     {
-        NodeType type;
+        NodeTypeCUDA type;
         const char * str;
-    } TypeStrEntry;
+    } TypeStrEntryCUDA;
 
-    static const size_t numTypeStrEntries = 21;
-    static const TypeStrEntry typeStrTable[numTypeStrEntries] = {
-        {NT_FT_CPU, "cpu"},
+    typedef struct
+    {
+        NodeTypeMPI type;
+        const char * str;
+    } TypeStrEntryMPI;
 
-        {NT_FT_COLLSYNC, "collsync"},
-        {NT_FT_SYNC, "sync"},
-        {NT_FT_EV_SYNC, "event_sync"},
-        {NT_FT_KERNEL, "kernel"},
-        {NT_FT_LAUNCH, "launch"},
-        {NT_FT_EV_LAUNCH, "event_launch"},
-        {NT_FT_PROCESS, "process"},
-        {NT_FT_WAITSTATE_CUDA, "waitstate_cuda"},
-        {NT_FT_MARKER, "marker"},
-        {NT_FT_QUERY, "query"},
-        {NT_FT_EV_QUERY, "event_query"},
-        {NT_FT_STREAMWAIT, "streamwait"},
+    static const size_t numTypeStrEntriesCUDA = 11;
+    static const TypeStrEntryCUDA typeStrTableCUDA[numTypeStrEntriesCUDA] = {
+        {CUDA_COLLSYNC, "cuda_collsync"},
+        {CUDA_SYNC, "cuda_sync"},
+        {CUDA_EV_SYNC, "cuda_event_sync"},
+        {CUDA_KERNEL, "cuda_kernel"},
+        {CUDA_KERNEL_LAUNCH, "cuda_launch"},
+        {CUDA_EV_LAUNCH, "cuda_event_launch"},
+        {CUDA_WAITSTATE, "cuda_waitstate"},
+        {CUDA_QUERY, "cuda_query"},
+        {CUDA_EV_QUERY, "cuda_event_query"},
+        {CUDA_STREAMWAIT, "cuda_streamwait"}
+    };
 
-        {NT_FT_MPI_RECV, "mpi_recv"},
-        {NT_FT_MPI_SEND, "mpi_send"},
-        {NT_FT_MPI_WAIT, "mpi_wait"},
-        {NT_FT_MPI_COLL, "mpi_coll"},
-        {NT_FT_MPI_SENDRECV, "mpi_sendrecv"},
-        {NT_FT_MPI_MISC, "mpi_misc"},
-        {NT_RT_MPI_EXIT, "mpi_exit"},
-        {NT_FT_WAITSTATE_MPI, "waitstate_mpi"},
+    static const size_t numTypeStrEntriesMPI = 8;
+    static const TypeStrEntryMPI typeStrTableMPI[numTypeStrEntriesMPI] = {
+        {MPI_RECV, "mpi_recv"},
+        {MPI_SEND, "mpi_send"},
+        {MPI_WAIT, "mpi_wait"},
+        {MPI_COLL, "mpi_coll"},
+        {MPI_SENDRECV, "mpi_sendrecv"},
+        {MPI_MISC, "mpi_misc"},
+        {MPI_EXIT, "mpi_exit"},
+        {MPI_WAITSTATE, "mpi_waitstate"}
     };
 
     static const char NAME_WAITSTATE[] = "WaitState";
@@ -106,189 +129,198 @@ namespace cdm
 
         bool isEnter() const
         {
-            return nodeType & NT_RT_ENTER;
+            return recordType == RECORD_ENTER;
         }
 
         bool isLeave() const
         {
-            return nodeType & NT_RT_LEAVE;
+            return recordType == RECORD_LEAVE;
         }
 
         bool isAtomic() const
         {
-            return nodeType & NT_RT_ATOMIC;
+            return recordType == RECORD_ATOMIC;
         }
 
         bool isCPU() const
         {
-            return nodeType & NT_FT_CPU;
+            return paradigm & PARADIGM_CPU;
         }
 
-        bool isSync() const
+        bool isCUDA() const
         {
-            return nodeType & NT_FT_SYNC;
+            return paradigm & PARADIGM_CUDA;
         }
 
-        bool isCollSync() const
+        bool isMPI() const
         {
-            return nodeType & NT_FT_COLLSYNC;
+            return paradigm & PARADIGM_MPI;
         }
 
-        bool isEventSync() const
+        bool isOMP() const
         {
-            return nodeType & NT_FT_EV_SYNC;
+            return paradigm & PARADIGM_OMP;
+        }
+
+        bool isCUDASync() const
+        {
+
+            return isCUDA() && (nodeType & CUDA_SYNC);
+        }
+
+        bool isCUDACollSync() const
+        {
+
+            return isCUDA() && (nodeType & CUDA_COLLSYNC);
+        }
+
+        bool isCUDAEventSync() const
+        {
+
+            return isCUDA() && (nodeType & CUDA_EV_SYNC);
         }
 
         bool isWaitstate() const
         {
-            return (nodeType & NT_FT_WAITSTATE_CUDA) ||
-                    (nodeType & NT_FT_WAITSTATE_MPI);
+
+            return (isCUDA() && (nodeType & CUDA_WAITSTATE)) ||
+                    (isMPI() && (nodeType & MPI_WAITSTATE));
         }
 
         bool isPureWaitstate() const
         {
+
             return isWaitstate() &&
                     (strcmp(name.c_str(), NAME_WAITSTATE) == 0);
         }
 
         bool isProcess() const
         {
-            return nodeType & NT_FT_PROCESS;
+            return isAtomic() && (nodeType & MISC_PROCESS);
         }
 
-        bool isKernel() const
+        bool isCUDAKernel() const
         {
-            return nodeType & NT_FT_KERNEL;
+
+            return isCUDA() && (nodeType & CUDA_KERNEL);
         }
 
-        bool isKernelLaunch() const
+        bool isCUDAKernelLaunch() const
         {
-            return nodeType & NT_FT_LAUNCH;
+
+            return isCUDA() && (nodeType & CUDA_KERNEL_LAUNCH);
         }
 
-        bool isEventLaunch() const
+        bool isCUDAEventLaunch() const
         {
-            return nodeType & NT_FT_EV_LAUNCH;
+
+            return isCUDA() && (nodeType & CUDA_EV_LAUNCH);
         }
 
-        bool isMarker() const
+        bool isCUDAQuery() const
         {
-            return nodeType & NT_FT_MARKER;
+
+            return isCUDA() && (nodeType & CUDA_QUERY);
         }
 
-        bool isQuery() const
+        bool isCUDAEventQuery() const
         {
-            return nodeType & NT_FT_QUERY;
+
+            return isCUDA() && (nodeType & CUDA_EV_QUERY);
         }
 
-        bool isEventQuery() const
+        bool isCUDAStreamWaitEvent() const
         {
-            return nodeType & NT_FT_EV_QUERY;
-        }
 
-        bool isStreamWaitEvent() const
-        {
-            return nodeType & NT_FT_STREAMWAIT;
+            return isCUDA() && (nodeType & CUDA_STREAMWAIT);
         }
-
-        bool isCUDA() const
+        
+        static bool isCUDAEventType(Paradigm paradigm, int type)
         {
-            return isCUDAType(nodeType);
-        }
 
-        bool isMPI() const
-        {
-            return isMPIType(nodeType);
+            return (paradigm == PARADIGM_CUDA) && 
+                    ((type & CUDA_EV_LAUNCH) ||
+                    (type & CUDA_EV_SYNC) ||
+                    (type & CUDA_EV_QUERY) ||
+                    (type & CUDA_STREAMWAIT));
         }
 
         bool isMPIRecv() const
         {
-            return nodeType & NT_FT_MPI_RECV;
+
+            return isMPI() && (nodeType & MPI_RECV);
         }
 
         bool isMPISend() const
         {
-            return nodeType & NT_FT_MPI_SEND;
+
+            return isMPI() && (nodeType & MPI_SEND);
         }
-        
+
         bool isMPIWait() const
         {
-            return nodeType & NT_FT_MPI_WAIT;
+
+            return isMPI() && (nodeType & MPI_WAIT);
         }
-        
+
         bool isMPIInit() const
         {
-            return (nodeType & NT_FT_MPI_COLL) &&
+
+            return isMPI() && (nodeType & MPI_COLL) &&
                     (strcmp(name.c_str(), NAME_MPI_INIT) == 0);
         }
 
         bool isMPICollective() const
         {
-            return nodeType & NT_FT_MPI_COLL;
+
+            return isMPI() && (nodeType & MPI_COLL);
         }
-        
+
         bool isMPISendRecv() const
         {
-            return nodeType & NT_FT_MPI_SENDRECV;
+
+            return isMPI() && (nodeType & MPI_SENDRECV);
         }
 
         bool isMPIFinalize() const
         {
-            return (nodeType & NT_FT_MPI_COLL) &&
+
+            return isMPI() && (nodeType & MPI_COLL) &&
                     (strcmp(name.c_str(), NAME_MPI_FINALIZE) == 0);
         }
 
-        static const std::string typeToStr(int type)
+        static const std::string typeToStr(Paradigm paradigm, int type)
         {
+            size_t i;
             std::stringstream stream;
 
-            for (size_t i = 0; i < numTypeStrEntries; ++i)
-                if (type & typeStrTable[i].type)
-                    stream << typeStrTable[i].str;
+            switch (paradigm)
+            {
+                case PARADIGM_CUDA:
+                    for (i = 0; i < numTypeStrEntriesCUDA; ++i)
+                    {
+                        if (typeStrTableCUDA[i].type & type)
+                            stream << typeStrTableCUDA[i].str << ",";
+                    }
+                    break;
 
+                case PARADIGM_MPI:
+                    for (i = 0; i < numTypeStrEntriesMPI; ++i)
+                    {
+                        if (typeStrTableMPI[i].type & type)
+                            stream << typeStrTableMPI[i].str << ",";
+                    }
+                    break;
+
+                default:
+                    stream << "<unknown>";
+            }
+            
             return stream.str();
         }
 
-        static bool isEventType(int type)
-        {
-            return ((type & NT_FT_EV_LAUNCH) ||
-                    (type & NT_FT_EV_SYNC) ||
-                    (type & NT_FT_EV_QUERY) ||
-                    (type & NT_FT_STREAMWAIT));
-        }
-
-        static bool isCUDAType(int type)
-        {
-            return (type & NT_FT_SYNC) ||
-                    (type & NT_FT_COLLSYNC) ||
-                    (type & NT_FT_EV_SYNC) ||
-                    (type & NT_FT_WAITSTATE_CUDA) ||
-                    (type & NT_FT_KERNEL) ||
-                    (type & NT_FT_PROCESS) ||
-                    (type & NT_FT_LAUNCH) ||
-                    (type & NT_FT_EV_LAUNCH) ||
-                    (type & NT_FT_MARKER) ||
-                    (type & NT_FT_QUERY) ||
-                    (type & NT_FT_EV_QUERY) ||
-                    (type & NT_FT_STREAMWAIT) ||
-                    (type & NT_FT_MIXED);
-        }
-
-        static bool isMPIType(int type)
-        {
-            return (type & NT_FT_MPI_RECV) ||
-                    (type & NT_FT_MPI_SEND) ||
-                    (type & NT_FT_MPI_WAIT) ||
-                    (type & NT_FT_MPI_COLL) ||
-                    (type & NT_FT_MPI_SENDRECV) ||
-                    (type & NT_FT_MPI_MISC) ||
-                    (type & NT_RT_MPI_EXIT) ||
-                    (type & NT_FT_MIXED) ||
-                    (type & NT_FT_WAITSTATE_MPI);
-        }
-
         static bool compareLess(const Node *n1, const Node *n2)
-        {
+        {            
             uint64_t time1 = n1->getTime();
             uint64_t time2 = n2->getTime();
 
@@ -301,6 +333,15 @@ namespace cdm
             {
                 int type1 = n1->getType();
                 int type2 = n2->getType();
+
+                Paradigm paradigm1 = n1->getParadigm();
+                Paradigm paradigm2 = n2->getParadigm();
+
+                if (paradigm1 != paradigm2)
+                    return paradigm1 < paradigm2;
+
+                NodeRecordType recordType1 = n1->getRecordType();
+                NodeRecordType recordType2 = n2->getRecordType();
 
                 if (n1->isProcess())
                     return true;
@@ -317,59 +358,57 @@ namespace cdm
                             ((n1->getFunctionId() == n2->getFunctionId()) &&
                             strcmp(n1->getName(), n2->getName()) == 0))
                     {
-                        if ((type1 & NT_RT_LEAVE) && (type2 & NT_RT_ENTER))
+                        if ((recordType1 == RECORD_LEAVE) && (recordType2 == RECORD_ENTER))
                             return false;
 
-                        if ((type1 & NT_RT_ENTER) && (type2 & NT_RT_LEAVE))
+                        if ((recordType1 == RECORD_ENTER) && (recordType2 == RECORD_LEAVE))
                             return true;
                     } else
                     {
-                        if ((type1 & NT_RT_LEAVE) && (type2 & NT_RT_ENTER))
+                        if ((recordType1 == RECORD_LEAVE) && (recordType2 == RECORD_ENTER))
                             return true;
 
-                        if ((type1 & NT_RT_ENTER) && (type2 & NT_RT_LEAVE))
+                        if ((recordType1 == RECORD_ENTER) && (recordType2 == RECORD_LEAVE))
                             return false;
                     }
-
-                    if ((type1 & NT_RT_ENTER) && (type2 & NT_FT_MARKER))
-                        return false;
-
-                    if ((type1 & NT_FT_MARKER) && (type2 & NT_RT_ENTER))
-                        return true;
                 } else
                 {
-                    if ((type1 & NT_FT_KERNEL) && (type2 & NT_FT_SYNC))
-                        return true;
+                    if (paradigm1 & PARADIGM_CUDA)
+                    {
+                        if ((type1 & CUDA_KERNEL) && (type2 & CUDA_SYNC))
+                            return true;
 
-                    if ((type2 & NT_FT_KERNEL) && (type1 & NT_FT_SYNC))
-                        return false;
+                        if ((type2 & CUDA_KERNEL) && (type1 & CUDA_SYNC))
+                            return false;
+                    }
                 }
 
-                if (type1 & NT_FT_MARKER)
-                    return false;
+                if (paradigm1 & PARADIGM_MPI)
+                {
+                    if (type1 & MPI_EXIT)
+                        return false;
 
-                if (type2 & NT_FT_MARKER)
-                    return true;
-
-                if (type1 & NT_RT_MPI_EXIT)
-                    return false;
-
-                if (type2 & NT_RT_MPI_EXIT)
-                    return true;
+                    if (type2 & MPI_EXIT)
+                        return true;
+                }
 
                 return n1->getProcessId() > n2->getProcessId();
             }
         }
 
-        Node(uint64_t time, uint32_t processId, const std::string name, int nodeType) :
+        Node(uint64_t time, uint32_t processId, const std::string name,
+                Paradigm paradigm, NodeRecordType recordType, int nodeType) :
         time(time),
         processId(processId),
         functionId(0),
         name(name),
+        recordType(recordType),
+        paradigm(paradigm),
         nodeType(nodeType),
         link(NULL),
         referencedProcess(0)
         {
+
             id = ++globalNodeId;
         }
 
@@ -379,26 +418,31 @@ namespace cdm
 
         uint32_t getId() const
         {
+
             return id;
         }
 
         uint64_t getTime() const
         {
+
             return time;
         }
 
         uint32_t getProcessId() const
         {
+
             return processId;
         }
 
         const char *getName() const
         {
+
             return name.c_str();
         }
 
         virtual void setName(const std::string newName)
         {
+
             name = newName;
         }
 
@@ -407,38 +451,56 @@ namespace cdm
             std::stringstream sstream;
             sstream << name << ".";
 
-            if (nodeType & NT_RT_ENTER)
+            if (recordType == RECORD_ENTER)
                 sstream << "enter.";
 
-            if (nodeType & NT_RT_LEAVE)
+            if (recordType == RECORD_LEAVE)
                 sstream << "leave.";
 
             sstream << id << "." << time << "." << processId;
+
             return sstream.str();
         }
 
         const char *toString() const
         {
+
             return getUniqueName().c_str();
         }
 
         uint32_t getFunctionId() const
         {
+
             return functionId;
         }
 
         void setFunctionId(uint32_t newId)
         {
+
             functionId = newId;
+        }
+
+        NodeRecordType getRecordType() const
+        {
+
+            return recordType;
+        }
+
+        Paradigm getParadigm() const
+        {
+
+            return paradigm;
         }
 
         int getType() const
         {
+
             return nodeType;
         }
 
         void setReferencedProcessId(uint32_t processId)
         {
+
             referencedProcess = processId;
         }
 
@@ -447,7 +509,8 @@ namespace cdm
             if (processId == this->processId)
                 return false;
 
-            if (isCollSync() || (referencedProcess == processId))
+            if (isCUDACollSync() || (referencedProcess == processId))
+
                 return true;
 
             return false;
@@ -455,26 +518,31 @@ namespace cdm
 
         uint32_t getReferencedProcessId() const
         {
+
             return referencedProcess;
         }
 
         virtual bool isGraphNode() const
         {
+
             return false;
         }
 
         virtual bool isEventNode() const
         {
+
             return false;
         }
 
         virtual bool isRemoteNode() const
         {
+
             return false;
         }
 
         void setLink(Node * link)
         {
+
             if (this->link)
                 assert(0);
             this->link = link;
@@ -482,11 +550,13 @@ namespace cdm
 
         Node * getLink() const
         {
+
             return link;
         }
 
         void setCounter(uint32_t ctrId, uint64_t value)
         {
+
             counters[ctrId] = value;
         }
 
@@ -494,6 +564,7 @@ namespace cdm
         {
             if (counters.find(ctrId) != counters.end())
                 counters[ctrId] += value;
+
             else
                 counters[ctrId] = value;
         }
@@ -511,16 +582,19 @@ namespace cdm
 
             if (valid)
                 *valid = true;
+
             return iter->second;
         }
 
         void removeCounter(uint32_t ctrId)
         {
+
             counters.erase(ctrId);
         }
 
         void removeCounters()
         {
+
             counters.clear();
         }
 
@@ -530,7 +604,12 @@ namespace cdm
         uint32_t processId;
         uint32_t functionId;
         std::string name;
+        
+        NodeRecordType recordType;
+        Paradigm paradigm;
         int nodeType;
+        
+
         Node *link;
         /**
          * Link mappings:

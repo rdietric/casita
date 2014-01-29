@@ -23,7 +23,7 @@ namespace cdm
         typedef std::map<uint32_t, uint64_t> TimeProfileMap;
 
         Edge(GraphNode *start, GraphNode *end, uint64_t duration, bool blocking,
-                GraphNodeType edgeType)
+                Paradigm edgeParadigm)
         {
             pair = std::make_pair(start, end);
             if (isReverseEdge())
@@ -36,28 +36,25 @@ namespace cdm
             this->edgeDuration = duration;
             this->initialDuration = duration;
             this->edgeWeight = computeWeight(duration, blocking);
-            this->edgeType = edgeType;
+            this->edgeParadigm = edgeParadigm;
             this->timeProfile = NULL;
         }
-        
-        bool hasEdgeType(GraphNodeType edgeType)
+
+        bool hasEdgeType(Paradigm edgeParadigm)
         {
-            if (this->edgeType == GRAPH_MAX)
-                return true;
-            else
-                return edgeType == this->edgeType;
+            return edgeParadigm & this->edgeParadigm;
         }
-        
-        GraphNodeType getEdgeType() const
+
+        Paradigm getEdgeType() const
         {
-            return edgeType;
+            return edgeParadigm;
         }
 
         uint64_t getDuration() const
         {
             return edgeDuration;
         }
-        
+
         uint64_t getInitialDuration() const
         {
             return initialDuration;
@@ -67,12 +64,25 @@ namespace cdm
         {
             return edgeWeight;
         }
-        
+
         const std::string getName() const
         {
             std::stringstream name;
             name << "[" << pair.first->getUniqueName().c_str() << ", " <<
-                    pair.second->getUniqueName().c_str() << "]";
+                    pair.second->getUniqueName().c_str() << ", (";
+
+            if (edgeParadigm & PARADIGM_ALL)
+                name << "ALL";
+            else
+            {
+                if (edgeParadigm & PARADIGM_CUDA)
+                    name << "CUDA,";
+                if (edgeParadigm & PARADIGM_MPI)
+                    name << "MPI,";
+            }
+
+            name << ")]";
+
             return name.str();
         }
 
@@ -121,17 +131,17 @@ namespace cdm
             return pair.first->isLeave() &&
                     (pair.first->getProcessId() == pair.second->getProcessId());
         }
-        
+
         bool isInterProcessEdge() const
         {
             return pair.first->getProcessId() != pair.second->getProcessId();
         }
-        
+
         bool isRemoteEdge() const
         {
             return pair.first->isRemoteNode() || pair.second->isRemoteNode();
         }
-        
+
         TimeProfileMap *getTimeProfile()
         {
             return timeProfile;
@@ -142,7 +152,7 @@ namespace cdm
         uint64_t edgeDuration;
         uint64_t initialDuration;
         uint64_t edgeWeight;
-        GraphNodeType edgeType;
+        Paradigm edgeParadigm;
         GraphNode::GraphNodePair pair;
         TimeProfileMap *timeProfile;
 

@@ -21,11 +21,16 @@
 #include "Process.hpp"
 #include "Allocation.hpp"
 #include "CounterTable.hpp"
+#include "FunctionTable.hpp"
 
 // shared with VampirTrace
 #define VT_CUPTI_CUDA_STREAMREF_KEY     "CUDA_STREAM_REF_KEY"
 #define VT_CUPTI_CUDA_EVENTREF_KEY      "CUDA_EVENT_REF_KEY"
 #define VT_CUPTI_CUDA_CURESULT_KEY      "CUDA_DRV_API_RESULT_KEY"
+
+#define SCOREP_CUPTI_CUDA_STREAMREF_KEY     "CUDA_STREAM_REF"
+#define SCOREP_CUPTI_CUDA_EVENTREF_KEY      "CUDA_EVENT_REF"
+#define SCOREP_CUPTI_CUDA_CURESULT_KEY      "CUDA_DRV_API_RESULT"
 
 #define SYNC_DELTA 500 // in us
 
@@ -41,14 +46,15 @@ namespace cdm
     public:
         typedef std::map<uint32_t, Process*> ProcessMap;
         typedef std::list<Activity*> ActivityList;
+        typedef std::map<Paradigm, Edge*> ParadigmEdgeMap;
 
         TraceData();
         virtual ~TraceData();
 
-        static int getFunctionType(const char *name, Process *process);
+        static bool getFunctionType(uint32_t id, const char *name, Process *process, FunctionDescriptor *descr);
 
         Graph& getGraph();
-        Graph* getGraph(GraphNodeType g);
+        Graph* getGraph(Paradigm paradigm);
 
         CounterTable &getCtrTable();
         virtual void reset();
@@ -58,31 +64,32 @@ namespace cdm
         Process* getProcess(uint32_t id) const;
         void getProcesses(Allocation::ProcessList& procs) const;
         void getLocalProcesses(Allocation::ProcessList& procs) const;
-        void getProcesses(Allocation::ProcessList& procs, GraphNodeType g) const;
+        void getProcesses(Allocation::ProcessList& procs, Paradigm paradigm) const;
         const Allocation::ProcessList& getHostProcesses() const;
         const Allocation::ProcessList& getDeviceProcesses() const;
         void getAllDeviceProcesses(Allocation::ProcessList& deviceProcs) const;
 
         // allocators
         Process* newProcess(uint32_t id, uint32_t parentId, const std::string name,
-                Process::ProcessType processType, GraphNodeType g, bool remoteProcess = false);
+                Process::ProcessType processType, Paradigm paradigm, bool remoteProcess = false);
         Node* newNode(uint64_t time, uint32_t processId, const std::string name,
-                int nodeType);
-        Edge* newEdge(GraphNode* n1, GraphNode *n2, bool isBlocking, GraphNodeType *edgeType = NULL);
+                Paradigm paradigm, NodeRecordType recordType, int nodeType);
+        Edge* newEdge(GraphNode* n1, GraphNode *n2, bool isBlocking, Paradigm *edgeType = NULL);
 
         GraphNode* newGraphNode(uint64_t time, uint32_t processId,
-                const std::string name, int nodeType);
+                const std::string name, Paradigm paradigm, NodeRecordType recordType,
+                int nodeType);
         EventNode* newEventNode(uint64_t time, uint32_t processId, uint32_t eventId,
                 EventNode::FunctionResultType fResult, const std::string name,
-                int nodeType);
+                Paradigm paradigm, NodeRecordType recordType, int nodeType);
 
         GraphNode *addNewGraphNode(uint64_t time, Process *process,
-                const char *name, int nodeType, Edge **resultEdgeCUDA,
-                Edge **resultEdgeMPI);
+                const char *name, Paradigm paradigm, NodeRecordType recordType,
+                int nodeType, ParadigmEdgeMap *resultEdges);
         EventNode *addNewEventNode(uint64_t time, uint32_t eventId,
                 EventNode::FunctionResultType fResult, Process *process,
-                const char *name, int nodeType, Edge **resultEdgeCUDA,
-                Edge **resultEdgeMPI);
+                const char *name, Paradigm paradigm, NodeRecordType recordType,
+                int nodeType, ParadigmEdgeMap *resultEdges);
 
         Edge* getEdge(GraphNode *source, GraphNode *target);
         void removeEdge(Edge *e);
@@ -91,8 +98,8 @@ namespace cdm
         Node* getLastNode() const;
         GraphNode *getSourceNode() const;
         GraphNode *getLastGraphNode() const;
-        GraphNode *getFirstTimedGraphNode(GraphNodeType g) const;
-        GraphNode *getLastGraphNode(GraphNodeType g) const;
+        GraphNode *getFirstTimedGraphNode(Paradigm paradigm) const;
+        GraphNode *getLastGraphNode(Paradigm paradigm) const;
         void getAllNodes(Process::SortedNodeList& allNodes) const;
         ActivityList &getActivities();
 
@@ -102,7 +109,7 @@ namespace cdm
         uint64_t getDeltaTicks();
 
         void getCriticalPath(GraphNode *sourceNode, GraphNode * lastNode,
-                GraphNode::GraphNodeList *cpath, GraphNodeType g);
+                GraphNode::GraphNodeList *cpath, Paradigm paradigm);
 
         void runSanityCheck(uint32_t mpiRank);
 
@@ -119,7 +126,7 @@ namespace cdm
         ActivityList activities;
 
         CounterTable ctrTable;
-        
+
         // query graph objects
         bool hasInEdges(GraphNode *n);
         bool hasOutEdges(GraphNode *n);
@@ -128,7 +135,7 @@ namespace cdm
 
         void sanityCheckEdge(Edge *edge, uint32_t mpiRank);
         void addNewGraphNodeInternal(GraphNode *node, Process *process,
-                Edge **resultEdgeCUDA, Edge **resultEdgeMPI);
+                ParadigmEdgeMap *resultEdges);
 
         static io::ITraceWriter::ProcessGroup processTypeToGroup(Process::ProcessType pt);
     };

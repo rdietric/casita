@@ -52,14 +52,14 @@ namespace cdm
         bool hasOutEdges(GraphNode *node) const;
 
         const EdgeList &getInEdges(GraphNode *node) const;
-        EdgeList getInEdges(GraphNode *node, GraphNodeType g) const;
+        EdgeList getInEdges(GraphNode *node, Paradigm paradigm) const;
         const EdgeList &getOutEdges(GraphNode *node) const;
-        EdgeList getOutEdges(GraphNode *node, GraphNodeType g) const;
+        EdgeList getOutEdges(GraphNode *node, Paradigm paradigm) const;
 
         const NodeList &getNodes() const;
 
         BoostGraphType *getBoostGraph(const std::set<GraphNode*> *cpnodes);
-        Graph *getSubGraph(GraphNodeType g);
+        Graph *getSubGraph(Paradigm paradigm);
 
         void getLongestPath(GraphNode *start, GraphNode *end,
                 GraphNode::GraphNodeList &path);
