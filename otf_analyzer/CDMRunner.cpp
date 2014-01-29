@@ -26,6 +26,10 @@
 #include "mpi/CollectiveRule.hpp"
 #include "mpi/SendRecvRule.hpp"
 
+#include "omp/OMPParallelRegionRule.hpp"
+#include "omp/OMPComputeRule.hpp"
+#include "omp/OMPBarrierRule.hpp"
+
 using namespace cdm;
 using namespace cdm::io;
 
@@ -93,6 +97,9 @@ analysis(mpiRank, mpiSize)
     memcpy(&(this->options), &options, sizeof (ProgramOptions));
     if (options.noErrors)
         ErrorUtils::getInstance().setNoExceptions();
+
+    if (options.verbose)
+        ErrorUtils::getInstance().setVerbose();
 }
 
 CDMRunner::~CDMRunner()
@@ -233,6 +240,88 @@ void CDMRunner::handleEnter(ITraceReader *reader, uint64_t time, uint32_t functi
 
     FunctionDescriptor functionType;
     TraceData::getFunctionType(functionId, funcName, process, &functionType);
+
+    if ((functionType.paradigm == PARADIGM_OMP) && (!analysis.ompBackTraceStackIsEmpty(processId)))
+    {
+        GraphNode * node = analysis.ompBackTraceStackTop(processId);
+
+        if (functionId != node->getFunctionId() && !analysis.getLastOmpNode(processId)->isLeave())
+        {
+            handleAdditionalLeave(reader, time, node->getFunctionId(), node->getProcessId(), list);
+        }
+    }
+
+    if (functionType.paradigm == PARADIGM_CPU)
+    {
+        if (runner->getOptions().verbose >= VERBOSE_ALL)
+            printf(" [%u] e [%12lu:%12.8fs] [%31s] (f%u:p%u)\n",
+                analysis.getMPIRank(),
+                time, (double) time / (double) analysis.getTimerResolution(),
+                funcName, functionId, processId);
+        return;
+    }
+
+    GraphNode *enterNode = NULL;
+    if (Node::isCUDAEventType(functionType.paradigm, functionType.type))
+    {
+        enterNode = analysis.addNewEventNode(time, 0, EventNode::FR_UNKNOWN, process,
+                funcName, functionType.paradigm, RECORD_ENTER, functionType.type, NULL);
+    } else
+    {
+        enterNode = analysis.addNewGraphNode(time, process, funcName,
+                functionType.paradigm, RECORD_ENTER, functionType.type, NULL);
+    }
+
+    enterNode->setFunctionId(functionId);
+
+    if (enterNode->isOMP())
+    {
+        analysis.pushOnOMPBackTraceStack(enterNode, processId);
+    }
+
+    if (enterNode->isCUDAKernelLaunch())
+    {
+        CDMRunner::applyStreamRefsEnter(reader, enterNode, list);
+        analysis.addPendingKernelLaunch(enterNode);
+    }
+
+    if (enterNode->isOMP())
+        analysis.setLastOmpNode(enterNode, processId);
+
+    runner->printNode(enterNode, process);
+    options.eventsProcessed++;
+
+    if (options.eventsProcessed % 1000 == 0)
+    {
+        int memUsage = getCurrentResources();
+        if (memUsage > options.memLimit)
+        {
+            std::cout << sizeof (Edge) << std::endl;
+            throw RTException("Memory limit exceeded (%d KByte / %d KByte)",
+                    memUsage, options.memLimit);
+        }
+    }
+}
+
+void CDMRunner::handleAdditionalEnter(ITraceReader *reader, uint64_t time, uint32_t functionId,
+        uint32_t processId, IKeyValueList *list)
+{
+    CDMRunner *runner = (CDMRunner*) (reader->getUserData());
+    AnalysisEngine &analysis = runner->getAnalysis();
+    ProgramOptions &options = runner->getOptions();
+
+    if (options.maxEvents > 0 && (options.eventsProcessed >= options.maxEvents))
+        return;
+
+    Process *process = analysis.getProcess(processId);
+    if (!process)
+        throw RTException("Process %u not found.", processId);
+
+    const char *funcName = reader->getFunctionName(functionId).c_str();
+
+    FunctionDescriptor functionType;
+    TraceData::getFunctionType(functionId, funcName, process, &functionType);
+    
     if (functionType.paradigm == PARADIGM_CPU)
     {
         if (runner->getOptions().verbose >= VERBOSE_ALL)
@@ -277,7 +366,7 @@ void CDMRunner::handleEnter(ITraceReader *reader, uint64_t time, uint32_t functi
     }
 }
 
-void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
+void CDMRunner::handleAdditionalLeave(ITraceReader *reader, uint64_t time,
         uint32_t functionId, uint32_t processId, IKeyValueList *list)
 {
     CDMRunner *runner = (CDMRunner*) (reader->getUserData());
@@ -295,6 +384,7 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
 
     FunctionDescriptor functionType;
     TraceData::getFunctionType(functionId, funcName, process, &functionType);
+
     if (functionType.paradigm == PARADIGM_CPU)
     {
         if (runner->getOptions().verbose >= VERBOSE_ALL)
@@ -360,6 +450,113 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
     {
         analysis.addPendingKernelLaunch(leaveNode);
     }
+
+    runner->printNode(leaveNode, process);
+    options.eventsProcessed++;
+}
+
+void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
+        uint32_t functionId, uint32_t processId, IKeyValueList *list)
+{
+    CDMRunner *runner = (CDMRunner*) (reader->getUserData());
+    AnalysisEngine &analysis = runner->getAnalysis();
+    ProgramOptions &options = runner->getOptions();
+
+    if (options.maxEvents > 0 && (options.eventsProcessed >= options.maxEvents))
+        return;
+
+    Process *process = runner->getAnalysis().getProcess(processId);
+    if (!process)
+        throw RTException("Process %u not found", processId);
+
+    const char *funcName = reader->getFunctionName(functionId).c_str();
+
+    FunctionDescriptor functionType;
+    TraceData::getFunctionType(functionId, funcName, process, &functionType);
+    if (functionType.paradigm == PARADIGM_CPU)
+    {
+        if (runner->getOptions().verbose >= VERBOSE_ALL)
+            printf(" [%u] l [%12lu:%12.8fs] [%31s] (f%u:p%u)\n",
+                runner->getAnalysis().getMPIRank(),
+                time, (double) time / (double) analysis.getTimerResolution(),
+                funcName, functionId, processId);
+        return;
+    }
+
+    // if OMP, Check with BackTrace, what to do:
+    // if functionId fits and last event was leave -> additional enter
+    if (functionType.paradigm == PARADIGM_OMP)
+    {
+        GraphNode* node = analysis.ompBackTraceStackTop(processId);
+        GraphNode* lastOmpNode = analysis.getLastOmpNode(processId);
+
+        if ((node->getFunctionId() == functionId) && lastOmpNode->isLeave())
+        {
+            handleAdditionalEnter(reader, lastOmpNode->getTime(), node->getFunctionId(), processId, list);
+        }
+
+        analysis.ompBackTraceStackPop(processId);
+
+    }
+
+    GraphNode *leaveNode = NULL;
+    if (Node::isCUDAEventType(functionType.paradigm, functionType.type))
+    {
+        uint32_t eventId = readKeyVal(reader, VT_CUPTI_CUDA_EVENTREF_KEY, list);
+        CUresult cuResult = (CUresult) readKeyVal(reader, VT_CUPTI_CUDA_CURESULT_KEY, list);
+        EventNode::FunctionResultType fResult = EventNode::FR_UNKNOWN;
+        if (cuResult == CUDA_SUCCESS)
+            fResult = EventNode::FR_SUCCESS;
+
+        leaveNode = runner->getAnalysis().addNewEventNode(time, eventId, fResult, process,
+                funcName, functionType.paradigm, RECORD_LEAVE, functionType.type, NULL);
+
+        if (eventId == 0)
+            throw RTException("No eventId for event node %s found",
+                leaveNode->getUniqueName().c_str());
+    } else
+    {
+        leaveNode = analysis.addNewGraphNode(time, process, funcName,
+                functionType.paradigm, RECORD_LEAVE, functionType.type, NULL);
+    }
+
+    leaveNode->setFunctionId(functionId);
+
+    CDMRunner::applyStreamRefsLeave(reader, leaveNode, leaveNode->getGraphPair().first, list);
+    if (leaveNode->isMPI())
+    {
+        Process::MPICommRecordList mpiCommRecords = process->getPendingMPIRecords();
+        for (Process::MPICommRecordList::const_iterator iter = mpiCommRecords.begin();
+                iter != mpiCommRecords.end(); ++iter)
+        {
+            uint32_t *sendPartnerId = NULL;
+
+            switch (iter->mpiType)
+            {
+                case Process::MPI_RECV:
+                case Process::MPI_COLLECTIVE:
+                    leaveNode->setReferencedProcessId(iter->partnerId);
+                    break;
+
+                case Process::MPI_SEND:
+                    sendPartnerId = new uint32_t;
+                    *sendPartnerId = iter->partnerId;
+                    leaveNode->setData(sendPartnerId);
+                    break;
+
+                default:
+                    throw RTException("Not a valid MPICommRecord type here");
+            }
+        }
+    }
+
+    if (leaveNode->isCUDAKernelLaunch())
+    {
+        analysis.addPendingKernelLaunch(leaveNode);
+    }
+
+    if (leaveNode->isOMP())
+        analysis.setLastOmpNode(leaveNode, processId);
 
     runner->printNode(leaveNode, process);
     options.eventsProcessed++;
@@ -689,12 +886,12 @@ void CDMRunner::mergeActivityGroups(const Process::SortedGraphNodeList& cpActivi
     }
 }
 
-void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &gpuNodes,
+void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
         Process::SortedGraphNodeList &mpiNodes)
 {
     VT_TRACER("getCriticalPath");
     MPIAnalysis::CriticalSectionsMap sectionsMap;
-    gpuNodes.clear();
+    localNodes.clear();
     mpiNodes.clear();
 
     if (mpiSize > 1)
@@ -717,34 +914,34 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &gpuNodes,
             getCriticalPathIntern(startNode, endNode, GRAPH_MPI, mpiNodes);
 
             distributeCriticalMPINodes(mpiNodes);
-            distributeCriticalPathSections(mpiNodes, gpuNodes, sectionsMap);
+            distributeCriticalPathSections(mpiNodes, localNodes, sectionsMap);
         } else
         {
             receiveCriticalMPINodes();
-            receiveCriticalPathSections(gpuNodes, sectionsMap);
+            receiveCriticalPathSections(localNodes, sectionsMap);
         }
 #else
         // better reverse replay strategy
         MPIAnalysis::CriticalSectionsList sectionsList;
         reverseReplayMPICriticalPath(sectionsList);
-        getCriticalGPUSections(sectionsList.data(), sectionsList.size(), gpuNodes, sectionsMap);
+        getCriticalLocalSections(sectionsList.data(), sectionsList.size(), localNodes, sectionsMap);
 #endif
     } else
     {
-        /* compute GPU critical path on root, only */
+        /* compute local critical path on root, only */
         if (options.verbose >= VERBOSE_BASIC)
-            printf("[0] Single process: defaulting to CUDA only mode\n");
+            printf("[0] Single process: defaulting to CUDA/OMP only mode\n");
 
         getCriticalPathIntern(analysis.getSourceNode(),
-                analysis.getLastGraphNode(PARADIGM_CUDA),
-                PARADIGM_CUDA, gpuNodes);
+                analysis.getLastGraphNode(PARADIGM_COMPUTE_LOCAL),
+                PARADIGM_COMPUTE_LOCAL, localNodes);
     }
 
     if (options.mergeActivities)
     {
         Process::SortedGraphNodeList allCriticalEvents;
         allCriticalEvents.insert(allCriticalEvents.end(), mpiNodes.begin(), mpiNodes.end());
-        allCriticalEvents.insert(allCriticalEvents.end(), gpuNodes.begin(), gpuNodes.end());
+        allCriticalEvents.insert(allCriticalEvents.end(), localNodes.begin(), localNodes.end());
         std::sort(allCriticalEvents.begin(), allCriticalEvents.end(), Node::compareLess);
 
         /* compute total program runtime, i.e. total length of the critical path */
@@ -802,8 +999,8 @@ void CDMRunner::getCriticalPathIntern(GraphNode *start, GraphNode *end,
     }
 }
 
-void CDMRunner::getCriticalGPUSections(MPIAnalysis::CriticalPathSection *sections,
-        uint32_t numSections, Process::SortedGraphNodeList& gpuNodes,
+void CDMRunner::getCriticalLocalSections(MPIAnalysis::CriticalPathSection *sections,
+        uint32_t numSections, Process::SortedGraphNodeList& localNodes,
         MPIAnalysis::CriticalSectionsMap& sectionsMap)
 {
     uint32_t mpiRank = analysis.getMPIRank();
@@ -813,7 +1010,7 @@ void CDMRunner::getCriticalGPUSections(MPIAnalysis::CriticalPathSection *section
 
         if (options.verbose >= VERBOSE_BASIC)
         {
-            printf("[%u] computing GPU critical path between MPI nodes [%u, %u] on process %u\n",
+            printf("[%u] computing local critical path between MPI nodes [%u, %u] on process %u\n",
                     mpiRank, section->nodeStartID, section->nodeEndID, section->processID);
         }
 
@@ -880,36 +1077,45 @@ void CDMRunner::getCriticalGPUSections(MPIAnalysis::CriticalPathSection *section
         sectionsMap[csStartOuter] = mappedSection;
         sectionsMap[csEndOuter] = mappedSection;
 
-        GraphNode *startGPUNode = startNode->getLinkRight();
-        GraphNode *endGPUNode = endNode->getLinkLeft();
+        GraphNode *startLocalNode = startNode->getLinkRight();
+        GraphNode *endLocalNode = endNode->getLinkLeft();
 
-        if ((!startGPUNode || !endGPUNode) || (startGPUNode->getTime() >= endGPUNode->getTime()))
+        if ((!startLocalNode || !endLocalNode) || (startLocalNode->getTime() >= endLocalNode->getTime()))
         {
             if (options.verbose >= VERBOSE_BASIC)
-                printf("[%u] No CUDA path possible between MPI nodes %s (link %p) and %s (link %p)\n",
+            {
+                printf("[%u] No local path possible between MPI nodes %s (link %p) and %s (link %p)\n",
                     mpiRank,
                     startNode->getUniqueName().c_str(),
-                    startGPUNode,
+                    startLocalNode,
                     endNode->getUniqueName().c_str(),
-                    endGPUNode);
+                    endLocalNode);
+                if (startLocalNode && endLocalNode)
+                {
+                    printf("[%u] local nodes %s and %s\n",
+                            mpiRank,
+                            startLocalNode->getUniqueName().c_str(),
+                            endLocalNode->getUniqueName().c_str());
+                }
+            }
             continue;
         }
 
         if (options.verbose >= VERBOSE_BASIC)
         {
-            printf("[%u] MPI/GPU mapping: %u > %s, %u > %s\n",
-                    mpiRank, section->nodeStartID, startGPUNode->getUniqueName().c_str(),
-                    section->nodeEndID, endGPUNode->getUniqueName().c_str());
+            printf("[%u] MPI/local mapping: %u > %s, %u > %s\n",
+                    mpiRank, section->nodeStartID, startLocalNode->getUniqueName().c_str(),
+                    section->nodeEndID, endLocalNode->getUniqueName().c_str());
 
-            printf("[%d] Computing GPU critical path (%s, %s)\n", mpiRank,
-                    startGPUNode->getUniqueName().c_str(),
-                    endGPUNode->getUniqueName().c_str());
+            printf("[%d] Computing local critical path (%s, %s)\n", mpiRank,
+                    startLocalNode->getUniqueName().c_str(),
+                    endLocalNode->getUniqueName().c_str());
         }
 
-        Process::SortedGraphNodeList sectionGPUNodes;
-        getCriticalPathIntern(startGPUNode, endGPUNode, PARADIGM_CUDA, sectionGPUNodes);
+        Process::SortedGraphNodeList sectionLocalNodes;
+        getCriticalPathIntern(startLocalNode, endLocalNode, PARADIGM_COMPUTE_LOCAL, sectionLocalNodes);
 
-        gpuNodes.insert(gpuNodes.end(), sectionGPUNodes.begin(), sectionGPUNodes.end());
+        localNodes.insert(localNodes.end(), sectionLocalNodes.begin(), sectionLocalNodes.end());
     }
 }
 
@@ -1426,7 +1632,15 @@ void CDMRunner::runAnalysis(Paradigm paradigm)
             analysis.addRule(new CollectiveRule(1));
             analysis.addRule(new SendRecvRule(1));
             break;
-            
+
+        case PARADIGM_OMP:
+            printf("[%u] Running analysis: OMP\n", analysis.getMPIRank());
+
+            analysis.addRule(new OMPParallelRegionRule(1));
+            analysis.addRule(new OMPComputeRule(1));
+            analysis.addRule(new OMPBarrierRule(1));
+            break;
+
         default:
             printf("[%u] No analysis for unknown paradigm %d\n",
                     analysis.getMPIRank(), paradigm);

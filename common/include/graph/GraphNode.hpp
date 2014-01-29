@@ -10,6 +10,7 @@
 
 #include <list>
 #include <set>
+#include <map>
 
 #include "Node.hpp"
 
@@ -22,6 +23,7 @@ namespace cdm
         typedef std::list<GraphNode*> GraphNodeList;
         typedef std::set<GraphNode*> GraphNodeSet;
         typedef std::pair<GraphNode*, GraphNode*> GraphNodePair;
+        typedef std::map<Paradigm, GraphNode*> ParadigmNodeMap;
 
         GraphNode(uint64_t time, uint32_t processId, const std::string name,
             Paradigm paradigm, NodeRecordType recordType, int nodeType) :
@@ -103,11 +105,6 @@ namespace cdm
         GraphNode *getLinkRight()
         {
             return linkRight;
-        }
-        
-        bool hasParadigm(Paradigm p)
-        {
-            return paradigm & p;
         }
         
         void setData(void *value)

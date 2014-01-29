@@ -21,6 +21,7 @@ namespace cdm
     {
     public:
         typedef std::map<uint32_t, uint64_t> TimeProfileMap;
+        typedef std::map<Paradigm, Edge*> ParadigmEdgeMap;
 
         Edge(GraphNode *start, GraphNode *end, uint64_t duration, bool blocking,
                 Paradigm edgeParadigm)
@@ -40,7 +41,7 @@ namespace cdm
             this->timeProfile = NULL;
         }
 
-        bool hasEdgeType(Paradigm edgeParadigm)
+        bool hasEdgeType(Paradigm edgeParadigm) const
         {
             return edgeParadigm & this->edgeParadigm;
         }

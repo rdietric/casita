@@ -7,6 +7,8 @@
 
 #include <stdio.h>
 #include <mpi.h>
+#include <list>
+#include <stack>
 
 #include "AnalysisEngine.hpp"
 #include "common.hpp"
@@ -42,6 +44,7 @@ uint32_t AnalysisEngine::getMPIRank() const
 }
 
 #ifdef MPI_CP_MERGE
+
 void AnalysisEngine::mergeMPIGraphs()
 {
     mpiAnalysis.mergeMPIGraphs(this);
@@ -221,7 +224,7 @@ void AnalysisEngine::addStreamWaitEvent(uint32_t waitingDeviceProcId, EventNode 
                 break;
             }
         }
-        
+
         streamWaitMap[waitingDeviceProcId].push_back(streamWaitLeave);
     }
 }
@@ -389,7 +392,7 @@ GraphNode* AnalysisEngine::newGraphNode(uint64_t time, uint32_t processId,
 {
     GraphNode *node = TraceData::newGraphNode(time, processId, name,
             paradigm, recordType, nodeType);
-    
+
     if (node->isWaitstate())
     {
         node->setFunctionId(waitStateFuncId);
@@ -399,11 +402,11 @@ GraphNode* AnalysisEngine::newGraphNode(uint64_t time, uint32_t processId,
 
 GraphNode* AnalysisEngine::addNewGraphNode(uint64_t time, Process *process,
         const char *name, Paradigm paradigm, NodeRecordType recordType,
-        int nodeType, ParadigmEdgeMap *resultEdges)
+        int nodeType, Edge::ParadigmEdgeMap *resultEdges)
 {
     GraphNode *node = TraceData::addNewGraphNode(time, process, name, paradigm,
             recordType, nodeType, resultEdges);
-    
+
     if (node->isWaitstate())
     {
         node->setFunctionId(waitStateFuncId);
@@ -896,7 +899,7 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
                     mpiAnalysis.getMPIRank(),
                     pId, p->getName());
         }
-        
+
         writer->writeDefProcess(pId, p->getParentId(), p->getName(),
                 processTypeToGroup(p->getProcessType()));
 
@@ -942,4 +945,71 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
 
     writer->close();
     delete writer;
+}
+
+void AnalysisEngine::pushOnOMPBackTraceStack(GraphNode* node, uint32_t processId)
+{
+    ompBackTraceStackMap[processId].push(node);
+}
+
+GraphNode* AnalysisEngine::ompBackTraceStackTop(uint32_t processId)
+{
+    return ompBackTraceStackMap[processId].top();
+}
+
+GraphNode* AnalysisEngine::ompBackTraceStackPop(uint32_t processId)
+{
+    GraphNode* node = ompBackTraceStackMap[processId].top();
+    ompBackTraceStackMap[processId].pop();
+    return node;
+}
+
+bool AnalysisEngine::ompBackTraceStackIsEmpty(uint32_t processId)
+{
+    return ompBackTraceStackMap[processId].empty();
+}
+
+GraphNode* AnalysisEngine::getLastOmpNode(uint32_t processId)
+{
+    return lastOmpEventMap[processId];
+}
+
+void AnalysisEngine::setLastOmpNode(GraphNode* node, uint32_t processId)
+{
+    lastOmpEventMap[processId] = node;
+}
+
+GraphNode* AnalysisEngine::getPendingParallelRegion()
+{
+    return pendingParallelRegion;
+}
+
+void AnalysisEngine::setPendingParallelRegion(GraphNode* node)
+{
+    pendingParallelRegion = node;
+}
+
+GraphNode* AnalysisEngine::getOmpCompute(uint32_t processId)
+{
+    return ompComputeTrackMap[processId];
+}
+
+void AnalysisEngine::setOmpCompute(GraphNode* node, uint32_t processId)
+{
+    ompComputeTrackMap[processId] = node;
+}
+
+const GraphNode::GraphNodeList& AnalysisEngine::getBarrierEventList()
+{
+    return ompBarrierList;
+}
+
+void AnalysisEngine::clearBarrierEventList()
+{
+    ompBarrierList.clear();
+}
+
+void AnalysisEngine::addBarrierEventToList(GraphNode* node)
+{
+    ompBarrierList.push_back(node);
 }

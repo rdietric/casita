@@ -55,24 +55,48 @@ namespace cdm
             throw RTException(msg);
         }
 
+        void outputMessage(const char *fmt, ...)
+        {
+            if (verbose)
+            {
+                va_list argp;
+                const size_t MAX_LEN = 512;
+                char msg[MAX_LEN];
+
+                va_start(argp, fmt);
+                vsnprintf(msg, MAX_LEN, fmt, argp);
+                va_end(argp);
+
+                fprintf(stderr, "%s\n", msg);
+            }
+        }
+
         void setNoExceptions()
         {
             throwExceptions = false;
             fprintf(stderr, "Disabled exceptions\n");
         }
 
+        void setVerbose()
+        {
+            verbose = true;
+            fprintf(stderr, "Enabled verbose output for error utils\n");
+        }
+
     private:
         bool throwExceptions;
+        bool verbose;
 
         ErrorUtils() :
-        throwExceptions(true)
+        throwExceptions(true),
+        verbose(false)
         {
 
         }
-        
+
         ErrorUtils(const ErrorUtils& utils)
         {
-            
+
         }
     };
 

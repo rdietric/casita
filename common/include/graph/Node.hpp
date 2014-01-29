@@ -40,10 +40,11 @@ namespace cdm
         PARADIGM_CUDA = (1 << 1),
         PARADIGM_MPI = (1 << 2),
         PARADIGM_OMP = (1 << 3),
-        
+
+        PARADIGM_COMPUTE_LOCAL = (PARADIGM_CUDA | PARADIGM_OMP),
         PARADIGM_ALL = (PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_MPI | PARADIGM_OMP)
     };
-    
+
     const size_t NODE_PARADIGM_COUNT = 4;
     const size_t NODE_PARADIGM_INVALID = (1 << 4);
 
@@ -79,6 +80,13 @@ namespace cdm
         MPI_WAITSTATE = (1 << 8)
     };
 
+    enum NodeTypeOMP
+    {
+        OMP_SYNC = (1 << 1),
+        OMP_PAR_REGION = (1 << 2),
+        OMP_COMPUTE = (1 << 3)
+    };
+
     typedef struct
     {
         NodeTypeCUDA type;
@@ -90,6 +98,12 @@ namespace cdm
         NodeTypeMPI type;
         const char * str;
     } TypeStrEntryMPI;
+
+    typedef struct
+    {
+        NodeTypeOMP type;
+        const char * str;
+    } TypeStrEntryOMP;
 
     static const size_t numTypeStrEntriesCUDA = 11;
     static const TypeStrEntryCUDA typeStrTableCUDA[numTypeStrEntriesCUDA] = {
@@ -115,6 +129,13 @@ namespace cdm
         {MPI_MISC, "mpi_misc"},
         {MPI_EXIT, "mpi_exit"},
         {MPI_WAITSTATE, "mpi_waitstate"}
+    };
+
+    static const size_t numTypeStrEntriesOMP = 3;
+    static const TypeStrEntryOMP typeStrTableOMP[numTypeStrEntriesOMP] = {
+        {OMP_SYNC, "omp_sync"},
+        {OMP_PAR_REGION, "omp_parallel_region"},
+        {OMP_COMPUTE, "omp_compute"}
     };
 
     static const char NAME_WAITSTATE[] = "WaitState";
@@ -234,11 +255,11 @@ namespace cdm
 
             return isCUDA() && (nodeType & CUDA_STREAMWAIT);
         }
-        
+
         static bool isCUDAEventType(Paradigm paradigm, int type)
         {
 
-            return (paradigm == PARADIGM_CUDA) && 
+            return (paradigm == PARADIGM_CUDA) &&
                     ((type & CUDA_EV_LAUNCH) ||
                     (type & CUDA_EV_SYNC) ||
                     (type & CUDA_EV_QUERY) ||
@@ -289,6 +310,21 @@ namespace cdm
                     (strcmp(name.c_str(), NAME_MPI_FINALIZE) == 0);
         }
 
+        bool isOMPSync() const
+        {
+            return isOMP() && (nodeType & OMP_SYNC);
+        }
+
+        bool isOMPParellelRegion() const
+        {
+            return isOMP() && (nodeType & OMP_PAR_REGION);
+        }
+
+        bool isOMPCompute() const
+        {
+            return isOMP() && (nodeType & OMP_COMPUTE);
+        }
+
         static const std::string typeToStr(Paradigm paradigm, int type)
         {
             size_t i;
@@ -312,15 +348,23 @@ namespace cdm
                     }
                     break;
 
+                case PARADIGM_OMP:
+                    for (i = 0; i < numTypeStrEntriesOMP; ++i)
+                    {
+                        if (typeStrTableOMP[i].type & type)
+                            stream << typeStrTableOMP[i].str << ",";
+                    }
+                    break;
+
                 default:
                     stream << "<unknown>";
             }
-            
+
             return stream.str();
         }
 
         static bool compareLess(const Node *n1, const Node *n2)
-        {            
+        {
             uint64_t time1 = n1->getTime();
             uint64_t time2 = n2->getTime();
 
@@ -418,31 +462,26 @@ namespace cdm
 
         uint32_t getId() const
         {
-
             return id;
         }
 
         uint64_t getTime() const
         {
-
             return time;
         }
 
         uint32_t getProcessId() const
         {
-
             return processId;
         }
 
         const char *getName() const
         {
-
             return name.c_str();
         }
 
         virtual void setName(const std::string newName)
         {
-
             name = newName;
         }
 
@@ -464,43 +503,41 @@ namespace cdm
 
         const char *toString() const
         {
-
             return getUniqueName().c_str();
         }
 
         uint32_t getFunctionId() const
         {
-
             return functionId;
         }
 
         void setFunctionId(uint32_t newId)
         {
-
             functionId = newId;
         }
 
         NodeRecordType getRecordType() const
         {
-
             return recordType;
         }
 
         Paradigm getParadigm() const
         {
-
             return paradigm;
+        }
+
+        bool hasParadigm(Paradigm p) const
+        {
+            return paradigm & p;
         }
 
         int getType() const
         {
-
             return nodeType;
         }
 
         void setReferencedProcessId(uint32_t processId)
         {
-
             referencedProcess = processId;
         }
 
@@ -524,25 +561,21 @@ namespace cdm
 
         virtual bool isGraphNode() const
         {
-
             return false;
         }
 
         virtual bool isEventNode() const
         {
-
             return false;
         }
 
         virtual bool isRemoteNode() const
         {
-
             return false;
         }
 
         void setLink(Node * link)
         {
-
             if (this->link)
                 assert(0);
             this->link = link;
@@ -550,13 +583,11 @@ namespace cdm
 
         Node * getLink() const
         {
-
             return link;
         }
 
         void setCounter(uint32_t ctrId, uint64_t value)
         {
-
             counters[ctrId] = value;
         }
 
@@ -588,13 +619,11 @@ namespace cdm
 
         void removeCounter(uint32_t ctrId)
         {
-
             counters.erase(ctrId);
         }
 
         void removeCounters()
         {
-
             counters.clear();
         }
 
@@ -604,11 +633,11 @@ namespace cdm
         uint32_t processId;
         uint32_t functionId;
         std::string name;
-        
+
         NodeRecordType recordType;
         Paradigm paradigm;
         int nodeType;
-        
+
 
         Node *link;
         /**
