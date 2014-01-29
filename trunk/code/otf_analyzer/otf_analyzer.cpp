@@ -92,7 +92,7 @@ void parseCmdLine(int argc, char **argv, CDMRunner::ProgramOptions &options)
 
 void computeCriticalPaths(CDMRunner *runner, CDMRunner::ProgramOptions& options, uint32_t mpiRank)
 {
-    Process::SortedGraphNodeList gpuCriticalPathNodes;
+    Process::SortedGraphNodeList localCriticalPathNodes;
     Process::SortedGraphNodeList mpiCriticalPathNodes;
 
 #ifdef MPI_CP_MERGE
@@ -100,15 +100,15 @@ void computeCriticalPaths(CDMRunner *runner, CDMRunner::ProgramOptions& options,
     runner->mergeMPIGraphs();
 #endif
 
-    runner->getCriticalPath(gpuCriticalPathNodes, mpiCriticalPathNodes);
+    runner->getCriticalPath(localCriticalPathNodes, mpiCriticalPathNodes);
 
     if (options.createGraphs)
     {
         std::set<GraphNode*> cnodes;
-        cnodes.insert(gpuCriticalPathNodes.begin(), gpuCriticalPathNodes.end());
-        std::stringstream cuda_graph_filename;
-        cuda_graph_filename << runner->getAnalysis().getMPIRank() << "_" <<
-                GRAPH_CUDA_FILENAME;
+        cnodes.insert(localCriticalPathNodes.begin(), localCriticalPathNodes.end());
+        std::stringstream local_graph_filename;
+        local_graph_filename << runner->getAnalysis().getMPIRank() << "_" <<
+                GRAPH_LOCAL_FILENAME;
 
         if (mpiRank == 0)
         {
@@ -118,9 +118,9 @@ void computeCriticalPaths(CDMRunner *runner, CDMRunner::ProgramOptions& options,
             delete mpiGraph;
         }
 
-        Graph *cudaGraph = runner->getAnalysis().getGraph().getSubGraph(PARADIGM_CUDA);
-        cudaGraph->saveToFile(cuda_graph_filename.str().c_str(), &cnodes);
-        delete cudaGraph;
+        Graph *localGraph = runner->getAnalysis().getGraph().getSubGraph(PARADIGM_COMPUTE_LOCAL);
+        localGraph->saveToFile(local_graph_filename.str().c_str(), &cnodes);
+        delete localGraph;
 
         runner->getAnalysis().getGraph().saveToFile(GRAPH_GLOBAL_FILENAME, &cnodes);
     }
@@ -168,6 +168,7 @@ int main(int argc, char **argv)
 #endif
 
     runner->runAnalysis(PARADIGM_CUDA);
+    runner->runAnalysis(PARADIGM_OMP);
     runner->runAnalysis(PARADIGM_MPI);
     testResources(mpiRank);
 

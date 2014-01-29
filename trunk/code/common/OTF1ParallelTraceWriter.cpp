@@ -170,9 +170,6 @@ void OTF1ParallelTraceWriter::copyGlobalDefinitions(OTF_Writer *writer)
 
     OTF_CHECK(OTF_Reader_close(reader));
 
-    OTF_CHECK(OTF_Writer_writeDefMarker(writer, 0, (uint32_t) MG_Marker,
-            "Marker", OTF_MARKER_TYPE_HINT));
-
     OTF_CHECK(OTF_Writer_writeDefKeyValue(writer, 0, streamRefKey, OTF_UINT32,
             streamRefKeyName, "Referenced CUDA stream"));
     OTF_CHECK(OTF_Writer_writeDefKeyValue(writer, 0, eventRefKey, OTF_UINT32,
@@ -197,8 +194,8 @@ void OTF1ParallelTraceWriter::open(const std::string otfFilename, uint32_t maxFi
     fileMgr = OTF_FileManager_open(maxFiles);
     kvList = OTF_KeyValueList_new();
 
-    MPI_CHECK(MPI_Allgather(&numStreams, 1, MPI_INTEGER4,
-            mpiNumProcesses, 1, MPI_INTEGER, MPI_COMM_WORLD));
+    MPI_CHECK(MPI_Allgather(&numStreams, 1, MPI_UINT32_T,
+            mpiNumProcesses, 1, MPI_INT, MPI_COMM_WORLD));
     for (uint32_t i = 0; i < mpiSize; ++i)
     {
         totalNumStreams += mpiNumProcesses[i];

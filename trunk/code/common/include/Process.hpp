@@ -47,9 +47,6 @@ namespace cdm
 
         typedef std::vector<MPICommRecord> MPICommRecordList;
 
-        //typedef std::set<Node*, nodeCompareLess> SortedNodeList;
-        //typedef std::set<GraphNode*, nodeCompareLess> SortedGraphNodeList;
-
         typedef std::vector<Node*> SortedNodeList;
         typedef std::vector<GraphNode*> SortedGraphNodeList;
 
@@ -132,39 +129,46 @@ namespace cdm
         {
             return lastNode;
         }
-
+        
         GraphNode *getLastGraphNode() const
+        {
+            return getLastGraphNode(PARADIGM_ALL);
+        }
+
+        GraphNode *getLastGraphNode(Paradigm paradigm) const
         {
             size_t i = 0;
             GraphNode *tmpLastNode = NULL;
 
             for (i = 0; i < NODE_PARADIGM_COUNT; ++i)
-                if (graphData[i].lastNode)
+            {
+                Paradigm tmpP = (Paradigm)(1 << i);
+                if (tmpP & paradigm)
                 {
-                    tmpLastNode = graphData[i].lastNode;
-                    break;
+                    if (graphData[i].lastNode)
+                    {
+                        tmpLastNode = graphData[i].lastNode;
+                        break;
+                    }
                 }
+            }
 
             i++;
 
             for (; i < NODE_PARADIGM_COUNT; ++i)
             {
-                if (graphData[i].lastNode &&
-                        Node::compareLess(graphData[i].lastNode, tmpLastNode))
+                Paradigm tmpP = (Paradigm)(1 << i);
+                if (tmpP & paradigm)
                 {
-                    tmpLastNode = graphData[i].lastNode;
+                    if (graphData[i].lastNode &&
+                            Node::compareLess(tmpLastNode, graphData[i].lastNode))
+                    {
+                        tmpLastNode = graphData[i].lastNode;
+                    }
                 }
             }
 
             return tmpLastNode;
-        }
-
-        GraphNode *getLastGraphNode(Paradigm paradigm) const
-        {
-            if (paradigm == PARADIGM_ALL)
-                return getLastGraphNode();
-            else
-                return graphData[(size_t) log2(paradigm)].lastNode;
         }
 
         GraphNode *getFirstGraphNode(Paradigm paradigm) const
@@ -180,7 +184,7 @@ namespace cdm
                 return 0;
         }
 
-        void addGraphNode(GraphNode *node, GraphNode **predCUDA, GraphNode **predMPI)
+        void addGraphNode(GraphNode *node, GraphNode::ParadigmNodeMap *predNodes)
         {
             GraphNode * oldNode[NODE_PARADIGM_COUNT];
             for (size_t i = 0; i < NODE_PARADIGM_COUNT; ++i)
@@ -194,6 +198,10 @@ namespace cdm
                 size_t paradigm_index = (size_t) log2(oparadigm);
 
                 oldNode[paradigm_index] = getLastGraphNode(oparadigm);
+                if (predNodes && (oldNode[paradigm_index]))
+                {
+                    predNodes->insert(std::make_pair(oparadigm, oldNode[paradigm_index]));
+                }
 
                 if (node->hasParadigm(oparadigm))
                 {
@@ -213,12 +221,12 @@ namespace cdm
 
             if (nodeParadigm == PARADIGM_MPI)
             {
-                GraphNode *lastCuda = getLastGraphNode(PARADIGM_CUDA);
-                node->setLinkLeft(lastCuda);
+                GraphNode *lastLocalCompute = getLastGraphNode(PARADIGM_COMPUTE_LOCAL);
+                node->setLinkLeft(lastLocalCompute);
                 unlinkedMPINodes.push_back(node);
             }
 
-            if ((nodeParadigm == PARADIGM_CUDA) && (node->isEnter()))
+            if (((nodeParadigm == PARADIGM_CUDA) || (nodeParadigm == PARADIGM_OMP)) && (node->isEnter()))
             {
                 for (SortedGraphNodeList::const_iterator iter = unlinkedMPINodes.begin();
                         iter != unlinkedMPINodes.end(); ++iter)
@@ -227,17 +235,11 @@ namespace cdm
                 }
                 unlinkedMPINodes.clear();
             }
-
-            if (predCUDA)
-                *predCUDA = oldNode[(size_t) log2(PARADIGM_CUDA)];
-
-            if (predMPI)
-                *predMPI = oldNode[(size_t) log2(PARADIGM_MPI)];
         }
 
         void insertGraphNode(GraphNode *node,
-                GraphNode **predNodeCUDA, GraphNode **nextNodeCUDA,
-                GraphNode **predNodeMPI, GraphNode **nextNodeMPI)
+                GraphNode::ParadigmNodeMap &predNodes,
+                GraphNode::ParadigmNodeMap &nextNodes)
         {
             if (!lastNode || Node::compareLess(lastNode, node))
             {
@@ -284,22 +286,9 @@ namespace cdm
                         }
                     }
                 }
-
-                switch ((Paradigm) paradigm)
-                {
-                    case PARADIGM_CUDA:
-                        if (predNodeCUDA)
-                            *predNodeCUDA = predNode;
-                        break;
-
-                    case PARADIGM_MPI:
-                        if (predNodeMPI)
-                            *predNodeMPI = predNode;
-                        break;
-                        
-                    default:
-                        break;
-                }
+                
+                if (predNode)
+                    predNodes.insert(std::make_pair((Paradigm) paradigm, predNode));
             }
 
             // find next node
@@ -329,21 +318,8 @@ namespace cdm
                     ++next;
                 }
 
-                switch ((Paradigm) paradigm)
-                {
-                    case PARADIGM_CUDA:
-                        if (nextNodeCUDA)
-                            *nextNodeCUDA = nextNode;
-                        break;
-
-                    case PARADIGM_MPI:
-                        if (nextNodeMPI)
-                            *nextNodeMPI = nextNode;
-                        break;
-                        
-                    default:
-                        break;
-                }
+                if (nextNode)
+                    nextNodes.insert(std::make_pair((Paradigm) paradigm, nextNode));
 
                 if (node->hasParadigm((Paradigm)paradigm))
                 {

@@ -10,6 +10,7 @@
 
 #include <map>
 #include <set>
+#include <stack>
 #include <mpi.h>
 
 #include "TraceData.hpp"
@@ -36,7 +37,10 @@ namespace cdm
         typedef std::map<uint32_t, EventNode::EventNodeList> IdEventsListMap;
         typedef std::list<StreamWaitTagged*> NullStreamWaitList;
         typedef std::map<uint32_t, GraphNode::GraphNodeList > KernelLaunchListMap;
-        
+        typedef std::stack<GraphNode*> OmpNodeStack;
+        typedef std::map<uint32_t, OmpNodeStack > pendingOMPKernelStackMap;
+        typedef std::map<uint32_t, GraphNode*> OmpEventMap;
+
         AnalysisEngine(uint32_t mpiRank, uint32_t mpiSize);
         virtual ~AnalysisEngine();
 
@@ -56,7 +60,7 @@ namespace cdm
                 NodeRecordType recordType, int nodeType);
         GraphNode* addNewGraphNode(uint64_t time, Process *process,
                 const char *name, Paradigm paradigm, NodeRecordType recordType,
-                int nodeType, ParadigmEdgeMap *resultEdges);
+                int nodeType, Edge::ParadigmEdgeMap *resultEdges);
         RemoteGraphNode *addNewRemoteNode(uint64_t time, uint32_t remoteProcId,
                 uint32_t remoteNodeId, Paradigm paradigm, NodeRecordType recordType,
                 int nodeType, uint32_t mpiRank);
@@ -95,6 +99,25 @@ namespace cdm
 
         double getRealTime(uint64_t t);
 
+        void pushOnOMPBackTraceStack(GraphNode* node, uint32_t processId);
+        
+        GraphNode* ompBackTraceStackTop(uint32_t processId);
+        GraphNode* ompBackTraceStackPop(uint32_t processId);
+        bool ompBackTraceStackIsEmpty(uint32_t processId);
+        
+        GraphNode* getLastOmpNode(uint32_t processId);
+        void setLastOmpNode(GraphNode* node, uint32_t processId);
+        
+        GraphNode* getPendingParallelRegion();
+        void setPendingParallelRegion(GraphNode* node);
+        
+        GraphNode* getOmpCompute(uint32_t processId);
+        void setOmpCompute(GraphNode* node, uint32_t processId);
+        
+        const GraphNode::GraphNodeList& getBarrierEventList();
+        void addBarrierEventToList(GraphNode* node);
+        void clearBarrierEventList();
+
     private:
         MPIAnalysis mpiAnalysis;
 
@@ -105,6 +128,12 @@ namespace cdm
         IdIdMap eventProcessMap; // maps event ID to (device) process ID
         NullStreamWaitList nullStreamWaits;
         KernelLaunchListMap pendingKernelLaunchMap;
+
+        pendingOMPKernelStackMap ompBackTraceStackMap; // log the OMP enter events, needed to resolve nested function calls
+        OmpEventMap lastOmpEventMap; // remember last omp event per process -> needed to resolve nested function calls
+        GraphNode* pendingParallelRegion; // remember opened parallel region TODO: implement that as stack for nested parallelism
+        OmpEventMap ompComputeTrackMap; // keep track of omp kernels between parallel regions
+        GraphNode::GraphNodeList ompBarrierList; // collect barriers from different processes
 
         std::map<uint32_t, std::string> functionMap;
         uint32_t maxFunctionId;

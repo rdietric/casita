@@ -46,7 +46,6 @@ namespace cdm
     public:
         typedef std::map<uint32_t, Process*> ProcessMap;
         typedef std::list<Activity*> ActivityList;
-        typedef std::map<Paradigm, Edge*> ParadigmEdgeMap;
 
         TraceData();
         virtual ~TraceData();
@@ -85,11 +84,11 @@ namespace cdm
 
         GraphNode *addNewGraphNode(uint64_t time, Process *process,
                 const char *name, Paradigm paradigm, NodeRecordType recordType,
-                int nodeType, ParadigmEdgeMap *resultEdges);
+                int nodeType, Edge::ParadigmEdgeMap *resultEdges);
         EventNode *addNewEventNode(uint64_t time, uint32_t eventId,
                 EventNode::FunctionResultType fResult, Process *process,
                 const char *name, Paradigm paradigm, NodeRecordType recordType,
-                int nodeType, ParadigmEdgeMap *resultEdges);
+                int nodeType, Edge::ParadigmEdgeMap *resultEdges);
 
         Edge* getEdge(GraphNode *source, GraphNode *target);
         void removeEdge(Edge *e);
@@ -135,7 +134,7 @@ namespace cdm
 
         void sanityCheckEdge(Edge *edge, uint32_t mpiRank);
         void addNewGraphNodeInternal(GraphNode *node, Process *process,
-                ParadigmEdgeMap *resultEdges);
+                Edge::ParadigmEdgeMap *resultEdges);
 
         static io::ITraceWriter::ProcessGroup processTypeToGroup(Process::ProcessType pt);
     };

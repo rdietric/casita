@@ -20,7 +20,7 @@
 #include "otf/ITraceReader.hpp"
 #include "otf/IKeyValueList.hpp"
 
-#define GRAPH_CUDA_FILENAME "g_cuda.dot"
+#define GRAPH_LOCAL_FILENAME "g_cuda.dot"
 #define GRAPH_MPI_FILENAME "g_mpi.dot"
 #define GRAPH_GLOBAL_FILENAME "graph.dot"
 #define GRAPH_CUDA_OPT_FILENAME "g_cuda_optimized.dot"
@@ -124,7 +124,7 @@ namespace cdm
         // critical path
         void getCriticalPathIntern(GraphNode *start, GraphNode *end, Paradigm paradigm,
                 Process::SortedGraphNodeList& cpNodes);
-        void getCriticalGPUSections(MPIAnalysis::CriticalPathSection *sections,
+        void getCriticalLocalSections(MPIAnalysis::CriticalPathSection *sections,
                 uint32_t numSections, Process::SortedGraphNodeList& gpuNodes,
                 MPIAnalysis::CriticalSectionsMap& sectionsMap);
         void createSection(SectionsList *sections,
@@ -154,7 +154,11 @@ namespace cdm
                 uint32_t functionId, const char *name, uint32_t functionGroupId);
         static void handleEnter(io::ITraceReader *reader, uint64_t time, uint32_t functionId,
                 uint32_t processId, io::IKeyValueList *list);
+        static void handleAdditionalEnter(io::ITraceReader *reader, uint64_t time, uint32_t functionId,
+                uint32_t processId, io::IKeyValueList *list);
         static void handleLeave(io::ITraceReader *reader, uint64_t time,
+                uint32_t functionId, uint32_t processId, io::IKeyValueList *list);
+        static void handleAdditionalLeave(io::ITraceReader *reader, uint64_t time,
                 uint32_t functionId, uint32_t processId, io::IKeyValueList *list);
         static void handleMPIComm(io::ITraceReader *reader, io::MPIType mpiType,
                 uint32_t processId, uint32_t partnerId, uint32_t tag);
