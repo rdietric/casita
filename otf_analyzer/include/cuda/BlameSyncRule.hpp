@@ -26,7 +26,7 @@ namespace cdm
 
         bool apply(AnalysisEngine *analysis, Node *node)
         {
-            if (!node->isSync())
+            if (!node->isCUDASync())
                 return false;
 
             // get the complete execution
@@ -72,16 +72,16 @@ namespace cdm
                                     std::max(lastLeaveNode->getTime(),
                                     kernel.second->getTime()),
                                     deviceProcess, NAME_WAITSTATE,
-                                    NT_RT_ENTER | NT_FT_WAITSTATE_CUDA,
-                                    NULL, NULL);
+                                    PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE,
+                                    NULL);
                         }
                     } else
                     {
                         waitEnter = analysis->addNewGraphNode(
                                 kernel.second->getTime(),
                                 deviceProcess, NAME_WAITSTATE,
-                                NT_RT_ENTER | NT_FT_WAITSTATE_CUDA,
-                                NULL, NULL);
+                                PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE,
+                                NULL);
                     }
 
                     if (!waitLeave)
@@ -89,8 +89,8 @@ namespace cdm
                         waitLeave = analysis->addNewGraphNode(
                                 sync.second->getTime(),
                                 deviceProcess, NAME_WAITSTATE,
-                                NT_RT_LEAVE | NT_FT_WAITSTATE_CUDA,
-                                NULL, NULL);
+                                PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE,
+                                NULL);
                     }
 
                     analysis->newEdge(sync.second, waitLeave, false);

@@ -384,9 +384,12 @@ GraphNode *AnalysisEngine::getLastLeave(uint64_t timestamp, uint32_t procId) con
 }
 
 GraphNode* AnalysisEngine::newGraphNode(uint64_t time, uint32_t processId,
-        const std::string name, int nodeType)
+        const std::string name, Paradigm paradigm, NodeRecordType recordType,
+        int nodeType)
 {
-    GraphNode *node = TraceData::newGraphNode(time, processId, name, nodeType);
+    GraphNode *node = TraceData::newGraphNode(time, processId, name,
+            paradigm, recordType, nodeType);
+    
     if (node->isWaitstate())
     {
         node->setFunctionId(waitStateFuncId);
@@ -395,10 +398,12 @@ GraphNode* AnalysisEngine::newGraphNode(uint64_t time, uint32_t processId,
 }
 
 GraphNode* AnalysisEngine::addNewGraphNode(uint64_t time, Process *process,
-        const char *name, int nodeType, Edge **resultEdgeCUDA, Edge **resultEdgeMPI)
+        const char *name, Paradigm paradigm, NodeRecordType recordType,
+        int nodeType, ParadigmEdgeMap *resultEdges)
 {
-    GraphNode *node = TraceData::addNewGraphNode(time, process, name, nodeType,
-            resultEdgeCUDA, resultEdgeMPI);
+    GraphNode *node = TraceData::addNewGraphNode(time, process, name, paradigm,
+            recordType, nodeType, resultEdges);
+    
     if (node->isWaitstate())
     {
         node->setFunctionId(waitStateFuncId);
@@ -407,10 +412,11 @@ GraphNode* AnalysisEngine::addNewGraphNode(uint64_t time, Process *process,
 }
 
 RemoteGraphNode *AnalysisEngine::addNewRemoteNode(uint64_t time,
-        uint32_t remoteProcId, uint32_t remoteNodeId, int nodeType, uint32_t mpiRank)
+        uint32_t remoteProcId, uint32_t remoteNodeId, Paradigm paradigm,
+        NodeRecordType recordType, int nodeType, uint32_t mpiRank)
 {
     RemoteGraphNode *node = new RemoteGraphNode(time, remoteProcId,
-            remoteNodeId, mpiRank, nodeType);
+            remoteNodeId, mpiRank, paradigm, recordType, nodeType);
 
     graph.addNode(node);
 
@@ -900,7 +906,7 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
         {
             Node *node = *iter;
 
-            if (node->isEnter() || node->isLeave() || node->isMarker())
+            if (node->isEnter() || node->isLeave())
             {
                 if ((!node->isPureWaitstate()) || enableWaitStates)
                 {

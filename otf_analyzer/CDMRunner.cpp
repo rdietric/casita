@@ -129,7 +129,7 @@ void CDMRunner::printNode(GraphNode *node, Process *process)
                 node->getName(),
                 process->getName(),
                 process->getId(),
-                Node::typeToStr(node->getType()).c_str());
+                Node::typeToStr(node->getParadigm(), node->getType()).c_str());
 
         uint32_t refProcess = node->getReferencedProcessId();
         if (refProcess)
@@ -205,7 +205,7 @@ void CDMRunner::handleDefProcess(ITraceReader *reader, uint32_t stream, uint32_t
         printf("  [%u] Found process %s (%u) with type %u, stream %u\n",
             analysis.getMPIRank(), name, processId, processType, stream);
 
-    analysis.newProcess(processId, parentId, name, processType, GRAPH_CUDA);
+    analysis.newProcess(processId, parentId, name, processType, PARADIGM_CUDA);
 }
 
 void CDMRunner::handleDefFunction(ITraceReader *reader, uint32_t streamId,
@@ -231,8 +231,9 @@ void CDMRunner::handleEnter(ITraceReader *reader, uint64_t time, uint32_t functi
 
     const char *funcName = reader->getFunctionName(functionId).c_str();
 
-    int functionType = TraceData::getFunctionType(funcName, process);
-    if (functionType & NT_FT_CPU)
+    FunctionDescriptor functionType;
+    TraceData::getFunctionType(functionId, funcName, process, &functionType);
+    if (functionType.paradigm == PARADIGM_CPU)
     {
         if (runner->getOptions().verbose >= VERBOSE_ALL)
             printf(" [%u] e [%12lu:%12.8fs] [%31s] (f%u:p%u)\n",
@@ -243,19 +244,19 @@ void CDMRunner::handleEnter(ITraceReader *reader, uint64_t time, uint32_t functi
     }
 
     GraphNode *enterNode = NULL;
-    if (Node::isEventType(functionType))
+    if (Node::isCUDAEventType(functionType.paradigm, functionType.type))
     {
         enterNode = analysis.addNewEventNode(time, 0, EventNode::FR_UNKNOWN, process,
-                funcName, NT_RT_ENTER | functionType, NULL, NULL);
+                funcName, functionType.paradigm, RECORD_ENTER, functionType.type, NULL);
     } else
     {
         enterNode = analysis.addNewGraphNode(time, process, funcName,
-                NT_RT_ENTER | functionType, NULL, NULL);
+                functionType.paradigm, RECORD_ENTER, functionType.type, NULL);
     }
 
     enterNode->setFunctionId(functionId);
 
-    if (enterNode->isKernelLaunch())
+    if (enterNode->isCUDAKernelLaunch())
     {
         CDMRunner::applyStreamRefsEnter(reader, enterNode, list);
         analysis.addPendingKernelLaunch(enterNode);
@@ -292,8 +293,9 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
 
     const char *funcName = reader->getFunctionName(functionId).c_str();
 
-    int functionType = TraceData::getFunctionType(funcName, process);
-    if (functionType & NT_FT_CPU)
+    FunctionDescriptor functionType;
+    TraceData::getFunctionType(functionId, funcName, process, &functionType);
+    if (functionType.paradigm == PARADIGM_CPU)
     {
         if (runner->getOptions().verbose >= VERBOSE_ALL)
             printf(" [%u] l [%12lu:%12.8fs] [%31s] (f%u:p%u)\n",
@@ -304,7 +306,7 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
     }
 
     GraphNode *leaveNode = NULL;
-    if (Node::isEventType(functionType))
+    if (Node::isCUDAEventType(functionType.paradigm, functionType.type))
     {
         uint32_t eventId = readKeyVal(reader, VT_CUPTI_CUDA_EVENTREF_KEY, list);
         CUresult cuResult = (CUresult) readKeyVal(reader, VT_CUPTI_CUDA_CURESULT_KEY, list);
@@ -313,7 +315,7 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
             fResult = EventNode::FR_SUCCESS;
 
         leaveNode = runner->getAnalysis().addNewEventNode(time, eventId, fResult, process,
-                funcName, NT_RT_LEAVE | functionType, NULL, NULL);
+                funcName, functionType.paradigm, RECORD_LEAVE, functionType.type, NULL);
 
         if (eventId == 0)
             throw RTException("No eventId for event node %s found",
@@ -321,7 +323,7 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
     } else
     {
         leaveNode = analysis.addNewGraphNode(time, process, funcName,
-                NT_RT_LEAVE | functionType, NULL, NULL);
+                functionType.paradigm, RECORD_LEAVE, functionType.type, NULL);
     }
 
     leaveNode->setFunctionId(functionId);
@@ -354,7 +356,7 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
         }
     }
 
-    if (leaveNode->isKernelLaunch())
+    if (leaveNode->isCUDAKernelLaunch())
     {
         analysis.addPendingKernelLaunch(leaveNode);
     }
@@ -526,7 +528,7 @@ void CDMRunner::mergeActivityGroups(const Process::SortedGraphNodeList& cpActivi
     /* phase 1: each MPI process*/
 
     uint32_t blameCtrId = analysis.getCtrTable().getCtrId(CTR_BLAME);
-    uint64_t lengthCritPath = analysis.getLastGraphNode(GRAPH_CUDA)->getTime() -
+    uint64_t lengthCritPath = analysis.getLastGraphNode(PARADIGM_CUDA)->getTime() -
             analysis.getSourceNode()->getTime();
 
     uint64_t globalBlame = 0;
@@ -549,7 +551,7 @@ void CDMRunner::mergeActivityGroups(const Process::SortedGraphNodeList& cpActivi
             };
         }
 
-        if (cpKernelsOnly && (!onCriticalPath || !activity->getStart()->isKernel()))
+        if (cpKernelsOnly && (!onCriticalPath || !activity->getStart()->isCUDAKernel()))
             continue;
 
         bool valid = false;
@@ -734,8 +736,8 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &gpuNodes,
             printf("[0] Single process: defaulting to CUDA only mode\n");
 
         getCriticalPathIntern(analysis.getSourceNode(),
-                analysis.getLastGraphNode(GRAPH_CUDA),
-                GRAPH_CUDA, gpuNodes);
+                analysis.getLastGraphNode(PARADIGM_CUDA),
+                PARADIGM_CUDA, gpuNodes);
     }
 
     if (options.mergeActivities)
@@ -765,7 +767,7 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &gpuNodes,
 }
 
 void CDMRunner::getCriticalPathIntern(GraphNode *start, GraphNode *end,
-        GraphNodeType g, Process::SortedGraphNodeList& cpNodes)
+        Paradigm paradigm, Process::SortedGraphNodeList& cpNodes)
 {
     VT_TRACER("getCriticalPathIntern");
     if (options.printCriticalPath)
@@ -777,7 +779,7 @@ void CDMRunner::getCriticalPathIntern(GraphNode *start, GraphNode *end,
     }
 
     GraphNode::GraphNodeList criticalPath;
-    analysis.getCriticalPath(start, end, &criticalPath, g);
+    analysis.getCriticalPath(start, end, &criticalPath, paradigm);
 
     uint32_t i = 0;
     for (GraphNode::GraphNodeList::iterator cpNode = criticalPath.begin();
@@ -878,8 +880,8 @@ void CDMRunner::getCriticalGPUSections(MPIAnalysis::CriticalPathSection *section
         sectionsMap[csStartOuter] = mappedSection;
         sectionsMap[csEndOuter] = mappedSection;
 
-        GraphNode *startGPUNode = startNode->getCUDALinkRight();
-        GraphNode *endGPUNode = endNode->getCUDALinkLeft();
+        GraphNode *startGPUNode = startNode->getLinkRight();
+        GraphNode *endGPUNode = endNode->getLinkLeft();
 
         if ((!startGPUNode || !endGPUNode) || (startGPUNode->getTime() >= endGPUNode->getTime()))
         {
@@ -905,7 +907,7 @@ void CDMRunner::getCriticalGPUSections(MPIAnalysis::CriticalPathSection *section
         }
 
         Process::SortedGraphNodeList sectionGPUNodes;
-        getCriticalPathIntern(startGPUNode, endGPUNode, GRAPH_CUDA, sectionGPUNodes);
+        getCriticalPathIntern(startGPUNode, endGPUNode, PARADIGM_CUDA, sectionGPUNodes);
 
         gpuNodes.insert(gpuNodes.end(), sectionGPUNodes.begin(), sectionGPUNodes.end());
     }
@@ -918,7 +920,7 @@ void CDMRunner::findLastMpiNode(GraphNode **node)
     uint64_t nodeTimes[analysis.getMPIAnalysis().getMPISize()];
     *node = NULL;
 
-    GraphNode *myLastMpiNode = analysis.getLastGraphNode(GRAPH_MPI);
+    GraphNode *myLastMpiNode = analysis.getLastGraphNode(PARADIGM_MPI);
     if (myLastMpiNode)
         lastMpiNodeTime = myLastMpiNode->getTime();
 
@@ -966,7 +968,7 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
         sectionEndNode = currentNode;
     }
 
-    Graph *mpiGraph = analysis.getGraph(GRAPH_MPI);
+    Graph *mpiGraph = analysis.getGraph(PARADIGM_MPI);
     uint32_t cpCtrId = analysis.getCtrTable().getCtrId(CTR_CRITICALPATH);
     uint32_t sendBfr[BUFFER_SIZE];
     uint32_t recvBfr[BUFFER_SIZE];
@@ -1397,31 +1399,38 @@ void CDMRunner::receiveCriticalMPINodes()
 
 #endif
 
-void CDMRunner::runAnalysis(GraphNodeType g)
+void CDMRunner::runAnalysis(Paradigm paradigm)
 {
-    if (g == GRAPH_CUDA)
-        printf("[%u] Running analysis: CUDA\n", analysis.getMPIRank());
-    else
-        printf("[%u] Running analysis: MPI\n", analysis.getMPIRank());
-
     analysis.removeRules();
 
-    if (g == GRAPH_CUDA)
+    switch (paradigm)
     {
-        analysis.addRule(new KernelLaunchRule(9));
-        analysis.addRule(new BlameSyncRule(1));
-        analysis.addRule(new BlameKernelRule(1));
-        analysis.addRule(new LateSyncRule(1));
-        analysis.addRule(new EventLaunchRule(1));
-        analysis.addRule(new EventSyncRule(1));
-        analysis.addRule(new EventQueryRule(1));
-        analysis.addRule(new StreamWaitRule(1));
-    } else
-    {
-        analysis.addRule(new RecvRule(1));
-        analysis.addRule(new SendRule(1));
-        analysis.addRule(new CollectiveRule(1));
-        analysis.addRule(new SendRecvRule(1));
+        case PARADIGM_CUDA:
+            printf("[%u] Running analysis: CUDA\n", analysis.getMPIRank());
+
+            analysis.addRule(new KernelLaunchRule(9));
+            analysis.addRule(new BlameSyncRule(1));
+            analysis.addRule(new BlameKernelRule(1));
+            analysis.addRule(new LateSyncRule(1));
+            analysis.addRule(new EventLaunchRule(1));
+            analysis.addRule(new EventSyncRule(1));
+            analysis.addRule(new EventQueryRule(1));
+            analysis.addRule(new StreamWaitRule(1));
+            break;
+
+        case PARADIGM_MPI:
+            printf("[%u] Running analysis: MPI\n", analysis.getMPIRank());
+
+            analysis.addRule(new RecvRule(1));
+            analysis.addRule(new SendRule(1));
+            analysis.addRule(new CollectiveRule(1));
+            analysis.addRule(new SendRecvRule(1));
+            break;
+            
+        default:
+            printf("[%u] No analysis for unknown paradigm %d\n",
+                    analysis.getMPIRank(), paradigm);
+            return;
     }
 
     Process::SortedNodeList allNodes;
@@ -1440,14 +1449,13 @@ void CDMRunner::runAnalysis(GraphNodeType g)
         if (!node->isGraphNode() || !node->isLeave())
             continue;
 
-        if ((g == GRAPH_MPI && (!node->isMPI())) || (g == GRAPH_CUDA && (node->isMPI())))
+        if (!(node->getParadigm() & paradigm))
             continue;
 
         analysis.applyRules(node, options.verbose >= VERBOSE_BASIC);
 
         if ((analysis.getMPIRank() == 0) && (ctr - last_ctr > num_nodes / 10))
         {
-
             printf("[%u] %3.2f%% ", analysis.getMPIRank(), 100.0 * (double) ctr / (double) num_nodes);
             last_ctr = ctr;
         }

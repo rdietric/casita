@@ -74,7 +74,7 @@ namespace cdm
             analysis->getMPIAnalysis().addMPIEdge(recv.second, sendLeaveId, partnerProcessId);
 #endif
             GraphNode *remoteNode = analysis->addNewRemoteNode(sendEndTime, partnerProcessId,
-                    sendLeaveId, NT_RT_LEAVE | NT_FT_MPI_SEND, partnerMPIRank);
+                    sendLeaveId, PARADIGM_MPI, RECORD_LEAVE, MPI_SEND, partnerMPIRank);
 
             analysis->newEdge(recv.second, remoteNode, false, NULL);
 

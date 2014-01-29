@@ -15,15 +15,6 @@
 
 namespace cdm
 {
-
-    enum GraphNodeType
-    {
-        GRAPH_CUDA = 0,
-        GRAPH_MPI = 1,
-
-        GRAPH_MAX = 2
-    };
-
     class GraphNode : public Node
     {
     public:
@@ -32,10 +23,11 @@ namespace cdm
         typedef std::set<GraphNode*> GraphNodeSet;
         typedef std::pair<GraphNode*, GraphNode*> GraphNodePair;
 
-        GraphNode(uint64_t time, uint32_t processId, const std::string name, int nodeType) :
-        Node(time, processId, name, nodeType),
-        cudaLinkLeft(NULL),
-        cudaLinkRight(NULL),
+        GraphNode(uint64_t time, uint32_t processId, const std::string name,
+            Paradigm paradigm, NodeRecordType recordType, int nodeType) :
+        Node(time, processId, name, paradigm, recordType, nodeType),
+        linkLeft(NULL),
+        linkRight(NULL),
         data(NULL)
         {
             pair.first = (this);
@@ -93,40 +85,29 @@ namespace cdm
             this->time -= delta;
         }
 
-        void setCUDALinkLeft(GraphNode *cudaLinkLeft)
+        void setLinkLeft(GraphNode *cudaLinkLeft)
         {
-            this->cudaLinkLeft = cudaLinkLeft;
+            this->linkLeft = cudaLinkLeft;
         }
 
-        void setCUDALinkRight(GraphNode *cudaLinkRight)
+        void setLinkRight(GraphNode *cudaLinkRight)
         {
-            this->cudaLinkRight = cudaLinkRight;
+            this->linkRight = cudaLinkRight;
         }
 
-        GraphNode *getCUDALinkLeft()
+        GraphNode *getLinkLeft()
         {
-            return cudaLinkLeft;
+            return linkLeft;
         }
 
-        GraphNode *getCUDALinkRight()
+        GraphNode *getLinkRight()
         {
-            return cudaLinkRight;
+            return linkRight;
         }
         
-        bool hasGraphNodeType(GraphNodeType g)
+        bool hasParadigm(Paradigm p)
         {
-            return (((g == GRAPH_MPI) && isMPI()) || ((g == GRAPH_CUDA) && isCUDA()));
-        }
-
-        GraphNodeType getGraphNodeType()
-        {
-            if (isMPI() && isCUDA())
-                return GRAPH_MAX;
-            
-            if (isMPI())
-                return GRAPH_MPI;
-            else
-                return GRAPH_CUDA;
+            return paradigm & p;
         }
         
         void setData(void *value)
@@ -141,7 +122,7 @@ namespace cdm
 
     protected:
         GraphNodePair pair;
-        GraphNode *cudaLinkLeft, *cudaLinkRight;
+        GraphNode *linkLeft, *linkRight;
         void *data;
     };
 

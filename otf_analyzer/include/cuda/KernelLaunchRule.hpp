@@ -28,7 +28,7 @@ namespace cdm
             VT_TRACER("KernelLaunchRule");
             
             // applied at kernel leave
-            if (!node->isKernel())
+            if (!node->isCUDAKernel())
                 return false;
 
             // get the complete execution

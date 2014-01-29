@@ -306,12 +306,6 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
         }
     }
 
-    if (node->isMarker())
-    {
-        OTF_CHECK(OTF_WStream_writeMarker(wstream, nodeTime, processId,
-                MG_Marker, node->getName()));
-    }
-
     CounterTable::CtrIdSet ctrIdSet = ctrTable.getAllCounterIDs();
     for (CounterTable::CtrIdSet::const_iterator iter = ctrIdSet.begin();
             iter != ctrIdSet.end(); ++iter)

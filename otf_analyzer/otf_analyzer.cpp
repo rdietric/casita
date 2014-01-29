@@ -113,12 +113,12 @@ void computeCriticalPaths(CDMRunner *runner, CDMRunner::ProgramOptions& options,
         if (mpiRank == 0)
         {
             cnodes.insert(mpiCriticalPathNodes.begin(), mpiCriticalPathNodes.end());
-            Graph *mpiGraph = runner->getAnalysis().getGraph().getSubGraph(GRAPH_MPI);
+            Graph *mpiGraph = runner->getAnalysis().getGraph().getSubGraph(PARADIGM_MPI);
             mpiGraph->saveToFile(GRAPH_MPI_FILENAME, &cnodes);
             delete mpiGraph;
         }
 
-        Graph *cudaGraph = runner->getAnalysis().getGraph().getSubGraph(GRAPH_CUDA);
+        Graph *cudaGraph = runner->getAnalysis().getGraph().getSubGraph(PARADIGM_CUDA);
         cudaGraph->saveToFile(cuda_graph_filename.str().c_str(), &cnodes);
         delete cudaGraph;
 
@@ -167,8 +167,8 @@ int main(int argc, char **argv)
     VT_MARKER(mid, "READING finished");
 #endif
 
-    runner->runAnalysis(GRAPH_CUDA);
-    runner->runAnalysis(GRAPH_MPI);
+    runner->runAnalysis(PARADIGM_CUDA);
+    runner->runAnalysis(PARADIGM_MPI);
     testResources(mpiRank);
 
 #ifdef VAMPIR
@@ -176,9 +176,9 @@ int main(int argc, char **argv)
 #endif
 
     uint64_t timerResolution = runner->getAnalysis().getTimerResolution();
-    GraphNode *firstNode = runner->getAnalysis().getFirstTimedGraphNode(GRAPH_CUDA);
+    GraphNode *firstNode = runner->getAnalysis().getFirstTimedGraphNode(PARADIGM_CUDA);
 
-    uint64_t oldRuntime = runner->getAnalysis().getLastGraphNode(GRAPH_CUDA)->getTime();
+    uint64_t oldRuntime = runner->getAnalysis().getLastGraphNode(PARADIGM_CUDA)->getTime();
     if (firstNode)
         oldRuntime -= firstNode->getTime();
 

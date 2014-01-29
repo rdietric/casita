@@ -84,7 +84,7 @@ namespace cdm
         virtual ~CDMRunner();
 
         void readOTF(const std::string filename);
-        void runAnalysis(GraphNodeType g);
+        void runAnalysis(Paradigm paradigm);
         uint64_t runOptimization(char *optKernels);
 
 #ifdef MPI_CP_MERGE
@@ -122,7 +122,7 @@ namespace cdm
         void getOptFactors(char *optKernels, std::map<uint32_t, double>& optFactors);
 
         // critical path
-        void getCriticalPathIntern(GraphNode *start, GraphNode *end, GraphNodeType g,
+        void getCriticalPathIntern(GraphNode *start, GraphNode *end, Paradigm paradigm,
                 Process::SortedGraphNodeList& cpNodes);
         void getCriticalGPUSections(MPIAnalysis::CriticalPathSection *sections,
                 uint32_t numSections, Process::SortedGraphNodeList& gpuNodes,

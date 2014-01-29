@@ -89,7 +89,7 @@ namespace cdm
             }
 
             GraphNode *remoteNode = analysis->addNewRemoteNode(otherEndTime, partnerProcessIdRecv,
-                    otherLeaveId, NT_RT_LEAVE | NT_FT_MPI_RECV, partnerMPIRankRecv);
+                    otherLeaveId, PARADIGM_MPI, RECORD_LEAVE, MPI_RECV, partnerMPIRankRecv);
             analysis->newEdge(remoteNode, sendRecv.second, false, NULL);
 
 
@@ -127,7 +127,7 @@ namespace cdm
             analysis->getMPIAnalysis().addMPIEdge(sendRecv.second, otherLeaveId, partnerProcessIdSend);
 #endif
             remoteNode = analysis->addNewRemoteNode(otherLeaveId, partnerProcessIdSend,
-                    otherLeaveId, NT_RT_LEAVE | NT_FT_MPI_SEND, partnerMPIRankSend);
+                    otherLeaveId, PARADIGM_MPI, RECORD_LEAVE, MPI_SEND, partnerMPIRankSend);
             analysis->newEdge(sendRecv.second, remoteNode, false, NULL);
 
             return true;

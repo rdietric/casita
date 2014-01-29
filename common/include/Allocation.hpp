@@ -53,7 +53,7 @@ namespace cdm
         void setNullStream(Process *p);
 
         void getAllProcesses(ProcessList &procs) const;
-        void getAllProcesses(ProcessList &procs, GraphNodeType g) const;
+        void getAllProcesses(ProcessList &procs, Paradigm paradigm) const;
         const ProcessList& getHostProcesses() const;
         const ProcessList& getDeviceProcesses() const;
         void getAllDeviceProcesses(ProcessList& deviceProcs) const;
