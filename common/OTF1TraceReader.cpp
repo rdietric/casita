@@ -96,10 +96,8 @@ void OTF1TraceReader::close()
     OTF_FileManager_close(fileMgr);
 }
 
-void OTF1TraceReader::readEvents()
+void OTF1TraceReader::setEventHandlers(OTF_HandlerArray* handlers)
 {
-    OTF_HandlerArray* handlers = OTF_HandlerArray_open();
-
     OTF_HandlerArray_setHandler(handlers, (OTF_FunctionPointer*) otf1HandleEnter,
             OTF_ENTER_RECORD);
     OTF_HandlerArray_setFirstHandlerArg(handlers, this, OTF_ENTER_RECORD);
@@ -116,9 +114,27 @@ void OTF1TraceReader::readEvents()
     OTF_HandlerArray_setHandler(handlers, (OTF_FunctionPointer*) otf1HandleBeginCollectiveOperation,
             OTF_BEGINCOLLOP_RECORD);
     OTF_HandlerArray_setFirstHandlerArg(handlers, this, OTF_BEGINCOLLOP_RECORD);
+}
+
+void OTF1TraceReader::readEvents()
+{
+    OTF_HandlerArray* handlers = OTF_HandlerArray_open();
+    setEventHandlers(handlers);
 
     if (OTF_Reader_readEvents(reader, handlers) == OTF_READ_ERROR)
         throw RTException("Failed to read OTF events");
+    OTF_HandlerArray_close(handlers);
+}
+
+void OTF1TraceReader::readEventsForProcess(uint32_t id)
+{
+    OTF_HandlerArray* handlers = OTF_HandlerArray_open();
+    setEventHandlers(handlers);
+    
+    OTF_RStream* rStream = OTF_Reader_getStream(reader, id);
+    OTF_RStream_setRecordLimit(rStream, OTF_READ_MAXRECORDS);
+    OTF_RStream_readEvents(rStream, handlers);
+    
     OTF_HandlerArray_close(handlers);
 }
 

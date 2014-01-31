@@ -45,6 +45,8 @@ namespace cdm
             void writeNode(const Node *node, CounterTable &ctrTable, bool lastProcessNode);
             void writeRMANode(const Node *node, uint32_t prevProcessId,
                     uint32_t nextProcessId);
+            
+            void *getWriteObject(uint32_t id);
         private:
             uint32_t totalNumStreams;
             int *mpiNumProcesses;

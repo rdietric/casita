@@ -67,6 +67,7 @@ namespace cdm
             virtual void open(const std::string otfFilename, uint32_t maxFiles) = 0;
             virtual void close() = 0;
             virtual void readEvents() = 0;
+            virtual void readEventsForProcess(uint32_t id) = 0;
             virtual void readDefinitions() = 0;
 
             virtual std::string getKeyName(uint32_t id) = 0;

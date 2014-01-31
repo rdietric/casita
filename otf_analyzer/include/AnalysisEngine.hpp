@@ -18,6 +18,8 @@
 #include "MPIAnalysis.hpp"
 #include "graph/EventNode.hpp"
 #include "graph/RemoteGraphNode.hpp"
+#include "otf/ITraceReader.hpp"
+#include "otf/IParallelTraceWriter.hpp"
 
 namespace cdm
 {
@@ -119,6 +121,15 @@ namespace cdm
         void clearBarrierEventList();
 
     private:
+        typedef struct
+        {
+            bool verbose;
+            io::IParallelTraceWriter *writer;
+            Process::SortedNodeList::const_iterator nodeIter;
+            AnalysisEngine* analysisEngine;
+            uint64_t lastNodeCriticalCtr;
+        } TraceWriteInfo;
+        
         MPIAnalysis mpiAnalysis;
 
         std::vector<AbstractRule*> rules;
@@ -148,6 +159,11 @@ namespace cdm
                 uint64_t fixedSlack, bool verbose);
 
         size_t getNumAllDeviceProcesses();
+        
+        static void handleReadWriteEnter(io::ITraceReader *reader, uint64_t time,
+                uint32_t functionId, uint32_t processId, io::IKeyValueList *list);
+        static void handleReadWriteLeave(io::ITraceReader *reader, uint64_t time,
+                uint32_t functionId, uint32_t processId, io::IKeyValueList *list);
     };
 
 }
