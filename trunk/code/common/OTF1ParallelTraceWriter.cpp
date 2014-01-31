@@ -22,7 +22,7 @@ using namespace cdm::io;
         { \
                 int _status = cmd; \
                 if (!_status) \
-                        throw RTException("OTF command '%s' returned error", #cmd); \
+                        throw RTException("OTF command '%s' returned error %d", #cmd, _status); \
         }
 
 #define MPI_CHECK(cmd) \
@@ -194,7 +194,7 @@ void OTF1ParallelTraceWriter::open(const std::string otfFilename, uint32_t maxFi
     fileMgr = OTF_FileManager_open(maxFiles);
     kvList = OTF_KeyValueList_new();
 
-    MPI_CHECK(MPI_Allgather(&numStreams, 1, MPI_UINT32_T,
+    MPI_CHECK(MPI_Allgather(&numStreams, 1, MPI_UNSIGNED,
             mpiNumProcesses, 1, MPI_INT, MPI_COMM_WORLD));
     for (uint32_t i = 0; i < mpiSize; ++i)
     {
@@ -295,11 +295,13 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
             }
 
             OTF_CHECK(OTF_WStream_writeEnterKV(wstream, nodeTime,
-                    node->getFunctionId(), processId, 0, kvList));
+                    node->getFunctionId(), processId, 0, NULL));
         } else
         {
+            //printf("[%u] time %lu, last time %lu, process %u\n", mpiRank,
+            //        nodeTime, lastNodeMap[processId], processId);
             OTF_CHECK(OTF_WStream_writeLeaveKV(wstream, nodeTime, 0,
-                    processId, 0, kvList));
+                    processId, 0, NULL));
         }
     }
 

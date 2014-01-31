@@ -858,25 +858,23 @@ double AnalysisEngine::getRealTime(uint64_t t)
     return (double) t / (double) getTimerResolution();
 }
 
-void AnalysisEngine::handleReadWriteEnter(io::ITraceReader *reader, uint64_t time,
-                uint32_t functionId, uint32_t processId, io::IKeyValueList *list)
+void AnalysisEngine::handleReadWriteEvent(io::ITraceReader *reader, uint64_t time,
+        uint32_t functionId, uint32_t processId, io::IKeyValueList *list,
+        NodeRecordType recordType)
 {
-    TraceWriteInfo *info = (TraceWriteInfo*)reader->getUserData();
+    TraceWriteInfo *info = (TraceWriteInfo*) reader->getUserData();
     AnalysisEngine *analysis = info->analysisEngine;
     Process *p = analysis->getProcess(processId);
-    bool copyNode = false;
-    
-    if (info->nodeIter != p->getNodes().end())
+
+    //printf("[%u] [p %u] time = %lu\n", analysis->getMPIRank(), processId, time);
+
+    uint64_t lastNodeTime = 0;
+    NodeRecordType lastNodeRecordType = RECORD_ATOMIC;
+    while ((info->nodeIter != p->getNodes().end()) && ((*(info->nodeIter))->getTime() <= time))
     {
         Node *node = *(info->nodeIter);
 
-        if (node->getRecordType() == RECORD_ATOMIC)
-        {
-            ++info->nodeIter;
-            node = *(info->nodeIter);
-        }
-        
-        if ((node->getFunctionId() == functionId) && (!node->isPureWaitstate()))
+        if ((node->getRecordType() != RECORD_ATOMIC) && (!node->isPureWaitstate()))
         {
             if (info->verbose)
             {
@@ -889,83 +887,32 @@ void AnalysisEngine::handleReadWriteEnter(io::ITraceReader *reader, uint64_t tim
                         node->getFunctionId());
             }
 
-            bool ctrValid = false;
-            uint64_t newCtrValue = node->getCounter(CTR_CRITICALPATH, &ctrValid);
-
-            if (ctrValid)
-                info->lastNodeCriticalCtr = newCtrValue;
-
             info->writer->writeNode(node, analysis->getCtrTable(), node == p->getLastGraphNode());
-            ++info->nodeIter;
+            lastNodeTime = node->getTime();
+            lastNodeRecordType = node->getRecordType();
         }
-        else
-            copyNode = true;
+
+        ++info->nodeIter;
     }
-    else
-        copyNode = true;
-    
-    if (copyNode)
+
+    if (time != lastNodeTime || lastNodeRecordType != recordType)
     {
-        Node newNode(time, processId, "cpu", PARADIGM_CPU, RECORD_ENTER, MISC_CPU);
+        Node newNode(time, processId, "cpu", PARADIGM_CPU, recordType, MISC_CPU);
         newNode.setFunctionId(functionId);
-        //newNode.setCounter(CTR_CRITICALPATH, info->lastNodeCriticalCtr);
         info->writer->writeNode(&newNode, analysis->getCtrTable(), false);
     }
 }
 
-void AnalysisEngine::handleReadWriteLeave(io::ITraceReader *reader, uint64_t time,
-                uint32_t functionId, uint32_t processId, io::IKeyValueList *list)
+void AnalysisEngine::handleReadWriteEnter(io::ITraceReader *reader, uint64_t time,
+        uint32_t functionId, uint32_t processId, io::IKeyValueList *list)
 {
-    TraceWriteInfo *info = (TraceWriteInfo*)reader->getUserData();
-    AnalysisEngine *analysis = info->analysisEngine;
-    Process *p = analysis->getProcess(processId);
-    bool copyNode = false;
-    
-    if (info->nodeIter != p->getNodes().end())
-    {
-        Node *node = *(info->nodeIter);
-        
-        if (node->getRecordType() == RECORD_ATOMIC)
-        {
-            ++info->nodeIter;
-            node = *(info->nodeIter);
-        }
+    handleReadWriteEvent(reader, time, functionId, processId, list, RECORD_ENTER);
+}
 
-        if ((node->getFunctionId() == functionId) && (!node->isPureWaitstate()))
-        {
-            if (info->verbose)
-            {
-                printf("[%u] [%12lu:%12.8fs] %60s in %8u (FID %u)\n",
-                        analysis->getMPIRank(),
-                        node->getTime(),
-                        (double) (node->getTime()) / (double) analysis->getTimerResolution(),
-                        node->getUniqueName().c_str(),
-                        node->getProcessId(),
-                        node->getFunctionId());
-            }
-
-            bool ctrValid = false;
-            uint64_t newCtrValue = node->getCounter(CTR_CRITICALPATH, &ctrValid);
-
-            if (ctrValid)
-                info->lastNodeCriticalCtr = newCtrValue;
-
-            info->writer->writeNode(node, analysis->getCtrTable(), node == p->getLastGraphNode());
-            ++info->nodeIter;
-        }
-        else
-            copyNode = true;
-    }
-    else
-        copyNode = true;
-    
-    if (copyNode)
-    {
-        Node newNode(time, processId, "cpu", PARADIGM_CPU, RECORD_LEAVE, MISC_CPU);
-        newNode.setFunctionId(functionId);
-        //newNode.setCounter(CTR_CRITICALPATH, info->lastNodeCriticalCtr);
-        info->writer->writeNode(&newNode, analysis->getCtrTable(), false);
-    }
+void AnalysisEngine::handleReadWriteLeave(io::ITraceReader *reader, uint64_t time,
+        uint32_t functionId, uint32_t processId, io::IKeyValueList *list)
+{
+    handleReadWriteEvent(reader, time, functionId, processId, list, RECORD_LEAVE);
 }
 
 void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
@@ -983,17 +930,16 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
             mpiAnalysis.getMPISize(),
             origFilename);
     writer->open(filename, 100, allProcs.size(), this->ticksPerSecond);
-    
+
     TraceWriteInfo writeInfo;
     writeInfo.writer = writer;
     writeInfo.verbose = verbose;
     writeInfo.analysisEngine = this;
-    writeInfo.lastNodeCriticalCtr = 0;
-    
+
     io::OTF1TraceReader *reader = new io::OTF1TraceReader(&writeInfo, mpiAnalysis.getMPIRank());
     reader->handleEnter = AnalysisEngine::handleReadWriteEnter;
     reader->handleLeave = AnalysisEngine::handleReadWriteLeave;
-    
+
     reader->open(origFilename, 1);
     reader->readDefinitions();
 
@@ -1029,9 +975,9 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
 
         Process::SortedNodeList &nodes = p->getNodes();
         writeInfo.nodeIter = nodes.begin();
-        
+
         reader->readEventsForProcess(pId);
-        
+
         /*for (Process::SortedNodeList::const_iterator iter = nodes.begin();
                 iter != nodes.end(); ++iter)
         {
@@ -1058,7 +1004,7 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
 
         }*/
     }
-    
+
     reader->close();
     delete reader;
 
