@@ -51,7 +51,7 @@ namespace cdm
             {
                 return OTF_KeyValueList_getInt32(list, key, value);
             }
-
+            
         private:
             OTF_KeyValueList *list;
         };

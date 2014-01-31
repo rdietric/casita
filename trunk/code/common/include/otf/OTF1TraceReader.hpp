@@ -59,6 +59,7 @@ namespace cdm
             void open(const std::string otfFilename, uint32_t maxFiles);
             void close();
             void readEvents();
+            void readEventsForProcess(uint32_t id);
             void readDefinitions();
 
             OTF1KeyValueList& getKVList();
@@ -113,6 +114,8 @@ namespace cdm
                     uint32_t process, uint32_t collOp, uint64_t matchingId, uint32_t procGroup,
                     uint32_t rootProc, uint64_t sent, uint64_t received, uint32_t scltoken,
                     OTF_KeyValueList * list);
+            
+            void setEventHandlers(OTF_HandlerArray* handlers);
 
             uint32_t mpiRank;
             uint32_t mpiProcessId;
