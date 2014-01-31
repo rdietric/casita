@@ -127,7 +127,6 @@ namespace cdm
             io::IParallelTraceWriter *writer;
             Process::SortedNodeList::const_iterator nodeIter;
             AnalysisEngine* analysisEngine;
-            uint64_t lastNodeCriticalCtr;
         } TraceWriteInfo;
         
         MPIAnalysis mpiAnalysis;
@@ -160,6 +159,9 @@ namespace cdm
 
         size_t getNumAllDeviceProcesses();
         
+        static void handleReadWriteEvent(io::ITraceReader *reader, uint64_t time,
+                uint32_t functionId, uint32_t processId, io::IKeyValueList *list,
+                NodeRecordType recordType);
         static void handleReadWriteEnter(io::ITraceReader *reader, uint64_t time,
                 uint32_t functionId, uint32_t processId, io::IKeyValueList *list);
         static void handleReadWriteLeave(io::ITraceReader *reader, uint64_t time,
