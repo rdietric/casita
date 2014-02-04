@@ -27,7 +27,7 @@ namespace cdm
         bool apply(AnalysisEngine *analysis, Node *node)
         {
             // applied at MPI_Send leave
-            if (!node->isMPISend())
+            if (!node->isMPISend() || !node->isLeave())
                 return false;
 
             // get the complete execution

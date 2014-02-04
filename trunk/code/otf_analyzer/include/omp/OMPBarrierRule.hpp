@@ -27,7 +27,7 @@ namespace cdm
 
         bool apply(AnalysisEngine *analysis, Node *node)
         {
-            if (!node->isOMPSync())
+            if (!node->isOMPSync() || !node->isLeave())
                 return false;
 
             // save barrier enter events to BarrierEventList

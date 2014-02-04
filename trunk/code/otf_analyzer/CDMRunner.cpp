@@ -241,97 +241,6 @@ void CDMRunner::handleEnter(ITraceReader *reader, uint64_t time, uint32_t functi
     FunctionDescriptor functionType;
     TraceData::getFunctionType(functionId, funcName, process, &functionType);
 
-    if ((functionType.paradigm == PARADIGM_OMP) && (!analysis.ompBackTraceStackIsEmpty(processId)))
-    {
-        GraphNode * node = analysis.ompBackTraceStackTop(processId);
-
-        if (functionId != node->getFunctionId() && !analysis.getLastOmpNode(processId)->isLeave())
-        {
-            handleAdditionalLeave(reader, time, node->getFunctionId(), node->getProcessId(), list);
-        }
-    }
-
-    if (functionType.paradigm == PARADIGM_CPU)
-    {
-        if (runner->getOptions().verbose >= VERBOSE_ALL)
-            printf(" [%u] e [%12lu:%12.8fs] [%31s] (f%u:p%u)\n",
-                analysis.getMPIRank(),
-                time, (double) time / (double) analysis.getTimerResolution(),
-                funcName, functionId, processId);
-        return;
-    }
-
-    GraphNode *enterNode = NULL;
-    if (Node::isCUDAEventType(functionType.paradigm, functionType.type))
-    {
-        enterNode = analysis.addNewEventNode(time, 0, EventNode::FR_UNKNOWN, process,
-                funcName, functionType.paradigm, RECORD_ENTER, functionType.type, NULL);
-    } else
-    {
-        enterNode = analysis.addNewGraphNode(time, process, funcName,
-                functionType.paradigm, RECORD_ENTER, functionType.type, NULL);
-    }
-
-    enterNode->setFunctionId(functionId);
-
-    if (enterNode->isOMP())
-    {
-        analysis.pushOnOMPBackTraceStack(enterNode, processId);
-    }
-
-    if (enterNode->isCUDAKernelLaunch())
-    {
-        CDMRunner::applyStreamRefsEnter(reader, enterNode, list);
-        analysis.addPendingKernelLaunch(enterNode);
-    }
-
-    if (enterNode->isOMP())
-        analysis.setLastOmpNode(enterNode, processId);
-
-    runner->printNode(enterNode, process);
-    options.eventsProcessed++;
-
-    if (options.eventsProcessed % 1000 == 0)
-    {
-        int memUsage = getCurrentResources();
-        if (memUsage > options.memLimit)
-        {
-            std::cout << sizeof (Edge) << std::endl;
-            throw RTException("Memory limit exceeded (%d KByte / %d KByte)",
-                    memUsage, options.memLimit);
-        }
-    }
-}
-
-void CDMRunner::handleAdditionalEnter(ITraceReader *reader, uint64_t time, uint32_t functionId,
-        uint32_t processId, IKeyValueList *list)
-{
-    CDMRunner *runner = (CDMRunner*) (reader->getUserData());
-    AnalysisEngine &analysis = runner->getAnalysis();
-    ProgramOptions &options = runner->getOptions();
-
-    if (options.maxEvents > 0 && (options.eventsProcessed >= options.maxEvents))
-        return;
-
-    Process *process = analysis.getProcess(processId);
-    if (!process)
-        throw RTException("Process %u not found.", processId);
-
-    const char *funcName = reader->getFunctionName(functionId).c_str();
-
-    FunctionDescriptor functionType;
-    TraceData::getFunctionType(functionId, funcName, process, &functionType);
-    
-    if (functionType.paradigm == PARADIGM_CPU)
-    {
-        if (runner->getOptions().verbose >= VERBOSE_ALL)
-            printf(" [%u] e [%12lu:%12.8fs] [%31s] (f%u:p%u)\n",
-                analysis.getMPIRank(),
-                time, (double) time / (double) analysis.getTimerResolution(),
-                funcName, functionId, processId);
-        return;
-    }
-
     GraphNode *enterNode = NULL;
     if (Node::isCUDAEventType(functionType.paradigm, functionType.type))
     {
@@ -364,95 +273,6 @@ void CDMRunner::handleAdditionalEnter(ITraceReader *reader, uint64_t time, uint3
                     memUsage, options.memLimit);
         }
     }
-}
-
-void CDMRunner::handleAdditionalLeave(ITraceReader *reader, uint64_t time,
-        uint32_t functionId, uint32_t processId, IKeyValueList *list)
-{
-    CDMRunner *runner = (CDMRunner*) (reader->getUserData());
-    AnalysisEngine &analysis = runner->getAnalysis();
-    ProgramOptions &options = runner->getOptions();
-
-    if (options.maxEvents > 0 && (options.eventsProcessed >= options.maxEvents))
-        return;
-
-    Process *process = runner->getAnalysis().getProcess(processId);
-    if (!process)
-        throw RTException("Process %u not found", processId);
-
-    const char *funcName = reader->getFunctionName(functionId).c_str();
-
-    FunctionDescriptor functionType;
-    TraceData::getFunctionType(functionId, funcName, process, &functionType);
-
-    if (functionType.paradigm == PARADIGM_CPU)
-    {
-        if (runner->getOptions().verbose >= VERBOSE_ALL)
-            printf(" [%u] l [%12lu:%12.8fs] [%31s] (f%u:p%u)\n",
-                runner->getAnalysis().getMPIRank(),
-                time, (double) time / (double) analysis.getTimerResolution(),
-                funcName, functionId, processId);
-        return;
-    }
-
-    GraphNode *leaveNode = NULL;
-    if (Node::isCUDAEventType(functionType.paradigm, functionType.type))
-    {
-        uint32_t eventId = readKeyVal(reader, VT_CUPTI_CUDA_EVENTREF_KEY, list);
-        CUresult cuResult = (CUresult) readKeyVal(reader, VT_CUPTI_CUDA_CURESULT_KEY, list);
-        EventNode::FunctionResultType fResult = EventNode::FR_UNKNOWN;
-        if (cuResult == CUDA_SUCCESS)
-            fResult = EventNode::FR_SUCCESS;
-
-        leaveNode = runner->getAnalysis().addNewEventNode(time, eventId, fResult, process,
-                funcName, functionType.paradigm, RECORD_LEAVE, functionType.type, NULL);
-
-        if (eventId == 0)
-            throw RTException("No eventId for event node %s found",
-                leaveNode->getUniqueName().c_str());
-    } else
-    {
-        leaveNode = analysis.addNewGraphNode(time, process, funcName,
-                functionType.paradigm, RECORD_LEAVE, functionType.type, NULL);
-    }
-
-    leaveNode->setFunctionId(functionId);
-
-    CDMRunner::applyStreamRefsLeave(reader, leaveNode, leaveNode->getGraphPair().first, list);
-    if (leaveNode->isMPI())
-    {
-        Process::MPICommRecordList mpiCommRecords = process->getPendingMPIRecords();
-        for (Process::MPICommRecordList::const_iterator iter = mpiCommRecords.begin();
-                iter != mpiCommRecords.end(); ++iter)
-        {
-            uint32_t *sendPartnerId = NULL;
-
-            switch (iter->mpiType)
-            {
-                case Process::MPI_RECV:
-                case Process::MPI_COLLECTIVE:
-                    leaveNode->setReferencedProcessId(iter->partnerId);
-                    break;
-
-                case Process::MPI_SEND:
-                    sendPartnerId = new uint32_t;
-                    *sendPartnerId = iter->partnerId;
-                    leaveNode->setData(sendPartnerId);
-                    break;
-
-                default:
-                    throw RTException("Not a valid MPICommRecord type here");
-            }
-        }
-    }
-
-    if (leaveNode->isCUDAKernelLaunch())
-    {
-        analysis.addPendingKernelLaunch(leaveNode);
-    }
-
-    runner->printNode(leaveNode, process);
-    options.eventsProcessed++;
 }
 
 void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
@@ -473,31 +293,6 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
 
     FunctionDescriptor functionType;
     TraceData::getFunctionType(functionId, funcName, process, &functionType);
-    if (functionType.paradigm == PARADIGM_CPU)
-    {
-        if (runner->getOptions().verbose >= VERBOSE_ALL)
-            printf(" [%u] l [%12lu:%12.8fs] [%31s] (f%u:p%u)\n",
-                runner->getAnalysis().getMPIRank(),
-                time, (double) time / (double) analysis.getTimerResolution(),
-                funcName, functionId, processId);
-        return;
-    }
-
-    // if OMP, Check with BackTrace, what to do:
-    // if functionId fits and last event was leave -> additional enter
-    if (functionType.paradigm == PARADIGM_OMP)
-    {
-        GraphNode* node = analysis.ompBackTraceStackTop(processId);
-        GraphNode* lastOmpNode = analysis.getLastOmpNode(processId);
-
-        if ((node->getFunctionId() == functionId) && lastOmpNode->isLeave())
-        {
-            handleAdditionalEnter(reader, lastOmpNode->getTime(), node->getFunctionId(), processId, list);
-        }
-
-        analysis.ompBackTraceStackPop(processId);
-
-    }
 
     GraphNode *leaveNode = NULL;
     if (Node::isCUDAEventType(functionType.paradigm, functionType.type))
@@ -554,9 +349,6 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
     {
         analysis.addPendingKernelLaunch(leaveNode);
     }
-
-    if (leaveNode->isOMP())
-        analysis.setLastOmpNode(leaveNode, processId);
 
     runner->printNode(leaveNode, process);
     options.eventsProcessed++;
@@ -1659,8 +1451,8 @@ void CDMRunner::runAnalysis(Paradigm paradigm)
         VT_TRACER("analysis iter");
         Node *node = *nIter;
         ctr++;
-
-        if (!node->isGraphNode() || !node->isLeave())
+        
+        if (!node->isGraphNode()) // || !node->isLeave())
             continue;
 
         if (!(node->getParadigm() & paradigm))

@@ -41,7 +41,7 @@ namespace cdm
         PARADIGM_MPI = (1 << 2),
         PARADIGM_OMP = (1 << 3),
 
-        PARADIGM_COMPUTE_LOCAL = (PARADIGM_CUDA | PARADIGM_OMP),
+        PARADIGM_COMPUTE_LOCAL = (PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_OMP),
         PARADIGM_ALL = (PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_MPI | PARADIGM_OMP)
     };
 
@@ -355,6 +355,10 @@ namespace cdm
                             stream << typeStrTableOMP[i].str << ",";
                     }
                     break;
+                    
+                case PARADIGM_CPU:
+                    stream << "cpu";
+                    break;
 
                 default:
                     stream << "<unknown>";
@@ -377,15 +381,22 @@ namespace cdm
             {
                 int type1 = n1->getType();
                 int type2 = n2->getType();
+                
+                NodeRecordType recordType1 = n1->getRecordType();
+                NodeRecordType recordType2 = n2->getRecordType();
+                
+                if (recordType1 == RECORD_ATOMIC && recordType2 != RECORD_ATOMIC)
+                    return true;
+                
+                if (recordType1 != RECORD_ATOMIC && recordType2 == RECORD_ATOMIC)
+                    return false;
 
                 Paradigm paradigm1 = n1->getParadigm();
                 Paradigm paradigm2 = n2->getParadigm();
 
+                /**\todo fix me*/
                 if (paradigm1 != paradigm2)
                     return paradigm1 < paradigm2;
-
-                NodeRecordType recordType1 = n1->getRecordType();
-                NodeRecordType recordType2 = n2->getRecordType();
 
                 if (n1->isProcess())
                     return true;

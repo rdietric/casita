@@ -25,7 +25,7 @@ namespace cdm
 
         bool apply(AnalysisEngine *analysis, Node *node)
         {
-            if (!node->isCUDAEventLaunch())
+            if (!node->isCUDAEventLaunch() || !node->isLeave())
                 return false;
 
             // get the complete execution

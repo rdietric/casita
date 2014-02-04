@@ -58,7 +58,7 @@ namespace cdm
             virtual void writeDefFunction(uint32_t id, const char *name, FunctionGroup fg) = 0;
             virtual void writeDefCounter(uint32_t id, const char *name, int properties) = 0;
 
-            virtual void writeNode(const Node *node, CounterTable &ctrTable, bool lastProcessNode) = 0;
+            virtual void writeNode(const Node *node, CounterTable &ctrTable, bool lastProcessNode, const Node *futureNode) = 0;
 
         protected:
             const char *streamRefKeyName;

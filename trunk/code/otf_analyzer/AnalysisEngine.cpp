@@ -865,41 +865,64 @@ void AnalysisEngine::handleReadWriteEvent(io::ITraceReader *reader, uint64_t tim
     TraceWriteInfo *info = (TraceWriteInfo*) reader->getUserData();
     AnalysisEngine *analysis = info->analysisEngine;
     Process *p = analysis->getProcess(processId);
-
+    
     //printf("[%u] [p %u] time = %lu\n", analysis->getMPIRank(), processId, time);
 
-    uint64_t lastNodeTime = 0;
-    NodeRecordType lastNodeRecordType = RECORD_ATOMIC;
-    while ((info->nodeIter != p->getNodes().end()) && ((*(info->nodeIter))->getTime() <= time))
+    if (info->nodeIter != p->getNodes().end())
     {
         Node *node = *(info->nodeIter);
-
-        if ((node->getRecordType() != RECORD_ATOMIC) && (!node->isPureWaitstate()))
+        
+        
+        // \todo put this to "saveparallelAllocationToFile"
+        GraphNode *futureCPNode = NULL;
+        Graph::EdgeList outEdges = analysis->getOutEdges((GraphNode*)node);
+        Graph::EdgeList::const_iterator edgeIter = outEdges.begin();
+        uint64_t timeNextCPNode = 0;
+        
+        while(edgeIter != outEdges.end()){
+            if(((*edgeIter)->getEndNode()->getCounter(CTR_CRITICALPATH,NULL) == 1) && 
+                    ((timeNextCPNode > (*edgeIter)->getEndNode()->getTime()) || timeNextCPNode == 0)){
+                futureCPNode = (*edgeIter)->getEndNode();
+                timeNextCPNode = futureCPNode->getTime();
+            }
+            ++edgeIter;
+        }
+        // \end \todo
+        
+        if (node->getRecordType() == RECORD_ATOMIC)
+            ++info->nodeIter;
+        
+        if ((info->nodeIter != p->getNodes().end()) && 
+                ((*(info->nodeIter))->getTime() == time))
         {
-            if (info->verbose)
+            node = *(info->nodeIter);
+            
+            if (!node->isPureWaitstate())
             {
-                printf("[%u] [%12lu:%12.8fs] %60s in %8u (FID %u)\n",
-                        analysis->getMPIRank(),
-                        node->getTime(),
-                        (double) (node->getTime()) / (double) analysis->getTimerResolution(),
-                        node->getUniqueName().c_str(),
-                        node->getProcessId(),
-                        node->getFunctionId());
+                if (info->verbose)
+                {
+                    printf("[%u] [%12lu:%12.8fs] %60s in %8u (FID %u) (cp %lu)\n",
+                            analysis->getMPIRank(),
+                            node->getTime(),
+                            (double) (node->getTime()) / (double) analysis->getTimerResolution(),
+                            node->getUniqueName().c_str(),
+                            node->getProcessId(),
+                            node->getFunctionId(),
+                            node->getCounter(CTR_CRITICALPATH, NULL));
+                }
+
+                info->writer->writeNode(node, analysis->getCtrTable(), node == p->getLastGraphNode(),futureCPNode);
             }
 
-            info->writer->writeNode(node, analysis->getCtrTable(), node == p->getLastGraphNode());
-            lastNodeTime = node->getTime();
-            lastNodeRecordType = node->getRecordType();
+            ++info->nodeIter;
+            return;
         }
-
-        ++info->nodeIter;
     }
-
-    if (time != lastNodeTime || lastNodeRecordType != recordType)
+    
     {
         Node newNode(time, processId, "cpu", PARADIGM_CPU, recordType, MISC_CPU);
         newNode.setFunctionId(functionId);
-        info->writer->writeNode(&newNode, analysis->getCtrTable(), false);
+        info->writer->writeNode(&newNode, analysis->getCtrTable(), false, NULL);
     }
 }
 
@@ -931,6 +954,7 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
             origFilename);
     writer->open(filename, 100, allProcs.size(), this->ticksPerSecond);
 
+    // remove following 3 blocks
     TraceWriteInfo writeInfo;
     writeInfo.writer = writer;
     writeInfo.verbose = verbose;
@@ -970,6 +994,7 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
                     pId, p->getName());
         }
 
+        // remove following three blocks
         writer->writeDefProcess(pId, p->getParentId(), p->getName(),
                 this->processTypeToGroup(p->getProcessType()));
 
@@ -1031,6 +1056,8 @@ void AnalysisEngine::pushOnOMPBackTraceStack(GraphNode* node, uint32_t processId
 
 GraphNode* AnalysisEngine::ompBackTraceStackTop(uint32_t processId)
 {
+    if(ompBackTraceStackMap[processId].empty())
+        return NULL;
     return ompBackTraceStackMap[processId].top();
 }
 

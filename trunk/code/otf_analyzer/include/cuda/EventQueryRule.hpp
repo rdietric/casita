@@ -28,7 +28,7 @@ namespace cdm
         {
             VT_TRACER("EventQueryRule");
 
-            if (!node->isCUDAEventQuery())
+            if (!node->isCUDAEventQuery() || !node->isLeave())
                 return false;
 
             EventNode *evQueryLeave = (EventNode*) node;

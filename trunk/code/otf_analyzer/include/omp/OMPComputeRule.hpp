@@ -38,7 +38,7 @@ namespace cdm{
                 GraphNode * ppr = analysis->getPendingParallelRegion();
                 
                 // if pending parallel region -> connect kernel to it
-                if(ppr != NULL)
+                if((ppr != NULL)&& (ppr->getProcessId() != node->getProcessId()))
                 {
                     // get the complete execution
                     GraphNode::GraphNodePair& kernelPair = ((GraphNode*) node)->getGraphPair();

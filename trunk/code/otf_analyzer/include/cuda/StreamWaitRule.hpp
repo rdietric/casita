@@ -25,7 +25,7 @@ namespace cdm
 
         bool apply(AnalysisEngine *analysis, Node *node)
         {
-            if (!node->isGraphNode())
+            if (!node->isGraphNode() || !node->isLeave())
                 return false;
 
             // applied at streamWaitEvent leave

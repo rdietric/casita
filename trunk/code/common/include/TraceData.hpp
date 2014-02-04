@@ -46,6 +46,8 @@ namespace cdm
     public:
         typedef std::map<uint32_t, Process*> ProcessMap;
         typedef std::list<Activity*> ActivityList;
+        typedef std::stack<GraphNode*> GraphNodeStack;
+        typedef std::map<uint32_t, GraphNodeStack > GraphNodeStackMap;
 
         TraceData();
         virtual ~TraceData();
@@ -120,6 +122,7 @@ namespace cdm
 
         Graph graph;
         GraphNode * globalSourceNode;
+        GraphNodeStackMap pendingGraphNodeStackMap;
 
         ProcessMap processMap;
         ActivityList activities;
@@ -131,6 +134,11 @@ namespace cdm
         bool hasOutEdges(GraphNode *n);
         const Graph::EdgeList& getInEdges(GraphNode *n) const;
         const Graph::EdgeList& getOutEdges(GraphNode *n) const;
+        
+        GraphNode* topGraphNodeStack(uint32_t processId);
+        void popGraphNodeStack(uint32_t processId);
+        void pushGraphNodeStack(GraphNode* node, uint32_t processId);
+        
 
         void sanityCheckEdge(Edge *edge, uint32_t mpiRank);
         void addNewGraphNodeInternal(GraphNode *node, Process *process,

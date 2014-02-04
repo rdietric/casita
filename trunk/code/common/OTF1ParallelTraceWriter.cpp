@@ -14,6 +14,7 @@
 #include "common.hpp"
 #include "FunctionTable.hpp"
 #include "otf/ITraceReader.hpp"
+#include "include/Process.hpp"
 
 using namespace cdm;
 using namespace cdm::io;
@@ -260,7 +261,7 @@ void OTF1ParallelTraceWriter::writeDefCounter(uint32_t id, const char* name, int
 }
 
 void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable,
-        bool lastProcessNode)
+        bool lastProcessNode, const Node *futureNode)
 {
     uint32_t processId = node->getProcessId();
     OTF_WStream_ptr wstream = processWStreamMap[processId];
@@ -268,7 +269,7 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
     uint64_t nodeTime = node->getTime();
 
     if (node->isEnter() || node->isLeave())
-    {
+    { 
         if (node->getReferencedProcessId() != 0)
         {
             OTF_KeyValueList_appendUint32(kvList, streamRefKey,
@@ -287,13 +288,6 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
 
         if (node->isEnter())
         {
-            // write dummy CPU records
-            if (lastTimestamp < nodeTime)
-            {
-                OTF_CHECK(OTF_WStream_writeCounter(wstream, lastTimestamp,
-                        processId, CTR_CRITICALPATH, 0));
-            }
-
             OTF_CHECK(OTF_WStream_writeEnterKV(wstream, nodeTime,
                     node->getFunctionId(), processId, 0, NULL));
         } else
@@ -321,16 +315,22 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
             OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
                     processId, ctrId, ctrVal));
 
-            if ((ctrId == CTR_CRITICALPATH) && (ctrVal == 1) && (node->isGraphNode()))
-            {
-                if (lastProcessNode ||
-                        ((node->isEnter()) &&
-                        (((GraphNode*) node)->getGraphPair().second->getCounter(ctrId, &valid) == 0)))
+            if ((ctrId == CTR_CRITICALPATH) && (ctrVal == 1) && node->isGraphNode()) 
+            {        
+                if (lastProcessNode)
                 {
                     OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
                             processId, ctrId, 0));
                 }
-            }
+
+                // make critical path stop in current process if next cp node in different process
+                if((node->isLeave()) && (futureNode != NULL) && 
+                        (futureNode->getProcessId() != processId))
+                {
+                    OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
+                            processId, ctrId, 0));
+                }
+            } 
         }
     }
 

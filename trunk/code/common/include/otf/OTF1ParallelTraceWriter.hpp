@@ -42,7 +42,7 @@ namespace cdm
             void writeDefProcess(uint32_t id, uint32_t parentId,
                     const char *name, ProcessGroup pg);
             void writeDefCounter(uint32_t id, const char *name, int properties);
-            void writeNode(const Node *node, CounterTable &ctrTable, bool lastProcessNode);
+            void writeNode(const Node *node, CounterTable &ctrTable, bool lastProcessNode, const Node *futureNode);
             void writeRMANode(const Node *node, uint32_t prevProcessId,
                     uint32_t nextProcessId);
             
@@ -67,7 +67,7 @@ namespace cdm
             uint32_t streamRefKey, eventRefKey, funcResultKey;
             uint32_t attrListCUDAToken;
             uint32_t attrListCUDAMasterToken;
-
+            
             void copyGlobalDefinitions(OTF_Writer *writer);
             void copyMasterControl();
         };
