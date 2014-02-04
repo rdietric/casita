@@ -858,86 +858,6 @@ double AnalysisEngine::getRealTime(uint64_t t)
     return (double) t / (double) getTimerResolution();
 }
 
-void AnalysisEngine::handleReadWriteEvent(io::ITraceReader *reader, uint64_t time,
-        uint32_t functionId, uint32_t processId, io::IKeyValueList *list,
-        NodeRecordType recordType)
-{
-    TraceWriteInfo *info = (TraceWriteInfo*) reader->getUserData();
-    AnalysisEngine *analysis = info->analysisEngine;
-    Process *p = analysis->getProcess(processId);
-    
-    //printf("[%u] [p %u] time = %lu\n", analysis->getMPIRank(), processId, time);
-
-    if (info->nodeIter != p->getNodes().end())
-    {
-        Node *node = *(info->nodeIter);
-        
-        
-        // \todo put this to "saveparallelAllocationToFile"
-        GraphNode *futureCPNode = NULL;
-        Graph::EdgeList outEdges = analysis->getOutEdges((GraphNode*)node);
-        Graph::EdgeList::const_iterator edgeIter = outEdges.begin();
-        uint64_t timeNextCPNode = 0;
-        
-        while(edgeIter != outEdges.end()){
-            if(((*edgeIter)->getEndNode()->getCounter(CTR_CRITICALPATH,NULL) == 1) && 
-                    ((timeNextCPNode > (*edgeIter)->getEndNode()->getTime()) || timeNextCPNode == 0)){
-                futureCPNode = (*edgeIter)->getEndNode();
-                timeNextCPNode = futureCPNode->getTime();
-            }
-            ++edgeIter;
-        }
-        // \end \todo
-        
-        if (node->getRecordType() == RECORD_ATOMIC)
-            ++info->nodeIter;
-        
-        if ((info->nodeIter != p->getNodes().end()) && 
-                ((*(info->nodeIter))->getTime() == time))
-        {
-            node = *(info->nodeIter);
-            
-            if (!node->isPureWaitstate())
-            {
-                if (info->verbose)
-                {
-                    printf("[%u] [%12lu:%12.8fs] %60s in %8u (FID %u) (cp %lu)\n",
-                            analysis->getMPIRank(),
-                            node->getTime(),
-                            (double) (node->getTime()) / (double) analysis->getTimerResolution(),
-                            node->getUniqueName().c_str(),
-                            node->getProcessId(),
-                            node->getFunctionId(),
-                            node->getCounter(CTR_CRITICALPATH, NULL));
-                }
-
-                info->writer->writeNode(node, analysis->getCtrTable(), node == p->getLastGraphNode(),futureCPNode);
-            }
-
-            ++info->nodeIter;
-            return;
-        }
-    }
-    
-    {
-        Node newNode(time, processId, "cpu", PARADIGM_CPU, recordType, MISC_CPU);
-        newNode.setFunctionId(functionId);
-        info->writer->writeNode(&newNode, analysis->getCtrTable(), false, NULL);
-    }
-}
-
-void AnalysisEngine::handleReadWriteEnter(io::ITraceReader *reader, uint64_t time,
-        uint32_t functionId, uint32_t processId, io::IKeyValueList *list)
-{
-    handleReadWriteEvent(reader, time, functionId, processId, list, RECORD_ENTER);
-}
-
-void AnalysisEngine::handleReadWriteLeave(io::ITraceReader *reader, uint64_t time,
-        uint32_t functionId, uint32_t processId, io::IKeyValueList *list)
-{
-    handleReadWriteEvent(reader, time, functionId, processId, list, RECORD_LEAVE);
-}
-
 void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
         const char *origFilename,
         bool enableWaitStates, bool verbose)
@@ -953,19 +873,6 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
             mpiAnalysis.getMPISize(),
             origFilename);
     writer->open(filename, 100, allProcs.size(), this->ticksPerSecond);
-
-    // remove following 3 blocks
-    TraceWriteInfo writeInfo;
-    writeInfo.writer = writer;
-    writeInfo.verbose = verbose;
-    writeInfo.analysisEngine = this;
-
-    io::OTF1TraceReader *reader = new io::OTF1TraceReader(&writeInfo, mpiAnalysis.getMPIRank());
-    reader->handleEnter = AnalysisEngine::handleReadWriteEnter;
-    reader->handleLeave = AnalysisEngine::handleReadWriteLeave;
-
-    reader->open(origFilename, 1);
-    reader->readDefinitions();
 
     CounterTable::CtrIdSet ctrIdSet = this->ctrTable.getAllCounterIDs();
     for (CounterTable::CtrIdSet::const_iterator ctrIter = ctrIdSet.begin();
@@ -994,20 +901,31 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
                     pId, p->getName());
         }
 
-        // remove following three blocks
         writer->writeDefProcess(pId, p->getParentId(), p->getName(),
                 this->processTypeToGroup(p->getProcessType()));
 
         Process::SortedNodeList &nodes = p->getNodes();
-        writeInfo.nodeIter = nodes.begin();
 
-        reader->readEventsForProcess(pId);
-
-        /*for (Process::SortedNodeList::const_iterator iter = nodes.begin();
+        for (Process::SortedNodeList::const_iterator iter = nodes.begin();
                 iter != nodes.end(); ++iter)
         {
             Node *node = *iter;
 
+            // find next connected node on critical path
+            GraphNode *futureCPNode = NULL;
+            Graph::EdgeList outEdges = this->getOutEdges((GraphNode*)node);
+            Graph::EdgeList::const_iterator edgeIter = outEdges.begin();
+            uint64_t timeNextCPNode = 0;
+
+            while(edgeIter != outEdges.end()){
+                if(((*edgeIter)->getEndNode()->getCounter(CTR_CRITICALPATH,NULL) == 1) && 
+                        ((timeNextCPNode > (*edgeIter)->getEndNode()->getTime()) || timeNextCPNode == 0)){
+                    futureCPNode = (*edgeIter)->getEndNode();
+                    timeNextCPNode = futureCPNode->getTime();
+                }
+                ++edgeIter;
+            }
+            
             if (node->isEnter() || node->isLeave())
             {
                 if ((!node->isPureWaitstate()) || enableWaitStates)
@@ -1017,21 +935,18 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
                         printf("[%u] [%12lu:%12.8fs] %60s in %8u (FID %u)\n",
                                 mpiAnalysis.getMPIRank(),
                                 node->getTime(),
-                                (double) (node->getTime()) / (double) ticksPerSecond,
+                                (double) (node->getTime()) / (double) this->ticksPerSecond,
                                 node->getUniqueName().c_str(),
                                 node->getProcessId(),
                                 node->getFunctionId());
                     }
 
-                    writer->writeNode(node, ctrTable, node == p->getLastGraphNode());
+                    writer->writeNode(node, this->ctrTable, node == p->getLastGraphNode(),futureCPNode);
                 }
             }
 
-        }*/
+        }
     }
-
-    reader->close();
-    delete reader;
 
     writer->close();
     delete writer;
