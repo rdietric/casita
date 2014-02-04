@@ -27,7 +27,7 @@ namespace cdm
         {
             VT_TRACER("EventSyncRule");
 
-            if (!node->isCUDAEventSync())
+            if (!node->isCUDAEventSync() || !node->isLeave())
                 return false;
 
             // get the complete execution

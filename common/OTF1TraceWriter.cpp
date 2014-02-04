@@ -120,7 +120,7 @@ void OTF1TraceWriter::writeDefProcess(uint32_t id, uint32_t parentId, const char
     processStreamMap[id] = streamId;
 }
 
-void OTF1TraceWriter::writeNode(const Node *node, CounterTable &ctrTable, bool lastProcessNode)
+void OTF1TraceWriter::writeNode(const Node *node, CounterTable &ctrTable, bool lastProcessNode, const Node *futureNode)
 {
     OTF_WStream *wstream = OTF_Writer_getStream(
           writer, processStreamMap[node->getProcessId()]);

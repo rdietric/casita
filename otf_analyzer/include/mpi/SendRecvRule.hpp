@@ -26,7 +26,7 @@ namespace cdm
         bool apply(AnalysisEngine *analysis, Node *node)
         {
             // applied at MPI send recv leave
-            if (!node->isMPISendRecv())
+            if (!node->isMPISendRecv() || !node->isLeave())
                 return false;
 
             // get the complete execution

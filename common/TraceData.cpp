@@ -667,7 +667,11 @@ void TraceData::saveAllocationToFile(const char* filename,
                 }
 
                 if (!node->isWaitstate() || enableWaitStates)
-                    writer->writeNode(node, ctrTable, node == p->getLastGraphNode());
+                {
+                    ++iter;
+                    writer->writeNode(node, ctrTable, node == p->getLastGraphNode(),*iter);
+                    --iter;
+                }
             }
 
         }
@@ -697,6 +701,31 @@ void TraceData::addNewGraphNodeInternal(GraphNode *node, Process *process,
         process->insertGraphNode(node, predNodeMap, nextNodeMap);
     }
 
+    // to support nesting we use a stack to keep track of open activities
+    GraphNode * stackNode = topGraphNodeStack(node->getProcessId());
+            
+    if (node->isLeave())
+    {
+        if(stackNode==NULL)
+        {
+            throw RTException("StackNode NULL and found leave event %s. \n",node->getUniqueName().c_str());
+        }
+        else 
+        {
+            node->setPartner(stackNode);
+            stackNode->setPartner(node);
+                
+            if (!process->isRemoteProcess())
+                activities.push_back(new Activity(stackNode, node));
+
+            popGraphNodeStack(node->getProcessId());
+        }
+    } 
+    else if(node->isEnter())
+    {
+        pushGraphNodeStack(node,node->getProcessId());
+    }
+    
     for (size_t p_index = 0; p_index < NODE_PARADIGM_COUNT; ++p_index)
     {
         Paradigm paradigm = (Paradigm) (1 << p_index);
@@ -704,31 +733,14 @@ void TraceData::addNewGraphNodeInternal(GraphNode *node, Process *process,
         if (predPnmIter != predNodeMap.end())
         {
             GraphNode *predNode = predPnmIter->second;
-            if ((predNode->getParadigm() == node->getParadigm()) &&
-                    ((predNode->isEnter() && node->isEnter()) ||
-                    (predNode->isLeave() && node->isLeave())))
-            {
-                throw RTException("Node matching failed in process %u (%s): no matching "
-                        "ENTER/LEAVE pair found, old: '%s' new: '%s'",
-                        process->getId(),
-                        process->getName(),
-                        predNode->getUniqueName().c_str(),
-                        node->getUniqueName().c_str());
-            }
 
             bool isBlocking = false;
 
             if (predNode->isEnter() && node->isLeave())
             {
-                node->setPartner(predNode);
-                predNode->setPartner(node);
-
                 isBlocking = (predNode->isWaitstate() && node->isWaitstate());
-
-                if (!process->isRemoteProcess())
-                    activities.push_back(new Activity(predNode, node));
             }
-
+ 
             edges[p_index] = newEdge(predNode, node, isBlocking, &paradigm);
             //std::cout << " linked to " << predNodes[g]->getUniqueName().c_str() << std::endl;
 
@@ -778,4 +790,18 @@ EventNode *TraceData::addNewEventNode(uint64_t time, uint32_t eventId,
             fResult, name, paradigm, recordType, nodeType);
     addNewGraphNodeInternal(node, process, resultEdges);
     return node;
+}
+
+GraphNode* TraceData::topGraphNodeStack(uint32_t processId){
+    if(pendingGraphNodeStackMap[processId].empty())
+        return NULL;
+    return pendingGraphNodeStackMap[processId].top();
+}
+
+void TraceData::popGraphNodeStack(uint32_t processId){
+    pendingGraphNodeStackMap[processId].pop();
+}
+
+void TraceData::pushGraphNodeStack(GraphNode* node, uint32_t processId){
+    pendingGraphNodeStackMap[processId].push(node);
 }

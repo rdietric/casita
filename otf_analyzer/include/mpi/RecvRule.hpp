@@ -27,7 +27,7 @@ namespace cdm
         bool apply(AnalysisEngine *analysis, Node *node)
         {
             // applied at MPI_Recv leave
-            if (!node->isMPIRecv())
+            if (!node->isMPIRecv() || !node->isLeave())
                 return false;
 
             uint32_t partnerProcessId = node->getReferencedProcessId();

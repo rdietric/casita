@@ -33,7 +33,7 @@ namespace cdm
             void writeDefFunction(uint32_t id, const char *name, FunctionGroup fg);
             void writeDefCounter(uint32_t id, const char *name, int properties);
 
-            void writeNode(const Node *node, CounterTable &ctrTable, bool lastProcessNode);
+            void writeNode(const Node *node, CounterTable &ctrTable, bool lastProcessNode, const Node *futureNode);
 
         private:
             uint32_t numStreams;

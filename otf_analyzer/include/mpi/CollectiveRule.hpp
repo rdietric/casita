@@ -26,7 +26,7 @@ namespace cdm
         bool apply(AnalysisEngine *analysis, Node *node)
         {
             // applied at MPI collective leave
-            if (!node->isMPICollective())
+            if (!node->isMPICollective() || !node->isLeave())
                 return false;
 
             // get the complete execution
