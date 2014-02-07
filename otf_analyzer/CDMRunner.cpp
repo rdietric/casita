@@ -138,6 +138,9 @@ void CDMRunner::printNode(GraphNode *node, Process *process)
                 process->getId(),
                 Node::typeToStr(node->getParadigm(), node->getType()).c_str());
 
+        if (node->getCaller())
+            printf(", caller: %s", node->getCaller()->getName());
+        
         uint32_t refProcess = node->getReferencedProcessId();
         if (refProcess)
             printf(", ref = %u", refProcess);

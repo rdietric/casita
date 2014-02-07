@@ -706,9 +706,10 @@ void TraceData::addNewGraphNodeInternal(GraphNode *node, Process *process,
             
     if (node->isLeave())
     {
-        if(stackNode==NULL)
+        if(stackNode == NULL)
         {
-            throw RTException("StackNode NULL and found leave event %s. \n",node->getUniqueName().c_str());
+            throw RTException("StackNode NULL and found leave event %s.\n",
+                    node->getUniqueName().c_str());
         }
         else 
         {
@@ -719,10 +720,15 @@ void TraceData::addNewGraphNodeInternal(GraphNode *node, Process *process,
                 activities.push_back(new Activity(stackNode, node));
 
             popGraphNodeStack(node->getProcessId());
+            
+            // use the stack to get the caller/parent of this node
+            node->setCaller(topGraphNodeStack(node->getProcessId()));
         }
     } 
     else if(node->isEnter())
     {
+        // use the stack to get the caller/parent of this node
+        node->setCaller(stackNode);
         pushGraphNodeStack(node,node->getProcessId());
     }
     

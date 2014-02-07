@@ -247,7 +247,6 @@ void OTF1ParallelTraceWriter::writeDefProcess(uint32_t id, uint32_t parentId,
     // create local writer for process id
     OTF_WStream_ptr wstream = OTF_WStream_open(outputFilename.c_str(), id, fileMgr);
     processWStreamMap[id] = wstream;
-    lastNodeMap[id] = 0;
     
     OTF_WStream_writeBeginProcess(wstream, 0, id);
 }
@@ -265,7 +264,6 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
 {
     uint32_t processId = node->getProcessId();
     OTF_WStream_ptr wstream = processWStreamMap[processId];
-    uint64_t lastTimestamp = lastNodeMap[processId];
     uint64_t nodeTime = node->getTime();
 
     if (node->isEnter() || node->isLeave())
@@ -333,8 +331,6 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
             } 
         }
     }
-
-    lastNodeMap[processId] = nodeTime;
 }
 
 void OTF1ParallelTraceWriter::writeRMANode(const Node *node,

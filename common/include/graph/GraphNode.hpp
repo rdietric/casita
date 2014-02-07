@@ -30,6 +30,7 @@ namespace cdm
         Node(time, processId, name, paradigm, recordType, nodeType),
         linkLeft(NULL),
         linkRight(NULL),
+        caller(NULL),
         data(NULL)
         {
             pair.first = (this);
@@ -76,6 +77,16 @@ namespace cdm
             else
                 return pair.first;
         }
+        
+        GraphNode *getCaller() const
+        {
+            return caller;
+        }
+        
+        void setCaller(GraphNode *caller)
+        {
+            this->caller = caller;
+        }
 
         GraphNodePair& getGraphPair()
         {
@@ -120,6 +131,7 @@ namespace cdm
     protected:
         GraphNodePair pair;
         GraphNode *linkLeft, *linkRight;
+        GraphNode *caller;
         void *data;
     };
 
