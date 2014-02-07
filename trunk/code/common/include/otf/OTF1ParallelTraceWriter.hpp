@@ -60,7 +60,6 @@ namespace cdm
             OTF_Writer *globalWriter;
 
             std::map<uint32_t, OTF_WStream_ptr> processWStreamMap;
-            std::map<uint32_t, uint64_t> lastNodeMap;
             std::vector<uint32_t> deviceProcesses;
             std::vector<uint32_t> deviceMasterProcesses;
 
