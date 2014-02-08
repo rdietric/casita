@@ -67,7 +67,7 @@ namespace cdm
                 GraphNode *kernelEnter = generator.addNewGraphNode(hTime, device,
                         NT_RT_ENTER | NT_FT_KERNEL);
 
-                generator.newEdge(launchEnter, kernelEnter, false);
+                generator.newEdge(launchEnter, kernelEnter);
 
                 hTime += getTimeOffset(100);
                 generator.addNewGraphNode(hTime, hosts[pIndex],
@@ -132,11 +132,11 @@ namespace cdm
                     NT_RT_LEAVE | NT_FT_EV_QUERY);
 
             // kernel/query dependency
-            generator.newEdge(kernelLeave, queryLeave, false);
+            generator.newEdge(kernelLeave, queryLeave);
             for (std::vector<EventNode*>::iterator i = failedQueries.begin();
                     i != failedQueries.end(); ++i)
             {
-                generator.newEdge(kernelLeave, *i, true);
+                generator.newEdge(kernelLeave, *i, EDGE_IS_BLOCKING);
             }
             
             hTime += getTimeOffset(100);

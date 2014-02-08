@@ -89,11 +89,11 @@ namespace cdm
                                 NULL);
                     }
 
-                    analysis->newEdge(sync.first, waitEnter, false);
-                    analysis->newEdge(sync.second, waitLeave, false);
+                    analysis->newEdge(sync.first, waitEnter, EDGE_CAUSES_WAITSTATE);
+                    analysis->newEdge(sync.second, waitLeave);
                     
                     if (sync.first->isCUDAKernel())
-                        analysis->newEdge(kernelLeave, sync.first, false);
+                        analysis->newEdge(kernelLeave, sync.first);
 
                     // set counters
                     sync.first->incCounter(analysis->getCtrTable().getCtrId(CTR_BLAME),

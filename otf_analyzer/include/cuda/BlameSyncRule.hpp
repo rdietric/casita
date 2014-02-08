@@ -93,7 +93,7 @@ namespace cdm
                                 NULL);
                     }
 
-                    analysis->newEdge(sync.second, waitLeave, false);
+                    analysis->newEdge(sync.second, waitLeave, EDGE_CAUSES_WAITSTATE);
 
                     // set counters
                     sync.first->incCounter(analysis->getCtrTable().getCtrId(CTR_BLAME),

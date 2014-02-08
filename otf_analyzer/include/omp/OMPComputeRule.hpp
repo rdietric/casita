@@ -45,7 +45,7 @@ namespace cdm{
                                                
                     Process* p = analysis->getProcess(node->getProcessId());
                     // create Edges
-                    analysis->newEdge(ppr, kernelPair.first, false);
+                    analysis->newEdge(ppr, kernelPair.first);
                                         
                     ErrorUtils::getInstance().outputMessage("[OMPCR] add Edge %s to %s (%s)\n",
                             ppr->getUniqueName().c_str(),kernelPair.first->getUniqueName().c_str(),p->getName());

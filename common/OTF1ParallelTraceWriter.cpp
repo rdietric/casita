@@ -114,6 +114,8 @@ static int handleDefTimerResolution(void *userData, uint32_t stream,
         uint64_t ticksPerSecond, OTF_KeyValueList *list)
 {
     WriterData *writerData = (WriterData*) userData;
+    
+    writerData->timerResolution = ticksPerSecond;
 
     OTF_CHECK(OTF_Writer_writeDefTimerResolution(writerData->writer,
             stream, ticksPerSecond));
@@ -177,6 +179,8 @@ void OTF1ParallelTraceWriter::copyGlobalDefinitions(OTF_Writer *writer)
             eventRefKeyName, "Referenced CUDA event"));
     OTF_CHECK(OTF_Writer_writeDefKeyValue(writer, 0, funcResultKey, OTF_UINT32,
             funcResultKeyName, "CUDA API function result"));
+    
+    timerResolution = writerData.timerResolution;
 }
 
 void OTF1ParallelTraceWriter::copyMasterControl()
@@ -290,8 +294,6 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
                     node->getFunctionId(), processId, 0, NULL));
         } else
         {
-            //printf("[%u] time %lu, last time %lu, process %u\n", mpiRank,
-            //        nodeTime, lastNodeMap[processId], processId);
             OTF_CHECK(OTF_WStream_writeLeaveKV(wstream, nodeTime, 0,
                     processId, 0, NULL));
         }
@@ -303,17 +305,22 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
     {
         bool valid = false;
         uint32_t ctrId = *iter;
+        CtrTableEntry* counter = ctrTable.getCounter(ctrId);
+        if (counter->isInternal)
+            continue;
+
+        CounterType ctrType = counter->type;
         uint64_t ctrVal = node->getCounter(ctrId, &valid);
 
-        if (valid || ctrTable.getCounter(ctrId)->hasDefault)
+        if (valid || counter->hasDefault)
         {
             if (!valid)
-                ctrVal = ctrTable.getCounter(ctrId)->defaultValue;
-
+                ctrVal = counter->defaultValue;
+                        
             OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
                     processId, ctrId, ctrVal));
 
-            if ((ctrId == CTR_CRITICALPATH) && (ctrVal == 1) && node->isGraphNode()) 
+            if ((ctrType == CTR_CRITICALPATH) && (ctrVal == 1) && node->isGraphNode()) 
             {        
                 if (lastProcessNode)
                 {

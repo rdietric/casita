@@ -63,7 +63,7 @@ namespace cdm
                         barrier.first->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 1);
                         
                         // create edge from latest enter to other leaves
-                        analysis->newEdge(maxEnterTimeNode, barrier.second, false);
+                        analysis->newEdge(maxEnterTimeNode, barrier.second, EDGE_CAUSES_WAITSTATE);
                     }
 
                     blame += maxEnterTimeNode->getTime() - barrier.first->getTime();

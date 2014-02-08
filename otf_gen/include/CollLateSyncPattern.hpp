@@ -62,7 +62,7 @@ namespace cdm
                     GraphNode *kernelEnter = generator.addNewGraphNode(hTime, pDevice,
                             NT_RT_ENTER | NT_FT_KERNEL);
 
-                    generator.newEdge(launchEnter, kernelEnter, false);
+                    generator.newEdge(launchEnter, kernelEnter);
 
                     hTime += getTimeOffset(100);
                     generator.addNewGraphNode(hTime, pHost,
@@ -93,7 +93,7 @@ namespace cdm
             {
                 GraphNode *waitLeave = generator.addNewGraphNode(hTime, *pIter,
                         NT_RT_LEAVE | NT_FT_WAITSTATE_CUDA);
-                generator.newEdge(syncLeave, waitLeave, false);
+                generator.newEdge(syncLeave, waitLeave, EDGE_CAUSES_WAITSTATE);
             }
             
             hTime += getTimeOffset(100);

@@ -63,7 +63,10 @@ namespace cdm
                             (!isFirstKernel && (sync.first->getTime() < kernel.second->getTime())))
                     {
                         if (isFirstKernel)
-                            analysis->newEdge(kernel.second, sync.second, false);
+                        {
+                            analysis->newEdge(kernel.second, sync.second, EDGE_CAUSES_WAITSTATE);
+                        }
+
                         analysis->getEdge(sync.first, sync.second)->makeBlocking();
 
                         // set counters

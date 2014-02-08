@@ -102,7 +102,7 @@ namespace cdm
                             std::max(sync.first->getTime(), kernelEnter->getTime()));
                 }
 
-                analysis->newEdge(kernelLeave, sync.second, false);
+                analysis->newEdge(kernelLeave, sync.second, EDGE_CAUSES_WAITSTATE);
                 ruleResult = true;
             }
 

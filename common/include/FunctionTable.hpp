@@ -128,6 +128,10 @@ namespace cdm
     static const char * FTABLE_MPI_MISC[] = {
 
     };
+    
+    static const char * FTABLE_VT_FLUSH[] = {
+        "flushActivities"
+    };
 
     static const size_t fTableEntriesCUDA = 9;
     static const FTableEntry fTableCUDA[fTableEntriesCUDA] = {
@@ -151,6 +155,11 @@ namespace cdm
         {MPI_SENDRECV, 1, FTABLE_MPI_SENDRECV},
         {MPI_MISC, 0, FTABLE_MPI_MISC},
         {MPI_WAITSTATE, 1, FTABLE_CUDA_WAITSTATE}
+    };
+    
+    static const size_t fTableEntriesVT = 1;
+    static const FTableEntry fTableVT[fTableEntriesVT] = {
+        {VT_FLUSH, 1, FTABLE_VT_FLUSH}
     };
 
     class FunctionTable
@@ -201,6 +210,20 @@ namespace cdm
                     if (strcmp(entry.table[j], name) == 0)
                     {
                         descr->paradigm = PARADIGM_MPI;
+                        descr->type = entry.type;
+                        return true;
+                    }
+                }
+            }
+            
+            for (size_t i = 0; i < fTableEntriesVT; ++i)
+            {
+                FTableEntry entry = fTableVT[i];
+                for (size_t j = 0; j < entry.numEntries; ++j)
+                {
+                    if (strcmp(entry.table[j], name) == 0)
+                    {
+                        descr->paradigm = PARADIGM_VT;
                         descr->type = entry.type;
                         return true;
                     }

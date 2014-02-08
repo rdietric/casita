@@ -50,7 +50,7 @@ namespace cdm
             analysis->getProcess(kernelProcessId)->addPendingKernel(kernel.second);
 
             // add dependency
-            analysis->newEdge(launchEnterEvent, kernel.first, false);
+            analysis->newEdge(launchEnterEvent, kernel.first);
 
             return true;
         }

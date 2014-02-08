@@ -74,7 +74,7 @@ namespace cdm
                 GraphNode *kernelEnter = generator.addNewGraphNode(hTime, device,
                         NT_RT_ENTER | NT_FT_KERNEL);
 
-                generator.newEdge(launchEnter, kernelEnter, false);
+                generator.newEdge(launchEnter, kernelEnter);
 
                 hTime += getTimeOffset(100);
                 generator.addNewGraphNode(hTime, hosts[pIndex],
@@ -113,7 +113,7 @@ namespace cdm
                     &edge);
             edge->makeBlocking();
             
-            generator.newEdge(kernelLeave, syncLeave, false);
+            generator.newEdge(kernelLeave, syncLeave, EDGE_CAUSES_WAITSTATE);
             
             hTime += getTimeOffset(100);
             

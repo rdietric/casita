@@ -113,14 +113,14 @@ namespace cdm
 
                         // add a blocking dependency, so it cannot be used
                         // for critical path analysis
-                        analysis->newEdge(kernelLeave, prevQuery.second, true);
+                        analysis->newEdge(kernelLeave, prevQuery.second, EDGE_IS_BLOCKING);
                     }
 
                     firstEventQueryLeave = prev;
                 }
 
                 // add kernel/last event query leave dependency
-                analysis->newEdge(kernelLeave, evQuery.second, false);
+                analysis->newEdge(kernelLeave, evQuery.second);
                 return true;
             }
 
