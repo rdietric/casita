@@ -18,9 +18,10 @@ namespace cdm
     enum CounterType
     {
         CTR_USER = 0,
-        CTR_BLAME,
+        CTR_BLAME,               /* local blame for visualization */
+        CTR_BLAME_STATISTICS,    /* accumulated blame for statistics */
         CTR_WAITSTATE,
-        CTR_CRITICALPATH
+        CTR_CRITICALPATH,
     };
 
     typedef struct
@@ -28,15 +29,22 @@ namespace cdm
         CounterType type;
         const char *name;
         bool hasDefault;
+        bool isInternal;
         uint64_t defaultValue;
         uint32_t otfMode;
     } CtrTableEntry;
 
     static const CtrTableEntry COUNTER_TABLE[] = {
-        {CTR_USER, "Unknown Counter", false, 0, OTF_COUNTER_SCOPE_POINT},
-        {CTR_BLAME, "Blame", true, 0, OTF_COUNTER_SCOPE_NEXT},
-        {CTR_WAITSTATE, "isWaitstate", true, 0, OTF_COUNTER_SCOPE_NEXT},
-        {CTR_CRITICALPATH, "onCriticalPath", true, 0, OTF_COUNTER_SCOPE_NEXT}
+        {CTR_USER, "Unknown Counter", false, false, 0,
+                OTF_COUNTER_SCOPE_POINT | OTF_COUNTER_TYPE_ABS},
+        {CTR_BLAME, "Exclusive Blame", true, false, 0,
+                OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS},
+        {CTR_BLAME_STATISTICS, "Blame Statistics", true, true, 0,
+                OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS},
+        {CTR_WAITSTATE, "isWaitstate", true, false, 0,
+                OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS},
+        {CTR_CRITICALPATH, "onCriticalPath", true, false, 0,
+                OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS}
     };
 
     class CounterTable
@@ -68,18 +76,20 @@ namespace cdm
             addCounter(ctrId, ctrType, 
                     COUNTER_TABLE[ctrType].name,
                     COUNTER_TABLE[ctrType].hasDefault,
+                    COUNTER_TABLE[ctrType].isInternal,
                     COUNTER_TABLE[ctrType].defaultValue,
                     COUNTER_TABLE[ctrType].otfMode);
         }
 
         void addCounter(uint32_t ctrId, CounterType ctrType,
-                const char *name, bool hasDefault, uint64_t defaultValue,
-                uint32_t otfMode)
+                const char *name, bool hasDefault, bool isInternal,
+                uint64_t defaultValue, uint32_t otfMode)
         {
             CtrTableEntry *entry = new CtrTableEntry();
             entry->type = ctrType;
             entry->name = name;
             entry->hasDefault = hasDefault;
+            entry->isInternal = isInternal;
             entry->defaultValue = (uint64_t)defaultValue;
             entry->otfMode = otfMode;
 

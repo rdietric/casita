@@ -879,9 +879,8 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
             ctrIter != ctrIdSet.end(); ++ctrIter)
     {
         CtrTableEntry *entry = this->ctrTable.getCounter(*ctrIter);
-        writer->writeDefCounter(*ctrIter,
-                entry->name,
-                OTF_COUNTER_TYPE_ABS | entry->otfMode);
+        if (!entry->isInternal)
+            writer->writeDefCounter(*ctrIter, entry->name, entry->otfMode);
 
     }
 

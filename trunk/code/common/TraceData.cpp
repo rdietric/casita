@@ -23,6 +23,7 @@ ticksPerSecond(1000)
     globalSourceNode = newGraphNode(0, 0, "START", PARADIGM_ALL, RECORD_ATOMIC, MISC_PROCESS);
 
     ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_BLAME);
+    ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_BLAME_STATISTICS);
     ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_WAITSTATE);
     ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_CRITICALPATH);
 }
@@ -54,7 +55,7 @@ Process* TraceData::newProcess(uint32_t id, uint32_t parentId,
         GraphNode *startNode = newGraphNode(0, id, name, PARADIGM_ALL,
                 RECORD_ATOMIC, MISC_PROCESS);
         p->addGraphNode(startNode, NULL);
-        newEdge(globalSourceNode, startNode, false);
+        newEdge(globalSourceNode, startNode);
 
         allocation.addHostProcess(p);
     } else
@@ -106,6 +107,13 @@ bool TraceData::getFunctionType(uint32_t id, const char *name, Process *process,
                     case MPI_RECV:
                     case MPI_SEND:
                     case MPI_MISC:
+                        return true;
+                }
+                
+            case PARADIGM_VT:
+                switch (descr->type)
+                {
+                    case VT_FLUSH:
                         return true;
                 }
 
@@ -264,7 +272,7 @@ EventNode* TraceData::newEventNode(uint64_t time, uint32_t processId,
     return n;
 }
 
-Edge* TraceData::newEdge(GraphNode* n1, GraphNode *n2, bool isBlocking,
+Edge* TraceData::newEdge(GraphNode* n1, GraphNode *n2, int properties,
         Paradigm *edgeType)
 {
     Paradigm paradigm = PARADIGM_ALL;
@@ -276,7 +284,7 @@ Edge* TraceData::newEdge(GraphNode* n1, GraphNode *n2, bool isBlocking,
             paradigm = n1->getParadigm();
     }
 
-    Edge *e = new Edge(n1, n2, n2->getTime() - n1->getTime(), isBlocking, paradigm);
+    Edge *e = new Edge(n1, n2, n2->getTime() - n1->getTime(), properties, paradigm);
     graph.addEdge(e);
 
     return e;
@@ -613,10 +621,9 @@ void TraceData::saveAllocationToFile(const char* filename,
     for (CounterTable::CtrIdSet::const_iterator ctrIter = ctrIdSet.begin();
             ctrIter != ctrIdSet.end(); ++ctrIter)
     {
-        writer->writeDefCounter(*ctrIter,
-                ctrTable.getCounter(*ctrIter)->name,
-                OTF_COUNTER_TYPE_ABS | OTF_COUNTER_SCOPE_NEXT);
-
+        CtrTableEntry *entry = ctrTable.getCounter(*ctrIter);
+        if (!entry->isInternal)
+            writer->writeDefCounter(*ctrIter, entry->name, entry->otfMode);
     }
 
     for (Allocation::ProcessList::const_iterator pIter = allProcs.begin();
@@ -740,14 +747,15 @@ void TraceData::addNewGraphNodeInternal(GraphNode *node, Process *process,
         {
             GraphNode *predNode = predPnmIter->second;
 
-            bool isBlocking = false;
+            int edgeProp = EDGE_NONE;
 
             if (predNode->isEnter() && node->isLeave())
             {
-                isBlocking = (predNode->isWaitstate() && node->isWaitstate());
+                if (predNode->isWaitstate() && node->isWaitstate())
+                    edgeProp |= EDGE_IS_BLOCKING;
             }
  
-            edges[p_index] = newEdge(predNode, node, isBlocking, &paradigm);
+            edges[p_index] = newEdge(predNode, node, edgeProp, &paradigm);
             //std::cout << " linked to " << predNodes[g]->getUniqueName().c_str() << std::endl;
 
             GraphNode::ParadigmNodeMap::const_iterator nextPnmIter = nextNodeMap.find(paradigm);
@@ -767,7 +775,7 @@ void TraceData::addNewGraphNodeInternal(GraphNode *node, Process *process,
                 removeEdge(oldEdge);
                 // can't be a blocking edge, as we never insert leave nodes
                 // before enter nodes from the same function
-                newEdge(node, nextNode, false, &paradigm);
+                newEdge(node, nextNode, EDGE_NONE, &paradigm);
             }
         }
 

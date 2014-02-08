@@ -17,26 +17,34 @@
 namespace cdm
 {
 
+    enum EdgeProperties
+    {
+        EDGE_NONE = 0,
+        EDGE_IS_BLOCKING = (1 << 0),
+        EDGE_CAUSES_WAITSTATE = (1 << 1)
+    };
+    
     class Edge
     {
     public:
         typedef std::map<uint32_t, uint64_t> TimeProfileMap;
         typedef std::map<Paradigm, Edge*> ParadigmEdgeMap;
 
-        Edge(GraphNode *start, GraphNode *end, uint64_t duration, bool blocking,
-                Paradigm edgeParadigm)
+        Edge(GraphNode *start, GraphNode *end, uint64_t duration,
+            int properties, Paradigm edgeParadigm) :
+            properties(EDGE_NONE)
         {
             pair = std::make_pair(start, end);
             if (isReverseEdge())
             {
-                blocking = true;
+                properties |= EDGE_IS_BLOCKING;
                 duration = 0;
             }
 
-            this->blocking = blocking;
+            this->properties = properties;
             this->edgeDuration = duration;
             this->initialDuration = duration;
-            this->edgeWeight = computeWeight(duration, blocking);
+            this->edgeWeight = computeWeight(duration, isBlocking());
             this->edgeParadigm = edgeParadigm;
             this->timeProfile = NULL;
         }
@@ -72,7 +80,7 @@ namespace cdm
             name << "[" << pair.first->getUniqueName().c_str() << ", " <<
                     pair.second->getUniqueName().c_str() << ", (";
 
-            if (edgeParadigm & PARADIGM_ALL)
+            if (edgeParadigm == PARADIGM_ALL)
                 name << "ALL";
             else
             {
@@ -80,6 +88,8 @@ namespace cdm
                     name << "CUDA,";
                 if (edgeParadigm & PARADIGM_MPI)
                     name << "MPI,";
+                if (edgeParadigm & PARADIGM_OMP)
+                    name << "OMP,";
             }
 
             name << ")]";
@@ -90,21 +100,23 @@ namespace cdm
         void setDuration(uint64_t duration)
         {
             edgeDuration = duration;
-            edgeWeight = computeWeight(edgeDuration, blocking);
+            edgeWeight = computeWeight(edgeDuration, isBlocking());
         }
 
         bool isBlocking() const
         {
-            return blocking;
+            return properties & EDGE_IS_BLOCKING;
         }
 
         void makeBlocking()
         {
-            if (!blocking)
-            {
-                edgeWeight = std::numeric_limits<uint64_t>::max();
-                blocking = true;
-            }
+            edgeWeight = std::numeric_limits<uint64_t>::max();
+            properties |= EDGE_IS_BLOCKING;
+        }
+        
+        bool causesWaitState() const
+        {
+            return properties & EDGE_CAUSES_WAITSTATE;
         }
 
         GraphNode *getStartNode() const
@@ -149,7 +161,7 @@ namespace cdm
         }
 
     private:
-        bool blocking;
+        int properties;
         uint64_t edgeDuration;
         uint64_t initialDuration;
         uint64_t edgeWeight;

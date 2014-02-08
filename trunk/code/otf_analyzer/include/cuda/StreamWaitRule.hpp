@@ -149,7 +149,7 @@ namespace cdm
                     processedSyncKernelLeaves.insert(syncKernelLeave);
 
                     // add dependency
-                    analysis->newEdge(syncKernelLeave, waitingKernel.first, false);
+                    analysis->newEdge(syncKernelLeave, waitingKernel.first, EDGE_CAUSES_WAITSTATE);
 
                     // insert wait state only if launch of next (waiting) kernel
                     // is before the blocking kernel finishes
@@ -225,20 +225,21 @@ namespace cdm
                                 PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE,
                                 NULL);
 
-                        analysis->newEdge(lastLeaveNode, waitEnter, false);
-                        analysis->newEdge(waitEnter, waitLeave, true);
-                        analysis->newEdge(waitLeave, waitingKernel.first, false);
+                        analysis->newEdge(lastLeaveNode, waitEnter);
+                        analysis->newEdge(waitEnter, waitLeave, EDGE_IS_BLOCKING);
+                        analysis->newEdge(waitLeave, waitingKernel.first);
 
                         // set counters
                         waitEnter->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 1);
 
                         // add dependency to all sync kernel leave nodes
-                        // (some dependencies can become reverse edges during optimization )
+                        // (some dependencies can become reverse edges during optimization)
                         for (std::set<GraphNode*>::const_iterator gIter =
                                 processedSyncKernelLeaves.begin();
                                 gIter != processedSyncKernelLeaves.end(); ++gIter)
                         {
-                            analysis->newEdge(*gIter, waitLeave, false);
+                            ///\todo check if this should have EDGE_CAUSES_WAITSTATE property
+                            analysis->newEdge(*gIter, waitLeave);
                         }
                     }
                 }

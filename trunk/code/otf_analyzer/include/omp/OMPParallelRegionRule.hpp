@@ -72,10 +72,11 @@ namespace cdm
                 GraphNode* kernel = analysis->getOmpCompute(p->getId());
                 if ((kernel != NULL))
                 {
-                    analysis->newEdge(kernel, parallelRegionSecond, false);
+                    analysis->newEdge(kernel, parallelRegionSecond);
 
                     ErrorUtils::getInstance().outputMessage("[OMPPRR] add Edge %s to %s (%s)\n",
-                            kernel->getUniqueName().c_str(), parallelRegionSecond->getUniqueName().c_str(), p->getName());
+                            kernel->getUniqueName().c_str(),
+                            parallelRegionSecond->getUniqueName().c_str(), p->getName());
                 }
                 analysis->setOmpCompute(NULL, p->getId());
             }

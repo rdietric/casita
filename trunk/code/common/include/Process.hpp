@@ -49,6 +49,8 @@ namespace cdm
 
         typedef std::vector<Node*> SortedNodeList;
         typedef std::vector<GraphNode*> SortedGraphNodeList;
+        
+        typedef bool (*ProcessWalkCallback)(void *userData, GraphNode* node);
 
     private:
 
@@ -397,6 +399,50 @@ namespace cdm
         {
             return currentTimeProfile;
         }
+        
+        bool walkBack(GraphNode *node, ProcessWalkCallback callback, void *userData)
+        {
+            bool result = false;
+            
+            if (!node || !callback)
+                return result;
+            
+            SortedNodeList::const_reverse_iterator iter = findNodeReverse(node);
+            
+            for (; iter != nodes.rend(); ++iter)
+            {
+                if ((*iter)->isGraphNode())
+                {
+                    result = callback(userData, (GraphNode*)(*iter));
+                    if (result == false)
+                        return result;
+                }
+            }
+            
+            return result;
+        }
+        
+        bool walkForward(GraphNode *node, ProcessWalkCallback callback, void *userData)
+        {
+            bool result = false;
+            
+            if (!node || !callback)
+                return result;
+            
+            SortedNodeList::const_iterator iter = findNode(node);
+            
+            for (; iter != nodes.end(); ++iter)
+            {
+                if ((*iter)->isGraphNode())
+                {
+                    result = callback(userData, (GraphNode*)(*iter));
+                    if (result == false)
+                        return result;
+                }
+            }
+            
+            return result;
+        }
 
     private:
         uint32_t id;
@@ -415,6 +461,30 @@ namespace cdm
         MPICommRecordList mpiCommRecords;
 
         Edge::TimeProfileMap *currentTimeProfile;
+        
+        SortedNodeList::const_iterator findNode(Node *node) const
+        {
+            for (SortedNodeList::const_iterator iter = nodes.begin();
+                    iter != nodes.end(); ++iter)
+            {
+                if (*iter == node)
+                    return iter;
+            }
+            
+            return nodes.end();
+        }
+        
+        SortedNodeList::const_reverse_iterator findNodeReverse(Node *node) const
+        {
+            for (SortedNodeList::const_reverse_iterator iter = nodes.rbegin();
+                    iter != nodes.rend(); ++iter)
+            {
+                if (*iter == node)
+                    return iter;
+            }
+            
+            return nodes.rend();
+        }
 
         void addNodeInternal(SortedNodeList& nodes, Node *node)
         {

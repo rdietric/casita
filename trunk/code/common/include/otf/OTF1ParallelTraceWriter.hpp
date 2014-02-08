@@ -21,6 +21,7 @@ namespace cdm
         typedef struct
         {
             uint32_t maxFunctionID;
+            uint64_t timerResolution;
             OTF_Writer *writer;
         } WriterData;
 
@@ -49,6 +50,7 @@ namespace cdm
             void *getWriteObject(uint32_t id);
         private:
             uint32_t totalNumStreams;
+            uint64_t timerResolution;
             int *mpiNumProcesses;
 
             typedef OTF_WStream* OTF_WStream_ptr;

@@ -9,6 +9,7 @@
 #define	SENDRECVRULE_HPP
 
 #include "AbstractRule.hpp"
+#include "MPIRulesCommon.hpp"
 
 namespace cdm
 {
@@ -82,15 +83,14 @@ namespace cdm
 #endif
             } else
             {
-                sendRecv.first->incCounter(analysis->getCtrTable().getCtrId(CTR_BLAME),
-                        myStartTime - otherStartTime);
+                distributeBlame(analysis, sendRecv.first, myStartTime - otherStartTime);
 
                 analysis->getMPIAnalysis().addRemoteMPIEdge(sendRecv.first, otherEnterId, partnerProcessIdRecv);
             }
 
             GraphNode *remoteNode = analysis->addNewRemoteNode(otherEndTime, partnerProcessIdRecv,
                     otherLeaveId, PARADIGM_MPI, RECORD_LEAVE, MPI_RECV, partnerMPIRankRecv);
-            analysis->newEdge(remoteNode, sendRecv.second, false, NULL);
+            analysis->newEdge(remoteNode, sendRecv.second);
 
 
             /* round 2: send reverse direction. myself == recv */
@@ -116,9 +116,8 @@ namespace cdm
             }
 
             if (myStartTime > otherStartTime)
-            {
-                sendRecv.first->incCounter(analysis->getCtrTable().getCtrId(CTR_BLAME),
-                        myStartTime - otherStartTime);
+            {                
+                distributeBlame(analysis, sendRecv.first, myStartTime - otherStartTime);
 
                 analysis->getMPIAnalysis().addRemoteMPIEdge(sendRecv.first, otherEnterId, partnerProcessIdSend);
             }
@@ -128,7 +127,7 @@ namespace cdm
 #endif
             remoteNode = analysis->addNewRemoteNode(otherLeaveId, partnerProcessIdSend,
                     otherLeaveId, PARADIGM_MPI, RECORD_LEAVE, MPI_SEND, partnerMPIRankSend);
-            analysis->newEdge(sendRecv.second, remoteNode, false, NULL);
+            analysis->newEdge(sendRecv.second, remoteNode);
 
             return true;
         }

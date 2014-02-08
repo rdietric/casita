@@ -137,9 +137,6 @@ void CDMRunner::printNode(GraphNode *node, Process *process)
                 process->getName(),
                 process->getId(),
                 Node::typeToStr(node->getParadigm(), node->getType()).c_str());
-
-        if (node->getCaller())
-            printf(", caller: %s", node->getCaller()->getName());
         
         uint32_t refProcess = node->getReferencedProcessId();
         if (refProcess)
@@ -243,6 +240,9 @@ void CDMRunner::handleEnter(ITraceReader *reader, uint64_t time, uint32_t functi
 
     FunctionDescriptor functionType;
     TraceData::getFunctionType(functionId, funcName, process, &functionType);
+    
+    if (functionType.paradigm == PARADIGM_VT)
+        return;
 
     GraphNode *enterNode = NULL;
     if (Node::isCUDAEventType(functionType.paradigm, functionType.type))
@@ -296,6 +296,9 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
 
     FunctionDescriptor functionType;
     TraceData::getFunctionType(functionId, funcName, process, &functionType);
+    
+    if (functionType.paradigm == PARADIGM_VT)
+        return;
 
     GraphNode *leaveNode = NULL;
     if (Node::isCUDAEventType(functionType.paradigm, functionType.type))
@@ -519,8 +522,9 @@ void CDMRunner::mergeActivityGroups(const Process::SortedGraphNodeList& cpActivi
 {
     /* phase 1: each MPI process*/
 
-    uint32_t blameCtrId = analysis.getCtrTable().getCtrId(CTR_BLAME);
-    uint64_t lengthCritPath = analysis.getLastGraphNode(PARADIGM_CUDA)->getTime() -
+    uint32_t blameStatCtrId = analysis.getCtrTable().getCtrId(CTR_BLAME_STATISTICS);
+    uint32_t blameLocalCtrId = analysis.getCtrTable().getCtrId(CTR_BLAME);
+    uint64_t lengthCritPath = analysis.getLastGraphNode(PARADIGM_COMPUTE_LOCAL)->getTime() -
             analysis.getSourceNode()->getTime();
 
     uint64_t globalBlame = 0;
@@ -547,9 +551,8 @@ void CDMRunner::mergeActivityGroups(const Process::SortedGraphNodeList& cpActivi
             continue;
 
         bool valid = false;
-        uint64_t blameCtr = activity->getStart()->getCounter(blameCtrId, &valid);
-        if (!valid)
-            blameCtr = 0;
+        uint64_t blameStatCtr = activity->getStart()->getCounter(blameStatCtrId, &valid);
+        uint64_t blameLocalCtr = activity->getStart()->getCounter(blameLocalCtrId, &valid);
 
         uint32_t fId = activity->getFunctionId();
         std::map<uint32_t, ActivityGroup>::iterator groupIter = activityGroupMap.find(fId);
@@ -557,7 +560,7 @@ void CDMRunner::mergeActivityGroups(const Process::SortedGraphNodeList& cpActivi
         {
             // update
             groupIter->second.numInstances++;
-            groupIter->second.totalBlame += blameCtr;
+            groupIter->second.totalBlame += blameStatCtr + blameLocalCtr;
             groupIter->second.totalDuration += activity->getDuration();
             if (onCriticalPath)
                 groupIter->second.totalDurationOnCP += activity->getDuration();
@@ -566,7 +569,7 @@ void CDMRunner::mergeActivityGroups(const Process::SortedGraphNodeList& cpActivi
             activityGroupMap[fId].functionId = fId;
             activityGroupMap[fId].numInstances = 1;
             activityGroupMap[fId].numUnifyProcesses = 1;
-            activityGroupMap[fId].totalBlame = blameCtr;
+            activityGroupMap[fId].totalBlame = blameStatCtr + blameLocalCtr;
             activityGroupMap[fId].totalDuration = activity->getDuration();
             if (onCriticalPath)
                 activityGroupMap[fId].totalDurationOnCP = activity->getDuration();
@@ -675,7 +678,7 @@ void CDMRunner::mergeActivityGroups(const Process::SortedGraphNodeList& cpActivi
             ++i;
         }
 
-        MPI_Send(buf, numEntries * sizeof (ActivityGroup), MPI_BYTE, 0, 2, MPI_COMM_WORLD);
+        MPI_Send(buf, numEntries * sizeof (ActivityGroup), MPI_CHAR, 0, 2, MPI_COMM_WORLD);
 
         delete[] buf;
     }
@@ -755,6 +758,7 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
         uint64_t globalCPLength = lastTimestamp - firstTimestamp;
 
         printAllActivities(allCriticalEvents, globalCPLength);
+        MPI_Barrier(MPI_COMM_WORLD);
     }
 }
 
@@ -1505,7 +1509,7 @@ void CDMRunner::printAllActivities(const Process::SortedGraphNodeList & critical
         for (std::set<ActivityGroup, ActivityGroupCompare>::const_iterator iter =
                 sortedActivityGroups.begin(); iter != sortedActivityGroups.end(); ++iter)
         {
-            printf("%50s %10u %10f %11f %11.2f%% %20.2f%%  %7.6f\n",
+            printf("%50.50s %10u %10f %11f %11.2f%% %20.2f%%  %7.6f\n",
                     analysis.getFunctionName(iter->functionId),
                     iter->numInstances,
                     analysis.getRealTime(iter->totalDuration),

@@ -40,9 +40,10 @@ namespace cdm
         PARADIGM_CUDA = (1 << 1),
         PARADIGM_MPI = (1 << 2),
         PARADIGM_OMP = (1 << 3),
+        PARADIGM_VT = (1 << 4),
 
         PARADIGM_COMPUTE_LOCAL = (PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_OMP),
-        PARADIGM_ALL = (PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_MPI | PARADIGM_OMP)
+        PARADIGM_ALL = (PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_MPI | PARADIGM_OMP | PARADIGM_VT)
     };
 
     const size_t NODE_PARADIGM_COUNT = 4;
@@ -84,7 +85,13 @@ namespace cdm
     {
         OMP_SYNC = (1 << 1),
         OMP_PAR_REGION = (1 << 2),
-        OMP_COMPUTE = (1 << 3)
+        OMP_COMPUTE = (1 << 3),
+        OMP_WAITSTATE = (1 << 4)
+    };
+    
+    enum NodeTypeVT
+    {
+        VT_FLUSH = (1 << 1)
     };
 
     typedef struct
@@ -104,6 +111,12 @@ namespace cdm
         NodeTypeOMP type;
         const char * str;
     } TypeStrEntryOMP;
+    
+    typedef struct
+    {
+        NodeTypeVT type;
+        const char * str;
+    } TypeStrEntryVT;
 
     static const size_t numTypeStrEntriesCUDA = 11;
     static const TypeStrEntryCUDA typeStrTableCUDA[numTypeStrEntriesCUDA] = {
@@ -136,6 +149,11 @@ namespace cdm
         {OMP_SYNC, "omp_sync"},
         {OMP_PAR_REGION, "omp_parallel_region"},
         {OMP_COMPUTE, "omp_compute"}
+    };
+    
+    static const size_t numTypeStrEntriesVT = 1;
+    static const TypeStrEntryVT typeStrTableVT[numTypeStrEntriesVT] = {
+        {VT_FLUSH, "vt_flush"}
     };
 
     static const char NAME_WAITSTATE[] = "WaitState";
@@ -182,6 +200,11 @@ namespace cdm
         {
             return paradigm & PARADIGM_OMP;
         }
+        
+        bool isVT() const
+        {
+            return paradigm & PARADIGM_VT;
+        }
 
         bool isCUDASync() const
         {
@@ -203,8 +226,8 @@ namespace cdm
 
         bool isWaitstate() const
         {
-
-            return (isCUDA() && (nodeType & CUDA_WAITSTATE)) ||
+            return  (isOMP() && (nodeType & OMP_WAITSTATE)) ||
+                    (isCUDA() && (nodeType & CUDA_WAITSTATE)) ||
                     (isMPI() && (nodeType & MPI_WAITSTATE));
         }
 
@@ -356,6 +379,14 @@ namespace cdm
                     }
                     break;
                     
+                case PARADIGM_VT:
+                    for (i = 0; i < numTypeStrEntriesVT; ++i)
+                    {
+                        if (typeStrTableVT[i].type & type)
+                            stream << typeStrTableVT[i].str << ",";
+                    }
+                    break;
+
                 case PARADIGM_CPU:
                     stream << "cpu";
                     break;
@@ -381,13 +412,13 @@ namespace cdm
             {
                 int type1 = n1->getType();
                 int type2 = n2->getType();
-                
+
                 NodeRecordType recordType1 = n1->getRecordType();
                 NodeRecordType recordType2 = n2->getRecordType();
-                
+
                 if (recordType1 == RECORD_ATOMIC && recordType2 != RECORD_ATOMIC)
                     return true;
-                
+
                 if (recordType1 != RECORD_ATOMIC && recordType2 == RECORD_ATOMIC)
                     return false;
 

@@ -10,6 +10,7 @@
 
 #include <mpi.h>
 #include "AbstractRule.hpp"
+#include "MPIRulesCommon.hpp"
 
 namespace cdm
 {
@@ -76,8 +77,7 @@ namespace cdm
 #endif
             } else
             {
-                send.first->incCounter(analysis->getCtrTable().getCtrId(CTR_BLAME),
-                        sendStartTime - recvStartTime);
+                distributeBlame(analysis, send.first, sendStartTime - recvStartTime);
 
                 analysis->getMPIAnalysis().addRemoteMPIEdge(send.first, buffer[4], partnerProcessId);
             }
@@ -85,7 +85,7 @@ namespace cdm
             uint32_t recvLeaveId = buffer[5];
             GraphNode *remoteNode = analysis->addNewRemoteNode(recvEndTime, partnerProcessId,
                     recvLeaveId, PARADIGM_MPI, RECORD_LEAVE, MPI_RECV, partnerMPIRank);
-            analysis->newEdge(remoteNode, send.second, false, NULL);
+            analysis->newEdge(remoteNode, send.second);
 
             return true;
         }

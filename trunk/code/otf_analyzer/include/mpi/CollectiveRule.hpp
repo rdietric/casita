@@ -9,6 +9,7 @@
 #define	COLLECTIVERULE_HPP
 
 #include "AbstractRule.hpp"
+#include "MPIRulesCommon.hpp"
 
 namespace cdm
 {
@@ -110,8 +111,7 @@ namespace cdm
                     }
                 }
 
-                coll.first->incCounter(analysis->getCtrTable().getCtrId(CTR_BLAME),
-                        total_blame);
+                distributeBlame(analysis, coll.first, total_blame);
             }
 
             if (collEndTime < lastLeaveTime)

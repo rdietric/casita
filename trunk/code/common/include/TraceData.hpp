@@ -75,7 +75,8 @@ namespace cdm
                 Process::ProcessType processType, Paradigm paradigm, bool remoteProcess = false);
         Node* newNode(uint64_t time, uint32_t processId, const std::string name,
                 Paradigm paradigm, NodeRecordType recordType, int nodeType);
-        Edge* newEdge(GraphNode* n1, GraphNode *n2, bool isBlocking, Paradigm *edgeType = NULL);
+        Edge* newEdge(GraphNode* n1, GraphNode *n2, int properties = EDGE_NONE,
+                Paradigm *edgeType = NULL);
 
         GraphNode* newGraphNode(uint64_t time, uint32_t processId,
                 const std::string name, Paradigm paradigm, NodeRecordType recordType,

@@ -127,7 +127,7 @@ namespace cdm
         {
             return this->data;
         }
-
+        
     protected:
         GraphNodePair pair;
         GraphNode *linkLeft, *linkRight;
