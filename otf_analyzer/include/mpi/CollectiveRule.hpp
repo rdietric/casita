@@ -60,10 +60,8 @@ namespace cdm
 
                 // get last enter event for collective
                 uint64_t lastEnterTime = 0, lastLeaveTime = 0;
-#ifdef MPI_CP_MERGE
                 uint32_t lastEnterProcessId = 0, lastLeaveProcessId = 0;
                 uint32_t lastEnterRemoteNodeId = 0, lastLeaveRemoteNodeId = 0;
-#endif
 
                 for (size_t i = 0; i < recvBufferSize; i += BUFFER_SIZE)
                 {
@@ -73,10 +71,8 @@ namespace cdm
                     if (enterTime > lastEnterTime)
                     {
                         lastEnterTime = enterTime;
-#ifdef MPI_CP_MERGE
                         lastEnterRemoteNodeId = recvBuffer[i + 4];
                         lastEnterProcessId = recvBuffer[i + 6];
-#endif
                     }
 
                     if (leaveTime > lastLeaveTime)
@@ -89,8 +85,19 @@ namespace cdm
                     }
                 }
 
+                // I'm not latest collective -> blocking + remoteEdge to lastEnter
                 if (collStartTime < lastEnterTime)
                 {
+                    /** These nodes/edges are needed for dependency correctness but are
+                     *  omitted since they are currently not used anywhere.
+                     * analysis->getMPIAnalysis().addRemoteMPIEdge(coll.second, lastEnterRemoteNodeId, lastEnterProcessId);
+                     *
+                     * GraphNode *remoteNode = analysis->addNewRemoteNode(lastEnterTime, lastEnterProcessId,
+                     *         lastEnterRemoteNodeId, PARADIGM_MPI, RECORD_ENTER, MPI_COLL,
+                     *         analysis->getMPIAnalysis().getMPIRank(lastEnterProcessId));
+                     *
+                     * analysis->newEdge(remoteNode, coll.second);
+                     **/
                     Edge *collRecordEdge = analysis->getEdge(coll.first, coll.second);
                     collRecordEdge->makeBlocking();
                     coll.first->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 1);
@@ -98,7 +105,7 @@ namespace cdm
                     analysis->getMPIAnalysis().addMPIEdge(coll.first,
                             lastEnterRemoteNodeId, lastEnterProcessId);
 #endif
-                } else
+                } else // I'm latest collective
                 {
                     // aggregate blame from all other processes
                     uint64_t total_blame = 0;
@@ -111,6 +118,19 @@ namespace cdm
                         {
                             analysis->getMPIAnalysis().addRemoteMPIEdge(coll.first,
                                     recvBuffer[i + 4], recvBuffer[i + 6]);
+
+                            /** These nodes/edges are needed for dependency correctness but are
+                             *  omitted since they are currently not used anywhere.
+                             * uint64_t leaveTime = ((uint64_t) recvBuffer[i + 3] << 32) + recvBuffer[i + 2];
+                             * uint32_t remoteLeaveNodeId = recvBuffer[i + 5];
+                             * uint32_t remoteProcessId = recvBuffer[i + 6];
+                             * 
+                             * GraphNode *remoteNode = analysis->addNewRemoteNode(leaveTime, remoteProcessId,
+                                    remoteLeaveNodeId, PARADIGM_MPI, RECORD_LEAVE, MPI_COLL,
+                                    analysis->getMPIAnalysis().getMPIRank(remoteProcessId));
+
+                             * analysis->newEdge(coll.first, remoteNode);*/
+
                         }
                     }
 
