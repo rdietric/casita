@@ -16,53 +16,59 @@
 #include "graph/GraphNode.hpp"
 
 
-namespace cdm{
-    
-    class OMPComputeRule : public AbstractRule 
-    {
-    public:
-        OMPComputeRule(int priority) : 
-        AbstractRule("OMPComputeRule", priority)
-        {
-            
-        }
-        
-        bool apply(AnalysisEngine *analysis, Node *node){
-        
-            if(!node->isOMPCompute())
-                return false;
-            
-            // if no kernel buffered -> save this one
-            if(analysis->getOmpCompute(node->getProcessId()) == NULL)
-            {
-                GraphNode * ppr = analysis->getPendingParallelRegion();
-                
-                // if pending parallel region -> connect kernel to it
-                if((ppr != NULL)&& (ppr->getProcessId() != node->getProcessId()))
-                {
-                    // get the complete execution
-                    GraphNode::GraphNodePair& kernelPair = ((GraphNode*) node)->getGraphPair();
-                                               
-                    Process* p = analysis->getProcess(node->getProcessId());
-                    // create Edges
-                    analysis->newEdge(ppr, kernelPair.first);
-                                        
-                    ErrorUtils::getInstance().outputMessage("[OMPCR] add Edge %s to %s (%s)\n",
-                            ppr->getUniqueName().c_str(),kernelPair.first->getUniqueName().c_str(),p->getName());
-                }
-                analysis->setOmpCompute((GraphNode *) node, node->getProcessId());
-            } 
-            else //if already kernels buffered -> overwrite
-            {
-                analysis->setOmpCompute((GraphNode *) node, node->getProcessId());
-            }
-          
-            return true;
-                       
-        }
-    
-    };
+namespace cdm
+{
 
+    namespace omp
+    {
+
+        class OMPComputeRule : public AbstractRule
+        {
+        public:
+
+            OMPComputeRule(int priority) :
+            AbstractRule("OMPComputeRule", priority)
+            {
+
+            }
+
+            bool apply(AnalysisEngine *analysis, Node *node)
+            {
+
+                if (!node->isOMPCompute())
+                    return false;
+
+                // if no kernel buffered -> save this one
+                if (analysis->getOmpCompute(node->getProcessId()) == NULL)
+                {
+                    GraphNode * ppr = analysis->getPendingParallelRegion();
+
+                    // if pending parallel region -> connect kernel to it
+                    if ((ppr != NULL)&& (ppr->getProcessId() != node->getProcessId()))
+                    {
+                        // get the complete execution
+                        GraphNode::GraphNodePair& kernelPair = ((GraphNode*) node)->getGraphPair();
+
+                        Process* p = analysis->getProcess(node->getProcessId());
+                        // create Edges
+                        analysis->newEdge(ppr, kernelPair.first);
+
+                        ErrorUtils::getInstance().outputMessage("[OMPCR] add Edge %s to %s (%s)\n",
+                                ppr->getUniqueName().c_str(), kernelPair.first->getUniqueName().c_str(), p->getName());
+                    }
+                    analysis->setOmpCompute((GraphNode *) node, node->getProcessId());
+                }
+                else //if already kernels buffered -> overwrite
+                {
+                    analysis->setOmpCompute((GraphNode *) node, node->getProcessId());
+                }
+
+                return true;
+
+            }
+
+        };
+    }
 
 }
 

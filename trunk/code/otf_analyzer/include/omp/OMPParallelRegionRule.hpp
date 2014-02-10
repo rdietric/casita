@@ -18,81 +18,83 @@
 
 namespace cdm
 {
-
-    class OMPParallelRegionRule : public AbstractRule
+    namespace omp
     {
-    public:
 
-        OMPParallelRegionRule(int priority) :
-        AbstractRule("OMPParallelRegionRule", priority)
+        class OMPParallelRegionRule : public AbstractRule
         {
+        public:
 
-        }
-
-        bool apply(AnalysisEngine *analysis, Node *node)
-        {
-
-            if (!node->isOMPParellelRegion())
-                return false;
-
-            GraphNode* ppr = analysis->getPendingParallelRegion();
-
-            if (ppr == NULL)
+            OMPParallelRegionRule(int priority) :
+            AbstractRule("OMPParallelRegionRule", priority)
             {
-                // open parallel region and add as pending for connecting next upcoming kernel
-                analysis->setPendingParallelRegion((GraphNode*) node);
-                return true;
+
             }
 
-            // check if closing parallel region matches the pending one
-            if (ppr->getFunctionId() != node->getFunctionId())
+            bool apply(AnalysisEngine *analysis, Node *node)
             {
-                ErrorUtils::getInstance().outputMessage("[OMPParallelRegionRule] ERROR: "
-                        "parallel region %s doesn't match open parallel region %s \n",
-                        node->getUniqueName().c_str(), ppr->getUniqueName().c_str());
-                ErrorUtils::getInstance().outputMessage("[OMPParallelRegionRule] close "
-                        "ParallelRegion %s and reset to %s \nCorrectness not guaranteed",
-                        ppr->getUniqueName().c_str(), node->getUniqueName().c_str());
 
-                // close parallel region and reset
-                analysis->setPendingParallelRegion((GraphNode*) node);
-            }
+                if (!node->isOMPParellelRegion())
+                    return false;
 
-            // handle collected omp kernels to add dependency to previous parallel region
-            // 1) get all OMP-processes
-            const Allocation::ProcessList &procs = analysis->getHostProcesses();
+                GraphNode* ppr = analysis->getPendingParallelRegion();
 
-            // 2) iterate over all omp processes and add dependency edge to parallel region leave
-            GraphNode* parallelRegionSecond = ((GraphNode*) node)->getGraphPair().second;
-
-            for (Allocation::ProcessList::const_iterator pIter = procs.begin();
-                    pIter != procs.end(); ++pIter)
-            {
-                Process *p = *pIter;
-                GraphNode* kernel = analysis->getOmpCompute(p->getId());
-                if ((kernel != NULL))
+                if (ppr == NULL)
                 {
-                    analysis->newEdge(kernel, parallelRegionSecond);
-
-                    ErrorUtils::getInstance().outputMessage("[OMPPRR] add Edge %s to %s (%s)\n",
-                            kernel->getUniqueName().c_str(),
-                            parallelRegionSecond->getUniqueName().c_str(), p->getName());
+                    // open parallel region and add as pending for connecting next upcoming kernel
+                    analysis->setPendingParallelRegion((GraphNode*) node);
+                    return true;
                 }
-                analysis->setOmpCompute(NULL, p->getId());
+
+                // check if closing parallel region matches the pending one
+                if (ppr->getFunctionId() != node->getFunctionId())
+                {
+                    ErrorUtils::getInstance().outputMessage("[OMPParallelRegionRule] ERROR: "
+                            "parallel region %s doesn't match open parallel region %s \n",
+                            node->getUniqueName().c_str(), ppr->getUniqueName().c_str());
+                    ErrorUtils::getInstance().outputMessage("[OMPParallelRegionRule] close "
+                            "ParallelRegion %s and reset to %s \nCorrectness not guaranteed",
+                            ppr->getUniqueName().c_str(), node->getUniqueName().c_str());
+
+                    // close parallel region and reset
+                    analysis->setPendingParallelRegion((GraphNode*) node);
+                }
+
+                // handle collected omp kernels to add dependency to previous parallel region
+                // 1) get all OMP-processes
+                const Allocation::ProcessList &procs = analysis->getHostProcesses();
+
+                // 2) iterate over all omp processes and add dependency edge to parallel region leave
+                GraphNode* parallelRegionSecond = ((GraphNode*) node)->getGraphPair().second;
+
+                for (Allocation::ProcessList::const_iterator pIter = procs.begin();
+                        pIter != procs.end(); ++pIter)
+                {
+                    Process *p = *pIter;
+                    GraphNode* kernel = analysis->getOmpCompute(p->getId());
+                    if ((kernel != NULL))
+                    {
+                        analysis->newEdge(kernel, parallelRegionSecond);
+
+                        ErrorUtils::getInstance().outputMessage("[OMPPRR] add Edge %s to %s (%s)\n",
+                                kernel->getUniqueName().c_str(),
+                                parallelRegionSecond->getUniqueName().c_str(), p->getName());
+                    }
+                    analysis->setOmpCompute(NULL, p->getId());
+                }
+
+                // close parallel region and set as null
+                ErrorUtils::getInstance().outputMessage("[OMPPRR] close ParallelRegion %s \n",
+                        ppr->getUniqueName().c_str());
+                analysis->setPendingParallelRegion(NULL);
+
+                return true;
+
             }
 
-            // close parallel region and set as null
-            ErrorUtils::getInstance().outputMessage("[OMPPRR] close ParallelRegion %s \n",
-                    ppr->getUniqueName().c_str());
-            analysis->setPendingParallelRegion(NULL);
+        };
 
-            return true;
-
-        }
-
-    };
-
-
+    }
 }
 
 #endif	/* OMPPARALLELREGIONRULE_HPP */

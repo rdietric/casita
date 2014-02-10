@@ -32,6 +32,8 @@
 
 using namespace cdm;
 using namespace cdm::io;
+using namespace cdm::mpi;
+using namespace cdm::omp;
 
 /**
  * http://stackoverflow.com/questions/63166/how-to-determine-cpu-and-memory-consumption-from-inside-a-process
