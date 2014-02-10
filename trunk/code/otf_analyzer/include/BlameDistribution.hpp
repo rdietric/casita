@@ -15,6 +15,9 @@ namespace cdm
     static void distributeBlame(AnalysisEngine *analysis, GraphNode* node, uint64_t totalBlame,
             Process::ProcessWalkCallback callback)
     {
+        if (totalBlame == 0)
+            return;
+        
         GraphNode::GraphNodeList walkList;
         analysis->getProcess(node->getProcessId())->walkBack(
                 node, callback, &walkList);
@@ -49,7 +52,9 @@ namespace cdm
             }
 
             if (!activityIsWaitstate)
+            {
                 currentWalkNode->incCounter(blameCtrId, ratioBlame);
+            }
             else
             {
                 if (currentWalkNode->isEnter() &&
@@ -65,14 +70,36 @@ namespace cdm
                         Edge *e = *eIter;
                         if (e->causesWaitState())
                         {
-                            GraphNode *rootCauseNode = e->getStartNode();
-                            if (rootCauseNode->isEnter())
-                                rootCauseNode = rootCauseNode->getPartner();
+                            GraphNode *rootEnter = NULL, *rootLeave = NULL;
+                            uint64_t myBlameRatio = 0;
+
+                            if (e->getStartNode()->isEnter())
+                            {
+                                rootEnter = e->getStartNode();
+                                rootLeave = rootEnter->getPartner();
+                            } else
+                            {
+                                rootLeave = e->getStartNode();
+                                rootEnter = rootLeave->getPartner();
+                            }
                             
-                            uint64_t myBlameRatio = 
+                            // get non-overlap part after my leave
+                            if (rootLeave->getTime() > lastWalkNode->getTime())
+                            {
+                                myBlameRatio +=
                                     (double)ratioBlame *
-                                    (double)(lastWalkNode->getTime() - rootCauseNode->getTime()) /
+                                    (double)(rootLeave->getTime()-lastWalkNode->getTime()) /
                                     (double)(lastWalkNode->getTime() - currentWalkNode->getTime());
+                            }
+                            
+                            // get non-overlap part before my enter
+                            if (rootEnter->getTime() > currentWalkNode->getTime())
+                            {
+                                myBlameRatio +=
+                                    (double)ratioBlame *
+                                    (double)(rootEnter->getTime() - currentWalkNode->getTime()) /
+                                    (double)(lastWalkNode->getTime() - currentWalkNode->getTime());
+                            }      
                             
                             currentWalkNode->incCounter(blameCtrId, myBlameRatio);
                             break;

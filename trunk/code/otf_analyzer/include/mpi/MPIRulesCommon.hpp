@@ -19,7 +19,7 @@ namespace cdm
         {
             GraphNode::GraphNodeList *list = (GraphNode::GraphNodeList *)userData;
             list->push_back(node);
-
+            
             if (node->isProcess() || (node->isMPI() && node->isLeave()))
                 return false;
 
