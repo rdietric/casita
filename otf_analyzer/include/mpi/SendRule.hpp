@@ -73,7 +73,7 @@ namespace cdm
                     {
                         Edge *sendRecordEdge = analysis->getEdge(send.first, send.second);
                         sendRecordEdge->makeBlocking();
-                        send.first->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 1);
+                        send.first->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), recvStartTime-sendStartTime);
                     }
 #ifdef MPI_CP_MERGE
                     analysis->getMPIAnalysis().addMPIEdge(send.first, buffer[4], partnerProcessId);
@@ -84,7 +84,7 @@ namespace cdm
 
                     analysis->getMPIAnalysis().addRemoteMPIEdge(send.first, buffer[4], partnerProcessId);
                 }
-
+                
                 uint32_t recvLeaveId = buffer[5];
                 GraphNode *remoteNode = analysis->addNewRemoteNode(recvEndTime, partnerProcessId,
                         recvLeaveId, PARADIGM_MPI, RECORD_LEAVE, MPI_RECV, partnerMPIRank);

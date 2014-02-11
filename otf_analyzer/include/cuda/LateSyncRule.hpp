@@ -98,7 +98,8 @@ namespace cdm
                     // set counters
                     sync.first->incCounter(analysis->getCtrTable().getCtrId(CTR_BLAME),
                             sync.second->getTime() - sync.first->getTime());
-                    waitEnter->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 1);
+                    waitEnter->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 
+                            sync.second->getTime() - sync.first->getTime());
 
                     deviceProcess->clearPendingKernels();
                     ruleResult = true;

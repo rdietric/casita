@@ -25,6 +25,7 @@ ticksPerSecond(1000)
     ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_BLAME);
     ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_BLAME_STATISTICS);
     ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_WAITSTATE);
+    ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_WAITSTATE_LOG10);
     ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_CRITICALPATH);
 }
 

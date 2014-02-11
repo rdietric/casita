@@ -12,15 +12,26 @@
 
 namespace cdm
 {
+
+    typedef struct
+    {
+        GraphNode::GraphNodeList list;
+        uint64_t waitStateTime;
+    } ProcessWalkInfo;
+
     static void distributeBlame(AnalysisEngine *analysis, GraphNode* node, uint64_t totalBlame,
             Process::ProcessWalkCallback callback)
     {
         if (totalBlame == 0)
             return;
-        
-        GraphNode::GraphNodeList walkList;
+
+        ProcessWalkInfo walkListAndWaitTime;
+        walkListAndWaitTime.waitStateTime = 0;
         analysis->getProcess(node->getProcessId())->walkBack(
-                node, callback, &walkList);
+                node, callback, &walkListAndWaitTime);
+
+        GraphNode::GraphNodeList walkList = walkListAndWaitTime.list;
+        uint32_t waitTime = walkListAndWaitTime.waitStateTime;
 
         if (walkList.size() < 2)
         {
@@ -54,8 +65,7 @@ namespace cdm
             if (!activityIsWaitstate)
             {
                 currentWalkNode->incCounter(blameCtrId, ratioBlame);
-            }
-            else
+            } else
             {
                 if (currentWalkNode->isEnter() &&
                         (lastWalkNode == currentWalkNode->getPartner()))
@@ -82,25 +92,27 @@ namespace cdm
                                 rootLeave = e->getStartNode();
                                 rootEnter = rootLeave->getPartner();
                             }
-                            
+
                             // get non-overlap part after my leave
                             if (rootLeave->getTime() > lastWalkNode->getTime())
                             {
                                 myBlameRatio +=
-                                    (double)ratioBlame *
-                                    (double)(rootLeave->getTime()-lastWalkNode->getTime()) /
-                                    (double)(lastWalkNode->getTime() - currentWalkNode->getTime());
+                                        (double) ratioBlame *
+                                        (double) (rootLeave->getTime() - lastWalkNode->getTime()) /
+                                        (double) (lastWalkNode->getTime() - currentWalkNode->getTime()
+                                        - waitTime);
                             }
-                            
+
                             // get non-overlap part before my enter
                             if (rootEnter->getTime() > currentWalkNode->getTime())
                             {
                                 myBlameRatio +=
-                                    (double)ratioBlame *
-                                    (double)(rootEnter->getTime() - currentWalkNode->getTime()) /
-                                    (double)(lastWalkNode->getTime() - currentWalkNode->getTime());
-                            }      
-                            
+                                        (double) ratioBlame *
+                                        (double) (rootEnter->getTime() - currentWalkNode->getTime()) /
+                                        (double) (lastWalkNode->getTime() - currentWalkNode->getTime()
+                                        - waitTime);
+                            }
+
                             currentWalkNode->incCounter(blameCtrId, myBlameRatio);
                             break;
                         }

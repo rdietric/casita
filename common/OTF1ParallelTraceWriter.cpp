@@ -6,6 +6,7 @@
  */
 
 #include <mpi.h>
+#include <cmath>
 
 #include "otf/OTF1ParallelTraceWriter.hpp"
 #include "cuda.h"
@@ -310,13 +311,26 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
             continue;
 
         CounterType ctrType = counter->type;
+        if (ctrType == CTR_WAITSTATE_LOG10)
+            continue;
+        
         uint64_t ctrVal = node->getCounter(ctrId, &valid);
 
         if (valid || counter->hasDefault)
         {
             if (!valid)
                 ctrVal = counter->defaultValue;
-                        
+                   
+            if (ctrType == CTR_WAITSTATE)
+            {
+                uint64_t ctrValLog10 = 0;
+                if (ctrVal > 0)
+                    ctrValLog10 = std::log10((double) ctrVal);
+                
+                OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
+                    processId, ctrTable.getCtrId(CTR_WAITSTATE_LOG10), ctrValLog10));
+            }
+            
             OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
                     processId, ctrId, ctrVal));
 

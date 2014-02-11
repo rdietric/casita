@@ -100,7 +100,8 @@ namespace cdm
                      **/
                     Edge *collRecordEdge = analysis->getEdge(coll.first, coll.second);
                     collRecordEdge->makeBlocking();
-                    coll.first->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 1);
+                    coll.first->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 
+                            lastEnterTime-collStartTime + lastLeaveTime-collEndTime);
 #ifdef MPI_CP_MERGE
                     analysis->getMPIAnalysis().addMPIEdge(coll.first,
                             lastEnterRemoteNodeId, lastEnterProcessId);

@@ -105,8 +105,9 @@ namespace cdm
                                 prevQuery.first, prevQuery.second)->makeBlocking();
 
                         // set counters
-                        prevQuery.first->setCounter(
-                                analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 1);
+                        prevQuery.first->incCounter(
+                                analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 
+                                prevQuery.second->getTime() - prevQuery.first->getTime());
                         kernel.first->incCounter(
                                 analysis->getCtrTable().getCtrId(CTR_BLAME),
                                 prevQuery.second->getTime() - prevQuery.first->getTime());

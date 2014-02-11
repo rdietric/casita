@@ -96,7 +96,9 @@ namespace cdm
                     analysis->getEdge(sync.first, sync.second)->makeBlocking();
 
                     // set counters
-                    sync.first->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 1);
+                    sync.first->incCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 
+                            sync.second->getTime() -
+                            std::max(sync.first->getTime(), kernelEnter->getTime()));
                     kernelEnter->incCounter(analysis->getCtrTable().getCtrId(CTR_BLAME),
                             sync.second->getTime() -
                             std::max(sync.first->getTime(), kernelEnter->getTime()));
