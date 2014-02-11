@@ -21,6 +21,7 @@ namespace cdm
         CTR_BLAME,               /* local blame for visualization */
         CTR_BLAME_STATISTICS,    /* accumulated blame for statistics */
         CTR_WAITSTATE,
+        CTR_WAITSTATE_LOG10,
         CTR_CRITICALPATH,
     };
 
@@ -41,7 +42,9 @@ namespace cdm
                 OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS},
         {CTR_BLAME_STATISTICS, "Blame Statistics", true, true, 0,
                 OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS},
-        {CTR_WAITSTATE, "isWaitstate", true, false, 0,
+        {CTR_WAITSTATE, "Waiting Time", true, false, 0,
+                OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS},
+        {CTR_WAITSTATE, "Waiting Time (log10)", true, false, 0,
                 OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS},
         {CTR_CRITICALPATH, "onCriticalPath", true, false, 0,
                 OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS}

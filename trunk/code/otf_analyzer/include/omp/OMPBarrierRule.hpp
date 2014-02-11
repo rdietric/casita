@@ -64,7 +64,8 @@ namespace cdm
                         {
                             // make this barrier a blocking waitstate 
                             analysis->getEdge(barrier.first, barrier.second)->makeBlocking();
-                            barrier.first->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 1);
+                            barrier.first->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 
+                                    maxEnterTimeNode->getTime()-barrier.first->getTime());
 
                             // create edge from latest enter to other leaves
                             analysis->newEdge(maxEnterTimeNode, barrier.second, EDGE_CAUSES_WAITSTATE);

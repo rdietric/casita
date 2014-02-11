@@ -9,6 +9,7 @@
 #define	OMPRULESCOMMON_HPP
 
 #include "graph/GraphNode.hpp"
+#include "BlameDistribution.hpp"
 
 namespace cdm
 {
@@ -17,9 +18,10 @@ namespace cdm
 
         static bool processWalkCallback(void *userData, GraphNode* node)
         {
-            GraphNode::GraphNodeList *list = (GraphNode::GraphNodeList *)userData;
-            list->push_back(node);
-
+            ProcessWalkInfo *listAndWaitTime = (ProcessWalkInfo*) userData;
+            listAndWaitTime->list.push_back(node);
+            listAndWaitTime->waitStateTime += node->getCounter(CTR_WAITSTATE, NULL);
+            
             if (node->isProcess() || (node->isOMP() && node->isOMPSync() && node->isLeave()))
                 return false;
 

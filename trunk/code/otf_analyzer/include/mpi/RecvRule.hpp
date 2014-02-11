@@ -58,7 +58,7 @@ namespace cdm
                 {
                     Edge *recvRecordEdge = analysis->getEdge(recv.first, recv.second);
                     recvRecordEdge->makeBlocking();
-                    recv.first->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 1);
+                    recv.first->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), sendStartTime-recvStartTime);
 
 #ifdef MPI_CP_MERGE
                     analysis->getMPIAnalysis().addMPIEdge(recv.first, buffer[4], partnerProcessId);

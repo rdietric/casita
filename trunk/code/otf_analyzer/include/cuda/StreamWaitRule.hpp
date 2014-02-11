@@ -230,7 +230,8 @@ namespace cdm
                         analysis->newEdge(waitLeave, waitingKernel.first);
 
                         // set counters
-                        waitEnter->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 1);
+                        waitEnter->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 
+                                1);
 
                         // add dependency to all sync kernel leave nodes
                         // (some dependencies can become reverse edges during optimization)
