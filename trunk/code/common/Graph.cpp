@@ -236,7 +236,7 @@ Graph *Graph::getSubGraph(Paradigm paradigm)
 static bool compareDistancesLess(GraphNode *n1, GraphNode *n2)
 {
     VT_TRACER("compareDistancesLess");
-
+    
     if (!n1 || !n2)
         do
         {
