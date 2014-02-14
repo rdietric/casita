@@ -311,7 +311,7 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
             continue;
 
         CounterType ctrType = counter->type;
-        if (ctrType == CTR_WAITSTATE_LOG10)
+        if (ctrType == CTR_WAITSTATE_LOG10 || ctrType == CTR_BLAME_LOG10)
             continue;
         
         uint64_t ctrVal = node->getCounter(ctrId, &valid);
@@ -329,6 +329,16 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
                 
                 OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
                     processId, ctrTable.getCtrId(CTR_WAITSTATE_LOG10), ctrValLog10));
+            }
+            
+            if (ctrType == CTR_BLAME)
+            {
+                uint64_t ctrValLog10 = 0;
+                if (ctrVal > 0)
+                    ctrValLog10 = std::log10((double) ctrVal);
+                
+                OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
+                    processId, ctrTable.getCtrId(CTR_BLAME_LOG10), ctrValLog10));
             }
             
             OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
