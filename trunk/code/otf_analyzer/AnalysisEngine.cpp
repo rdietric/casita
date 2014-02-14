@@ -875,6 +875,7 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
     writer->open(filename, 100, allProcs.size(), this->ticksPerSecond);
 
     CounterTable::CtrIdSet ctrIdSet = this->ctrTable.getAllCounterIDs();
+    uint32_t cpCtrId = this->ctrTable.getCtrId(CTR_CRITICALPATH);
     for (CounterTable::CtrIdSet::const_iterator ctrIter = ctrIdSet.begin();
             ctrIter != ctrIdSet.end(); ++ctrIter)
     {
@@ -904,6 +905,7 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
                 this->processTypeToGroup(p->getProcessType()));
 
         Process::SortedNodeList &nodes = p->getNodes();
+        GraphNode *pLastGraphNode = p->getLastGraphNode();
 
         for (Process::SortedNodeList::const_iterator iter = nodes.begin();
                 iter != nodes.end(); ++iter)
@@ -916,10 +918,14 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
             Graph::EdgeList::const_iterator edgeIter = outEdges.begin();
             uint64_t timeNextCPNode = 0;
 
-            while(edgeIter != outEdges.end()){
-                if(((*edgeIter)->getEndNode()->getCounter(CTR_CRITICALPATH,NULL) == 1) && 
-                        ((timeNextCPNode > (*edgeIter)->getEndNode()->getTime()) || timeNextCPNode == 0)){
-                    futureCPNode = (*edgeIter)->getEndNode();
+            while(edgeIter != outEdges.end())
+            {
+                GraphNode *edgeEndNode = (*edgeIter)->getEndNode();
+                
+                if((edgeEndNode->getCounter(cpCtrId, NULL) == 1) && 
+                        ((timeNextCPNode > edgeEndNode->getTime()) || timeNextCPNode == 0))
+                {
+                    futureCPNode = edgeEndNode;
                     timeNextCPNode = futureCPNode->getTime();
                 }
                 ++edgeIter;
@@ -940,7 +946,8 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
                                 node->getFunctionId());
                     }
 
-                    writer->writeNode(node, this->ctrTable, node == p->getLastGraphNode(),futureCPNode);
+                    writer->writeNode(node, this->ctrTable,
+                            node == pLastGraphNode, futureCPNode);
                 }
             }
 

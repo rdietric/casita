@@ -24,6 +24,7 @@ namespace cdm
         CTR_WAITSTATE,           /* local waiting time */
         CTR_WAITSTATE_LOG10,     /* local waiting time (log10) */
         CTR_CRITICALPATH,
+        CTR_CRITICALPATH_TIME
     };
 
     typedef struct
@@ -49,7 +50,9 @@ namespace cdm
                 OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS},
         {CTR_WAITSTATE, "Waiting Time (log10)", true, false, 0,
                 OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS},
-        {CTR_CRITICALPATH, "onCriticalPath", true, false, 0,
+        {CTR_CRITICALPATH, "Critical Path", true, false, 0,
+                OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS},
+        {CTR_CRITICALPATH_TIME, "Time on Critical Path", true, true, 0,
                 OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS}
     };
 
