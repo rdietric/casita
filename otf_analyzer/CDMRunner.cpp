@@ -519,13 +519,15 @@ uint64_t CDMRunner::runOptimization(char *optKernels)
     return analysis.getLastGraphNode()->getTime();
 }
 
-void CDMRunner::mergeActivityGroups(const Process::SortedGraphNodeList& cpActivities,
-        std::map<uint32_t, ActivityGroup> &activityGroupMap, bool cpKernelsOnly)
+void CDMRunner::mergeActivityGroups(std::map<uint32_t, ActivityGroup> &activityGroupMap,
+        bool cpKernelsOnly)
 {
     /* phase 1: each MPI process*/
 
     uint32_t blameStatCtrId = analysis.getCtrTable().getCtrId(CTR_BLAME_STATISTICS);
     uint32_t blameLocalCtrId = analysis.getCtrTable().getCtrId(CTR_BLAME);
+    uint32_t cpCtrId = analysis.getCtrTable().getCtrId(CTR_CRITICALPATH);
+    uint32_t cpTimeCtrId = analysis.getCtrTable().getCtrId(CTR_CRITICALPATH_TIME);
     uint64_t lengthCritPath = analysis.getLastGraphNode(PARADIGM_COMPUTE_LOCAL)->getTime() -
             analysis.getSourceNode()->getTime();
 
@@ -537,17 +539,7 @@ void CDMRunner::mergeActivityGroups(const Process::SortedGraphNodeList& cpActivi
             iter != activities.end(); ++iter)
     {
         Activity *activity = *iter;
-        bool onCriticalPath = false;
-
-        for (Process::SortedGraphNodeList::const_iterator actIter = cpActivities.begin();
-                actIter != cpActivities.end(); ++actIter)
-        {
-            if (*actIter == activity->getEnd())
-            {
-                onCriticalPath = true;
-                break;
-            };
-        }
+        bool onCriticalPath = activity->getStart()->getCounter(cpCtrId, NULL);
 
         if (cpKernelsOnly && (!onCriticalPath || !activity->getStart()->isCUDAKernel()))
             continue;
@@ -555,6 +547,7 @@ void CDMRunner::mergeActivityGroups(const Process::SortedGraphNodeList& cpActivi
         bool valid = false;
         uint64_t blameStatCtr = activity->getStart()->getCounter(blameStatCtrId, &valid);
         uint64_t blameLocalCtr = activity->getStart()->getCounter(blameLocalCtrId, &valid);
+        uint64_t cpTimeCtr = activity->getStart()->getCounter(cpTimeCtrId, &valid);
 
         uint32_t fId = activity->getFunctionId();
         std::map<uint32_t, ActivityGroup>::iterator groupIter = activityGroupMap.find(fId);
@@ -564,8 +557,7 @@ void CDMRunner::mergeActivityGroups(const Process::SortedGraphNodeList& cpActivi
             groupIter->second.numInstances++;
             groupIter->second.totalBlame += blameStatCtr + blameLocalCtr;
             groupIter->second.totalDuration += activity->getDuration();
-            if (onCriticalPath)
-                groupIter->second.totalDurationOnCP += activity->getDuration();
+            groupIter->second.totalDurationOnCP += cpTimeCtr;
         } else
         {
             activityGroupMap[fId].functionId = fId;
@@ -573,10 +565,7 @@ void CDMRunner::mergeActivityGroups(const Process::SortedGraphNodeList& cpActivi
             activityGroupMap[fId].numUnifyProcesses = 1;
             activityGroupMap[fId].totalBlame = blameStatCtr + blameLocalCtr;
             activityGroupMap[fId].totalDuration = activity->getDuration();
-            if (onCriticalPath)
-                activityGroupMap[fId].totalDurationOnCP = activity->getDuration();
-            else
-                activityGroupMap[fId].totalDurationOnCP = 0;
+            activityGroupMap[fId].totalDurationOnCP = cpTimeCtr;
         }
     }
 
@@ -737,6 +726,52 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
                 PARADIGM_COMPUTE_LOCAL, localNodes);
     }
 
+    /* compute the time-on-critical-path counter */
+    Allocation::ProcessList processes;
+    analysis.getProcesses(processes);
+    uint32_t cpCtrId = analysis.getCtrTable().getCtrId(CTR_CRITICALPATH);
+    uint32_t cpTimeCtrId = analysis.getCtrTable().getCtrId(CTR_CRITICALPATH_TIME);
+    for (Allocation::ProcessList::const_iterator pIter = processes.begin();
+            pIter != processes.end(); ++pIter)
+    {
+        Process *p = *pIter;
+        if (p->isRemoteProcess())
+            continue;
+        
+        Process::SortedNodeList &nodes = p->getNodes();
+        
+        GraphNode *lastNode = NULL;
+        std::stack<uint64_t> cpTime;
+        
+        for (Process::SortedNodeList::const_iterator nIter = nodes.begin();
+                nIter != nodes.end(); ++nIter)
+        {
+            if (!(*nIter)->isGraphNode() || (*nIter)->isAtomic())
+                continue;
+
+            GraphNode *node = (GraphNode*)(*nIter);
+            if (!lastNode)
+                lastNode = node;
+            
+            bool lastNodeOnCP = lastNode->getCounter(cpCtrId, NULL);
+            if (node->isEnter())
+            {
+                if (lastNodeOnCP && !cpTime.empty())
+                    cpTime.top() += node->getTime() - lastNode->getTime();
+
+                cpTime.push(0);
+            }
+            else
+            {
+                uint64_t myCPTime = cpTime.top();
+                cpTime.pop();
+                node->getPartner()->setCounter(cpTimeCtrId, myCPTime);
+            }
+                
+            lastNode = node;
+        }
+    }
+    
     if (options.mergeActivities)
     {
         Process::SortedGraphNodeList allCriticalEvents;
@@ -754,12 +789,12 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
             lastTimestamp = allCriticalEvents[allCriticalEvents.size() - 1]->getTime();
         }
 
-        MPI_Allreduce(&firstTimestamp, &firstTimestamp, 1, MPI_INTEGER8, MPI_MIN, MPI_COMM_WORLD);
-        MPI_Allreduce(&lastTimestamp, &lastTimestamp, 1, MPI_INTEGER8, MPI_MAX, MPI_COMM_WORLD);
+        MPI_Allreduce(&firstTimestamp, &firstTimestamp, 1, MPI_UNSIGNED_LONG_LONG, MPI_MIN, MPI_COMM_WORLD);
+        MPI_Allreduce(&lastTimestamp, &lastTimestamp, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
 
         uint64_t globalCPLength = lastTimestamp - firstTimestamp;
 
-        printAllActivities(allCriticalEvents, globalCPLength);
+        printAllActivities(globalCPLength);
         MPI_Barrier(MPI_COMM_WORLD);
     }
 }
@@ -1482,11 +1517,10 @@ void CDMRunner::runAnalysis(Paradigm paradigm)
 #endif
 }
 
-void CDMRunner::printAllActivities(const Process::SortedGraphNodeList & criticalEvents,
-        uint64_t globalCPLength)
+void CDMRunner::printAllActivities(uint64_t globalCPLength)
 {
     std::map<uint32_t, ActivityGroup> activityGroupMap;
-    mergeActivityGroups(criticalEvents, activityGroupMap, false);
+    mergeActivityGroups(activityGroupMap, false);
 
     if (analysis.getMPIRank() == 0)
     {

@@ -113,10 +113,9 @@ namespace cdm
         ProgramOptions options;
 
         void printNode(GraphNode *node, Process *process);
-        void printAllActivities(const Process::SortedGraphNodeList& cpKernels,
-            uint64_t globalCPLength);
-        void mergeActivityGroups(const Process::SortedGraphNodeList& cpKernels,
-                std::map<uint32_t, ActivityGroup> &kernelGroupMap, bool cpKernelsOnly);
+        void printAllActivities(uint64_t globalCPLength);
+        void mergeActivityGroups(std::map<uint32_t, ActivityGroup> &activityGroupMap,
+            bool cpKernelsOnly);
 
         // optimization
         void getOptFactors(char *optKernels, std::map<uint32_t, double>& optFactors);

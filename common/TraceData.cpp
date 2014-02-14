@@ -28,6 +28,7 @@ ticksPerSecond(1000)
     ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_WAITSTATE);
     ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_WAITSTATE_LOG10);
     ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_CRITICALPATH);
+    ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_CRITICALPATH_TIME);
 }
 
 TraceData::~TraceData()

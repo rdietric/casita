@@ -340,7 +340,7 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
                 OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
                     processId, ctrTable.getCtrId(CTR_BLAME_LOG10), ctrValLog10));
             }
-            
+                
             OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
                     processId, ctrId, ctrVal));
 
