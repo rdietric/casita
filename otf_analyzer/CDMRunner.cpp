@@ -950,7 +950,7 @@ void CDMRunner::getCriticalLocalSections(MPIAnalysis::CriticalPathSection *secti
 
         Process::SortedGraphNodeList sectionLocalNodes;
         getCriticalPathIntern(startLocalNode, endLocalNode, PARADIGM_COMPUTE_LOCAL, sectionLocalNodes);
-
+        
         localNodes.insert(localNodes.end(), sectionLocalNodes.begin(), sectionLocalNodes.end());
     }
 }
@@ -1040,15 +1040,10 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
             if (currentNode->isLeave())
             {
                 /* isLeave */
-                Edge *activityEdge = analysis.getEdge(currentNode->getGraphPair().first,
-                        currentNode->getGraphPair().second);
-
-                /* change process for blocking edges */
-                if (activityEdge->isBlocking())
+                Edge *activityEdge = analysis.getEdge(currentNode->getPartner(), currentNode);
+                
+                if (activityEdge->isBlocking() || currentNode->isMPIInit())
                 {
-                    /* make myself a new slave */
-                    isMaster = false;
-
                     /* create section */
                     if (currentNode != sectionEndNode)
                     {
@@ -1059,6 +1054,13 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
                         sectionsList.push_back(section);
                     }
                     sectionEndNode = NULL;
+                }
+
+                /* change process for blocking edges */
+                if (activityEdge->isBlocking())
+                {
+                    /* make myself a new slave */
+                    isMaster = false;
 
                     /* commnicate with slaves to decide new master */
                     GraphNode *commMaster = currentNode->getGraphPair().first;

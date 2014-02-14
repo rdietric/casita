@@ -130,7 +130,8 @@ namespace cdm
     };
     
     static const char * FTABLE_VT_FLUSH[] = {
-        "flushActivities"
+        "flushActivities",
+        "sync time"
     };
 
     static const size_t fTableEntriesCUDA = 9;
@@ -159,7 +160,7 @@ namespace cdm
     
     static const size_t fTableEntriesVT = 1;
     static const FTableEntry fTableVT[fTableEntriesVT] = {
-        {VT_FLUSH, 1, FTABLE_VT_FLUSH}
+        {VT_FLUSH, 2, FTABLE_VT_FLUSH}
     };
 
     class FunctionTable

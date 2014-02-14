@@ -228,7 +228,7 @@ namespace cdm
                 unlinkedMPINodes.push_back(node);
             }
 
-            if (((nodeParadigm == PARADIGM_CUDA) || (nodeParadigm == PARADIGM_OMP)) && (node->isEnter()))
+            if (node->isEnter() && (nodeParadigm & PARADIGM_COMPUTE_LOCAL))
             {
                 for (SortedGraphNodeList::const_iterator iter = unlinkedMPINodes.begin();
                         iter != unlinkedMPINodes.end(); ++iter)
