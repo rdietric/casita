@@ -23,6 +23,7 @@ ticksPerSecond(1000)
     globalSourceNode = newGraphNode(0, 0, "START", PARADIGM_ALL, RECORD_ATOMIC, MISC_PROCESS);
 
     ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_BLAME);
+    ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_BLAME_LOG10);
     ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_BLAME_STATISTICS);
     ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_WAITSTATE);
     ctrTable.addDefaultCounter(ctrTable.getNewCtrId(), CTR_WAITSTATE_LOG10);

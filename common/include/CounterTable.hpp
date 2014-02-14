@@ -19,9 +19,10 @@ namespace cdm
     {
         CTR_USER = 0,
         CTR_BLAME,               /* local blame for visualization */
+        CTR_BLAME_LOG10,         /* local blame for visualization (log10) */
         CTR_BLAME_STATISTICS,    /* accumulated blame for statistics */
-        CTR_WAITSTATE,
-        CTR_WAITSTATE_LOG10,
+        CTR_WAITSTATE,           /* local waiting time */
+        CTR_WAITSTATE_LOG10,     /* local waiting time (log10) */
         CTR_CRITICALPATH,
     };
 
@@ -39,6 +40,8 @@ namespace cdm
         {CTR_USER, "Unknown Counter", false, false, 0,
                 OTF_COUNTER_SCOPE_POINT | OTF_COUNTER_TYPE_ABS},
         {CTR_BLAME, "Exclusive Blame", true, false, 0,
+                OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS},
+        {CTR_BLAME_LOG10, "Exclusive Blame (log10)", true, false, 0,
                 OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS},
         {CTR_BLAME_STATISTICS, "Blame Statistics", true, true, 0,
                 OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS},
