@@ -114,11 +114,18 @@ namespace cdm
         "MPI_Barrier",
         "MPI_Allreduce",
         "MPI_Allgather",
-        "MPI_Gather",
-        "MPI_Reduce",
-        "MPI_Bcast",
         "MPI_Finalize",
         "MPI_Init"
+    };
+    
+    static const char * FTABLE_MPI_ONETOALL[] = {
+        "MPI_Scatter",
+        "MPI_Bcast"
+    };
+    
+    static const char * FTABLE_MPI_ALLTOONE[] = {
+        "MPI_Gather",
+        "MPI_Reduce",
     };
 
     static const char * FTABLE_MPI_SENDRECV[] = {
@@ -147,12 +154,14 @@ namespace cdm
         {CUDA_WAITSTATE, 1, FTABLE_CUDA_WAITSTATE}
     };
 
-    static const size_t fTableEntriesMPI = 7;
+    static const size_t fTableEntriesMPI = 9;
     static const FTableEntry fTableMPI[fTableEntriesMPI] = {
         {MPI_RECV, 1, FTABLE_MPI_RECV},
         {MPI_SEND, 1, FTABLE_MPI_SEND},
         {MPI_WAIT, 1, FTABLE_MPI_WAIT},
-        {MPI_COLL, 8, FTABLE_MPI_COLL},
+        {MPI_COLL, 5, FTABLE_MPI_COLL},
+        {MPI_ONETOALL, 2, FTABLE_MPI_ONETOALL},
+        {MPI_ALLTOONE, 2, FTABLE_MPI_ALLTOONE},
         {MPI_SENDRECV, 1, FTABLE_MPI_SENDRECV},
         {MPI_MISC, 0, FTABLE_MPI_MISC},
         {MPI_WAITSTATE, 1, FTABLE_CUDA_WAITSTATE}

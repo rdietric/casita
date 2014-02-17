@@ -75,17 +75,11 @@ namespace cdm
                     if ((kernel != NULL))
                     {
                         analysis->newEdge(kernel, parallelRegionSecond);
-
-                        ErrorUtils::getInstance().outputMessage("[OMPPRR] add Edge %s to %s (%s)\n",
-                                kernel->getUniqueName().c_str(),
-                                parallelRegionSecond->getUniqueName().c_str(), p->getName());
                     }
                     analysis->setOmpCompute(NULL, p->getId());
                 }
 
                 // close parallel region and set as null
-                ErrorUtils::getInstance().outputMessage("[OMPPRR] close ParallelRegion %s \n",
-                        ppr->getUniqueName().c_str());
                 analysis->setPendingParallelRegion(NULL);
 
                 return true;

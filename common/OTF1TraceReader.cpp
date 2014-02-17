@@ -595,7 +595,7 @@ int OTF1TraceReader::otf1HandleSendMsg(void *userData, uint64_t time, uint32_t s
 
     if (tr->handleMPIComm)
     {
-        tr->handleMPIComm(tr, MPI_SEND, sender, receiver, 0);
+        tr->handleMPIComm(tr, MPI_SEND, sender, receiver, 0, 0);
     }
 
     return OTF_RETURN_OK;
@@ -609,7 +609,7 @@ int OTF1TraceReader::otf1HandleRecvMsg(void *userData, uint64_t time, uint32_t r
 
     if (tr->handleMPIComm)
     {
-        tr->handleMPIComm(tr, MPI_RECV, receiver, sender, 0);
+        tr->handleMPIComm(tr, MPI_RECV, receiver, sender, 0, 0);
     }
 
     return OTF_RETURN_OK;
@@ -624,7 +624,7 @@ int OTF1TraceReader::otf1HandleBeginCollectiveOperation(void * userData, uint64_
 
     if (tr->handleMPIComm)
     {
-        tr->handleMPIComm(tr, MPI_COLLECTIVE, process, procGroup, 0);
+        tr->handleMPIComm(tr, MPI_COLLECTIVE, process, procGroup, rootProc, 0);
     }
 
     return OTF_RETURN_OK;

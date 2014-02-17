@@ -42,6 +42,7 @@ namespace cdm
         typedef struct
         {
             MPIType mpiType;
+            uint32_t rootId;    // root process ID (or 0)
             uint32_t partnerId; // process or process group
         } MPICommRecord;
 
@@ -371,11 +372,12 @@ namespace cdm
             pendingKernels.clear();
         }
 
-        void setPendingMPIRecord(MPIType mpiType, uint32_t partnerId)
+        void setPendingMPIRecord(MPIType mpiType, uint32_t partnerId, uint32_t rootId)
         {
             MPICommRecord record;
             record.mpiType = mpiType;
             record.partnerId = partnerId;
+            record.rootId = rootId;
 
             mpiCommRecords.push_back(record);
         }
