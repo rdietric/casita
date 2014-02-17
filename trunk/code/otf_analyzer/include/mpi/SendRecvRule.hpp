@@ -62,8 +62,8 @@ namespace cdm
 
                 /* round 1: send same direction. myself == send */
 
-                MPI_CHECK(MPI_Sendrecv(sendBuffer, BUFFER_SIZE, MPI_INTEGER4, partnerMPIRankSend, 0,
-                        recvBuffer, BUFFER_SIZE, MPI_INTEGER4, partnerMPIRankRecv, 0,
+                MPI_CHECK(MPI_Sendrecv(sendBuffer, BUFFER_SIZE, MPI_UNSIGNED, partnerMPIRankSend, 0,
+                        recvBuffer, BUFFER_SIZE, MPI_UNSIGNED, partnerMPIRankRecv, 0,
                         MPI_COMM_WORLD, &status));
 
                 /* evaluate receive buffer */
@@ -82,14 +82,14 @@ namespace cdm
                         sendRecv.first->incCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 
                                 otherStartTime-myStartTime);
                     }
-#ifdef MPI_CP_MERGE
-                    analysis->getMPIAnalysis().addMPIEdge(sendRecv.first, otherEnterId, partnerProcessIdRecv);
-#endif
                 } else
                 {
-                    distributeBlame(analysis, sendRecv.first, myStartTime - otherStartTime, processWalkCallback);
+                    distributeBlame(analysis, sendRecv.first,
+                            myStartTime - otherStartTime, processWalkCallback);
 
-                    analysis->getMPIAnalysis().addRemoteMPIEdge(sendRecv.first, otherEnterId, partnerProcessIdRecv);
+                    analysis->getMPIAnalysis().addRemoteMPIEdge(sendRecv.first,
+                            otherLeaveId, partnerProcessIdRecv,
+                            MPIAnalysis::MPI_EDGE_LOCAL_REMOTE);
                 }
 
                 GraphNode *remoteNode = analysis->addNewRemoteNode(otherEndTime, partnerProcessIdRecv,
@@ -99,8 +99,8 @@ namespace cdm
 
                 /* round 2: send reverse direction. myself == recv */
 
-                MPI_CHECK(MPI_Sendrecv(sendBuffer, BUFFER_SIZE, MPI_INTEGER4, partnerMPIRankRecv, 0,
-                        recvBuffer, BUFFER_SIZE, MPI_INTEGER4, partnerMPIRankSend, 0,
+                MPI_CHECK(MPI_Sendrecv(sendBuffer, BUFFER_SIZE, MPI_UNSIGNED, partnerMPIRankRecv, 0,
+                        recvBuffer, BUFFER_SIZE, MPI_UNSIGNED, partnerMPIRankSend, 0,
                         MPI_COMM_WORLD, &status));
 
                 otherStartTime = recvBfr64[0];
@@ -115,24 +115,17 @@ namespace cdm
                     recvRecordEdge->makeBlocking();
                     sendRecv.first->incCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 
                             otherStartTime-myStartTime);
-#ifdef MPI_CP_MERGE
-                    analysis->getMPIAnalysis().addMPIEdge(sendRecv.first, otherEnterId, partnerProcessIdSend);
-#endif
                 }
 
                 if (myStartTime > otherStartTime)
                 {
-                    distributeBlame(analysis, sendRecv.first, myStartTime - otherStartTime, processWalkCallback);
+                    distributeBlame(analysis, sendRecv.first,
+                            myStartTime - otherStartTime, processWalkCallback);
 
-                    analysis->getMPIAnalysis().addRemoteMPIEdge(sendRecv.first, otherEnterId, partnerProcessIdSend);
+                    analysis->getMPIAnalysis().addRemoteMPIEdge(sendRecv.second,
+                            otherEnterId, partnerProcessIdSend,
+                            MPIAnalysis::MPI_EDGE_REMOTE_LOCAL);
                 }
-
-#ifdef MPI_CP_MERGE
-                analysis->getMPIAnalysis().addMPIEdge(sendRecv.second, otherLeaveId, partnerProcessIdSend);
-#endif
-                remoteNode = analysis->addNewRemoteNode(otherLeaveId, partnerProcessIdSend,
-                        otherLeaveId, PARADIGM_MPI, RECORD_LEAVE, MPI_SEND, partnerMPIRankSend);
-                analysis->newEdge(sendRecv.second, remoteNode);
 
                 return true;
             }

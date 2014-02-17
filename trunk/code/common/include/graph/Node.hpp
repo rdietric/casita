@@ -22,7 +22,6 @@
 namespace cdm
 {
     static uint32_t globalNodeId = 0;
-    //static const uint32_t REF_ALL_PROCESS_ID = 0;
 
     typedef uint32_t LocalID;
     typedef uint64_t GlobalID;
@@ -78,7 +77,9 @@ namespace cdm
         MPI_SENDRECV = (1 << 5),
         MPI_MISC = (1 << 6),
         MPI_EXIT = (1 << 7),
-        MPI_WAITSTATE = (1 << 8)
+        MPI_WAITSTATE = (1 << 8),
+        MPI_ONETOALL = (1 << 9),
+        MPI_ALLTOONE = (1 << 10)
     };
 
     enum NodeTypeOMP
@@ -132,12 +133,14 @@ namespace cdm
         {CUDA_STREAMWAIT, "cuda_streamwait"}
     };
 
-    static const size_t numTypeStrEntriesMPI = 8;
+    static const size_t numTypeStrEntriesMPI = 10;
     static const TypeStrEntryMPI typeStrTableMPI[numTypeStrEntriesMPI] = {
         {MPI_RECV, "mpi_recv"},
         {MPI_SEND, "mpi_send"},
         {MPI_WAIT, "mpi_wait"},
         {MPI_COLL, "mpi_coll"},
+        {MPI_ONETOALL, "mpi_one_to_all"},
+        {MPI_ALLTOONE, "mpi_all_to_one"},
         {MPI_SENDRECV, "mpi_sendrecv"},
         {MPI_MISC, "mpi_misc"},
         {MPI_EXIT, "mpi_exit"},
@@ -318,6 +321,18 @@ namespace cdm
         {
 
             return isMPI() && (nodeType & MPI_COLL);
+        }
+        
+        bool isMPIOneToAll() const
+        {
+
+            return isMPI() && (nodeType & MPI_ONETOALL);
+        }
+        
+        bool isMPIAllToOne() const
+        {
+
+            return isMPI() && (nodeType & MPI_ALLTOONE);
         }
 
         bool isMPISendRecv() const

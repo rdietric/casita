@@ -25,6 +25,8 @@
 #include "mpi/SendRule.hpp"
 #include "mpi/CollectiveRule.hpp"
 #include "mpi/SendRecvRule.hpp"
+#include "mpi/OneToAllRule.hpp"
+#include "mpi/AllToOneRule.hpp"
 
 #include "omp/OMPParallelRegionRule.hpp"
 #include "omp/OMPComputeRule.hpp"
@@ -332,19 +334,28 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
         for (Process::MPICommRecordList::const_iterator iter = mpiCommRecords.begin();
                 iter != mpiCommRecords.end(); ++iter)
         {
-            uint32_t *sendPartnerId = NULL;
+            uint32_t *tmpId = NULL;
 
             switch (iter->mpiType)
             {
                 case Process::MPI_RECV:
-                case Process::MPI_COLLECTIVE:
                     leaveNode->setReferencedProcessId(iter->partnerId);
                     break;
 
+                case Process::MPI_COLLECTIVE:
+                    leaveNode->setReferencedProcessId(iter->partnerId);
+                    if (iter->rootId)
+                    {
+                        tmpId = new uint32_t;
+                        *tmpId = iter->rootId;
+                        leaveNode->setData(tmpId);
+                    }
+                    break;  
+
                 case Process::MPI_SEND:
-                    sendPartnerId = new uint32_t;
-                    *sendPartnerId = iter->partnerId;
-                    leaveNode->setData(sendPartnerId);
+                    tmpId = new uint32_t;
+                    *tmpId = iter->partnerId;
+                    leaveNode->setData(tmpId);
                     break;
 
                 default:
@@ -363,7 +374,7 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
 }
 
 void CDMRunner::handleMPIComm(ITraceReader *reader, MPIType mpiType, uint32_t processId,
-        uint32_t partnerId, uint32_t tag)
+        uint32_t partnerId, uint32_t root, uint32_t tag)
 {
     CDMRunner *runner = (CDMRunner*) (reader->getUserData());
     AnalysisEngine &analysis = runner->getAnalysis();
@@ -395,7 +406,7 @@ void CDMRunner::handleMPIComm(ITraceReader *reader, MPIType mpiType, uint32_t pr
                 pMPIType, tag);
     }
 
-    process->setPendingMPIRecord(pMPIType, partnerId);
+    process->setPendingMPIRecord(pMPIType, partnerId, root);
 }
 
 void CDMRunner::handleMPICommGroup(ITraceReader *reader, uint32_t group,
@@ -1014,7 +1025,7 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
     uint32_t cpCtrId = analysis.getCtrTable().getCtrId(CTR_CRITICALPATH);
     uint32_t sendBfr[BUFFER_SIZE];
     uint32_t recvBfr[BUFFER_SIZE];
-
+    
     while (true)
     {
         if (isMaster)
@@ -1063,7 +1074,13 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
                     isMaster = false;
 
                     /* commnicate with slaves to decide new master */
-                    GraphNode *commMaster = currentNode->getGraphPair().first;
+                    GraphNode *commMaster = currentNode->getGraphPair().second;
+                    bool nodeHasRemoteInfo = false;
+                    analysis.getMPIAnalysis().getRemoteNodeInfo(commMaster, &nodeHasRemoteInfo);
+                    if (!nodeHasRemoteInfo)
+                    {
+                        commMaster = currentNode->getGraphPair().first;
+                    }
 
                     if (options.verbose >= VERBOSE_ANNOY)
                     {
@@ -1073,12 +1090,13 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
                                 commMaster->getUniqueName().c_str());
                     }
 
-                    std::set<uint32_t> mpiPartners = analysis.getMPIAnalysis().getMpiPartners(commMaster);
-                    for (std::set<uint32_t>::const_iterator iter = mpiPartners.begin();
-                            iter != mpiPartners.end(); ++iter)
+                    std::set<uint32_t> mpiPartnerRanks = analysis.getMPIAnalysis().getMpiPartnersRank(commMaster);
+                    for (std::set<uint32_t>::const_iterator iter = mpiPartnerRanks.begin();
+                            iter != mpiPartnerRanks.end(); ++iter)
                     {
                         /* communicate with all slaves to find new master */
-                        uint32_t commMpiRank = analysis.getMPIAnalysis().getMPIRank(*iter);
+                        uint32_t commMpiRank = *iter;
+
                         if (commMpiRank == (uint32_t) mpiRank)
                             continue;
 
@@ -1092,8 +1110,8 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
                                     mpiRank, commMpiRank, sendBfr[0], sendBfr[1]);
                         }
                         MPI_Request request;
-                        MPI_CHECK(MPI_Isend(sendBfr, BUFFER_SIZE, MPI_INTEGER4, commMpiRank, 0,
-                                MPI_COMM_WORLD, &request));
+                        MPI_CHECK(MPI_Isend(sendBfr, BUFFER_SIZE, MPI_UNSIGNED,
+                                commMpiRank, 0, MPI_COMM_WORLD, &request));
                     }
 
                     /* continue main loop as slave */
@@ -1127,7 +1145,8 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
                         if (commMpiRank == mpiRank)
                             continue;
 
-                        MPI_CHECK(MPI_Send(sendBfr, BUFFER_SIZE, MPI_INTEGER4, commMpiRank, 0, MPI_COMM_WORLD));
+                        MPI_CHECK(MPI_Send(sendBfr, BUFFER_SIZE, MPI_UNSIGNED,
+                                commMpiRank, 0, MPI_COMM_WORLD));
                     }
 
                     /* leave main loop */
@@ -1163,7 +1182,7 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
 
             //int flag = 0;
             MPI_Status status;
-            MPI_CHECK(MPI_Recv(recvBfr, BUFFER_SIZE, MPI_INTEGER4, MPI_ANY_SOURCE,
+            MPI_CHECK(MPI_Recv(recvBfr, BUFFER_SIZE, MPI_UNSIGNED, MPI_ANY_SOURCE,
                     MPI_ANY_TAG, MPI_COMM_WORLD, &status));
 
             if (recvBfr[2] == PATH_FOUND_MSG)
@@ -1179,13 +1198,12 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
                 printf("[%u]  tested by remote MPI worker %u for remote edge to its node %u on process %u\n",
                         mpiRank, status.MPI_SOURCE, recvBfr[0], recvBfr[1]);
             }
-            GraphNode *localSrcNode =
-                    analysis.getMPIAnalysis().getRemoteMPIEdgeLocalNode(recvBfr[0], recvBfr[1]);
 
             /* check if the activity is a wait state */
-            if (localSrcNode)
+            MPIAnalysis::MPIEdge mpiEdge;
+            if (analysis.getMPIAnalysis().getRemoteMPIEdge(recvBfr[0], recvBfr[1], mpiEdge))
             {
-                GraphNode::GraphNodePair &slaveActivity = localSrcNode->getGraphPair();
+                GraphNode::GraphNodePair &slaveActivity = mpiEdge.localNode->getGraphPair();
                 /* we are the new master */
 
                 isMaster = true;
@@ -1207,241 +1225,9 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
             }
         }
     }
-
+    
     MPI_Barrier(MPI_COMM_WORLD);
 }
-
-void CDMRunner::createSection(SectionsList *sections,
-        GraphNode* start, GraphNode* end, uint32_t prevProcessId,
-        uint32_t currentProcessId, uint32_t nextProcessId)
-{
-    MPIAnalysis &mpiAnalysis = analysis.getMPIAnalysis();
-
-    uint32_t sectionMPIRank = mpiAnalysis.getMPIRank(currentProcessId);
-
-    if (options.verbose >= VERBOSE_BASIC)
-    {
-
-        printf("[0] creating section [%s (%f), %s (%f)] for process %u on rank %u\n",
-                start->getUniqueName().c_str(),
-                analysis.getRealTime(start->getTime()),
-                end->getUniqueName().c_str(),
-                analysis.getRealTime(end->getTime()),
-                currentProcessId,
-                sectionMPIRank);
-    }
-
-    MPIAnalysis::CriticalPathSection section;
-    section.processID = currentProcessId;
-    //section.prevProcessID = prevProcessId;
-    //section.nextProcessID = nextProcessId;
-    // convert the original IDs for remote MPI nodes 
-    section.nodeStartID = mpiAnalysis.getRemoteNodeInfo(start).nodeID;
-    section.nodeEndID = mpiAnalysis.getRemoteNodeInfo(end).nodeID;
-
-    sections[sectionMPIRank].push_back(section);
-}
-
-#ifdef MPI_CP_MERGE
-
-void CDMRunner::mergeMPIGraphs()
-{
-    if (mpiSize > 1)
-    {
-        if (options.verbose >= VERBOSE_BASIC)
-            printf("[%u] merging MPI graphs\n", mpiRank);
-
-        analysis.mergeMPIGraphs();
-    }
-}
-
-void CDMRunner::distributeCriticalPathSections(Process::SortedGraphNodeList& mpiNodes,
-        Process::SortedGraphNodeList& gpuNodes,
-        MPIAnalysis::CriticalSectionsMap & sectionsMap)
-{
-    MPIAnalysis &mpiAnalysis = analysis.getMPIAnalysis();
-    SectionsList sections[mpiAnalysis.getMPISize()];
-
-    uint32_t currentProcessId = 0;
-    uint32_t prevProcessId = 0;
-    GraphNode *sectionStart = NULL, *lastNode = NULL;
-
-    /* split the critical path in sections for each process */
-    for (Process::SortedGraphNodeList::const_iterator iter = mpiNodes.begin();
-            iter != mpiNodes.end();)
-    {
-        GraphNode *node = *iter;
-        Process::SortedGraphNodeList::const_iterator next = ++iter;
-
-        if (node->isAtomic())
-            continue;
-
-        if (!currentProcessId)
-        {
-            sectionStart = node;
-            currentProcessId = node->getProcessId();
-            prevProcessId = currentProcessId;
-        } else
-        {
-            // critical path changed the process
-            if (node->getProcessId() != currentProcessId)
-            {
-                // add section
-                if (sectionStart != lastNode)
-                {
-                    createSection(sections, sectionStart, lastNode, prevProcessId,
-                            currentProcessId, node->getProcessId());
-                }
-
-                sectionStart = node;
-                prevProcessId = currentProcessId;
-                currentProcessId = node->getProcessId();
-            }
-        }
-
-        lastNode = node;
-        iter = next;
-    }
-
-    // create final section
-    if (sectionStart != lastNode)
-    {
-        createSection(sections, sectionStart, lastNode, currentProcessId,
-                currentProcessId, currentProcessId);
-    }
-
-    /* send each rank the number of its sections and the actual sections if any */
-    for (uint32_t rank = 1; rank < mpiAnalysis.getMPISize(); ++rank)
-    {
-        uint32_t numSections = sections[rank].size();
-        if (options.verbose >= VERBOSE_BASIC)
-            printf("[%u] has %u critical path sections\n", rank, numSections);
-
-        MPI_CHECK(MPI_Send(&numSections, 1, MPI_INTEGER4, rank, 0, MPI_COMM_WORLD));
-
-        if (numSections > 0)
-        {
-            MPI_CHECK(MPI_Send(sections[rank].data(),
-                    (sizeof (MPIAnalysis::CriticalPathSection) / sizeof (uint32_t)) * numSections,
-                    MPI_INTEGER4, rank, 0, MPI_COMM_WORLD));
-        }
-    }
-
-    if (options.verbose >= VERBOSE_BASIC)
-    {
-
-        printf("[%u] has %lu critical path sections\n",
-                analysis.getMPIRank(), sections[0].size());
-    }
-
-    getCriticalGPUSections(sections[0].data(), sections[0].size(), gpuNodes, sectionsMap);
-}
-
-void CDMRunner::distributeCriticalMPINodes(Process::SortedGraphNodeList & mpiNodes)
-{
-    MPIAnalysis &mpiAnalysis = analysis.getMPIAnalysis();
-    MPINodeList nodesPerRank[mpiAnalysis.getMPISize()];
-    uint32_t my_mpi_rank = mpiAnalysis.getMPIRank();
-
-    /* split the critical MPI nodes in chunks for each process */
-    for (Process::SortedGraphNodeList::const_iterator iter = mpiNodes.begin();
-            iter != mpiNodes.end(); ++iter)
-    {
-        GraphNode *node = *iter;
-        if (node->isEnter() || node->isLeave())
-        {
-            uint32_t mpi_rank = mpiAnalysis.getMPIRank(node->getProcessId());
-
-            if (mpi_rank != my_mpi_rank)
-            {
-                MPIAnalysis::ProcessNodePair pNodePair;
-                pNodePair.nodeID = mpiAnalysis.getRemoteNodeInfo(node).nodeID;
-                pNodePair.processID = node->getProcessId();
-                nodesPerRank[mpi_rank].push_back(pNodePair);
-            }
-        }
-    }
-
-    /* send each rank the number of its critical MPI nodes and the actual nodes if any */
-    for (uint32_t rank = 1; rank < mpiAnalysis.getMPISize(); ++rank)
-    {
-        uint32_t numNodes = nodesPerRank[rank].size();
-        if (options.verbose >= VERBOSE_BASIC)
-            printf("[%u] has %u critical MPI nodes\n", rank, numNodes);
-
-        MPI_CHECK(MPI_Send(&numNodes, 1, MPI_INTEGER4, rank, 0, MPI_COMM_WORLD));
-
-        if (numNodes > 0)
-        {
-
-            MPI_CHECK(MPI_Send(nodesPerRank[rank].data(), 2 * numNodes,
-                    MPI_INTEGER4, rank, 0, MPI_COMM_WORLD));
-        }
-    }
-}
-
-void CDMRunner::receiveCriticalPathSections(Process::SortedGraphNodeList& gpuNodes,
-        MPIAnalysis::CriticalSectionsMap & sectionsMap)
-{
-    /* receive the number of this rank's critical path sections */
-    uint32_t numSections = 0;
-    MPI_Status status;
-    MPI_CHECK(MPI_Recv(&numSections, 1, MPI_INTEGER4, 0, 0, MPI_COMM_WORLD, &status));
-
-    if (numSections > 0)
-    {
-        /* receive sections */
-        MPIAnalysis::CriticalPathSection sections[numSections];
-        MPI_CHECK(MPI_Recv(sections,
-                (sizeof (MPIAnalysis::CriticalPathSection) / sizeof (uint32_t)) * numSections,
-                MPI_INTEGER4, 0, 0, MPI_COMM_WORLD, &status));
-
-        /* process sections */
-        if (options.verbose >= VERBOSE_BASIC)
-        {
-
-            printf("[%u] %u critical path sections\n",
-                    analysis.getMPIRank(), numSections);
-        }
-        getCriticalGPUSections(sections, numSections, gpuNodes, sectionsMap);
-    }
-}
-
-void CDMRunner::receiveCriticalMPINodes()
-{
-    /* receive the number of this rank's critical MPI nodes */
-    uint32_t numNodes = 0;
-    MPI_Status status;
-    MPI_CHECK(MPI_Recv(&numNodes, 1, MPI_INTEGER4, 0, 0, MPI_COMM_WORLD, &status));
-
-    if (numNodes > 0)
-    {
-        /* receive sections */
-        MPIAnalysis::ProcessNodePair mpiNodeIds[numNodes];
-        MPI_CHECK(MPI_Recv(mpiNodeIds, 2 * numNodes, MPI_INTEGER4, 0, 0,
-                MPI_COMM_WORLD, &status));
-
-        for (uint32_t i = 0; i < numNodes; ++i)
-        {
-            Process *p = analysis.getProcess(mpiNodeIds[i].processID);
-            Process::SortedNodeList &pNodes = p->getNodes();
-
-            for (Process::SortedNodeList::const_iterator iter = pNodes.begin();
-                    iter != pNodes.end(); ++iter)
-            {
-                Node *node = *iter;
-                if (node->getId() == mpiNodeIds[i].nodeID)
-                {
-                    node->setCounter(CTR_CRITICALPATH, 1);
-
-                    break;
-                }
-            }
-        }
-    }
-}
-
-#endif
 
 void CDMRunner::runAnalysis(Paradigm paradigm)
 {
@@ -1469,6 +1255,8 @@ void CDMRunner::runAnalysis(Paradigm paradigm)
             analysis.addRule(new SendRule(1));
             analysis.addRule(new CollectiveRule(1));
             analysis.addRule(new SendRecvRule(1));
+            analysis.addRule(new OneToAllRule(1));
+            analysis.addRule(new AllToOneRule(1));
             break;
 
         case PARADIGM_OMP:

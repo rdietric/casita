@@ -105,6 +105,8 @@ bool TraceData::getFunctionType(uint32_t id, const char *name, Process *process,
                 switch (descr->type)
                 {
                     case MPI_COLL:
+                    case MPI_ONETOALL:
+                    case MPI_ALLTOONE:
                     case MPI_WAIT:
                     case MPI_SENDRECV:
                     case MPI_RECV:

@@ -22,7 +22,7 @@ namespace cdm
 
         enum MPIType
         {
-            MPI_SEND, MPI_RECV, MPI_COLLECTIVE
+            MPI_SEND, MPI_RECV, MPI_COLLECTIVE, MPI_ONETOALL
         };
 
         typedef void (*HandleEnter)(ITraceReader *reader, uint64_t time,
@@ -39,7 +39,7 @@ namespace cdm
         typedef void (*HandleDefKeyValue)(ITraceReader *reader, uint32_t streamId,
                 uint32_t key, const char *name, const char *description);
         typedef void (*HandleMPIComm)(ITraceReader *reader, MPIType mpiType,
-                uint32_t processId, uint32_t partnerId, uint32_t tag);
+                uint32_t processId, uint32_t partnerId, uint32_t root, uint32_t tag);
         typedef void (*HandleMPICommGroup)(ITraceReader *reader, uint32_t group,
                 uint32_t numProcs, const uint32_t *procs);
 

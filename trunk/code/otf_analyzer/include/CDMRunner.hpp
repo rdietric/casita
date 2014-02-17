@@ -160,7 +160,7 @@ namespace cdm
         static void handleAdditionalLeave(io::ITraceReader *reader, uint64_t time,
                 uint32_t functionId, uint32_t processId, io::IKeyValueList *list);
         static void handleMPIComm(io::ITraceReader *reader, io::MPIType mpiType,
-                uint32_t processId, uint32_t partnerId, uint32_t tag);
+                uint32_t processId, uint32_t partnerId, uint32_t root, uint32_t tag);
         static void handleMPICommGroup(io::ITraceReader *reader, uint32_t group,
                 uint32_t numProcs, const uint32_t *procs);
     };

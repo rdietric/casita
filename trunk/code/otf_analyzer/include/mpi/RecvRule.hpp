@@ -44,10 +44,10 @@ namespace cdm
                 /* receive */
                 uint32_t partnerMPIRank = analysis->getMPIAnalysis().getMPIRank(partnerProcessId);
                 MPI_Status status;
-                MPI_CHECK(MPI_Recv(buffer, BUFFER_SIZE, MPI_INTEGER4, partnerMPIRank, 0,
+                MPI_CHECK(MPI_Recv(buffer, BUFFER_SIZE, MPI_UNSIGNED, partnerMPIRank, 0,
                         MPI_COMM_WORLD, &status));
                 uint64_t sendStartTime = bfr64[0];
-                uint64_t sendEndTime = bfr64[1];
+                //uint64_t sendEndTime = bfr64[1];
                 //int partnerType = buffer[BUFFER_SIZE - 1];
 
                 uint64_t recvStartTime = recv.first->getTime();
@@ -68,18 +68,10 @@ namespace cdm
                 if (recvStartTime > sendStartTime)
                 {
                     distributeBlame(analysis, recv.first, recvStartTime - sendStartTime, processWalkCallback);
-
-                    analysis->getMPIAnalysis().addRemoteMPIEdge(recv.first, buffer[4], partnerProcessId);
                 }
-
-                uint32_t sendLeaveId = buffer[5];
-#ifdef MPI_CP_MERGE
-                analysis->getMPIAnalysis().addMPIEdge(recv.second, sendLeaveId, partnerProcessId);
-#endif
-                GraphNode *remoteNode = analysis->addNewRemoteNode(sendEndTime, partnerProcessId,
-                        sendLeaveId, PARADIGM_MPI, RECORD_LEAVE, MPI_SEND, partnerMPIRank);
-
-                analysis->newEdge(recv.second, remoteNode);
+                
+                analysis->getMPIAnalysis().addRemoteMPIEdge(recv.second, buffer[4],
+                        partnerProcessId, MPIAnalysis::MPI_EDGE_REMOTE_LOCAL);
 
                 /* send */
                 memcpy(bfr64 + 0, &recvStartTime, sizeof (uint64_t));
@@ -87,7 +79,7 @@ namespace cdm
                 buffer[4] = recv.first->getId();
                 buffer[5] = recv.second->getId();
                 buffer[BUFFER_SIZE - 1] = recv.second->getType();
-                MPI_CHECK(MPI_Send(buffer, BUFFER_SIZE, MPI_INTEGER4, partnerMPIRank,
+                MPI_CHECK(MPI_Send(buffer, BUFFER_SIZE, MPI_UNSIGNED, partnerMPIRank,
                         0, MPI_COMM_WORLD));
 
                 return true;

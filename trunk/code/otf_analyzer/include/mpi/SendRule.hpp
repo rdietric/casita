@@ -54,16 +54,17 @@ namespace cdm
                 buffer[4] = send.first->getId();
                 buffer[5] = send.second->getId();
                 buffer[BUFFER_SIZE - 1] = send.second->getType();
-                MPI_CHECK(MPI_Send(buffer, BUFFER_SIZE, MPI_INTEGER4, partnerMPIRank,
+                MPI_CHECK(MPI_Send(buffer, BUFFER_SIZE, MPI_UNSIGNED, partnerMPIRank,
                         0, MPI_COMM_WORLD));
 
                 /* receive */
                 MPI_Status status;
-                uint64_t recvStartTime = 0, recvEndTime = 0;
-                MPI_CHECK(MPI_Recv(buffer, BUFFER_SIZE, MPI_INTEGER4, partnerMPIRank,
+                uint64_t recvStartTime = 0;
+                // uint64_t recvEndTime = 0;
+                MPI_CHECK(MPI_Recv(buffer, BUFFER_SIZE, MPI_UNSIGNED, partnerMPIRank,
                         0, MPI_COMM_WORLD, &status));
                 recvStartTime = bfr64[0];
-                recvEndTime = bfr64[1];
+                //recvEndTime = bfr64[1];
                 //int partnerType = buffer[BUFFER_SIZE - 1];
 
                 /* compute wait states */
@@ -73,22 +74,17 @@ namespace cdm
                     {
                         Edge *sendRecordEdge = analysis->getEdge(send.first, send.second);
                         sendRecordEdge->makeBlocking();
-                        send.first->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), recvStartTime-sendStartTime);
+                        send.first->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE),
+                                recvStartTime - sendStartTime);
                     }
-#ifdef MPI_CP_MERGE
-                    analysis->getMPIAnalysis().addMPIEdge(send.first, buffer[4], partnerProcessId);
-#endif
                 } else
                 {
-                    distributeBlame(analysis, send.first, sendStartTime - recvStartTime, processWalkCallback);
-
-                    analysis->getMPIAnalysis().addRemoteMPIEdge(send.first, buffer[4], partnerProcessId);
+                    distributeBlame(analysis, send.first, 
+                            sendStartTime - recvStartTime, processWalkCallback);
                 }
                 
-                uint32_t recvLeaveId = buffer[5];
-                GraphNode *remoteNode = analysis->addNewRemoteNode(recvEndTime, partnerProcessId,
-                        recvLeaveId, PARADIGM_MPI, RECORD_LEAVE, MPI_RECV, partnerMPIRank);
-                analysis->newEdge(remoteNode, send.second);
+                analysis->getMPIAnalysis().addRemoteMPIEdge(send.first, buffer[5],
+                        partnerProcessId, MPIAnalysis::MPI_EDGE_LOCAL_REMOTE);
 
                 return true;
             }
