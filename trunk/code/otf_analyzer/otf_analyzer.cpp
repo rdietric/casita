@@ -166,10 +166,13 @@ int main(int argc, char **argv)
 #ifdef VAMPIR
     VT_MARKER(mid, "READING finished");
 #endif
-
-    runner->runAnalysis(PARADIGM_CUDA);
-    runner->runAnalysis(PARADIGM_OMP);
-    runner->runAnalysis(PARADIGM_MPI);
+    
+    Process::SortedNodeList allNodes;
+    runner->getAnalysis().getAllNodes(allNodes);
+    
+    runner->runAnalysis(PARADIGM_CUDA, allNodes);
+    runner->runAnalysis(PARADIGM_OMP, allNodes);
+    runner->runAnalysis(PARADIGM_MPI, allNodes);
     testResources(mpiRank);
 
 #ifdef VAMPIR

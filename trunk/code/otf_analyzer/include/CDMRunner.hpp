@@ -84,7 +84,7 @@ namespace cdm
         virtual ~CDMRunner();
 
         void readOTF(const std::string filename);
-        void runAnalysis(Paradigm paradigm);
+        void runAnalysis(Paradigm paradigm, Process::SortedNodeList &allNodes);
         uint64_t runOptimization(char *optKernels);
 
 #ifdef MPI_CP_MERGE

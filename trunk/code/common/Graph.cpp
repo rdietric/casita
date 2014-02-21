@@ -367,10 +367,21 @@ void Graph::getLongestPath(GraphNode *start, GraphNode *end,
         // as next current node
         if (possibleInNodes.size() > 0)
         {
-            possibleInNodes.sort(Node::compareLess);
+            GraphNode *closestNode = NULL;
+            for (GraphNode::GraphNodeList::const_iterator pInIter = possibleInNodes.begin();
+                    pInIter != possibleInNodes.end(); ++pInIter)
+            {
+                if (!closestNode)
+                    closestNode = *pInIter;
+                else
+                {
+                    if (Node::compareLess(closestNode, *pInIter))
+                        closestNode = *pInIter;
+                }
+            }
             // add current node to critical path and choose next current node
             path.push_front(currentNode);
-            currentNode = *(possibleInNodes.rbegin());
+            currentNode = closestNode;
         } else
             break;
     }

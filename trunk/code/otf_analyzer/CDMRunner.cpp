@@ -6,6 +6,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/time.h>
 
 #include "CDMRunner.hpp"
 
@@ -1229,7 +1230,7 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
     MPI_Barrier(MPI_COMM_WORLD);
 }
 
-void CDMRunner::runAnalysis(Paradigm paradigm)
+void CDMRunner::runAnalysis(Paradigm paradigm, Process::SortedNodeList &allNodes)
 {
     analysis.removeRules();
 
@@ -1273,12 +1274,9 @@ void CDMRunner::runAnalysis(Paradigm paradigm)
             return;
     }
 
-    Process::SortedNodeList allNodes;
-    analysis.getAllNodes(allNodes);
-
     size_t ctr = 0, last_ctr = 0;
     size_t num_nodes = allNodes.size();
-
+    
     for (Process::SortedNodeList::const_iterator nIter = allNodes.begin();
             nIter != allNodes.end(); ++nIter)
     {
@@ -1301,7 +1299,7 @@ void CDMRunner::runAnalysis(Paradigm paradigm)
         }
     }
     printf("\n");
-
+    
 #ifdef DEBUG
     analysis.runSanityCheck(analysis.getMPIRank());
 #endif
