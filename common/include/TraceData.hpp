@@ -44,7 +44,7 @@ namespace cdm
         Graph::EdgeList emptyEdgeList;
 
     public:
-        typedef std::map<uint32_t, Process*> ProcessMap;
+        typedef std::map<uint64_t, Process*> ProcessMap;
         typedef std::list<Activity*> ActivityList;
         typedef std::stack<GraphNode*> GraphNodeStack;
         typedef std::map<uint32_t, GraphNodeStack > GraphNodeStackMap;
@@ -52,7 +52,7 @@ namespace cdm
         TraceData();
         virtual ~TraceData();
 
-        static bool getFunctionType(uint32_t id, const char *name, Process *process, FunctionDescriptor *descr);
+        static bool getFunctionType(uint64_t id, const char *name, Process *process, FunctionDescriptor *descr);
 
         Graph& getGraph();
         Graph* getGraph(Paradigm paradigm);
@@ -62,7 +62,7 @@ namespace cdm
         void resetCounters();
 
         // processes
-        Process* getProcess(uint32_t id) const;
+        Process* getProcess(uint64_t id) const;
         void getProcesses(Allocation::ProcessList& procs) const;
         void getLocalProcesses(Allocation::ProcessList& procs) const;
         void getProcesses(Allocation::ProcessList& procs, Paradigm paradigm) const;
@@ -71,17 +71,17 @@ namespace cdm
         void getAllDeviceProcesses(Allocation::ProcessList& deviceProcs) const;
 
         // allocators
-        Process* newProcess(uint32_t id, uint32_t parentId, const std::string name,
+        Process* newProcess(uint64_t id, uint64_t parentId, const std::string name,
                 Process::ProcessType processType, Paradigm paradigm, bool remoteProcess = false);
-        Node* newNode(uint64_t time, uint32_t processId, const std::string name,
+        Node* newNode(uint64_t time, uint64_t processId, const std::string name,
                 Paradigm paradigm, NodeRecordType recordType, int nodeType);
         Edge* newEdge(GraphNode* n1, GraphNode *n2, int properties = EDGE_NONE,
                 Paradigm *edgeType = NULL);
 
-        GraphNode* newGraphNode(uint64_t time, uint32_t processId,
+        GraphNode* newGraphNode(uint64_t time, uint64_t processId,
                 const std::string name, Paradigm paradigm, NodeRecordType recordType,
                 int nodeType);
-        EventNode* newEventNode(uint64_t time, uint32_t processId, uint32_t eventId,
+        EventNode* newEventNode(uint64_t time, uint64_t processId, uint32_t eventId,
                 EventNode::FunctionResultType fResult, const std::string name,
                 Paradigm paradigm, NodeRecordType recordType, int nodeType);
 
@@ -136,9 +136,9 @@ namespace cdm
         const Graph::EdgeList& getInEdges(GraphNode *n) const;
         const Graph::EdgeList& getOutEdges(GraphNode *n) const;
         
-        GraphNode* topGraphNodeStack(uint32_t processId);
-        void popGraphNodeStack(uint32_t processId);
-        void pushGraphNodeStack(GraphNode* node, uint32_t processId);
+        GraphNode* topGraphNodeStack(uint64_t processId);
+        void popGraphNodeStack(uint64_t processId);
+        void pushGraphNodeStack(GraphNode* node, uint64_t processId);
         
 
         void sanityCheckEdge(Edge *edge, uint32_t mpiRank);

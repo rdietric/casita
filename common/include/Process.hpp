@@ -42,8 +42,8 @@ namespace cdm
         typedef struct
         {
             MPIType mpiType;
-            uint32_t rootId;    // root process ID (or 0)
-            uint32_t partnerId; // process or process group
+            uint64_t rootId;    // root process ID (or 0)
+            uint64_t partnerId; // process or process group
         } MPICommRecord;
 
         typedef std::vector<MPICommRecord> MPICommRecordList;
@@ -63,7 +63,7 @@ namespace cdm
 
     public:
 
-        Process(uint32_t id, uint32_t parentId, const std::string name,
+        Process(uint64_t id, uint64_t parentId, const std::string name,
                 ProcessType processType, bool remoteProcess = false) :
         id(id),
         parentId(parentId),
@@ -88,12 +88,12 @@ namespace cdm
             }
         }
 
-        uint32_t getId() const
+        uint64_t getId() const
         {
             return id;
         }
 
-        uint32_t getParentId() const
+        uint64_t getParentId() const
         {
             return parentId;
         }
@@ -372,7 +372,7 @@ namespace cdm
             pendingKernels.clear();
         }
 
-        void setPendingMPIRecord(MPIType mpiType, uint32_t partnerId, uint32_t rootId)
+        void setPendingMPIRecord(MPIType mpiType, uint64_t partnerId, uint64_t rootId)
         {
             MPICommRecord record;
             record.mpiType = mpiType;
@@ -447,8 +447,8 @@ namespace cdm
         }
 
     private:
-        uint32_t id;
-        uint32_t parentId;
+        uint64_t id;
+        uint64_t parentId;
         const std::string name;
         ProcessType processType;
         bool remoteProcess;

@@ -40,12 +40,12 @@ namespace cdm
                     uint32_t numStreams, uint64_t timerResolution);
             void close();
 
-            void writeDefProcess(uint32_t id, uint32_t parentId,
+            void writeDefProcess(uint64_t id, uint64_t parentId,
                     const char *name, ProcessGroup pg);
             void writeDefCounter(uint32_t id, const char *name, int properties);
             void writeNode(const Node *node, CounterTable &ctrTable, bool lastProcessNode, const Node *futureNode);
-            void writeRMANode(const Node *node, uint32_t prevProcessId,
-                    uint32_t nextProcessId);
+            void writeRMANode(const Node *node, uint64_t prevProcessId,
+                    uint64_t nextProcessId);
             
             void *getWriteObject(uint32_t id);
         private:

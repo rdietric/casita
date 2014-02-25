@@ -93,10 +93,11 @@ void OTF1TraceWriter::close()
     OTF_FileManager_close(fileMgr);
 }
 
-void OTF1TraceWriter::writeDefFunction(uint32_t id,
+void OTF1TraceWriter::writeDefFunction(uint64_t id,
         const char* name, FunctionGroup fg)
 {
-    OTF_CHECK(OTF_Writer_writeDefFunction(writer, 0, id, name, (uint32_t) fg, 0));
+    uint32_t otf1_id = (uint32_t) id;
+    OTF_CHECK(OTF_Writer_writeDefFunction(writer, 0, otf1_id, name, (uint32_t) fg, 0));
 }
 
 void OTF1TraceWriter::writeDefCounter(uint32_t id,
@@ -105,32 +106,35 @@ void OTF1TraceWriter::writeDefCounter(uint32_t id,
     OTF_CHECK(OTF_Writer_writeDefCounter(writer, 0, id, name, properties, 0, 0));
 }
 
-void OTF1TraceWriter::writeDefProcess(uint32_t id, uint32_t parentId, const char* name, ProcessGroup pg)
+void OTF1TraceWriter::writeDefProcess(uint64_t id, uint64_t parentId, const char* name, ProcessGroup pg)
 {
+    uint32_t otf1_id = (uint32_t) id;
+    uint32_t otf1_parentId = (uint32_t) parentId;
+    
     if (pg == PG_DEVICE)
-        deviceProcesses.push_back(id);
+        deviceProcesses.push_back(otf1_id);
     if (pg == PG_DEVICE_NULL)
     {
-        deviceProcesses.push_back(id);
-        deviceMasterProcesses.push_back(id);
+        deviceProcesses.push_back(otf1_id);
+        deviceMasterProcesses.push_back(otf1_id);
     }
     
-    OTF_CHECK(OTF_Writer_writeDefProcess(writer, 0, id, name, parentId));
-    uint32_t streamId = OTF_Writer_mapProcess(writer, id);
-    processStreamMap[id] = streamId;
+    OTF_CHECK(OTF_Writer_writeDefProcess(writer, 0, otf1_id, name, otf1_parentId));
+    uint32_t streamId = OTF_Writer_mapProcess(writer, otf1_id);
+    processStreamMap[otf1_id] = streamId;
 }
 
 void OTF1TraceWriter::writeNode(const Node *node, CounterTable &ctrTable, bool lastProcessNode, const Node *futureNode)
 {
     OTF_WStream *wstream = OTF_Writer_getStream(
-          writer, processStreamMap[node->getProcessId()]);
+          writer, processStreamMap[(uint32_t)node->getProcessId()]);
 
     if (node->isEnter() || node->isLeave())
     {
         if (node->getReferencedProcessId() != 0)
         {
             OTF_KeyValueList_appendUint32(kvList, streamRefKey,
-                    node->getReferencedProcessId());
+                    (uint32_t)node->getReferencedProcessId());
         }
 
         if (node->isEventNode())
@@ -146,11 +150,11 @@ void OTF1TraceWriter::writeNode(const Node *node, CounterTable &ctrTable, bool l
         if (node->isEnter())
         {
             OTF_CHECK(OTF_WStream_writeEnterKV(wstream, node->getTime(),
-                    node->getFunctionId(), node->getProcessId(), 0, kvList));
+                    (uint32_t)node->getFunctionId(), (uint32_t)node->getProcessId(), 0, kvList));
         } else
         {
             OTF_CHECK(OTF_WStream_writeLeaveKV(wstream, node->getTime(), 0,
-                    node->getProcessId(), 0, kvList));
+                    (uint32_t)node->getProcessId(), 0, kvList));
         }
     }
 
@@ -166,7 +170,7 @@ void OTF1TraceWriter::writeNode(const Node *node, CounterTable &ctrTable, bool l
                 ctrVal = ctrTable.getCounter(*iter)->defaultValue;
 
             OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
-                    node->getProcessId(), *iter, ctrVal));
+                    (uint32_t)node->getProcessId(), *iter, ctrVal));
         }
     }
 }

@@ -35,7 +35,7 @@ namespace cdm
             GraphNode::GraphNodePair kernel = ((GraphNode*) node)->getGraphPair();
 
             // find the process which launched this kernel and consume the launch event
-            uint32_t kernelProcessId = node->getProcessId();
+            uint64_t kernelProcessId = node->getProcessId();
 
             GraphNode *launchEnterEvent = analysis->consumePendingKernelLaunch(kernelProcessId);
 

@@ -497,7 +497,7 @@ namespace cdm
             }
         }
 
-        Node(uint64_t time, uint32_t processId, const std::string name,
+        Node(uint64_t time, uint64_t processId, const std::string name,
                 Paradigm paradigm, NodeRecordType recordType, int nodeType) :
         time(time),
         processId(processId),
@@ -527,7 +527,7 @@ namespace cdm
             return time;
         }
 
-        uint32_t getProcessId() const
+        uint64_t getProcessId() const
         {
             return processId;
         }
@@ -563,12 +563,12 @@ namespace cdm
             return getUniqueName().c_str();
         }
 
-        uint32_t getFunctionId() const
+        uint64_t getFunctionId() const
         {
             return functionId;
         }
 
-        void setFunctionId(uint32_t newId)
+        void setFunctionId(uint64_t newId)
         {
             functionId = newId;
         }
@@ -593,12 +593,12 @@ namespace cdm
             return nodeType;
         }
 
-        void setReferencedProcessId(uint32_t processId)
+        void setReferencedProcessId(uint64_t processId)
         {
             referencedProcess = processId;
         }
 
-        bool referencesProcess(uint32_t processId) const
+        bool referencesProcess(uint64_t processId) const
         {
             if (processId == this->processId)
                 return false;
@@ -610,7 +610,7 @@ namespace cdm
             return false;
         }
 
-        uint32_t getReferencedProcessId() const
+        uint64_t getReferencedProcessId() const
         {
 
             return referencedProcess;
@@ -687,8 +687,8 @@ namespace cdm
     protected:
         uint32_t id;
         uint64_t time;
-        uint32_t processId;
-        uint32_t functionId;
+        uint64_t processId;
+        uint64_t functionId;
         std::string name;
 
         NodeRecordType recordType;
@@ -705,7 +705,7 @@ namespace cdm
          * - EventQuery/leave > EventQuery/leave
          * - StreamWaitEvent/leave > EventLaunch/leave
          */
-        uint32_t referencedProcess;
+        uint64_t referencedProcess;
         std::map<uint32_t, uint64_t> counters;
     };
 

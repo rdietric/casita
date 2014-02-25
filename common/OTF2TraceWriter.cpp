@@ -96,7 +96,7 @@ void OTF2TraceWriter::close()
     OTF2_Archive_Close(archive);
 }
 
-void OTF2TraceWriter::writeDefFunction(uint32_t id, const char* name, FunctionGroup fg)
+void OTF2TraceWriter::writeDefFunction(uint64_t id, const char* name, FunctionGroup fg)
 {
     OTF2_Paradigm paradigm = OTF2_PARADIGM_UNKNOWN;
     if (fg == FG_CUDA_API)
@@ -106,7 +106,7 @@ void OTF2TraceWriter::writeDefFunction(uint32_t id, const char* name, FunctionGr
             OTF2_REGION_ROLE_FUNCTION, paradigm, OTF2_REGION_FLAG_NONE, 0, 0, 0);
 }
 
-void OTF2TraceWriter::writeDefProcess(uint32_t id, const char* name, ProcessGroup pg)
+void OTF2TraceWriter::writeDefProcess(uint64_t id, const char* name, ProcessGroup pg)
 {
     /* uint32_t pValue = 0;
      if (pg == PG_DEVICE)

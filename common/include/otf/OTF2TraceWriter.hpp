@@ -29,8 +29,8 @@ namespace cdm
             void open(const std::string otfFilename, uint32_t maxFiles);
             void close();
 
-            void writeDefProcess(uint32_t id, const char *name, ProcessGroup pg);
-            void writeDefFunction(uint32_t id, const char *name, FunctionGroup fg);
+            void writeDefProcess(uint64_t id, const char *name, ProcessGroup pg);
+            void writeDefFunction(uint64_t id, const char *name, FunctionGroup fg);
 
             void writeNode(const Node *node);
 
@@ -42,8 +42,8 @@ namespace cdm
             OTF2_DefWriter *defWriter;
             OTF2_GlobalDefWriter *globDefWriter;
 
-            std::vector<uint32_t> hostProcesses;
-            std::vector<uint32_t> deviceProcesses;
+            std::vector<uint64_t> hostProcesses;
+            std::vector<uint64_t> deviceProcesses;
 
             uint32_t writeString(const char *str);
         };

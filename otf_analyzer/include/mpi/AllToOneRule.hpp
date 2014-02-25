@@ -35,15 +35,16 @@ namespace cdm
 
                 // get the complete execution
                 GraphNode::GraphNodePair allToOne = ((GraphNode*) node)->getGraphPair();
-                uint32_t mpiGroupId = node->getReferencedProcessId();
-                uint32_t *root = (uint32_t*) (allToOne.second->getData());
+                // \todo CHECK THIS!!!
+                uint32_t mpiGroupId = (uint32_t) node->getReferencedProcessId();
+                uint64_t *root = (uint64_t*) (allToOne.second->getData());
                 if (!root)
                     ErrorUtils::getInstance().throwFatalError("Root must be known for MPI AllToOne");
 
                 const MPIAnalysis::MPICommGroup& mpiCommGroup =
                         analysis->getMPIAnalysis().getMPICommGroup(mpiGroupId);
 
-                uint32_t rootId = *root;
+                uint64_t rootId = *root;
                 uint32_t rootMPIRank = analysis->getMPIAnalysis().getMPIRank(rootId, mpiCommGroup);
 
                 const uint32_t BUFFER_SIZE = 7;
@@ -53,21 +54,23 @@ namespace cdm
                 else
                     recvBufferSize = BUFFER_SIZE;
 
-                uint32_t sendBuffer[BUFFER_SIZE];
-                uint32_t *recvBuffer = new uint32_t[recvBufferSize];
-                memset(recvBuffer, 0, recvBufferSize * sizeof (uint32_t));
+                uint64_t sendBuffer[BUFFER_SIZE];
+                uint64_t *recvBuffer = new uint64_t[recvBufferSize];
+                memset(recvBuffer, 0, recvBufferSize * sizeof (uint64_t));
 
                 uint64_t allToOneStartTime = allToOne.first->getTime();
                 uint64_t allToOneEndTime = allToOne.second->getTime();
 
-                memcpy(sendBuffer, &allToOneStartTime, sizeof (uint64_t));
-                memcpy(sendBuffer + 2, &allToOneEndTime, sizeof (uint64_t));
-                sendBuffer[4] = allToOne.first->getId();
-                sendBuffer[5] = allToOne.second->getId();
-                sendBuffer[6] = node->getProcessId();
+                //memcpy(sendBuffer, &allToOneStartTime, sizeof (uint64_t));
+                //memcpy(sendBuffer + 2, &allToOneEndTime, sizeof (uint64_t));
+                sendBuffer[0] = allToOneStartTime;
+                sendBuffer[1] = allToOneEndTime;
+                sendBuffer[2] = allToOne.first->getId();
+                sendBuffer[3] = allToOne.second->getId();
+                sendBuffer[4] = node->getProcessId();
 
-                MPI_CHECK(MPI_Gather(sendBuffer, BUFFER_SIZE, MPI_UNSIGNED,
-                        recvBuffer, BUFFER_SIZE, MPI_UNSIGNED,
+                MPI_CHECK(MPI_Gather(sendBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
+                        recvBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                         rootMPIRank, mpiCommGroup.comm));
                 
                 if (node->getProcessId() == rootId)
@@ -76,13 +79,13 @@ namespace cdm
                     uint64_t total_waiting_time = 0;
                     for (size_t i = 0; i < recvBufferSize; i += BUFFER_SIZE)
                     {
-                        uint64_t enterTime = ((uint64_t) recvBuffer[i + 1] << 32) + recvBuffer[i];
+                        uint64_t enterTime = recvBuffer[i];
 
                         if (enterTime > allToOneStartTime)
                             total_waiting_time += enterTime - allToOneStartTime;
 
                         analysis->getMPIAnalysis().addRemoteMPIEdge(allToOne.second,
-                                recvBuffer[i + 4], recvBuffer[i + 6],
+                                recvBuffer[i + 2], recvBuffer[i + 4],
                                 MPIAnalysis::MPI_EDGE_REMOTE_LOCAL);
                     }
 
@@ -99,14 +102,14 @@ namespace cdm
                 
                 MPI_Barrier(mpiCommGroup.comm);
 
-                memcpy(recvBuffer, sendBuffer, sizeof(uint32_t) * BUFFER_SIZE);
-                MPI_CHECK(MPI_Bcast(recvBuffer, BUFFER_SIZE, MPI_UNSIGNED,
+                memcpy(recvBuffer, sendBuffer, sizeof(uint64_t) * BUFFER_SIZE);
+                MPI_CHECK(MPI_Bcast(recvBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                         rootMPIRank, mpiCommGroup.comm));
 
                 if (node->getProcessId() != rootId)
                 {
                     // all others compute their blame
-                    uint64_t rootEnterTime = ((uint64_t) recvBuffer[1] << 32) + recvBuffer[0];
+                    uint64_t rootEnterTime = recvBuffer[0];
 
                     if (rootEnterTime < allToOneStartTime)
                     {
@@ -116,7 +119,7 @@ namespace cdm
                     }
 
                     analysis->getMPIAnalysis().addRemoteMPIEdge(allToOne.first,
-                                recvBuffer[5], recvBuffer[6],
+                                recvBuffer[3], recvBuffer[4],
                                 MPIAnalysis::MPI_EDGE_LOCAL_REMOTE);
                 }
 

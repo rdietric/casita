@@ -49,7 +49,7 @@ namespace cdm
             analysis->removeEventQuery(evQueryLeave->getEventId());
 
             // get the device process ID this event is queued on
-            uint32_t refDeviceProcessId = analysis->getEventProcessId(
+            uint64_t refDeviceProcessId = analysis->getEventProcessId(
                     evQueryLeave->getEventId());
             if (!refDeviceProcessId)
                 ErrorUtils::getInstance().throwFatalError("Could not find device process ID for event %u from %s",

@@ -58,26 +58,26 @@ bool AnalysisEngine::rulePriorityCompare(AbstractRule *r1, AbstractRule *r2)
     return r2->getPriority() < r1->getPriority();
 }
 
-void AnalysisEngine::addFunction(uint32_t funcId, const char *name)
+void AnalysisEngine::addFunction(uint64_t funcId, const char *name)
 {
     maxFunctionId = std::max(maxFunctionId, funcId);
     functionMap[funcId] = name;
 }
 
-uint32_t AnalysisEngine::getNewFunctionId()
+uint64_t AnalysisEngine::getNewFunctionId()
 {
     return ++maxFunctionId;
 }
 
-void AnalysisEngine::setWaitStateFunctionId(uint32_t id)
+void AnalysisEngine::setWaitStateFunctionId(uint64_t id)
 {
     waitStateFuncId = id;
     functionMap[waitStateFuncId] = "WaitState";
 }
 
-const char *AnalysisEngine::getFunctionName(uint32_t id)
+const char *AnalysisEngine::getFunctionName(uint64_t id)
 {
-    std::map<uint32_t, std::string>::const_iterator iter =
+    std::map<uint64_t, std::string>::const_iterator iter =
             functionMap.find(id);
     if (iter != functionMap.end())
         return iter->second.c_str();
@@ -157,12 +157,12 @@ EventNode *AnalysisEngine::getLastEventLaunchLeave(uint32_t eventId) const
         return NULL;
 }
 
-void AnalysisEngine::setEventProcessId(uint32_t eventId, uint32_t processId)
+void AnalysisEngine::setEventProcessId(uint32_t eventId, uint64_t processId)
 {
     eventProcessMap[eventId] = processId;
 }
 
-uint32_t AnalysisEngine::getEventProcessId(uint32_t eventId) const
+uint64_t AnalysisEngine::getEventProcessId(uint32_t eventId) const
 {
     IdIdMap::const_iterator iter = eventProcessMap.find(eventId);
     if (iter != eventProcessMap.end())
@@ -178,7 +178,7 @@ void AnalysisEngine::addPendingKernelLaunch(GraphNode* launch)
     pendingKernelLaunchMap[launch->getReferencedProcessId()].push_back(launch);
 }
 
-GraphNode* AnalysisEngine::consumePendingKernelLaunch(uint32_t kernelProcessId)
+GraphNode* AnalysisEngine::consumePendingKernelLaunch(uint64_t kernelProcessId)
 {
     KernelLaunchListMap::iterator listIter = pendingKernelLaunchMap.find(kernelProcessId);
     if (listIter == pendingKernelLaunchMap.end())
@@ -203,7 +203,7 @@ GraphNode* AnalysisEngine::consumePendingKernelLaunch(uint32_t kernelProcessId)
     return kernelLaunch;
 }
 
-void AnalysisEngine::addStreamWaitEvent(uint32_t waitingDeviceProcId, EventNode *streamWaitLeave)
+void AnalysisEngine::addStreamWaitEvent(uint64_t waitingDeviceProcId, EventNode *streamWaitLeave)
 {
     Process *nullStream = getNullStream();
     if (nullStream && nullStream->getId() == waitingDeviceProcId)
@@ -230,7 +230,7 @@ void AnalysisEngine::addStreamWaitEvent(uint32_t waitingDeviceProcId, EventNode 
     }
 }
 
-EventNode *AnalysisEngine::getFirstStreamWaitEvent(uint32_t waitingDeviceProcId)
+EventNode *AnalysisEngine::getFirstStreamWaitEvent(uint64_t waitingDeviceProcId)
 {
     IdEventsListMap::iterator iter = streamWaitMap.find(waitingDeviceProcId);
     // no direct streamWaitEvent found, test if one references a NULL stream
@@ -267,7 +267,7 @@ EventNode *AnalysisEngine::getFirstStreamWaitEvent(uint32_t waitingDeviceProcId)
     return *(iter->second.begin());
 }
 
-EventNode *AnalysisEngine::consumeFirstStreamWaitEvent(uint32_t waitingDeviceProcId)
+EventNode *AnalysisEngine::consumeFirstStreamWaitEvent(uint64_t waitingDeviceProcId)
 {
     IdEventsListMap::iterator iter = streamWaitMap.find(waitingDeviceProcId);
     // no direct streamWaitEvent found, test if one references a NULL stream
@@ -329,7 +329,7 @@ void AnalysisEngine::removeEventQuery(uint32_t eventId)
 }
 
 GraphNode *AnalysisEngine::getLastLaunchLeave(uint64_t timestamp,
-        uint32_t deviceProcId) const
+        uint64_t deviceProcId) const
 {
     VT_TRACER("getLastLaunchLeave");
     // find last kernel launch (leave record) which launched on 
@@ -347,7 +347,7 @@ GraphNode *AnalysisEngine::getLastLaunchLeave(uint64_t timestamp,
             if (gLaunchLeave->isEnter())
                 continue;
 
-            uint32_t refDeviceProcessId =
+            uint64_t refDeviceProcessId =
                     gLaunchLeave->getGraphPair().first->getReferencedProcessId();
 
             // found the last kernel launch (leave) on this process, break
@@ -365,7 +365,7 @@ GraphNode *AnalysisEngine::getLastLaunchLeave(uint64_t timestamp,
     return lastLaunchLeave;
 }
 
-GraphNode *AnalysisEngine::getLastLeave(uint64_t timestamp, uint32_t procId) const
+GraphNode *AnalysisEngine::getLastLeave(uint64_t timestamp, uint64_t procId) const
 {
     // find last leave record on process procId before timestamp
     Process *process = getProcess(procId);
@@ -387,7 +387,7 @@ GraphNode *AnalysisEngine::getLastLeave(uint64_t timestamp, uint32_t procId) con
     return NULL;
 }
 
-GraphNode* AnalysisEngine::newGraphNode(uint64_t time, uint32_t processId,
+GraphNode* AnalysisEngine::newGraphNode(uint64_t time, uint64_t processId,
         const std::string name, Paradigm paradigm, NodeRecordType recordType,
         int nodeType)
 {
@@ -416,7 +416,7 @@ GraphNode* AnalysisEngine::addNewGraphNode(uint64_t time, Process *process,
 }
 
 RemoteGraphNode *AnalysisEngine::addNewRemoteNode(uint64_t time,
-        uint32_t remoteProcId, uint32_t remoteNodeId, Paradigm paradigm,
+        uint64_t remoteProcId, uint32_t remoteNodeId, Paradigm paradigm,
         NodeRecordType recordType, int nodeType, uint32_t mpiRank)
 {
     RemoteGraphNode *node = new RemoteGraphNode(time, remoteProcId,
@@ -594,7 +594,7 @@ uint64_t AnalysisEngine::updateInEdges(const Graph::EdgeList& inEdges, bool verb
     return fixedSlack;
 }
 
-void AnalysisEngine::optimizeKernel(std::map<uint32_t, double> optimizationMap, bool verbose)
+void AnalysisEngine::optimizeKernel(std::map<uint64_t, double> optimizationMap, bool verbose)
 {
     // get all local processes
     Allocation::ProcessList processes;
@@ -609,7 +609,7 @@ void AnalysisEngine::optimizeKernel(std::map<uint32_t, double> optimizationMap, 
     // slack for each node
     std::map<GraphNode*, uint64_t> slackMap;
     // mapping from process ID to index in process list
-    std::map<uint32_t, size_t> processIndexMap;
+    std::map<uint64_t, size_t> processIndexMap;
     // set of already processed nodes
     GraphNode::GraphNodeSet processedNodes;
     bool nodesRemaining = true;
@@ -751,7 +751,7 @@ void AnalysisEngine::optimizeKernel(std::map<uint32_t, double> optimizationMap, 
                 // test if function is marked for optimization
                 if (!fixedSlack && currentNode->isLeave())
                 {
-                    std::map<uint32_t, double>::const_iterator optFactorIter =
+                    std::map<uint64_t, double>::const_iterator optFactorIter =
                             optimizationMap.find(currentNode->getFunctionId());
 
                     if (optFactorIter != optimizationMap.end())
@@ -893,10 +893,10 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
         if (p->isRemoteProcess())
             continue;
 
-        uint32_t pId = p->getId();
+        uint64_t pId = p->getId();
         if (verbose)
         {
-            printf("[%u] def process %u (%s)\n",
+            printf("[%u] def process %lu (%s)\n",
                     mpiAnalysis.getMPIRank(),
                     pId, p->getName());
         }
@@ -937,7 +937,7 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
                 {
                     if (verbose)
                     {
-                        printf("[%u] [%12lu:%12.8fs] %60s in %8u (FID %u)\n",
+                        printf("[%u] [%12lu:%12.8fs] %60s in %8lu (FID %lu)\n",
                                 mpiAnalysis.getMPIRank(),
                                 node->getTime(),
                                 (double) (node->getTime()) / (double) this->ticksPerSecond,
@@ -970,36 +970,36 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
     }
 }*/
 
-void AnalysisEngine::pushOnOMPBackTraceStack(GraphNode* node, uint32_t processId)
+void AnalysisEngine::pushOnOMPBackTraceStack(GraphNode* node, uint64_t processId)
 {
     ompBackTraceStackMap[processId].push(node);
 }
 
-GraphNode* AnalysisEngine::ompBackTraceStackTop(uint32_t processId)
+GraphNode* AnalysisEngine::ompBackTraceStackTop(uint64_t processId)
 {
     if(ompBackTraceStackMap[processId].empty())
         return NULL;
     return ompBackTraceStackMap[processId].top();
 }
 
-GraphNode* AnalysisEngine::ompBackTraceStackPop(uint32_t processId)
+GraphNode* AnalysisEngine::ompBackTraceStackPop(uint64_t processId)
 {
     GraphNode* node = ompBackTraceStackMap[processId].top();
     ompBackTraceStackMap[processId].pop();
     return node;
 }
 
-bool AnalysisEngine::ompBackTraceStackIsEmpty(uint32_t processId)
+bool AnalysisEngine::ompBackTraceStackIsEmpty(uint64_t processId)
 {
     return ompBackTraceStackMap[processId].empty();
 }
 
-GraphNode* AnalysisEngine::getLastOmpNode(uint32_t processId)
+GraphNode* AnalysisEngine::getLastOmpNode(uint64_t processId)
 {
     return lastOmpEventMap[processId];
 }
 
-void AnalysisEngine::setLastOmpNode(GraphNode* node, uint32_t processId)
+void AnalysisEngine::setLastOmpNode(GraphNode* node, uint64_t processId)
 {
     lastOmpEventMap[processId] = node;
 }
@@ -1014,12 +1014,12 @@ void AnalysisEngine::setPendingParallelRegion(GraphNode* node)
     pendingParallelRegion = node;
 }
 
-GraphNode* AnalysisEngine::getOmpCompute(uint32_t processId)
+GraphNode* AnalysisEngine::getOmpCompute(uint64_t processId)
 {
     return ompComputeTrackMap[processId];
 }
 
-void AnalysisEngine::setOmpCompute(GraphNode* node, uint32_t processId)
+void AnalysisEngine::setOmpCompute(GraphNode* node, uint64_t processId)
 {
     ompComputeTrackMap[processId] = node;
 }

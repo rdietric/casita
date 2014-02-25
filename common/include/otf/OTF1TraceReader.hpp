@@ -59,7 +59,7 @@ namespace cdm
             void open(const std::string otfFilename, uint32_t maxFiles);
             void close();
             void readEvents();
-            void readEventsForProcess(uint32_t id);
+            void readEventsForProcess(uint64_t id);
             void readDefinitions();
 
             OTF1KeyValueList& getKVList();
@@ -73,8 +73,8 @@ namespace cdm
             ProcessFuncStack& getFuncStack();
 
             std::string getKeyName(uint32_t id);
-            std::string getFunctionName(uint32_t id);
-            std::string getProcessName(uint32_t id);
+            std::string getFunctionName(uint64_t id);
+            std::string getProcessName(uint64_t id);
             std::vector<uint32_t> getKeys(const std::string keyName);
             uint32_t getFirstKey(const std::string keyName);
             uint64_t getTimerResolution();

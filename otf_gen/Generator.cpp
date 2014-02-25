@@ -44,7 +44,7 @@ size_t Generator::generate(size_t numBlocks)
     return generateBlocks(numBlocks);
 }
 
-void Generator::insertCPUNodes(Process::SortedNodeList& nodes, uint32_t pId, uint64_t start, uint64_t end)
+void Generator::insertCPUNodes(Process::SortedNodeList& nodes, uint64_t pId, uint64_t start, uint64_t end)
 {
     uint64_t currentTime = start;
     while (currentTime < end)
@@ -54,7 +54,7 @@ void Generator::insertCPUNodes(Process::SortedNodeList& nodes, uint32_t pId, uin
         if (overlap > 0)
             functionDuration -= overlap;
 
-        uint32_t fId = functionTable.getRandomFunction(NT_FT_CPU);
+        uint64_t fId = functionTable.getRandomFunction(NT_FT_CPU);
         //printf("adding cpu function %4u (%5lu-%5lu)\n", fId,
         //      currentTime, currentTime + functionDuration);
         Node *nodeEnter = newNode(currentTime, pId,
@@ -158,8 +158,8 @@ void Generator::fillCPUNodes()
 
 void Generator::generateAllocation(size_t numHostProcs, size_t numDeviceProcs, size_t numNullStream)
 {
-    uint32_t pId = 1;
-    uint32_t parentId = 0;
+    uint64_t pId = 1;
+    uint64_t parentId = 0;
     
     for (size_t i = 0; i < numHostProcs; ++i)
     {
@@ -238,13 +238,13 @@ void Generator::mapProcessList(const Allocation::ProcessList& processes)
     {
         Process *p = *pIter;
         Process::SortedNodeList nodes = p->getNodes();
-        uint32_t lastFuncId = 0;
+        uint64_t lastFuncId = 0;
 
         for (Process::SortedNodeList::const_iterator nIter = nodes.begin();
                 nIter != nodes.end(); ++nIter)
         {
             Node *node = *nIter;
-            uint32_t funcId = lastFuncId;
+            uint64_t funcId = lastFuncId;
             if (node->isAtomic())
                 continue;
 

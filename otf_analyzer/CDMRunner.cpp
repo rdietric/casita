@@ -12,6 +12,7 @@
 
 #include "otf/IKeyValueList.hpp"
 #include "otf/OTF1TraceReader.hpp"
+#include "otf/OTF2TraceReader.hpp"
 
 #include "cuda/BlameKernelRule.hpp"
 #include "cuda/BlameSyncRule.hpp"
@@ -79,7 +80,7 @@ static void dumpAllocationTail(AnalysisEngine &analysis)
             iter != allProcs.end(); ++iter)
     {
         Process *p = *iter;
-        printf("# %s (%u)\n", p->getName(), p->getId());
+        printf("# %s (%lu)\n", p->getName(), p->getId());
         Process::SortedNodeList &nodes = p->getNodes();
         int n = 0;
         for (Process::SortedNodeList::const_reverse_iterator rIter = nodes.rbegin();
@@ -133,7 +134,7 @@ void CDMRunner::printNode(GraphNode *node, Process *process)
         else
             printf(" L ");
 
-        printf("[%12lu:%12.8fs:%10u,%5u] [%20s] proc [%15s], pid [%10u], [%s]",
+        printf("[%12lu:%12.8fs:%10u,%5lu] [%20s] proc [%15s], pid [%10lu], [%s]",
                 node->getTime(),
                 (double) (node->getTime()) / (double) analysis.getTimerResolution(),
                 node->getId(),
@@ -143,9 +144,9 @@ void CDMRunner::printNode(GraphNode *node, Process *process)
                 process->getId(),
                 Node::typeToStr(node->getParadigm(), node->getType()).c_str());
         
-        uint32_t refProcess = node->getReferencedProcessId();
+        uint64_t refProcess = node->getReferencedProcessId();
         if (refProcess)
-            printf(", ref = %u", refProcess);
+            printf(", ref = %lu", refProcess);
 
         if (node->isLeave() && node->isEventNode())
         {
@@ -191,14 +192,14 @@ uint32_t CDMRunner::readKeyVal(ITraceReader *reader, const char * keyName, IKeyV
     return keyVal;
 }
 
-void CDMRunner::handleProcessMPIMapping(ITraceReader *reader, uint32_t processId, uint32_t mpiRank)
+void CDMRunner::handleProcessMPIMapping(ITraceReader *reader, uint64_t processId, uint32_t mpiRank)
 {
     CDMRunner *runner = (CDMRunner*) (reader->getUserData());
     runner->getAnalysis().getMPIAnalysis().setMPIRank(processId, mpiRank);
 }
 
-void CDMRunner::handleDefProcess(ITraceReader *reader, uint32_t stream, uint32_t processId,
-        uint32_t parentId, const char *name, IKeyValueList * list, bool isCUDA, bool isCUDANull)
+void CDMRunner::handleDefProcess(ITraceReader *reader, uint32_t stream, uint64_t processId,
+        uint64_t parentId, const char *name, IKeyValueList * list, bool isCUDA, bool isCUDANull)
 {
     CDMRunner *runner = (CDMRunner*) (reader->getUserData());
     AnalysisEngine &analysis = runner->getAnalysis();
@@ -214,21 +215,21 @@ void CDMRunner::handleDefProcess(ITraceReader *reader, uint32_t stream, uint32_t
     }
 
     if (runner->getOptions().verbose >= VERBOSE_BASIC)
-        printf("  [%u] Found process %s (%u) with type %u, stream %u\n",
+        printf("  [%u] Found process %s (%lu) with type %u, stream %u\n",
             analysis.getMPIRank(), name, processId, processType, stream);
 
     analysis.newProcess(processId, parentId, name, processType, PARADIGM_CUDA);
 }
 
 void CDMRunner::handleDefFunction(ITraceReader *reader, uint32_t streamId,
-        uint32_t functionId, const char *name, uint32_t functionGroupId)
+        uint64_t functionId, const char *name, uint32_t functionGroupId)
 {
     CDMRunner *runner = (CDMRunner*) (reader->getUserData());
     runner->getAnalysis().addFunction(functionId, name);
 }
 
-void CDMRunner::handleEnter(ITraceReader *reader, uint64_t time, uint32_t functionId,
-        uint32_t processId, IKeyValueList *list)
+void CDMRunner::handleEnter(ITraceReader *reader, uint64_t time, uint64_t functionId,
+        uint64_t processId, IKeyValueList *list)
 {
     CDMRunner *runner = (CDMRunner*) (reader->getUserData());
     AnalysisEngine &analysis = runner->getAnalysis();
@@ -239,7 +240,7 @@ void CDMRunner::handleEnter(ITraceReader *reader, uint64_t time, uint32_t functi
 
     Process *process = analysis.getProcess(processId);
     if (!process)
-        throw RTException("Process %u not found.", processId);
+        throw RTException("Process %lu not found.", processId);
 
     const char *funcName = reader->getFunctionName(functionId).c_str();
 
@@ -284,7 +285,7 @@ void CDMRunner::handleEnter(ITraceReader *reader, uint64_t time, uint32_t functi
 }
 
 void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
-        uint32_t functionId, uint32_t processId, IKeyValueList *list)
+        uint64_t functionId, uint64_t processId, IKeyValueList *list)
 {
     CDMRunner *runner = (CDMRunner*) (reader->getUserData());
     AnalysisEngine &analysis = runner->getAnalysis();
@@ -295,7 +296,7 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
 
     Process *process = runner->getAnalysis().getProcess(processId);
     if (!process)
-        throw RTException("Process %u not found", processId);
+        throw RTException("Process %lu not found", processId);
 
     const char *funcName = reader->getFunctionName(functionId).c_str();
 
@@ -335,7 +336,7 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
         for (Process::MPICommRecordList::const_iterator iter = mpiCommRecords.begin();
                 iter != mpiCommRecords.end(); ++iter)
         {
-            uint32_t *tmpId = NULL;
+            uint64_t *tmpId = NULL;
 
             switch (iter->mpiType)
             {
@@ -347,14 +348,14 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
                     leaveNode->setReferencedProcessId(iter->partnerId);
                     if (iter->rootId)
                     {
-                        tmpId = new uint32_t;
+                        tmpId = new uint64_t;
                         *tmpId = iter->rootId;
                         leaveNode->setData(tmpId);
                     }
                     break;  
 
                 case Process::MPI_SEND:
-                    tmpId = new uint32_t;
+                    tmpId = new uint64_t;
                     *tmpId = iter->partnerId;
                     leaveNode->setData(tmpId);
                     break;
@@ -374,8 +375,8 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
     options.eventsProcessed++;
 }
 
-void CDMRunner::handleMPIComm(ITraceReader *reader, MPIType mpiType, uint32_t processId,
-        uint32_t partnerId, uint32_t root, uint32_t tag)
+void CDMRunner::handleMPIComm(ITraceReader *reader, MPIType mpiType, uint64_t processId,
+        uint64_t partnerId, uint32_t root, uint32_t tag)
 {
     CDMRunner *runner = (CDMRunner*) (reader->getUserData());
     AnalysisEngine &analysis = runner->getAnalysis();
@@ -401,7 +402,7 @@ void CDMRunner::handleMPIComm(ITraceReader *reader, MPIType mpiType, uint32_t pr
 
     if (runner->getOptions().verbose >= VERBOSE_ALL)
     {
-        printf(" [%u] mpi record, [%u > %u], type %u, tag %u\n",
+        printf(" [%u] mpi record, [%lu > %lu], type %u, tag %u\n",
                 analysis.getMPIRank(),
                 processId, partnerId,
                 pMPIType, tag);
@@ -411,7 +412,7 @@ void CDMRunner::handleMPIComm(ITraceReader *reader, MPIType mpiType, uint32_t pr
 }
 
 void CDMRunner::handleMPICommGroup(ITraceReader *reader, uint32_t group,
-        uint32_t numProcs, const uint32_t *procs)
+        uint32_t numProcs, const uint64_t *procs)
 {
     CDMRunner *runner = (CDMRunner*) (reader->getUserData());
 
@@ -421,10 +422,21 @@ void CDMRunner::handleMPICommGroup(ITraceReader *reader, uint32_t group,
 void CDMRunner::readOTF(const std::string filename)
 {
     uint32_t mpiRank = analysis.getMPIRank();
-
+    ITraceReader *traceReader;
+    
     printf("[%u] Reading OTF %s\n", mpiRank, options.filename);
-
-    ITraceReader *traceReader = new OTF1TraceReader(this, mpiRank);
+    //OTF1MODE
+    if(strstr(options.filename,".otf2")==NULL)
+    {
+        printf("Operating in OTF1-Mode.\n");
+        traceReader = new OTF1TraceReader(this, mpiRank);
+    }
+    else
+    {
+        printf("Operating in OTF2-Mode.\n");
+        traceReader = new OTF2TraceReader(this, mpiRank);
+    }
+     
     traceReader->handleDefProcess = handleDefProcess;
     traceReader->handleDefFunction = handleDefFunction;
     traceReader->handleEnter = handleEnter;
@@ -453,7 +465,7 @@ void CDMRunner::readOTF(const std::string filename)
     {
         if (options.verbose >= VERBOSE_BASIC)
             printf(" [%u] Reading events\n", mpiRank);
-        traceReader->readEvents();
+        //traceReader->readEvents();
     } catch (RTException e)
     {
         // dump
@@ -465,7 +477,7 @@ void CDMRunner::readOTF(const std::string filename)
     delete traceReader;
 }
 
-void CDMRunner::getOptFactors(char *optKernels, std::map<uint32_t, double>& optFactors)
+void CDMRunner::getOptFactors(char *optKernels, std::map<uint64_t, double>& optFactors)
 {
     const char *delims[] = {"%", ","};
     size_t i = 0;
@@ -517,7 +529,7 @@ void CDMRunner::getOptFactors(char *optKernels, std::map<uint32_t, double>& optF
 
 uint64_t CDMRunner::runOptimization(char *optKernels)
 {
-    std::map<uint32_t, double> optFactors;
+    std::map<uint64_t, double> optFactors;
     getOptFactors(optKernels, optFactors);
 
     if (optFactors.size() > 0)
@@ -531,7 +543,7 @@ uint64_t CDMRunner::runOptimization(char *optKernels)
     return analysis.getLastGraphNode()->getTime();
 }
 
-void CDMRunner::mergeActivityGroups(std::map<uint32_t, ActivityGroup> &activityGroupMap,
+void CDMRunner::mergeActivityGroups(std::map<uint64_t, ActivityGroup> &activityGroupMap,
         bool cpKernelsOnly)
 {
     /* phase 1: each MPI process*/
@@ -561,8 +573,8 @@ void CDMRunner::mergeActivityGroups(std::map<uint32_t, ActivityGroup> &activityG
         uint64_t blameLocalCtr = activity->getStart()->getCounter(blameLocalCtrId, &valid);
         uint64_t cpTimeCtr = activity->getStart()->getCounter(cpTimeCtrId, &valid);
 
-        uint32_t fId = activity->getFunctionId();
-        std::map<uint32_t, ActivityGroup>::iterator groupIter = activityGroupMap.find(fId);
+        uint64_t fId = activity->getFunctionId();
+        std::map<uint64_t, ActivityGroup>::iterator groupIter = activityGroupMap.find(fId);
         if (groupIter != activityGroupMap.end())
         {
             // update
@@ -582,10 +594,10 @@ void CDMRunner::mergeActivityGroups(std::map<uint32_t, ActivityGroup> &activityG
     }
 
     // compute some final metrics
-    for (std::map<uint32_t, ActivityGroup>::iterator groupIter =
+    for (std::map<uint64_t, ActivityGroup>::iterator groupIter =
             activityGroupMap.begin(); groupIter != activityGroupMap.end();)
     {
-        std::map<uint32_t, ActivityGroup>::iterator iter = groupIter;
+        std::map<uint64_t, ActivityGroup>::iterator iter = groupIter;
         groupIter->second.fractionCP =
                 (double) (groupIter->second.totalDurationOnCP) / (double) lengthCritPath;
         globalBlame += groupIter->second.totalBlame;
@@ -620,11 +632,11 @@ void CDMRunner::mergeActivityGroups(std::map<uint32_t, ActivityGroup> &activityG
                         rank, 2, MPI_COMM_WORLD, &status);
 
                 // combine with own activity groups
-                std::map<uint32_t, ActivityGroup>::iterator groupIter;
+                std::map<uint64_t, ActivityGroup>::iterator groupIter;
                 for (uint32_t i = 0; i < numEntries; ++i)
                 {
                     ActivityGroup *group = &(buf[i]);
-                    uint32_t fId = group->functionId;
+                    uint64_t fId = group->functionId;
                     groupIter = activityGroupMap.find(fId);
 
                     if (groupIter != activityGroupMap.end())
@@ -653,10 +665,10 @@ void CDMRunner::mergeActivityGroups(std::map<uint32_t, ActivityGroup> &activityG
             }
         }
 
-        for (std::map<uint32_t, ActivityGroup>::iterator groupIter = activityGroupMap.begin();
+        for (std::map<uint64_t, ActivityGroup>::iterator groupIter = activityGroupMap.begin();
                 groupIter != activityGroupMap.end(); ++groupIter)
         {
-            std::map<uint32_t, ActivityGroup>::iterator iter = groupIter;
+            std::map<uint64_t, ActivityGroup>::iterator iter = groupIter;
             groupIter->second.fractionCP /= (double) (iter->second.numUnifyProcesses);
             if (globalBlame > 0)
             {
@@ -674,7 +686,7 @@ void CDMRunner::mergeActivityGroups(std::map<uint32_t, ActivityGroup> &activityG
         ActivityGroup *buf = new ActivityGroup[numEntries];
 
         uint32_t i = 0;
-        for (std::map<uint32_t, ActivityGroup>::iterator groupIter = activityGroupMap.begin();
+        for (std::map<uint64_t, ActivityGroup>::iterator groupIter = activityGroupMap.begin();
                 groupIter != activityGroupMap.end(); ++groupIter)
         {
             memcpy(&(buf[i]), &(groupIter->second), sizeof (ActivityGroup));
@@ -858,7 +870,7 @@ void CDMRunner::getCriticalLocalSections(MPIAnalysis::CriticalPathSection *secti
 
         if (options.verbose >= VERBOSE_BASIC)
         {
-            printf("[%u] computing local critical path between MPI nodes [%u, %u] on process %u\n",
+            printf("[%u] computing local critical path between MPI nodes [%u, %u] on process %lu\n",
                     mpiRank, section->nodeStartID, section->nodeEndID, section->processID);
         }
 
@@ -1024,13 +1036,43 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
 
     Graph *mpiGraph = analysis.getGraph(PARADIGM_MPI);
     uint32_t cpCtrId = analysis.getCtrTable().getCtrId(CTR_CRITICALPATH);
-    uint32_t sendBfr[BUFFER_SIZE];
-    uint32_t recvBfr[BUFFER_SIZE];
+    uint64_t sendBfr[BUFFER_SIZE];
+    uint64_t recvBfr[BUFFER_SIZE];
+
+/*    
+    Allocation::ProcessList procs;
+    analysis.getProcesses(procs);
+    printf("REVERSE REPLAY");
+    printf("PROCESS_SIZE %lu \n",procs.size());
+    for(Allocation::ProcessList::const_iterator iter = procs.begin(); iter != procs.end(); ++iter)
+    {
+        Process * p = *iter;
+        printf("PROCESS %lu \n",p->getId());
+    }
+        
+    const Graph::NodeList& list = mpiGraph->getNodes();
+    for(Graph::NodeList::const_iterator iter = list.begin(); iter != list.end(); ++iter)
+    {
+        GraphNode* temp = *iter;
+        printf("PROCESS %lu \n",temp->getProcessId());
+        
+        Process * p = analysis.getProcess(temp->getProcessId());
+        if(p == NULL)
+            printf("GOT NULL \n");
+//        printf("PROCESS %lu",p->getId());
+//        printNode(temp, p);
+    }
+  
+ */      
+   
+    options.verbose = VERBOSE_ANNOY;
     
     while (true)
     {
+        printf("[%u] New ROUND \n",mpiRank);
         if (isMaster)
         {
+            printf("[%u] is Master \n ",mpiRank);
             /* master */
             if (options.verbose >= VERBOSE_ANNOY)
             {
@@ -1095,6 +1137,7 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
                     for (std::set<uint32_t>::const_iterator iter = mpiPartnerRanks.begin();
                             iter != mpiPartnerRanks.end(); ++iter)
                     {
+                        printf("[%u] Comm \n", mpiRank);
                         /* communicate with all slaves to find new master */
                         uint32_t commMpiRank = *iter;
 
@@ -1107,13 +1150,14 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
 
                         if (options.verbose >= VERBOSE_ANNOY)
                         {
-                            printf("[%u]  testing remote MPI worker %u for remote edge to my node %u on process %u\n",
-                                    mpiRank, commMpiRank, sendBfr[0], sendBfr[1]);
+                            printf("[%u]  testing remote MPI worker %u for remote edge to my node %u on process %lu\n",
+                                    mpiRank, commMpiRank, (uint32_t) sendBfr[0], sendBfr[1]);
                         }
                         MPI_Request request;
-                        MPI_CHECK(MPI_Isend(sendBfr, BUFFER_SIZE, MPI_UNSIGNED,
+                        MPI_CHECK(MPI_Isend(sendBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                                 commMpiRank, 0, MPI_COMM_WORLD, &request));
                     }
+                    printf("Got out of Comm loop \n");
 
                     /* continue main loop as slave */
                 } else
@@ -1138,15 +1182,15 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
                     sendBfr[1] = 0;
                     sendBfr[2] = PATH_FOUND_MSG;
 
-                    std::set<uint32_t> mpiPartners = analysis.getMPIAnalysis().getMPICommGroup(0).procs;
-                    for (std::set<uint32_t>::const_iterator iter = mpiPartners.begin();
+                    std::set<uint64_t> mpiPartners = analysis.getMPIAnalysis().getMPICommGroup(0).procs;
+                    for (std::set<uint64_t>::const_iterator iter = mpiPartners.begin();
                             iter != mpiPartners.end(); ++iter)
                     {
                         int commMpiRank = analysis.getMPIAnalysis().getMPIRank(*iter);
                         if (commMpiRank == mpiRank)
                             continue;
 
-                        MPI_CHECK(MPI_Send(sendBfr, BUFFER_SIZE, MPI_UNSIGNED,
+                        MPI_CHECK(MPI_Send(sendBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                                 commMpiRank, 0, MPI_COMM_WORLD));
                     }
 
@@ -1180,14 +1224,15 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
         } else
         {
             /* slave */
-
+            printf("[%u] is Slave \n ",mpiRank);
             //int flag = 0;
             MPI_Status status;
-            MPI_CHECK(MPI_Recv(recvBfr, BUFFER_SIZE, MPI_UNSIGNED, MPI_ANY_SOURCE,
+            MPI_CHECK(MPI_Recv(recvBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, MPI_ANY_SOURCE,
                     MPI_ANY_TAG, MPI_COMM_WORLD, &status));
 
             if (recvBfr[2] == PATH_FOUND_MSG)
             {
+                printf("Abort \n");
                 if (options.verbose >= VERBOSE_ANNOY)
                     printf("[%u] * terminate requested by master\n", mpiRank);
                 break;
@@ -1196,13 +1241,16 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
             /* find local node for remote node id and decide if we can continue here */
             if (options.verbose >= VERBOSE_ANNOY)
             {
-                printf("[%u]  tested by remote MPI worker %u for remote edge to its node %u on process %u\n",
-                        mpiRank, status.MPI_SOURCE, recvBfr[0], recvBfr[1]);
+                printf("[%u]  tested by remote MPI worker %u for remote edge to its node %u on process %lu\n",
+                        mpiRank, status.MPI_SOURCE, (uint32_t)recvBfr[0], recvBfr[1]);
             }
 
             /* check if the activity is a wait state */
             MPIAnalysis::MPIEdge mpiEdge;
-            if (analysis.getMPIAnalysis().getRemoteMPIEdge(recvBfr[0], recvBfr[1], mpiEdge))
+            bool edge = analysis.getMPIAnalysis().getRemoteMPIEdge((uint32_t)recvBfr[0], recvBfr[1], mpiEdge);
+            if(!edge)
+                printf("[%u] EDGE IS false \n",mpiRank);
+            if (analysis.getMPIAnalysis().getRemoteMPIEdge((uint32_t)recvBfr[0], recvBfr[1], mpiEdge))
             {
                 GraphNode::GraphNodePair &slaveActivity = mpiEdge.localNode->getGraphPair();
                 /* we are the new master */
@@ -1228,6 +1276,9 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
     }
     
     MPI_Barrier(MPI_COMM_WORLD);
+    
+    options.verbose = 0;
+    
 }
 
 void CDMRunner::runAnalysis(Paradigm paradigm, Process::SortedNodeList &allNodes)
@@ -1307,7 +1358,7 @@ void CDMRunner::runAnalysis(Paradigm paradigm, Process::SortedNodeList &allNodes
 
 void CDMRunner::printAllActivities(uint64_t globalCPLength)
 {
-    std::map<uint32_t, ActivityGroup> activityGroupMap;
+    std::map<uint64_t, ActivityGroup> activityGroupMap;
     mergeActivityGroups(activityGroupMap, false);
 
     if (analysis.getMPIRank() == 0)
@@ -1317,7 +1368,7 @@ void CDMRunner::printAllActivities(uint64_t globalCPLength)
 
         std::set<ActivityGroup, ActivityGroupCompare> sortedActivityGroups;
 
-        for (std::map<uint32_t, ActivityGroup>::iterator iter = activityGroupMap.begin();
+        for (std::map<uint64_t, ActivityGroup>::iterator iter = activityGroupMap.begin();
                 iter != activityGroupMap.end(); ++iter)
         {
             iter->second.fractionCP = 0.0;

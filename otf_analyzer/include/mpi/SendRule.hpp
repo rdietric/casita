@@ -36,34 +36,36 @@ namespace cdm
 
                 // get the complete execution
                 GraphNode::GraphNodePair send = ((GraphNode*) node)->getGraphPair();
-                uint32_t *data = (uint32_t*) (send.second->getData());
-                uint32_t partnerProcessId = *data;
+                uint64_t *data = (uint64_t*) (send.second->getData());
+                uint64_t partnerProcessId = *data;
 
                 const int BUFFER_SIZE = 8;
-                uint32_t buffer[BUFFER_SIZE];
-                uint64_t *bfr64 = (uint64_t*) buffer;
+                uint64_t buffer[BUFFER_SIZE];
+                //uint64_t *bfr64 = (uint64_t*) buffer;
 
                 /* send */
                 uint64_t sendStartTime = send.first->getTime();
                 uint64_t sendEndTime = send.second->getTime();
 
                 uint32_t partnerMPIRank = analysis->getMPIAnalysis().getMPIRank(partnerProcessId);
-                memcpy(bfr64 + 0, &sendStartTime, sizeof (uint64_t));
-                memcpy(bfr64 + 1, &sendEndTime, sizeof (uint64_t));
+                //memcpy(bfr64 + 0, &sendStartTime, sizeof (uint64_t));
+                //memcpy(bfr64 + 1, &sendEndTime, sizeof (uint64_t));
 
-                buffer[4] = send.first->getId();
-                buffer[5] = send.second->getId();
+                buffer[0] = sendStartTime;
+                buffer[1] = sendEndTime;
+                buffer[2] = send.first->getId();
+                buffer[3] = send.second->getId();
                 buffer[BUFFER_SIZE - 1] = send.second->getType();
-                MPI_CHECK(MPI_Send(buffer, BUFFER_SIZE, MPI_UNSIGNED, partnerMPIRank,
+                MPI_CHECK(MPI_Send(buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, partnerMPIRank,
                         0, MPI_COMM_WORLD));
 
                 /* receive */
                 MPI_Status status;
                 uint64_t recvStartTime = 0;
                 // uint64_t recvEndTime = 0;
-                MPI_CHECK(MPI_Recv(buffer, BUFFER_SIZE, MPI_UNSIGNED, partnerMPIRank,
+                MPI_CHECK(MPI_Recv(buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, partnerMPIRank,
                         0, MPI_COMM_WORLD, &status));
-                recvStartTime = bfr64[0];
+                recvStartTime = buffer[0]; //bfr64[0];
                 //recvEndTime = bfr64[1];
                 //int partnerType = buffer[BUFFER_SIZE - 1];
 
@@ -83,7 +85,7 @@ namespace cdm
                             sendStartTime - recvStartTime, processWalkCallback);
                 }
                 
-                analysis->getMPIAnalysis().addRemoteMPIEdge(send.first, buffer[5],
+                analysis->getMPIAnalysis().addRemoteMPIEdge(send.first, (uint32_t)buffer[3],
                         partnerProcessId, MPIAnalysis::MPI_EDGE_LOCAL_REMOTE);
 
                 return true;

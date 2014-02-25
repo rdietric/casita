@@ -29,8 +29,8 @@ namespace cdm
                     uint32_t numStreams, uint64_t timerResolution);
             void close();
 
-            void writeDefProcess(uint32_t id, uint32_t parentId, const char *name, ProcessGroup pg);
-            void writeDefFunction(uint32_t id, const char *name, FunctionGroup fg);
+            void writeDefProcess(uint64_t id, uint64_t parentId, const char *name, ProcessGroup pg);
+            void writeDefFunction(uint64_t id, const char *name, FunctionGroup fg);
             void writeDefCounter(uint32_t id, const char *name, int properties);
 
             void writeNode(const Node *node, CounterTable &ctrTable, bool lastProcessNode, const Node *futureNode);

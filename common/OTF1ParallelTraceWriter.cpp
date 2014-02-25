@@ -63,25 +63,34 @@ OTF1ParallelTraceWriter::~OTF1ParallelTraceWriter()
     delete[] mpiNumProcesses;
 }
 
-static int handleDefProcess(void * userData, uint32_t stream, uint32_t processId,
-        const char * name, uint32_t parent, OTF_KeyValueList_struct * list)
+static int handleDefProcess(void * userData, uint32_t stream, uint64_t processId,
+        const char * name, uint64_t parent, OTF_KeyValueList_struct * list)
 {
+    uint32_t otf1_processId = (uint32_t)processId;
+    uint32_t otf1_parent = (uint32_t)parent;
+    
     WriterData *writerData = (WriterData*) userData;
 
     OTF_CHECK(OTF_Writer_writeDefProcess(writerData->writer, stream,
-            processId, name, parent));
+            otf1_processId, name, otf1_parent));
 
     return OTF_RETURN_OK;
 }
 
 static int handleDefProcessGroup(void *userData, uint32_t stream,
         uint32_t procGroup, const char *name, uint32_t numberOfProcs,
-        const uint32_t *procs, OTF_KeyValueList *list)
+        const uint64_t *procs, OTF_KeyValueList *list)
 {
+    uint32_t otf1_procs[numberOfProcs];
+    for(uint32_t i=0; i<numberOfProcs;++i)
+    {
+        otf1_procs[i] = (uint32_t) procs[i];
+    }
+    
     WriterData *writerData = (WriterData*) userData;
 
     OTF_CHECK(OTF_Writer_writeDefProcessGroupKV(writerData->writer,
-            stream, procGroup, name, numberOfProcs, procs, list));
+            stream, procGroup, name, numberOfProcs, otf1_procs, list));
 
     return OTF_RETURN_OK;
 }
@@ -238,22 +247,26 @@ void OTF1ParallelTraceWriter::close()
     OTF_FileManager_close(fileMgr);
 }
 
-void OTF1ParallelTraceWriter::writeDefProcess(uint32_t id, uint32_t parentId,
+void OTF1ParallelTraceWriter::writeDefProcess(uint64_t id, uint64_t parentId,
         const char* name, ProcessGroup pg)
 {
+    
+    uint32_t otf1_id = (uint32_t) id;
+    uint32_t otf1_parentId = (uint32_t) parentId;
+    
     if (pg == PG_DEVICE)
-        deviceProcesses.push_back(id);
+        deviceProcesses.push_back(otf1_id);
     if (pg == PG_DEVICE_NULL)
     {
-        deviceProcesses.push_back(id);
-        deviceMasterProcesses.push_back(id);
+        deviceProcesses.push_back(otf1_id);
+        deviceMasterProcesses.push_back(otf1_id);
     }
 
     // create local writer for process id
-    OTF_WStream_ptr wstream = OTF_WStream_open(outputFilename.c_str(), id, fileMgr);
-    processWStreamMap[id] = wstream;
+    OTF_WStream_ptr wstream = OTF_WStream_open(outputFilename.c_str(), otf1_id, fileMgr);
+    processWStreamMap[otf1_id] = wstream;
     
-    OTF_WStream_writeBeginProcess(wstream, 0, id);
+    OTF_WStream_writeBeginProcess(wstream, 0, otf1_id);
 }
 
 void OTF1ParallelTraceWriter::writeDefCounter(uint32_t id, const char* name, int properties)
@@ -267,16 +280,16 @@ void OTF1ParallelTraceWriter::writeDefCounter(uint32_t id, const char* name, int
 void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable,
         bool lastProcessNode, const Node *futureNode)
 {
-    uint32_t processId = node->getProcessId();
+    uint32_t processId = (uint32_t)node->getProcessId();
     OTF_WStream_ptr wstream = processWStreamMap[processId];
     uint64_t nodeTime = node->getTime();
 
     if (node->isEnter() || node->isLeave())
     { 
-        if (node->getReferencedProcessId() != 0)
+        if ((uint32_t)node->getReferencedProcessId() != 0)
         {
             OTF_KeyValueList_appendUint32(kvList, streamRefKey,
-                    node->getReferencedProcessId());
+                    (uint32_t)node->getReferencedProcessId());
         }
 
         if (node->isEventNode())
@@ -292,7 +305,7 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
         if (node->isEnter())
         {
             OTF_CHECK(OTF_WStream_writeEnterKV(wstream, nodeTime,
-                    node->getFunctionId(), processId, 0, NULL));
+                    (uint32_t)node->getFunctionId(), processId, 0, NULL));
         } else
         {
             OTF_CHECK(OTF_WStream_writeLeaveKV(wstream, nodeTime, 0,
@@ -354,7 +367,7 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
 
                 // make critical path stop in current process if next cp node in different process
                 if((node->isLeave()) && (futureNode != NULL) && 
-                        (futureNode->getProcessId() != processId))
+                        ((uint32_t)futureNode->getProcessId() != processId))
                 {
                     OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
                             processId, ctrId, 0));
@@ -365,9 +378,9 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
 }
 
 void OTF1ParallelTraceWriter::writeRMANode(const Node *node,
-        uint32_t prevProcessId, uint32_t nextProcessId)
+        uint64_t prevProcessId, uint64_t nextProcessId)
 {
-    OTF_WStream_ptr wstream = processWStreamMap[node->getProcessId()];
+    OTF_WStream_ptr wstream = processWStreamMap[(uint32_t)node->getProcessId()];
     uint64_t nodeTime = node->getTime();
     uint32_t processId = node->getProcessId();
 
@@ -377,13 +390,13 @@ void OTF1ParallelTraceWriter::writeRMANode(const Node *node,
                 0, 0, 0, 0));
 
         OTF_CHECK(OTF_WStream_writeRMAPutRemoteEnd(wstream, nodeTime, processId,
-                processId, nextProcessId, 0, 0, 0, 0));
+                processId, (uint32_t)nextProcessId, 0, 0, 0, 0));
 
     }
 
     if (node->isLeave())
     {
-        if (processId != prevProcessId)
+        if (processId != (uint32_t)prevProcessId)
         {
             OTF_CHECK(OTF_WStream_writeRMAEnd(wstream, nodeTime, processId,
                     0, 0, 0, 0));

@@ -22,7 +22,7 @@ namespace cdm
         typedef std::list<RemoteGraphNode*> RemoteGraphNodeList;
         typedef std::set<RemoteGraphNode*> RemoteGraphNodeSet;
 
-        RemoteGraphNode(uint64_t time, uint32_t remoteProcessId, uint32_t remoteNodeId,
+        RemoteGraphNode(uint64_t time, uint64_t remoteProcessId, uint32_t remoteNodeId,
         uint32_t mpiRank, Paradigm paradigm, NodeRecordType recordType, int nodeType) :
         GraphNode(time, remoteProcessId, "<remote>", paradigm, recordType, nodeType),
         mpiRank(mpiRank),

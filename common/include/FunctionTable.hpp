@@ -175,7 +175,7 @@ namespace cdm
     class FunctionTable
     {
     public:
-        typedef std::vector<uint32_t> FunctionIdList;
+        typedef std::vector<uint64_t> FunctionIdList;
 
         FunctionTable() :
         lastFunctionId(INVALID_ID)
@@ -183,9 +183,9 @@ namespace cdm
 
         }
 
-        const char * getName(uint32_t id)
+        const char * getName(uint64_t id)
         {
-            std::map<uint32_t, std::string>::iterator iter = functionNameMap.find(id);
+            std::map<uint64_t, std::string>::iterator iter = functionNameMap.find(id);
             if (iter != functionNameMap.end())
             {
                 return iter->second.c_str();
@@ -244,11 +244,11 @@ namespace cdm
         }
 
     private:
-        std::map<uint32_t, std::string> functionNameMap;
+        std::map<uint64_t, std::string> functionNameMap;
         FunctionIdList hostFunctions;
         FunctionIdList kernels;
-        uint32_t invalidId;
-        uint32_t lastFunctionId;
+        uint64_t invalidId;
+        uint64_t lastFunctionId;
     };
 
 }

@@ -25,7 +25,7 @@ namespace cdm
         typedef std::pair<GraphNode*, GraphNode*> GraphNodePair;
         typedef std::map<Paradigm, GraphNode*> ParadigmNodeMap;
 
-        GraphNode(uint64_t time, uint32_t processId, const std::string name,
+        GraphNode(uint64_t time, uint64_t processId, const std::string name,
             Paradigm paradigm, NodeRecordType recordType, int nodeType) :
         Node(time, processId, name, paradigm, recordType, nodeType),
         linkLeft(NULL),

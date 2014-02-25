@@ -46,7 +46,7 @@ namespace cdm
         size_t generateBlocks(size_t numBlocks);
         void mapProcessList(const Allocation::ProcessList& processes);
 
-        void insertCPUNodes(Process::SortedNodeList& nodes, uint32_t pId,
+        void insertCPUNodes(Process::SortedNodeList& nodes, uint64_t pId,
                 uint64_t start, uint64_t end);
     };
 

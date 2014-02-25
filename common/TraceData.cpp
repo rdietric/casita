@@ -46,11 +46,12 @@ TraceData::~TraceData()
     }
 }
 
-Process* TraceData::newProcess(uint32_t id, uint32_t parentId,
+Process* TraceData::newProcess(uint64_t id, uint64_t parentId,
         const std::string name, Process::ProcessType processType,
         Paradigm paradigm, bool remoteProcess)
 {
     Process *p = new Process(id, parentId, name, processType, remoteProcess);
+    printf("Adding new Process: %lu \n",id);
     processMap[id] = p;
 
     if (processType == Process::PT_HOST)
@@ -74,7 +75,7 @@ Process* TraceData::newProcess(uint32_t id, uint32_t parentId,
     return p;
 }
 
-bool TraceData::getFunctionType(uint32_t id, const char *name, Process *process, FunctionDescriptor *descr)
+bool TraceData::getFunctionType(uint64_t id, const char *name, Process *process, FunctionDescriptor *descr)
 {
     assert(name);
     assert(descr);
@@ -176,7 +177,7 @@ Graph* TraceData::getGraph(Paradigm p)
     return graph.getSubGraph(p);
 }
 
-Process* TraceData::getProcess(uint32_t id) const
+Process* TraceData::getProcess(uint64_t id) const
 {
     ProcessMap::const_iterator iter = processMap.find(id);
     if (iter != processMap.end())
@@ -250,14 +251,14 @@ const Graph::EdgeList& TraceData::getOutEdges(GraphNode *n) const
         return emptyEdgeList;
 }
 
-Node* TraceData::newNode(uint64_t time, uint32_t processId,
+Node* TraceData::newNode(uint64_t time, uint64_t processId,
         const std::string name, Paradigm paradigm, NodeRecordType recordType,
         int nodeType)
 {
     return new Node(time, processId, name, paradigm, recordType, nodeType);
 }
 
-GraphNode* TraceData::newGraphNode(uint64_t time, uint32_t processId,
+GraphNode* TraceData::newGraphNode(uint64_t time, uint64_t processId,
         const std::string name, Paradigm paradigm, NodeRecordType recordType,
         int nodeType)
 {
@@ -266,7 +267,7 @@ GraphNode* TraceData::newGraphNode(uint64_t time, uint32_t processId,
     return n;
 }
 
-EventNode* TraceData::newEventNode(uint64_t time, uint32_t processId,
+EventNode* TraceData::newEventNode(uint64_t time, uint64_t processId,
         uint32_t eventId, EventNode::FunctionResultType fResult,
         const std::string name, Paradigm paradigm, NodeRecordType recordType,
         int nodeType)
@@ -621,7 +622,7 @@ void TraceData::saveAllocationToFile(const char* filename,
     writer->open(filename, 100, allProcs.size(), ticksPerSecond);
 
     CounterTable::CtrIdSet ctrIdSet = ctrTable.getAllCounterIDs();
-    std::set<uint32_t> knownFunctions;
+    std::set<uint64_t> knownFunctions;
 
     for (CounterTable::CtrIdSet::const_iterator ctrIter = ctrIdSet.begin();
             ctrIter != ctrIdSet.end(); ++ctrIter)
@@ -635,7 +636,7 @@ void TraceData::saveAllocationToFile(const char* filename,
             pIter != allProcs.end(); ++pIter)
     {
         Process *p = *pIter;
-        uint32_t pId = p->getId();
+        uint64_t pId = p->getId();
         writer->writeDefProcess(pId, p->getParentId(), p->getName(),
                 processTypeToGroup(p->getProcessType()));
 
@@ -649,7 +650,7 @@ void TraceData::saveAllocationToFile(const char* filename,
 
             if (verbose)
             {
-                printf("[%12lu:%12.8fs] %60s in %8u (FID %u)\n", node->getTime(),
+                printf("[%12lu:%12.8fs] %60s in %8lu (FID %lu)\n", node->getTime(),
                         (double) (node->getTime()) / (double) ticksPerSecond,
                         node->getUniqueName().c_str(),
                         node->getProcessId(), node->getFunctionId());
@@ -659,7 +660,7 @@ void TraceData::saveAllocationToFile(const char* filename,
             {
                 if (node->isEnter() || node->isLeave())
                 {
-                    uint32_t functionId = node->getFunctionId();
+                    uint64_t functionId = node->getFunctionId();
                     if (knownFunctions.find(functionId) == knownFunctions.end())
                     {
                         knownFunctions.insert(functionId);
@@ -811,16 +812,16 @@ EventNode *TraceData::addNewEventNode(uint64_t time, uint32_t eventId,
     return node;
 }
 
-GraphNode* TraceData::topGraphNodeStack(uint32_t processId){
+GraphNode* TraceData::topGraphNodeStack(uint64_t processId){
     if(pendingGraphNodeStackMap[processId].empty())
         return NULL;
     return pendingGraphNodeStackMap[processId].top();
 }
 
-void TraceData::popGraphNodeStack(uint32_t processId){
+void TraceData::popGraphNodeStack(uint64_t processId){
     pendingGraphNodeStackMap[processId].pop();
 }
 
-void TraceData::pushGraphNodeStack(GraphNode* node, uint32_t processId){
+void TraceData::pushGraphNodeStack(GraphNode* node, uint64_t processId){
     pendingGraphNodeStackMap[processId].push(node);
 }

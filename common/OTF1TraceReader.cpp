@@ -126,12 +126,14 @@ void OTF1TraceReader::readEvents()
     OTF_HandlerArray_close(handlers);
 }
 
-void OTF1TraceReader::readEventsForProcess(uint32_t id)
+void OTF1TraceReader::readEventsForProcess(uint64_t id)
 {
+    uint32_t otf1_id = (uint32_t)id;
+    
     OTF_HandlerArray* handlers = OTF_HandlerArray_open();
     setEventHandlers(handlers);
     
-    OTF_RStream* rStream = OTF_Reader_getStream(reader, id);
+    OTF_RStream* rStream = OTF_Reader_getStream(reader, otf1_id);
     OTF_RStream_setRecordLimit(rStream, OTF_READ_MAXRECORDS);
     OTF_RStream_readEvents(rStream, handlers);
     
@@ -236,9 +238,10 @@ std::string OTF1TraceReader::getKeyName(uint32_t id)
         return "(unknown)";
 }
 
-std::string OTF1TraceReader::getFunctionName(uint32_t id)
+std::string OTF1TraceReader::getFunctionName(uint64_t id)
 {
-    TokenNameMap::iterator iter = fNameMap.find(id);
+    uint32_t otf1_id = (uint32_t)id;
+    TokenNameMap::iterator iter = fNameMap.find(otf1_id);
     if (iter != fNameMap.end())
         return iter->second;
     else
@@ -265,10 +268,11 @@ OTF1TraceReader::ProcessFuncStack& OTF1TraceReader::getFuncStack()
     return funcStack;
 }
 
-std::string OTF1TraceReader::getProcessName(uint32_t id)
+std::string OTF1TraceReader::getProcessName(uint64_t id)
 {
+    uint32_t otf1_id = (uint32_t) id;
     TokenNameMap &nm = getProcNameMap();
-    TokenNameMap::iterator iter = nm.find(id);
+    TokenNameMap::iterator iter = nm.find(otf1_id);
     if (iter != nm.end())
         return iter->second;
     else
@@ -422,12 +426,18 @@ int OTF1TraceReader::otf1HandleDefProcessGroupMPI(void *userData, uint32_t strea
         uint32_t procGroup, const char *name, uint32_t numberOfProcs,
         const uint32_t *procs, OTF_KeyValueList *list)
 {
+    
+    uint64_t otf2_procs[numberOfProcs];
+    for(uint32_t i = 0; i < numberOfProcs; ++i){
+        otf2_procs[i]=procs[i];
+    }
+    
     OTF1TraceReader *tr = (OTF1TraceReader*) userData;
     if (strstr(name, "MPI") != NULL)
     {
         if (tr->handleMPICommGroup)
         {
-            tr->handleMPICommGroup(tr, procGroup, numberOfProcs, procs);
+            tr->handleMPICommGroup(tr, procGroup, numberOfProcs, otf2_procs);
         }
 
         // get mpiRank'th process from MPI_COMM_WORLD group
@@ -449,7 +459,7 @@ int OTF1TraceReader::otf1HandleDefProcessGroupMPI(void *userData, uint32_t strea
             printf("Rank %u maps to process %u\n", mpiRank, procs[mpiRank]);
 
             if (tr->handleMPICommGroup)
-                tr->handleMPICommGroup(tr, 0, numberOfProcs, procs);
+                tr->handleMPICommGroup(tr, 0, numberOfProcs, otf2_procs);
         }
     }
 

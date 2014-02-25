@@ -41,12 +41,12 @@ namespace cdm
             return start->getName();
         }
         
-        uint32_t getProcessId() const
+        uint64_t getProcessId() const
         {
             return start->getProcessId();
         }
         
-        uint32_t getFunctionId() const
+        uint64_t getFunctionId() const
         {
             return start->getFunctionId();
         }

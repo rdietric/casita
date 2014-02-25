@@ -36,24 +36,26 @@ namespace cdm
                 // get the complete execution
                 GraphNode::GraphNodePair sendRecv = ((GraphNode*) node)->getGraphPair();
 
-                uint32_t *data = (uint32_t*) (sendRecv.second->getData());
+                uint64_t *data = (uint64_t*) (sendRecv.second->getData());
 
-                uint32_t partnerProcessIdRecv = node->getReferencedProcessId();
-                uint32_t partnerProcessIdSend = *data;
+                uint64_t partnerProcessIdRecv = node->getReferencedProcessId();
+                uint64_t partnerProcessIdSend = *data;
 
                 const int BUFFER_SIZE = 8;
-                uint32_t sendBuffer[BUFFER_SIZE], recvBuffer[BUFFER_SIZE];
-                uint64_t *sendBfr64 = (uint64_t*) sendBuffer;
-                uint64_t *recvBfr64 = (uint64_t*) recvBuffer;
+                uint64_t sendBuffer[BUFFER_SIZE], recvBuffer[BUFFER_SIZE];
+                //uint64_t *sendBfr64 = (uint64_t*) sendBuffer;
+                //uint64_t *recvBfr64 = (uint64_t*) recvBuffer;
 
                 uint64_t myStartTime = sendRecv.first->getTime();
                 uint64_t myEndTime = sendRecv.second->getTime();
 
                 /* prepare send buffer */
-                memcpy(sendBfr64 + 0, &myStartTime, sizeof (uint64_t));
-                memcpy(sendBfr64 + 1, &myEndTime, sizeof (uint64_t));
-                sendBuffer[4] = sendRecv.first->getId();
-                sendBuffer[5] = sendRecv.second->getId();
+                //memcpy(sendBfr64 + 0, &myStartTime, sizeof (uint64_t));
+                //memcpy(sendBfr64 + 1, &myEndTime, sizeof (uint64_t));
+                sendBuffer[0] = myStartTime;
+                sendBuffer[1] = myEndTime;
+                sendBuffer[2] = sendRecv.first->getId();
+                sendBuffer[3] = sendRecv.second->getId();
 
                 /* send + recv */
                 uint32_t partnerMPIRankRecv = analysis->getMPIAnalysis().getMPIRank(partnerProcessIdRecv);
@@ -62,15 +64,15 @@ namespace cdm
 
                 /* round 1: send same direction. myself == send */
 
-                MPI_CHECK(MPI_Sendrecv(sendBuffer, BUFFER_SIZE, MPI_UNSIGNED, partnerMPIRankSend, 0,
-                        recvBuffer, BUFFER_SIZE, MPI_UNSIGNED, partnerMPIRankRecv, 0,
+                MPI_CHECK(MPI_Sendrecv(sendBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, partnerMPIRankSend, 0,
+                        recvBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, partnerMPIRankRecv, 0,
                         MPI_COMM_WORLD, &status));
 
                 /* evaluate receive buffer */
-                uint64_t otherStartTime = recvBfr64[0];
-                uint64_t otherEndTime = recvBfr64[1];
-                uint32_t otherEnterId = recvBuffer[4];
-                uint32_t otherLeaveId = recvBuffer[5];
+                uint64_t otherStartTime = recvBuffer[0]; //recvBfr64[0];
+                uint64_t otherEndTime = recvBuffer[1]; //recvBfr64[1];
+                uint64_t otherEnterId = recvBuffer[2];
+                uint64_t otherLeaveId = recvBuffer[3];
 
                 /* compute wait states */
                 if ((myStartTime <= otherStartTime))
@@ -99,14 +101,14 @@ namespace cdm
 
                 /* round 2: send reverse direction. myself == recv */
 
-                MPI_CHECK(MPI_Sendrecv(sendBuffer, BUFFER_SIZE, MPI_UNSIGNED, partnerMPIRankRecv, 0,
-                        recvBuffer, BUFFER_SIZE, MPI_UNSIGNED, partnerMPIRankSend, 0,
+                MPI_CHECK(MPI_Sendrecv(sendBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, partnerMPIRankRecv, 0,
+                        recvBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, partnerMPIRankSend, 0,
                         MPI_COMM_WORLD, &status));
 
-                otherStartTime = recvBfr64[0];
-                otherEndTime = recvBfr64[1];
-                otherEnterId = recvBuffer[4];
-                otherLeaveId = recvBuffer[5];
+                otherStartTime = recvBuffer[0]; //recvBfr64[0];
+                otherEndTime = recvBuffer[1]; //recvBfr64[1];
+                otherEnterId = recvBuffer[2];
+                otherLeaveId = recvBuffer[3];
 
                 // compute wait states and edges
                 if (myStartTime < otherStartTime)
