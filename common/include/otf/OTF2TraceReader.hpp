@@ -69,7 +69,7 @@ namespace cdm
             std::string getFunctionName(uint64_t id);
             std::string getProcessName(uint64_t id);
             IdNameTokenMap& getProcessNameTokenMap();
-            TokenTokenMap& getFunctionNameTokenMap();
+            IdNameTokenMap& getFunctionNameTokenMap();
             std::vector<uint32_t> getKeys(const std::string keyName);
             uint32_t getFirstKey(const std::string keyName);
             uint64_t getTimerResolution();

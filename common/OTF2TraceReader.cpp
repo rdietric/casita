@@ -46,6 +46,17 @@ OTF2TraceReader::~OTF2TraceReader()
     }
 }
 
+OTF2TraceReader::IdNameTokenMap& OTF2TraceReader::getProcessNameTokenMap()
+{
+    return processNameTokenMap;
+}
+    
+OTF2TraceReader::IdNameTokenMap& OTF2TraceReader::getFunctionNameTokenMap()
+{
+    return functionNameTokenMap;
+}
+
+
 void OTF2TraceReader::open(const std::string otfFilename, uint32_t maxFiles)
 {
    baseFilename.assign("");
@@ -119,12 +130,9 @@ void OTF2TraceReader::readDefinitions()
             &OTF2_GlobalDefReaderCallback_LocationGroup);
     OTF2_GlobalDefReaderCallbacks_SetCommCallback(global_def_callbacks,
            &OTF2_GlobalDefReaderCallback_Comm);
+    OTF2_GlobalDefReaderCallbacks_SetRegionCallback(global_def_callbacks,
+            &OTF2_GlobalDefReaderCallback_Region);
     
-/*    
-    global_def_callbacks = OTF2_GlobalDefReaderCallbacks_New();
-    OTF2_GlobalDefReaderCallbacks_SetCommCallback(global_def_callbacks,
-           &OTF2_GlobalDefReaderCallback_Comm);
-*/
     // register callbacks
     OTF2_Reader_RegisterGlobalDefCallbacks( reader, global_def_reader, global_def_callbacks, this );
     
@@ -163,6 +171,8 @@ OTF2_CallbackCode  OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationGroup(v
     if (tr->getMPIRank() == 0)
         printf("[%u][LG] %s \n", i, tr->getStringRef(name).c_str());
     
+    //\TODO save locationGroups somewhere
+    
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -173,6 +183,10 @@ OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(void *u
     OTF2TraceReader *tr = (OTF2TraceReader*) userData;
     if (tr->getMPIRank() == 0)
         printf("[%u][LoCation] %s \n", tr->getMPIRank(), tr->getStringRef(name).c_str());
+    
+    //Locations are processes
+    tr->getProcessNameTokenMap()[self] = name;
+    
     return OTF2_CALLBACK_SUCCESS;
 }
     
@@ -240,6 +254,22 @@ OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_String(void *use
         printf("[%u] stringref = %s \n", i,string );
     
     return OTF2_CALLBACK_SUCCESS;    
+}
+
+OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_Region(void *userData,
+                    OTF2_RegionRef self, OTF2_StringRef name, OTF2_StringRef cannonicalName,
+                    OTF2_StringRef description, OTF2_RegionRole regionRole, OTF2_Paradigm paradigm,
+                    OTF2_RegionFlag regionFlags, OTF2_StringRef sourceFile, uint32_t beginLineNumber,
+                    uint32_t endLineNumber)
+{
+    OTF2TraceReader *tr = (OTF2TraceReader*) userData;
+    //Locations are processes
+    tr->getFunctionNameTokenMap()[self] = name;
+    
+    if (tr->getMPIRank() == 0)
+        printf("[%u] mappedFunction: %s \n", tr->getMPIRank(), tr->getFunctionName(self).c_str());
+    
+    return OTF2_CALLBACK_SUCCESS;
 }
 
 OTF2_CallbackCode OTF2TraceReader::otf2CallbackEnter(OTF2_LocationRef location, OTF2_TimeStamp time, 
@@ -335,7 +365,7 @@ std::string OTF2TraceReader::getKeyName(uint32_t id)
 
 std::string OTF2TraceReader::getFunctionName(uint64_t id)
 {
-    return getKeyName(id);
+    return getKeyName(getFunctionNameTokenMap()[id]);
 }
 
 OTF2TraceReader::ProcessGroupMap& OTF2TraceReader::getProcGoupMap()
