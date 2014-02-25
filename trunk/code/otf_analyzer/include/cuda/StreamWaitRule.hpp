@@ -25,6 +25,7 @@ namespace cdm
 
         bool apply(AnalysisEngine *analysis, Node *node)
         {
+            VT_TRACER("StreamWaitRule");
             if (!node->isGraphNode() || !node->isLeave())
                 return false;
 

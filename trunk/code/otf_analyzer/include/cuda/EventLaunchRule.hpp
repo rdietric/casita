@@ -25,6 +25,7 @@ namespace cdm
 
         bool apply(AnalysisEngine *analysis, Node *node)
         {
+            VT_TRACER("EventLaunchRule");
             if (!node->isCUDAEventLaunch() || !node->isLeave())
                 return false;
 

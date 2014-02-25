@@ -33,7 +33,7 @@ namespace cdm
 
             bool apply(AnalysisEngine *analysis, Node *node)
             {
-
+                VT_TRACER("OMPParallelRegionRule");
                 if (!node->isOMPParellelRegion())
                     return false;
 

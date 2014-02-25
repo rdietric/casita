@@ -286,6 +286,17 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
 
     if (node->isEnter() || node->isLeave())
     { 
+        /*if (processTimeEndMap.find(processId) != processTimeEndMap.end())
+        {
+            std::list<uint64_t> &rmaTimesList = processTimeEndMap[processId];
+            while (rmaTimesList.size() > 0 && rmaTimesList.front() <= nodeTime)
+            {
+                OTF_CHECK(OTF_WStream_writeRMAEnd(wstream, rmaTimesList.front(),
+                        processId, 0, 0, rmaTimesList.front(), 0));
+                rmaTimesList.pop_front();
+            }
+        }*/
+        
         if ((uint32_t)node->getReferencedProcessId() != 0)
         {
             OTF_KeyValueList_appendUint32(kvList, streamRefKey,
@@ -306,6 +317,14 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
         {
             OTF_CHECK(OTF_WStream_writeEnterKV(wstream, nodeTime,
                     (uint32_t)node->getFunctionId(), processId, 0, NULL));
+            
+            /*if (node->isCUDAKernelLaunch())
+            {
+                OTF_CHECK(OTF_WStream_writeRMAPut(wstream, nodeTime, processId,
+                        processId, node->getLink()->getProcessId(),
+                        0, node->getLink()->getTime(), 0, 0));
+                processTimeEndMap[processId].push_back(node->getLink()->getTime());
+            }*/
         } else
         {
             OTF_CHECK(OTF_WStream_writeLeaveKV(wstream, nodeTime, 0,

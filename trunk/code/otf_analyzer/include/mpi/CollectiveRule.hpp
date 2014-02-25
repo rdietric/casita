@@ -29,6 +29,7 @@ namespace cdm
 
             bool apply(AnalysisEngine *analysis, Node *node)
             {
+                VT_TRACER("CollectiveRule");
                 // applied at MPI collective leave
                 if (!node->isMPICollective() || !node->isLeave())
                     return false;

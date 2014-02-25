@@ -409,7 +409,8 @@ namespace cdm
             if (!node || !callback)
                 return result;
             
-            SortedNodeList::const_reverse_iterator iter = findNodeReverse(node);
+            SortedNodeList::const_reverse_iterator iter = findNode(node);
+            assert(*iter == node);
             
             for (; iter != nodes.rend(); ++iter)
             {
@@ -431,7 +432,8 @@ namespace cdm
             if (!node || !callback)
                 return result;
             
-            SortedNodeList::const_iterator iter = findNode(node);
+            SortedNodeList::const_reverse_iterator iter_tmp = findNode(node);
+            SortedNodeList::const_iterator iter = iter_tmp.base();
             
             for (; iter != nodes.end(); ++iter)
             {
@@ -464,26 +466,37 @@ namespace cdm
 
         Edge::TimeProfileMap *currentTimeProfile;
         
-        SortedNodeList::const_iterator findNode(Node *node) const
+        SortedNodeList::const_reverse_iterator findNode(Node *node) const
         {
-            for (SortedNodeList::const_iterator iter = nodes.begin();
-                    iter != nodes.end(); ++iter)
-            {
-                if (*iter == node)
-                    return iter;
-            }
+            if (nodes.size() == 0)
+                return nodes.rend();
             
-            return nodes.end();
-        }
-        
-        SortedNodeList::const_reverse_iterator findNodeReverse(Node *node) const
-        {
-            for (SortedNodeList::const_reverse_iterator iter = nodes.rbegin();
-                    iter != nodes.rend(); ++iter)
+            if (nodes.size() == 1)
+                return nodes.rbegin();
+
+            size_t indexMin = 0;
+            size_t indexMax = nodes.size() - 1;
+            
+            do
             {
-                if (*iter == node)
-                    return iter;
-            }
+                size_t index = indexMax - (indexMax - indexMin) / 2;
+                if (nodes[index] == node)
+                    return nodes.rbegin() + (nodes.size() - index - 1);
+                
+                if (indexMin == indexMax)
+                    return nodes.rend();
+                
+                if (Node::compareLess(node, nodes[index]))
+                {
+                    // left side
+                    indexMax = index - 1;
+                }
+                else
+                {
+                    // right side
+                    indexMin = index + 1;
+                }
+            } while (true);
             
             return nodes.rend();
         }

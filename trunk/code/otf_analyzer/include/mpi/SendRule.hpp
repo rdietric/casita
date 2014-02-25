@@ -30,6 +30,7 @@ namespace cdm
 
             bool apply(AnalysisEngine *analysis, Node *node)
             {
+                VT_TRACER("SendRule");
                 // applied at MPI_Send leave
                 if (!node->isMPISend() || !node->isLeave())
                     return false;

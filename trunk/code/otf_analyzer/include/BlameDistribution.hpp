@@ -29,7 +29,7 @@ namespace cdm
         walkListAndWaitTime.waitStateTime = 0;
         analysis->getProcess(node->getProcessId())->walkBack(
                 node, callback, &walkListAndWaitTime);
-
+        
         GraphNode::GraphNodeList walkList = walkListAndWaitTime.list;
         uint32_t waitTime = walkListAndWaitTime.waitStateTime;
 
@@ -38,23 +38,29 @@ namespace cdm
             ErrorUtils::getInstance().throwError("Can't walk list back from %s",
                     node->getUniqueName().c_str());
         }
-
+        
         uint64_t totalWalkTime = walkList.front()->getTime() -
                 walkList.back()->getTime();
         GraphNode *lastWalkNode = walkList.front();
 
+        uint32_t waitCtrId = analysis->getCtrTable().getCtrId(CTR_WAITSTATE);
         uint32_t blameCtrId = analysis->getCtrTable().getCtrId(CTR_BLAME);
         uint32_t statBlameCtrId = analysis->getCtrTable().getCtrId(CTR_BLAME_STATISTICS);
-
+        
         for (GraphNode::GraphNodeList::const_iterator iter = (++walkList.begin());
                 iter != walkList.end(); ++iter)
         {
             GraphNode *currentWalkNode = *iter;
 
             uint64_t timeDiff = lastWalkNode->getTime() - currentWalkNode->getTime();
-            uint64_t ratioBlame = (double) totalBlame * (double) timeDiff / (double) totalWalkTime;
+            uint64_t ratioBlame = (double) totalBlame * 
+                                  (double) (timeDiff - currentWalkNode->getCounter(waitCtrId, NULL)) /
+                                  (double) (totalWalkTime - waitTime);
+            
+            if (ratioBlame > 0)
+                currentWalkNode->incCounter(blameCtrId, ratioBlame);
 
-            bool activityIsWaitstate = currentWalkNode->isWaitstate();
+            /*bool activityIsWaitstate = currentWalkNode->isWaitstate();
             if (!activityIsWaitstate && currentWalkNode->isEnter())
             {
                 Edge *edge = analysis->getEdge(currentWalkNode, lastWalkNode);
@@ -118,10 +124,10 @@ namespace cdm
                         }
                     }
                 }
-            }
+            }*/
 
             // caller is always enter node
-            if (currentWalkNode->isLeave() && currentWalkNode->getCaller())
+            if (currentWalkNode->isLeave() && currentWalkNode->getCaller() && ratioBlame > 0)
                 currentWalkNode->getCaller()->incCounter(statBlameCtrId, ratioBlame);
 
             lastWalkNode = currentWalkNode;

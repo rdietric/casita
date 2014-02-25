@@ -64,6 +64,7 @@ namespace cdm
             std::map<uint32_t, OTF_WStream_ptr> processWStreamMap;
             std::vector<uint32_t> deviceProcesses;
             std::vector<uint32_t> deviceMasterProcesses;
+            std::map<uint32_t, std::list<uint64_t> > processTimeEndMap;
 
             uint32_t streamRefKey, eventRefKey, funcResultKey;
             uint32_t attrListCUDAToken;

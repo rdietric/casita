@@ -513,19 +513,6 @@ uint64_t TraceData::getDeltaTicks()
     return getTimerResolution() * SYNC_DELTA / (1000 * 1000);
 }
 
-void TraceData::getCriticalPath(GraphNode *sourceNode, GraphNode * lastNode,
-        GraphNode::GraphNodeList *cpath, Paradigm paradigm)
-{
-    if (paradigm == PARADIGM_ALL)
-        graph.getLongestPath(sourceNode, lastNode, *cpath);
-    else
-    {
-        Graph *subgraph = graph.getSubGraph(paradigm);
-        subgraph->getLongestPath(sourceNode, lastNode, *cpath);
-        delete subgraph;
-    }
-}
-
 void TraceData::sanityCheckEdge(Edge *edge, uint32_t mpiRank)
 {
     uint64_t expectedTime;

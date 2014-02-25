@@ -29,6 +29,7 @@ namespace cdm
 
             bool apply(AnalysisEngine *analysis, Node *node)
             {
+                VT_TRACER("SendRecvRule");
                 // applied at MPI send recv leave
                 if (!node->isMPISendRecv() || !node->isLeave())
                     return false;

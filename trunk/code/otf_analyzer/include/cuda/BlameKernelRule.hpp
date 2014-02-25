@@ -26,6 +26,7 @@ namespace cdm
 
         bool apply(AnalysisEngine *analysis, Node *node)
         {
+            VT_TRACER("BlameKernelRule");
             // applied at sync
             if (!node->isCUDASync() || !node->isGraphNode()  || !node->isLeave())
                 return false;
