@@ -31,7 +31,7 @@ namespace cdm
             // applied at streamWaitEvent leave
             if (node->isEventNode() && node->isCUDAStreamWaitEvent())
             {
-                uint32_t referencedDevWaitProc = node->getReferencedProcessId();
+                uint64_t referencedDevWaitProc = node->getReferencedProcessId();
                 if (!referencedDevWaitProc)
                     throw RTException("Stream wait %s does not reference any device process",
                         node->getUniqueName().c_str());
@@ -39,7 +39,7 @@ namespace cdm
                 EventNode *swEventNode = (EventNode*) node;
                 swEventNode->setLink(analysis->getLastEventLaunchLeave(swEventNode->getEventId()));
                 
-                uint32_t eventProcessId = analysis->getEventProcessId(swEventNode->getEventId());
+                uint64_t eventProcessId = analysis->getEventProcessId(swEventNode->getEventId());
                 if (!eventProcessId)
                     throw RTException("Could not find device process ID for event %u from %s",
                         swEventNode->getEventId(), swEventNode->getUniqueName().c_str());
@@ -107,7 +107,7 @@ namespace cdm
                     }
                     
                     // find the device process where the event of streamWaitEvent is enqueued
-                    uint32_t swEventRefDevProc = eventLaunchLeave->getReferencedProcessId();
+                    uint64_t swEventRefDevProc = eventLaunchLeave->getReferencedProcessId();
                     if (!swEventRefDevProc)
                         break;
 

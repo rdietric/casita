@@ -34,14 +34,14 @@ namespace cdm
             std::set<uint32_t> tags;
         } StreamWaitTagged;
 
-        typedef std::map<uint32_t, uint32_t> IdIdMap;
-        typedef std::map<uint32_t, EventNode*> IdEventNodeMap;
-        typedef std::map<uint32_t, EventNode::EventNodeList> IdEventsListMap;
+        typedef std::map<uint64_t, uint64_t> IdIdMap;
+        typedef std::map<uint64_t, EventNode*> IdEventNodeMap;
+        typedef std::map<uint64_t, EventNode::EventNodeList> IdEventsListMap;
         typedef std::list<StreamWaitTagged*> NullStreamWaitList;
-        typedef std::map<uint32_t, GraphNode::GraphNodeList > KernelLaunchListMap;
+        typedef std::map<uint64_t, GraphNode::GraphNodeList > KernelLaunchListMap;
         typedef std::stack<GraphNode*> OmpNodeStack;
-        typedef std::map<uint32_t, OmpNodeStack > pendingOMPKernelStackMap;
-        typedef std::map<uint32_t, GraphNode*> OmpEventMap;
+        typedef std::map<uint64_t, OmpNodeStack > pendingOMPKernelStackMap;
+        typedef std::map<uint64_t, GraphNode*> OmpEventMap;
 
         AnalysisEngine(uint32_t mpiRank, uint32_t mpiSize);
         virtual ~AnalysisEngine();
@@ -52,18 +52,18 @@ namespace cdm
         void mergeMPIGraphs();
 #endif
 
-        void addFunction(uint32_t funcId, const char *name);
-        uint32_t getNewFunctionId();
-        void setWaitStateFunctionId(uint32_t id);
-        const char *getFunctionName(uint32_t id);
+        void addFunction(uint64_t funcId, const char *name);
+        uint64_t getNewFunctionId();
+        void setWaitStateFunctionId(uint64_t id);
+        const char *getFunctionName(uint64_t id);
 
-        GraphNode* newGraphNode(uint64_t time, uint32_t processId,
+        GraphNode* newGraphNode(uint64_t time, uint64_t processId,
                 const std::string name, Paradigm paradigm,
                 NodeRecordType recordType, int nodeType);
         GraphNode* addNewGraphNode(uint64_t time, Process *process,
                 const char *name, Paradigm paradigm, NodeRecordType recordType,
                 int nodeType, Edge::ParadigmEdgeMap *resultEdges);
-        RemoteGraphNode *addNewRemoteNode(uint64_t time, uint32_t remoteProcId,
+        RemoteGraphNode *addNewRemoteNode(uint64_t time, uint64_t remoteProcId,
                 uint32_t remoteNodeId, Paradigm paradigm, NodeRecordType recordType,
                 int nodeType, uint32_t mpiRank);
 
@@ -76,24 +76,24 @@ namespace cdm
         EventNode *consumeLastEventLaunchLeave(uint32_t eventId);
         EventNode *getLastEventLaunchLeave(uint32_t eventId) const;
 
-        void setEventProcessId(uint32_t eventId, uint32_t processId);
-        uint32_t getEventProcessId(uint32_t eventId) const;
+        void setEventProcessId(uint32_t eventId, uint64_t processId);
+        uint64_t getEventProcessId(uint32_t eventId) const;
 
         void addPendingKernelLaunch(GraphNode* launch);
-        GraphNode* consumePendingKernelLaunch(uint32_t kernelProcessId);
+        GraphNode* consumePendingKernelLaunch(uint64_t kernelProcessId);
 
-        void addStreamWaitEvent(uint32_t deviceProcId, EventNode *streamWaitLeave);
-        EventNode *getFirstStreamWaitEvent(uint32_t deviceProcId);
-        EventNode *consumeFirstStreamWaitEvent(uint32_t deviceProcId);
+        void addStreamWaitEvent(uint64_t deviceProcId, EventNode *streamWaitLeave);
+        EventNode *getFirstStreamWaitEvent(uint64_t deviceProcId);
+        EventNode *consumeFirstStreamWaitEvent(uint64_t deviceProcId);
 
         void linkEventQuery(EventNode *eventQueryLeave);
         void removeEventQuery(uint32_t eventId);
 
-        GraphNode *getLastLaunchLeave(uint64_t timestamp, uint32_t deviceProcId) const;
-        GraphNode *getLastLeave(uint64_t timestamp, uint32_t procId) const;
+        GraphNode *getLastLaunchLeave(uint64_t timestamp, uint64_t deviceProcId) const;
+        GraphNode *getLastLeave(uint64_t timestamp, uint64_t procId) const;
 
         void reset();
-        void optimizeKernel(std::map<uint32_t, double> optimizationMap, bool verbose);
+        void optimizeKernel(std::map<uint64_t, double> optimizationMap, bool verbose);
 
         void saveParallelAllocationToFile(const char* filename,
                 const char* origFilename,
@@ -101,20 +101,20 @@ namespace cdm
 
         double getRealTime(uint64_t t);
 
-        void pushOnOMPBackTraceStack(GraphNode* node, uint32_t processId);
+        void pushOnOMPBackTraceStack(GraphNode* node, uint64_t processId);
         
-        GraphNode* ompBackTraceStackTop(uint32_t processId);
-        GraphNode* ompBackTraceStackPop(uint32_t processId);
-        bool ompBackTraceStackIsEmpty(uint32_t processId);
+        GraphNode* ompBackTraceStackTop(uint64_t processId);
+        GraphNode* ompBackTraceStackPop(uint64_t processId);
+        bool ompBackTraceStackIsEmpty(uint64_t processId);
         
-        GraphNode* getLastOmpNode(uint32_t processId);
-        void setLastOmpNode(GraphNode* node, uint32_t processId);
+        GraphNode* getLastOmpNode(uint64_t processId);
+        void setLastOmpNode(GraphNode* node, uint64_t processId);
         
         GraphNode* getPendingParallelRegion();
         void setPendingParallelRegion(GraphNode* node);
         
-        GraphNode* getOmpCompute(uint32_t processId);
-        void setOmpCompute(GraphNode* node, uint32_t processId);
+        GraphNode* getOmpCompute(uint64_t processId);
+        void setOmpCompute(GraphNode* node, uint64_t processId);
         
         const GraphNode::GraphNodeList& getBarrierEventList();
         void addBarrierEventToList(GraphNode* node);
@@ -138,9 +138,9 @@ namespace cdm
         OmpEventMap ompComputeTrackMap; // keep track of omp kernels between parallel regions
         GraphNode::GraphNodeList ompBarrierList; // collect barriers from different processes
 
-        std::map<uint32_t, std::string> functionMap;
-        uint32_t maxFunctionId;
-        uint32_t waitStateFuncId;
+        std::map<uint64_t, std::string> functionMap;
+        uint64_t maxFunctionId;
+        uint64_t waitStateFuncId;
 
         static bool rulePriorityCompare(AbstractRule *r1, AbstractRule *r2);
         static uint64_t getNodeSlack(const std::map<GraphNode*, uint64_t> slackMap,

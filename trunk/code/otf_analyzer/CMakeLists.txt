@@ -58,7 +58,7 @@ INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
 # include OTF
 INCLUDE_DIRECTORIES($ENV{OTF_INC} $ENV{OTF2_INC} $ENV{VT_INC}/vampirtrace)
 LINK_DIRECTORIES($ENV{OTF_LIB} $ENV{OTF2_LIB} $ENV{VT_LIB})
-SET(LIBS ${LIBS} open-trace-format)
+SET(LIBS ${LIBS} open-trace-format otf2)
 
 # include Boost
 FIND_PACKAGE(Boost REQUIRED COMPONENTS program_options regex)

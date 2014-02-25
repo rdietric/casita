@@ -26,22 +26,22 @@ namespace cdm
         };
 
         typedef void (*HandleEnter)(ITraceReader *reader, uint64_t time,
-                uint32_t functionId, uint32_t processId, IKeyValueList *list);
+                uint64_t functionId, uint64_t processId, IKeyValueList *list);
         typedef void (*HandleLeave)(ITraceReader *reader, uint64_t time,
-                uint32_t functionId, uint32_t processId, IKeyValueList *list);
+                uint64_t functionId, uint64_t processId, IKeyValueList *list);
         typedef void (*HandleDefProcess)(ITraceReader *reader, uint32_t stream,
-                uint32_t processId, uint32_t parentId, const char *name,
+                uint64_t processId, uint64_t parentId, const char *name,
                 IKeyValueList * list, bool isCUDA, bool isCUDANull);
         typedef void (*HandleProcessMPIMapping)(ITraceReader *reader,
-                uint32_t processId, uint32_t mpiRank);
+                uint64_t processId, uint32_t mpiRank);
         typedef void (*HandleDefFunction)(ITraceReader *reader, uint32_t streamId,
-                uint32_t functionId, const char *name, uint32_t functionGroupId);
+                uint64_t functionId, const char *name, uint32_t functionGroupId);
         typedef void (*HandleDefKeyValue)(ITraceReader *reader, uint32_t streamId,
                 uint32_t key, const char *name, const char *description);
         typedef void (*HandleMPIComm)(ITraceReader *reader, MPIType mpiType,
-                uint32_t processId, uint32_t partnerId, uint32_t root, uint32_t tag);
+                uint64_t processId, uint64_t partnerId, uint32_t root, uint32_t tag);
         typedef void (*HandleMPICommGroup)(ITraceReader *reader, uint32_t group,
-                uint32_t numProcs, const uint32_t *procs);
+                uint32_t numProcs, const uint64_t *procs);
 
         class ITraceReader
         {
@@ -67,12 +67,12 @@ namespace cdm
             virtual void open(const std::string otfFilename, uint32_t maxFiles) = 0;
             virtual void close() = 0;
             virtual void readEvents() = 0;
-            virtual void readEventsForProcess(uint32_t id) = 0;
+            virtual void readEventsForProcess(uint64_t id) = 0;
             virtual void readDefinitions() = 0;
 
             virtual std::string getKeyName(uint32_t id) = 0;
-            virtual std::string getFunctionName(uint32_t id) = 0;
-            virtual std::string getProcessName(uint32_t id) = 0;
+            virtual std::string getFunctionName(uint64_t id) = 0;
+            virtual std::string getProcessName(uint64_t id) = 0;
             virtual std::vector<uint32_t> getKeys(const std::string keyName) = 0;
             virtual uint32_t getFirstKey(const std::string keyName) = 0;
             virtual uint64_t getTimerResolution() = 0;

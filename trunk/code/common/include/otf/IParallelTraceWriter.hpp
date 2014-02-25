@@ -39,8 +39,8 @@ namespace cdm
             {
             }
 
-            virtual void writeRMANode(const Node *node, uint32_t prevRank,
-                    uint32_t nextRank) = 0;
+            virtual void writeRMANode(const Node *node, uint64_t prevRank,
+                    uint64_t nextRank) = 0;
             
             virtual void *getWriteObject(uint32_t id)
             {
@@ -52,7 +52,7 @@ namespace cdm
 
         private:
 
-            void writeDefFunction(uint32_t id, const char *name, FunctionGroup fg)
+            void writeDefFunction(uint64_t id, const char *name, FunctionGroup fg)
             {
             };
         };

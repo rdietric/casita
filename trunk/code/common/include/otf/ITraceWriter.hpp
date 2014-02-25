@@ -54,8 +54,8 @@ namespace cdm
                     uint32_t numStreams, uint64_t timerResolution) = 0;
             virtual void close() = 0;
 
-            virtual void writeDefProcess(uint32_t id, uint32_t parentId, const char *name, ProcessGroup pg) = 0;
-            virtual void writeDefFunction(uint32_t id, const char *name, FunctionGroup fg) = 0;
+            virtual void writeDefProcess(uint64_t id, uint64_t parentId, const char *name, ProcessGroup pg) = 0;
+            virtual void writeDefFunction(uint64_t id, const char *name, FunctionGroup fg) = 0;
             virtual void writeDefCounter(uint32_t id, const char *name, int properties) = 0;
 
             virtual void writeNode(const Node *node, CounterTable &ctrTable, bool lastProcessNode, const Node *futureNode) = 0;

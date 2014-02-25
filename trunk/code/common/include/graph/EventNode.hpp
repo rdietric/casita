@@ -28,7 +28,7 @@ namespace cdm
             FR_SUCCESS = 1
         };
 
-        EventNode(uint64_t time, uint32_t processId, uint32_t eventId,
+        EventNode(uint64_t time, uint64_t processId, uint32_t eventId,
                 FunctionResultType fResult, const std::string name,
                 Paradigm paradigm, NodeRecordType recordType, int nodeType) :
         GraphNode(time, processId, name, paradigm, recordType, nodeType),

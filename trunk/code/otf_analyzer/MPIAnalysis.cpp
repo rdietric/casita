@@ -31,7 +31,7 @@ uint32_t MPIAnalysis::getMPISize() const
     return mpiSize;
 }
 
-uint32_t MPIAnalysis::getMPIRank(uint32_t processId) const
+uint32_t MPIAnalysis::getMPIRank(uint64_t processId) const
 {
     TokenTokenMap::const_iterator iter = processRankMap.find(processId);
     if (iter != processRankMap.end())
@@ -41,10 +41,10 @@ uint32_t MPIAnalysis::getMPIRank(uint32_t processId) const
             processId);
 }
 
-uint32_t MPIAnalysis::getMPIRank(uint32_t processId, const MPICommGroup &commGroup) const
+uint32_t MPIAnalysis::getMPIRank(uint64_t processId, const MPICommGroup &commGroup) const
 {
     uint32_t ctr = 0;
-    for (std::set<uint32_t>::const_iterator iter = commGroup.procs.begin();
+    for (std::set<uint64_t>::const_iterator iter = commGroup.procs.begin();
             iter != commGroup.procs.end(); ++iter)
     {
         if (*iter == processId)
@@ -54,13 +54,13 @@ uint32_t MPIAnalysis::getMPIRank(uint32_t processId, const MPICommGroup &commGro
     throw RTException("Can not find rank for process %u in MPI comm group", processId);
 }
 
-void MPIAnalysis::setMPIRank(uint32_t processId, uint32_t rank)
+void MPIAnalysis::setMPIRank(uint64_t processId, uint32_t rank)
 {
     processRankMap[processId] = rank;
 }
 
 void MPIAnalysis::setMPICommGroupMap(uint32_t group, uint32_t numProcs,
-        const uint32_t *procs)
+        const uint64_t *procs)
 {
     for (uint32_t i = 0; i < numProcs; ++i)
     {
@@ -77,7 +77,7 @@ void MPIAnalysis::createMPICommunicatorsFromMap()
 
         int ranks[group.procs.size()];
         size_t i = 0;
-        for (std::set<uint32_t>::const_iterator iter = group.procs.begin();
+        for (std::set<uint64_t>::const_iterator iter = group.procs.begin();
                 iter != group.procs.end(); ++iter)
         {
             ranks[i] = getMPIRank(*iter);
@@ -103,7 +103,7 @@ const MPIAnalysis::MPICommGroup& MPIAnalysis::getMPICommGroup(uint32_t group) co
 }
 
 void MPIAnalysis::addRemoteMPIEdge(GraphNode *localNode, uint32_t remoteNodeID,
-        uint32_t remoteProcessID, MPIEdgeDirection direction)
+        uint64_t remoteProcessID, MPIEdgeDirection direction)
 {
     MPIEdge edge;
     edge.direction = direction;
@@ -119,7 +119,7 @@ void MPIAnalysis::addRemoteMPIEdge(GraphNode *localNode, uint32_t remoteNodeID,
     reverseRemoteNodeMap[localNode] = pair;
 }
 
-bool MPIAnalysis::getRemoteMPIEdge(uint32_t remoteNodeId, uint32_t remoteProcessId,
+bool MPIAnalysis::getRemoteMPIEdge(uint32_t remoteNodeId, uint64_t remoteProcessId,
         MPIAnalysis::MPIEdge &edge)
 {
     MPIRemoteEdgeMap::const_iterator pIter = remoteMpiEdgeMap.find(remoteProcessId);
@@ -172,13 +172,13 @@ std::set<uint32_t> MPIAnalysis::getMpiPartnersRank(GraphNode *node)
         partners.insert(getMPIRank(node->getReferencedProcessId()));
 
     if (node->isMPISend())
-        partners.insert(getMPIRank(*((uint32_t*) (node->getData()))));
+        partners.insert(getMPIRank(*((uint64_t*) (node->getData()))));
 
     if (node->isMPICollective() || node->isMPIOneToAll() || node->isMPIAllToOne())
     {
         uint32_t mpiGroupId = node->getReferencedProcessId();
         const MPICommGroup& tmpMpiCommGroup = getMPICommGroup(mpiGroupId);
-        for (std::set<uint32_t>::const_iterator iter = tmpMpiCommGroup.procs.begin();
+        for (std::set<uint64_t>::const_iterator iter = tmpMpiCommGroup.procs.begin();
                 iter != tmpMpiCommGroup.procs.end(); ++iter)
         {
             partners.insert(getMPIRank(*iter)); 
@@ -188,7 +188,7 @@ std::set<uint32_t> MPIAnalysis::getMpiPartnersRank(GraphNode *node)
     if (node->isMPISendRecv())
     {
         partners.insert(getMPIRank(node->getReferencedProcessId()));
-        partners.insert(getMPIRank(*((uint32_t*) (node->getData()))));
+        partners.insert(getMPIRank(*((uint64_t*) (node->getData()))));
     }
 
     return partners;

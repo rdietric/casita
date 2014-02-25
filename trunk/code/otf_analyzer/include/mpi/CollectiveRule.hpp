@@ -42,39 +42,41 @@ namespace cdm
 
                 const uint32_t BUFFER_SIZE = 7;
                 uint32_t recvBufferSize = mpiCommGroup.procs.size() * BUFFER_SIZE;
-                uint32_t sendBuffer[BUFFER_SIZE];
-                uint32_t *recvBuffer = new uint32_t[recvBufferSize];
-                memset(recvBuffer, 0, recvBufferSize * sizeof (uint32_t));
+                uint64_t sendBuffer[BUFFER_SIZE];
+                uint64_t *recvBuffer = new uint64_t[recvBufferSize];
+                memset(recvBuffer, 0, recvBufferSize * sizeof (uint64_t));
 
                 uint64_t collStartTime = coll.first->getTime();
                 uint64_t collEndTime = coll.second->getTime();
 
-                memcpy(sendBuffer, &collStartTime, sizeof (uint64_t));
-                memcpy(sendBuffer + 2, &collEndTime, sizeof (uint64_t));
-                sendBuffer[4] = coll.first->getId();
-                sendBuffer[5] = coll.second->getId();
-                sendBuffer[6] = node->getProcessId();
+                //memcpy(sendBuffer, &collStartTime, sizeof (uint64_t));
+                //memcpy(sendBuffer + 2, &collEndTime, sizeof (uint64_t));
+                sendBuffer[0] = collStartTime;
+                sendBuffer[1] = collEndTime;
+                sendBuffer[2] = coll.first->getId();
+                sendBuffer[3] = coll.second->getId();
+                sendBuffer[4] = node->getProcessId();
 
-                MPI_CHECK(MPI_Allgather(sendBuffer, BUFFER_SIZE, MPI_UNSIGNED,
-                        recvBuffer, BUFFER_SIZE, MPI_UNSIGNED, mpiCommGroup.comm));
+                MPI_CHECK(MPI_Allgather(sendBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
+                        recvBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, mpiCommGroup.comm));
 
                 // get last enter event for collective
                 uint64_t lastEnterTime = 0, lastLeaveTime = 0;
-                uint32_t lastEnterProcessId = 0;
-                //uint32_t lastLeaveProcessId = 0;
-                uint32_t lastEnterRemoteNodeId = 0;
-                //uint32_t lastLeaveRemoteNodeId = 0;
+                uint64_t lastEnterProcessId = 0;
+                //uint64_t lastLeaveProcessId = 0;
+                uint64_t lastEnterRemoteNodeId = 0;
+                //uint64_t lastLeaveRemoteNodeId = 0;
 
                 for (size_t i = 0; i < recvBufferSize; i += BUFFER_SIZE)
                 {
-                    uint64_t enterTime = ((uint64_t) recvBuffer[i + 1] << 32) + recvBuffer[i];
-                    uint64_t leaveTime = ((uint64_t) recvBuffer[i + 3] << 32) + recvBuffer[i + 2];
+                    uint64_t enterTime = recvBuffer[i];
+                    uint64_t leaveTime = recvBuffer[i + 1];
 
                     if (enterTime > lastEnterTime)
                     {
                         lastEnterTime = enterTime;
-                        lastEnterRemoteNodeId = recvBuffer[i + 4];
-                        lastEnterProcessId = recvBuffer[i + 6];
+                        lastEnterRemoteNodeId = recvBuffer[i + 2];
+                        lastEnterProcessId = recvBuffer[i + 4];
                     }
 
                     if (leaveTime > lastLeaveTime)
@@ -110,20 +112,20 @@ namespace cdm
                     uint64_t total_blame = 0;
                     for (size_t i = 0; i < recvBufferSize; i += BUFFER_SIZE)
                     {
-                        uint64_t enterTime = ((uint64_t) recvBuffer[i + 1] << 32) + recvBuffer[i];
+                        uint64_t enterTime = recvBuffer[i];
                         total_blame += lastEnterTime - enterTime;
 
                         if (i != myMpiRank)
                         {
                             analysis->getMPIAnalysis().addRemoteMPIEdge(coll.first,
-                                    recvBuffer[i + 5], recvBuffer[i + 6],
+                                    recvBuffer[i + 3], recvBuffer[i + 4],
                                     MPIAnalysis::MPI_EDGE_LOCAL_REMOTE);
 
                             /** These nodes/edges are needed for dependency correctness but are
                              *  omitted since they are currently not used anywhere.
-                             * uint64_t leaveTime = ((uint64_t) recvBuffer[i + 3] << 32) + recvBuffer[i + 2];
-                             * uint32_t remoteLeaveNodeId = recvBuffer[i + 5];
-                             * uint32_t remoteProcessId = recvBuffer[i + 6];
+                             * uint64_t leaveTime = recvBuffer[i + 1];
+                             * uint64_t remoteLeaveNodeId = recvBuffer[i + 3];
+                             * uint64_t remoteProcessId = recvBuffer[i + 4];
                              * 
                              * GraphNode *remoteNode = analysis->addNewRemoteNode(leaveTime, remoteProcessId,
                                     remoteLeaveNodeId, PARADIGM_MPI, RECORD_LEAVE, MPI_COLL,

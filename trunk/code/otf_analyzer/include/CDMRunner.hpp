@@ -54,7 +54,7 @@ namespace cdm
 
         typedef struct
         {
-            uint32_t functionId;
+            uint64_t functionId;
             uint32_t numInstances;
             uint32_t numUnifyProcesses;
             uint64_t totalDuration;
@@ -114,11 +114,11 @@ namespace cdm
 
         void printNode(GraphNode *node, Process *process);
         void printAllActivities(uint64_t globalCPLength);
-        void mergeActivityGroups(std::map<uint32_t, ActivityGroup> &activityGroupMap,
+        void mergeActivityGroups(std::map<uint64_t, ActivityGroup> &activityGroupMap,
             bool cpKernelsOnly);
 
         // optimization
-        void getOptFactors(char *optKernels, std::map<uint32_t, double>& optFactors);
+        void getOptFactors(char *optKernels, std::map<uint64_t, double>& optFactors);
 
         // critical path
         void getCriticalPathIntern(GraphNode *start, GraphNode *end, Paradigm paradigm,
@@ -127,8 +127,8 @@ namespace cdm
                 uint32_t numSections, Process::SortedGraphNodeList& gpuNodes,
                 MPIAnalysis::CriticalSectionsMap& sectionsMap);
         void createSection(SectionsList *sections,
-                GraphNode* start, GraphNode* end, uint32_t prevProcessId,
-                uint32_t currentProcessId, uint32_t nextProcessId);
+                GraphNode* start, GraphNode* end, uint64_t prevProcessId,
+                uint64_t currentProcessId, uint64_t nextProcessId);
         
 #ifdef MPI_CP_MERGE
         void receiveCriticalPathSections(Process::SortedGraphNodeList& gpuNodes,
@@ -145,24 +145,24 @@ namespace cdm
 
         // handlers
         static void handleProcessMPIMapping(io::ITraceReader *reader,
-                uint32_t processId, uint32_t mpiRank);
+                uint64_t processId, uint32_t mpiRank);
         static void handleDefProcess(io::ITraceReader *reader, uint32_t stream,
-                uint32_t processId, uint32_t parentId, const char *name,
+                uint64_t processId, uint64_t parentId, const char *name,
                 io::IKeyValueList * list, bool isCUDA, bool isCUDANull);
         static void handleDefFunction(io::ITraceReader *reader, uint32_t streamId,
-                uint32_t functionId, const char *name, uint32_t functionGroupId);
-        static void handleEnter(io::ITraceReader *reader, uint64_t time, uint32_t functionId,
-                uint32_t processId, io::IKeyValueList *list);
-        static void handleAdditionalEnter(io::ITraceReader *reader, uint64_t time, uint32_t functionId,
-                uint32_t processId, io::IKeyValueList *list);
+                uint64_t functionId, const char *name, uint32_t functionGroupId);
+        static void handleEnter(io::ITraceReader *reader, uint64_t time, uint64_t functionId,
+                uint64_t processId, io::IKeyValueList *list);
+        static void handleAdditionalEnter(io::ITraceReader *reader, uint64_t time, uint64_t functionId,
+                uint64_t processId, io::IKeyValueList *list);
         static void handleLeave(io::ITraceReader *reader, uint64_t time,
-                uint32_t functionId, uint32_t processId, io::IKeyValueList *list);
+                uint64_t functionId, uint64_t processId, io::IKeyValueList *list);
         static void handleAdditionalLeave(io::ITraceReader *reader, uint64_t time,
-                uint32_t functionId, uint32_t processId, io::IKeyValueList *list);
+                uint64_t functionId, uint64_t processId, io::IKeyValueList *list);
         static void handleMPIComm(io::ITraceReader *reader, io::MPIType mpiType,
-                uint32_t processId, uint32_t partnerId, uint32_t root, uint32_t tag);
+                uint64_t processId, uint64_t partnerId, uint32_t root, uint32_t tag);
         static void handleMPICommGroup(io::ITraceReader *reader, uint32_t group,
-                uint32_t numProcs, const uint32_t *procs);
+                uint32_t numProcs, const uint64_t *procs);
     };
 
 }
