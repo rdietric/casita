@@ -51,7 +51,6 @@ Process* TraceData::newProcess(uint64_t id, uint64_t parentId,
         Paradigm paradigm, bool remoteProcess)
 {
     Process *p = new Process(id, parentId, name, processType, remoteProcess);
-    printf("Adding new Process: %lu \n",id);
     processMap[id] = p;
 
     if (processType == Process::PT_HOST)
