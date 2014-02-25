@@ -714,7 +714,6 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
     if (mpiRank == 0)
         printf("[%u] Computing additional counters\n", mpiRank);
     
-    VT_USER_START("CTRS");
     Allocation::ProcessList processes;
     analysis.getProcesses(processes);
     uint32_t cpCtrId = analysis.getCtrTable().getCtrId(CTR_CRITICALPATH);
@@ -759,7 +758,7 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
             lastNode = node;
         }
     }
-    VT_USER_END("CTRS");
+
     if (options.mergeActivities)
     {
         if (mpiRank == 0)
