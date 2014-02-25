@@ -467,7 +467,7 @@ void CDMRunner::readOTF()
     {
         if (options.verbose >= VERBOSE_BASIC)
             printf(" [%u] Reading events\n", mpiRank);
-        //traceReader->readEvents();
+        traceReader->readEvents();
     } catch (RTException e)
     {
         // dump
@@ -1027,40 +1027,10 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
     uint64_t sendBfr[BUFFER_SIZE];
     uint64_t recvBfr[BUFFER_SIZE];
 
-/*    
-    Allocation::ProcessList procs;
-    analysis.getProcesses(procs);
-    printf("REVERSE REPLAY");
-    printf("PROCESS_SIZE %lu \n",procs.size());
-    for(Allocation::ProcessList::const_iterator iter = procs.begin(); iter != procs.end(); ++iter)
-    {
-        Process * p = *iter;
-        printf("PROCESS %lu \n",p->getId());
-    }
-        
-    const Graph::NodeList& list = mpiGraph->getNodes();
-    for(Graph::NodeList::const_iterator iter = list.begin(); iter != list.end(); ++iter)
-    {
-        GraphNode* temp = *iter;
-        printf("PROCESS %lu \n",temp->getProcessId());
-        
-        Process * p = analysis.getProcess(temp->getProcessId());
-        if(p == NULL)
-            printf("GOT NULL \n");
-//        printf("PROCESS %lu",p->getId());
-//        printNode(temp, p);
-    }
-  
- */      
-   
-    options.verbose = VERBOSE_ANNOY;
-    
     while (true)
     {
-        printf("[%u] New ROUND \n",mpiRank);
         if (isMaster)
         {
-            printf("[%u] is Master \n ",mpiRank);
             /* master */
             if (options.verbose >= VERBOSE_ANNOY)
             {
@@ -1127,7 +1097,6 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
                     for (std::set<uint32_t>::const_iterator iter = mpiPartnerRanks.begin();
                             iter != mpiPartnerRanks.end(); ++iter)
                     {
-                        printf("[%u] Comm \n", mpiRank);
                         /* communicate with all slaves to find new master */
                         uint32_t commMpiRank = *iter;
 
@@ -1147,8 +1116,6 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
                         MPI_CHECK(MPI_Isend(sendBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                                 commMpiRank, 0, MPI_COMM_WORLD, &request));
                     }
-                    printf("Got out of Comm loop \n");
-
                     /* continue main loop as slave */
                 } else
                 {
@@ -1214,7 +1181,6 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
         } else
         {
             /* slave */
-            printf("[%u] is Slave \n ",mpiRank);
             //int flag = 0;
             MPI_Status status;
             MPI_CHECK(MPI_Recv(recvBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, MPI_ANY_SOURCE,
@@ -1237,9 +1203,6 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
 
             /* check if the activity is a wait state */
             MPIAnalysis::MPIEdge mpiEdge;
-            bool edge = analysis.getMPIAnalysis().getRemoteMPIEdge((uint32_t)recvBfr[0], recvBfr[1], mpiEdge);
-            if(!edge)
-                printf("[%u] EDGE IS false \n",mpiRank);
             if (analysis.getMPIAnalysis().getRemoteMPIEdge((uint32_t)recvBfr[0], recvBfr[1], mpiEdge))
             {
                 GraphNode::GraphNodePair &slaveActivity = mpiEdge.localNode->getGraphPair();
@@ -1266,9 +1229,7 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
     }
     
     MPI_Barrier(MPI_COMM_WORLD);
-    
-    options.verbose = 0;
-    
+
 }
 
 void CDMRunner::runAnalysis(Paradigm paradigm, Process::SortedNodeList &allNodes)
