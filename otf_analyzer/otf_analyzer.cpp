@@ -19,7 +19,7 @@ void parseCmdLine(int argc, char **argv, CDMRunner::ProgramOptions &options)
 
     if (argc < 2)
     {
-        printf("Too few arguments. Usage %s <otf> [-v <level>|-a|-o <kernel>|-otf <otf>|-p|-dot|--mem-limit <MB>]\n",
+        printf("Too few arguments. Usage %s <otf> [-v <level>|-a|--otf <otf>|-p|-dot|--mem-limit <MB>]\n",
                 argv[0]);
         exit(-1);
     }
@@ -39,13 +39,6 @@ void parseCmdLine(int argc, char **argv, CDMRunner::ProgramOptions &options)
 
             if (strcmp(argv[i], "-a") == 0)
                 options.mergeActivities = true;
-
-            if ((strcmp(argv[i], "-o") == 0) && (i < argc - 1))
-            {
-                options.optimize = 1;
-                options.optKernels = argv[i + 1];
-                i++;
-            }
 
             if ((strcmp(argv[i], "--otf") == 0) && (i < argc - 1))
             {
@@ -95,11 +88,6 @@ void computeCriticalPaths(CDMRunner *runner, CDMRunner::ProgramOptions& options,
     Process::SortedGraphNodeList localCriticalPathNodes;
     Process::SortedGraphNodeList mpiCriticalPathNodes;
 
-#ifdef MPI_CP_MERGE
-    // merging strategy
-    runner->mergeMPIGraphs();
-#endif
-
     runner->getCriticalPath(localCriticalPathNodes, mpiCriticalPathNodes);
 
     if (options.createGraphs)
@@ -129,8 +117,8 @@ void computeCriticalPaths(CDMRunner *runner, CDMRunner::ProgramOptions& options,
 void testResources(int mpiRank)
 {
     int memUsage = CDMRunner::getCurrentResources();
-
-    printf("[%d] memusage: %d kByte\n", mpiRank, memUsage);
+    if (mpiRank == 0)
+        printf("[%d] memusage: %d kByte\n", mpiRank, memUsage);
 }
 
 int main(int argc, char **argv)
@@ -160,7 +148,7 @@ int main(int argc, char **argv)
 
     CDMRunner *runner = new CDMRunner(mpiRank, mpiSize, options);
 
-    runner->readOTF(options.filename);
+    runner->readOTF();
     testResources(mpiRank);
 
 #ifdef VAMPIR
@@ -179,18 +167,10 @@ int main(int argc, char **argv)
     VT_MARKER(mid, "ANALYSIS finished");
 #endif
 
-    uint64_t timerResolution = runner->getAnalysis().getTimerResolution();
-    GraphNode *firstNode = runner->getAnalysis().getFirstTimedGraphNode(PARADIGM_CUDA);
-
-    uint64_t oldRuntime = runner->getAnalysis().getLastGraphNode(PARADIGM_CUDA)->getTime();
-    if (firstNode)
-        oldRuntime -= firstNode->getTime();
-
-    printf("[%u] Old CUDA runtime: %f ms\n",
-            mpiRank, 1000.0 * (double) oldRuntime / (double) timerResolution);
-
     MPI_Barrier(MPI_COMM_WORLD);
 
+    if (mpiRank == 0)
+        printf("[%u] Computing the critical path\n", mpiRank);
     computeCriticalPaths(runner, options, mpiRank);
     testResources(mpiRank);
 
@@ -198,35 +178,12 @@ int main(int argc, char **argv)
     VT_MARKER(mid, "CRITICAL_PATH finished");
 #endif
 
-    if (options.optimize && (runner->getAnalysis().getActivities().size() > 0))
-    {
-        runner->getAnalysis().reset();
-        uint64_t newRuntime = runner->runOptimization(options.optKernels);
-
-#ifdef VAMPIR
-        VT_MARKER(mid, "OPTIMIZATION finished");
-#endif
-
-        if (newRuntime != 0)
-        {
-            if (firstNode)
-                newRuntime -= firstNode->getTime();
-
-            printf("[%u] New CUDA runtime: %.4f ms (%.2f%% faster)\n",
-                    mpiRank, 1000.0 * (double) newRuntime / (double) timerResolution,
-                    100.0 - (double) newRuntime * 100.0 / (double) oldRuntime);
-
-            computeCriticalPaths(runner, options, mpiRank);
-        }
-        
-        testResources(mpiRank);
-    }
-
     /* create OTF with wait states and critical path */
     if (options.createOTF)
     {
         MPI_Barrier(MPI_COMM_WORLD);
-        printf("[%u] Writing result to %s\n", mpiRank, options.outOtfFile);
+        if (mpiRank == 0)
+            printf("[%u] Writing result to %s\n", mpiRank, options.outOtfFile);
         runner->getAnalysis().saveParallelAllocationToFile(options.outOtfFile,
                 options.filename, false, options.verbose >= VERBOSE_ANNOY);
     }

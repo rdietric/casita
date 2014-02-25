@@ -26,6 +26,7 @@ namespace cdm
 
         bool apply(AnalysisEngine *analysis, Node *node)
         {
+            VT_TRACER("LateSyncRule");
             if (!node->isCUDASync() || !node->isLeave())
                 return false;
 

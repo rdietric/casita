@@ -34,7 +34,7 @@ namespace cdm
 
             bool apply(AnalysisEngine *analysis, Node *node)
             {
-
+                VT_TRACER("OMPComputeRule");
                 if (!node->isOMPCompute())
                     return false;
 

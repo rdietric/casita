@@ -38,7 +38,6 @@ namespace cdm
 
         typedef struct
         {
-            bool optimize;
             bool createOTF;
             bool createGraphs;
             bool printCriticalPath;
@@ -47,7 +46,6 @@ namespace cdm
             int verbose;
             int maxEvents, eventsProcessed;
             int memLimit;
-            char *optKernels;
             char *outOtfFile;
             char *filename;
         } ProgramOptions;
@@ -83,13 +81,8 @@ namespace cdm
         CDMRunner(int mpiRank, int mpiSize, ProgramOptions options);
         virtual ~CDMRunner();
 
-        void readOTF(const std::string filename);
+        void readOTF();
         void runAnalysis(Paradigm paradigm, Process::SortedNodeList &allNodes);
-        uint64_t runOptimization(char *optKernels);
-
-#ifdef MPI_CP_MERGE
-        void mergeMPIGraphs();
-#endif
 
         void getCriticalPath(Process::SortedGraphNodeList &gpuNodes,
                 Process::SortedGraphNodeList &mpiNodes);
@@ -121,24 +114,14 @@ namespace cdm
         void getOptFactors(char *optKernels, std::map<uint64_t, double>& optFactors);
 
         // critical path
-        void getCriticalPathIntern(GraphNode *start, GraphNode *end, Paradigm paradigm,
-                Process::SortedGraphNodeList& cpNodes);
+        void getCriticalPathIntern(GraphNode *start, GraphNode *end,
+                Process::SortedGraphNodeList& cpNodes, Graph& subGraph);
         void getCriticalLocalSections(MPIAnalysis::CriticalPathSection *sections,
                 uint32_t numSections, Process::SortedGraphNodeList& gpuNodes,
                 MPIAnalysis::CriticalSectionsMap& sectionsMap);
         void createSection(SectionsList *sections,
                 GraphNode* start, GraphNode* end, uint64_t prevProcessId,
                 uint64_t currentProcessId, uint64_t nextProcessId);
-        
-#ifdef MPI_CP_MERGE
-        void receiveCriticalPathSections(Process::SortedGraphNodeList& gpuNodes,
-                MPIAnalysis::CriticalSectionsMap& sectionsMap);
-        void receiveCriticalMPINodes();
-        void distributeCriticalPathSections(Process::SortedGraphNodeList& nodes,
-                Process::SortedGraphNodeList& gpuNodes,
-                MPIAnalysis::CriticalSectionsMap& sectionsMap);
-        void distributeCriticalMPINodes(Process::SortedGraphNodeList& mpiNodes);
-#endif
 
         void findLastMpiNode(GraphNode **node);
         void reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList& sectionsList);

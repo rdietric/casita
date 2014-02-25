@@ -210,10 +210,10 @@ Graph *Graph::getSubGraph(Paradigm paradigm)
             iter != nodes.end(); ++iter)
     {
         GraphNode *node = *iter;
-        
+
         if (!node->hasParadigm(paradigm))
             continue;
-        
+
         subGraph->addNode(node);
 
         if (hasOutEdges(node))
@@ -233,20 +233,14 @@ Graph *Graph::getSubGraph(Paradigm paradigm)
     return subGraph;
 }
 
-static bool compareDistancesLess(GraphNode *n1, GraphNode *n2)
+bool Graph::compareDistancesLess(GraphNode *n1, GraphNode *n2,
+        DistanceMap& distanceMap)
 {
-    VT_TRACER("compareDistancesLess");
-    
-    if (!n1 || !n2)
-        do
-        {
-            printf("compare to NULL\n");
-        } while (0);
-    std::map<GraphNode*, uint64_t> *distances =
-            (std::map<GraphNode*, uint64_t> *)(n1->getData());
+    assert(n1);
+    assert(n2);
 
-    uint64_t dist1 = (*distances)[n1];
-    uint64_t dist2 = (*distances)[n2];
+    uint64_t dist1 = distanceMap[n1];
+    uint64_t dist2 = distanceMap[n2];
 
     if (dist1 != dist2)
         return dist1 < dist2;
@@ -254,26 +248,36 @@ static bool compareDistancesLess(GraphNode *n1, GraphNode *n2)
         return n1->getId() < n2->getId();
 }
 
-typedef struct
+void Graph::sortedInsert(GraphNode *n, std::list<GraphNode*> &nodes,
+        DistanceMap& distanceMap)
 {
+    uint64_t distance_n = distanceMap[n];
 
-    bool operator()(GraphNode *n1, GraphNode *n2) const
+    std::list<GraphNode*>::iterator iter = nodes.begin();
+    while (iter != nodes.end())
     {
-        return compareDistancesLess(n1, n2);
+        std::list<GraphNode*>::iterator current = iter;
+        ++iter;
+        
+        if (iter == nodes.end() || distanceMap[*iter] >= distance_n)
+        {
+            nodes.insert(current, n);
+            return;
+        }
     }
 
-} compareDistancesLess_t;
+    nodes.push_front(n);
+}
 
 void Graph::getLongestPath(GraphNode *start, GraphNode *end,
-        GraphNode::GraphNodeList & path)
+        GraphNode::GraphNodeList & path) const
 {
     VT_TRACER("getLongestPath");
-    typedef std::set<GraphNode*, compareDistancesLess_t> GraphNodeDistanceSet;
 
     const uint64_t infinite = std::numeric_limits<uint64_t>::max();
     std::map<GraphNode*, GraphNode*> preds;
     std::map<GraphNode*, uint64_t> distance;
-    GraphNodeDistanceSet pendingNodes;
+    std::list<GraphNode*> pendingNodes;
 
     const uint64_t startTime = start->getTime();
     const uint64_t endTime = end->getTime();
@@ -288,26 +292,30 @@ void Graph::getLongestPath(GraphNode *start, GraphNode *end,
         GraphNode *gn = *iter;
         distance[gn] = infinite;
         preds[gn] = gn;
-        gn->setData(&distance);
-        pendingNodes.insert(gn);
+
+        if (gn != start)
+            pendingNodes.push_back(gn);
     }
 
-    pendingNodes.erase(start);
     distance[start] = 0;
-    pendingNodes.insert(start);
+    pendingNodes.push_front(start);
+
+    // pendingNodes is already sorted after construction
 
     while (pendingNodes.size() > 0)
     {
         VT_TRACER("getLongestPath:processNode");
-        GraphNode *current_node = *(pendingNodes.begin());
-        if (distance[current_node] == infinite)
+        GraphNode *current_node = pendingNodes.front();
+        uint64_t current_node_dist = distance[current_node];
+        if (current_node_dist == infinite)
             break;
 
-        pendingNodes.erase(current_node);
+        pendingNodes.pop_front();
+        distance.erase(current_node);
 
         if (hasOutEdges(current_node))
         {
-            VT_TRACER("getLongestPath:hasOutEdges");
+            //VT_TRACER("getLongestPath:hasOutEdges");
             const Graph::EdgeList &outEdges = getOutEdges(current_node);
 
             for (Graph::EdgeList::const_iterator iter = outEdges.begin();
@@ -316,15 +324,16 @@ void Graph::getLongestPath(GraphNode *start, GraphNode *end,
                 Edge *edge = *iter;
                 GraphNode *neighbour = edge->getEndNode();
                 if (((neighbour == end) || (neighbour->getTime() < endTime))
-                        && (pendingNodes.find(neighbour) != pendingNodes.end())
+                        && (distance.find(neighbour) != distance.end())
                         && (!edge->isBlocking()) && (!edge->isReverseEdge()))
                 {
-                    uint64_t alt_distance = distance[current_node] + edge->getWeight();
+                    uint64_t alt_distance = current_node_dist + edge->getWeight();
                     if (alt_distance < distance[neighbour])
                     {
-                        pendingNodes.erase(neighbour);
+                        pendingNodes.remove(neighbour);
                         distance[neighbour] = alt_distance;
-                        pendingNodes.insert(neighbour);
+
+                        sortedInsert(neighbour, pendingNodes, distance);
                         preds[neighbour] = current_node;
                     }
                 }
@@ -335,7 +344,7 @@ void Graph::getLongestPath(GraphNode *start, GraphNode *end,
     GraphNode *currentNode = end;
     while (currentNode != start)
     {
-        VT_TRACER("getLongestPath:findBestPath");
+        //VT_TRACER("getLongestPath:findBestPath");
         // get all ingoing nodes for current node, ignore blocking and
         // reverse edges
         GraphNode::GraphNodeList possibleInNodes;

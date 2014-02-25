@@ -31,6 +31,7 @@ namespace cdm
 
             bool apply(AnalysisEngine *analysis, Node *node)
             {
+                VT_TRACER("OMPBarrierRule");
                 if (!node->isOMPSync() || !node->isLeave())
                     return false;
 
@@ -49,6 +50,8 @@ namespace cdm
                 // check if all barriers were passed
                 if (procs.size() == barrierList.size())
                 {
+                    uint32_t ctrIdWaitState = analysis->getCtrTable().getCtrId(CTR_WAITSTATE);
+                    
                     // find last barrierEnter
                     for (; iter != barrierList.end(); ++iter)
                     {
@@ -64,14 +67,14 @@ namespace cdm
                         {
                             // make this barrier a blocking waitstate 
                             analysis->getEdge(barrier.first, barrier.second)->makeBlocking();
-                            barrier.first->setCounter(analysis->getCtrTable().getCtrId(CTR_WAITSTATE), 
-                                    maxEnterTimeNode->getTime()-barrier.first->getTime());
+                            barrier.first->setCounter(ctrIdWaitState, 
+                                    maxEnterTimeNode->getTime() - barrier.first->getTime());
 
                             // create edge from latest enter to other leaves
                             analysis->newEdge(maxEnterTimeNode, barrier.second, EDGE_CAUSES_WAITSTATE);
+                            
+                            blame += maxEnterTimeNode->getTime() - barrier.first->getTime();
                         }
-
-                        blame += maxEnterTimeNode->getTime() - barrier.first->getTime();
                     }
 
                     // set blame

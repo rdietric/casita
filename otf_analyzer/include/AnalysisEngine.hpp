@@ -48,9 +48,6 @@ namespace cdm
 
         MPIAnalysis &getMPIAnalysis();
         uint32_t getMPIRank() const;
-#ifdef MPI_CP_MERGE
-        void mergeMPIGraphs();
-#endif
 
         void addFunction(uint64_t funcId, const char *name);
         uint64_t getNewFunctionId();
@@ -93,7 +90,6 @@ namespace cdm
         GraphNode *getLastLeave(uint64_t timestamp, uint64_t procId) const;
 
         void reset();
-        void optimizeKernel(std::map<uint64_t, double> optimizationMap, bool verbose);
 
         void saveParallelAllocationToFile(const char* filename,
                 const char* origFilename,
@@ -143,12 +139,6 @@ namespace cdm
         uint64_t waitStateFuncId;
 
         static bool rulePriorityCompare(AbstractRule *r1, AbstractRule *r2);
-        static uint64_t getNodeSlack(const std::map<GraphNode*, uint64_t> slackMap,
-                GraphNode *node);
-
-        uint64_t updateInEdges(const Graph::EdgeList& inEdges, bool verbose);
-        uint64_t updateGraphNode(GraphNode *node, uint64_t delta,
-                uint64_t fixedSlack, bool verbose);
 
         size_t getNumAllDeviceProcesses();
         

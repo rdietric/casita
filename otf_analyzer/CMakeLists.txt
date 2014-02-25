@@ -3,9 +3,9 @@
 cmake_minimum_required(VERSION 2.6)
 
 # enable VampirTrace
-OPTION(VAMPIR "enable VampirTrace" OFF)
+OPTION(VAMPIR "enable tracing" OFF)
 IF(VAMPIR)
-	SET(CMAKE_CXX_COMPILER "vtc++")
+	SET(CMAKE_CXX_COMPILER "scorep_cxx")
 ENDIF(VAMPIR)
 
 PROJECT(otfanalyzer)
@@ -17,7 +17,7 @@ SET(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/" "$ENV{MPI_ROOT}" "$ENV{CUDA_R
 IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     SET(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}" CACHE PATH "install prefix" FORCE)
 ENDIF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT) 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wno-pmf-conversions -Wno-deprecated")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -g -Wall -Wno-pmf-conversions -Wno-deprecated")
 
 # enable release build
 OPTION(RELEASE "disable all debug asserts" OFF)
@@ -33,10 +33,11 @@ ENDIF(NOT RELEASE)
 
 # enable VampirTrace
 IF(VAMPIR)
-    INCLUDE_DIRECTORIES($ENV{VT_INC})
-	ADD_DEFINITIONS(-DVAMPIR -DVTRACE)
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -vt:inst manual")
-	message("building with VampirTrace")
+	ADD_DEFINITIONS(-DVAMPIR)
+    #INCLUDE_DIRECTORIES($ENV{VT_INC})
+    #ADD_DEFINITIONS(-DVTRACE)
+    #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+	message("building with tracing support")
 ENDIF(VAMPIR)
 
 # enable gprof

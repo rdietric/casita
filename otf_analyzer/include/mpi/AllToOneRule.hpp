@@ -29,6 +29,7 @@ namespace cdm
 
             bool apply(AnalysisEngine *analysis, Node *node)
             {
+                VT_TRACER("AllToOneRule");
                 // applied at MPI AllToOne leave
                 if (!node->isMPIAllToOne() || !node->isLeave())
                     return false;

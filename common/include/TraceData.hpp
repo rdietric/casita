@@ -110,9 +110,6 @@ namespace cdm
         uint64_t getTimerResolution();
         uint64_t getDeltaTicks();
 
-        void getCriticalPath(GraphNode *sourceNode, GraphNode * lastNode,
-                GraphNode::GraphNodeList *cpath, Paradigm paradigm);
-
         void runSanityCheck(uint32_t mpiRank);
 
         void saveAllocationToFile(const char *filename,

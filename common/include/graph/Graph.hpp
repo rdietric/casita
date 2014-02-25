@@ -62,7 +62,7 @@ namespace cdm
         Graph *getSubGraph(Paradigm paradigm);
 
         void getLongestPath(GraphNode *start, GraphNode *end,
-                GraphNode::GraphNodeList &path);
+                GraphNode::GraphNodeList &path) const;
 
         void saveToFile(const std::string filename,
                 const GraphNode::GraphNodeSet *cpnodes);
@@ -70,8 +70,13 @@ namespace cdm
         NodeList nodes;
         NodeEdges inEdges, outEdges;
         
-        static GraphNode *getNearestNode(const GraphNode::GraphNodeSet &nodes,
-                std::map<GraphNode*, uint64_t> &distances);
+        typedef std::map<GraphNode*, uint64_t> DistanceMap;
+
+        static bool compareDistancesLess(GraphNode *n1, GraphNode *n2,
+                DistanceMap& distanceMap);
+
+        static void sortedInsert(GraphNode *n, std::list<GraphNode*> &nodes,
+                DistanceMap& distanceMap);
     };
 
 }

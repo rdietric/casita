@@ -8,6 +8,8 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
+#include <omp.h>
+
 #include "CDMRunner.hpp"
 
 #include "otf/IKeyValueList.hpp"
@@ -128,7 +130,7 @@ void CDMRunner::printNode(GraphNode *node, Process *process)
             (!node->isEventNode() ||
             (((EventNode*) node)->getFunctionResult() == EventNode::FR_SUCCESS))))
     {
-        printf(" [%u]", analysis.getMPIRank());
+        printf(" [%u]", mpiRank);
         if (node->isEnter())
             printf(" E ");
         else
@@ -419,7 +421,7 @@ void CDMRunner::handleMPICommGroup(ITraceReader *reader, uint32_t group,
     runner->getAnalysis().getMPIAnalysis().setMPICommGroupMap(group, numProcs, procs);
 }
 
-void CDMRunner::readOTF(const std::string filename)
+void CDMRunner::readOTF()
 {
     uint32_t mpiRank = analysis.getMPIRank();
     ITraceReader *traceReader;
@@ -525,22 +527,6 @@ void CDMRunner::getOptFactors(char *optKernels, std::map<uint64_t, double>& optF
             }
         }
     }
-}
-
-uint64_t CDMRunner::runOptimization(char *optKernels)
-{
-    std::map<uint64_t, double> optFactors;
-    getOptFactors(optKernels, optFactors);
-
-    if (optFactors.size() > 0)
-    {
-        analysis.optimizeKernel(optFactors, options.verbose >= VERBOSE_ANNOY);
-
-        analysis.runSanityCheck(analysis.getMPIRank());
-    } else
-        printf("Found no matching kernel(s)\n");
-
-    return analysis.getLastGraphNode()->getTime();
 }
 
 void CDMRunner::mergeActivityGroups(std::map<uint64_t, ActivityGroup> &activityGroupMap,
@@ -709,36 +695,10 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
 
     if (mpiSize > 1)
     {
-#ifdef MPI_CP_MERGE
-        // merging strategy
-        /* compute MPI critical path on root and distribute GPU sections */
-        if (mpiRank == 0)
-        {
-            GraphNode *startNode = analysis.getSourceNode();
-            GraphNode *endNode = analysis.getLastGraphNode(GRAPH_MPI);
-
-            if (options.verbose >= VERBOSE_BASIC)
-            {
-                printf("[0] Computing MPI critical path (%s, %s)\n",
-                        startNode->getUniqueName().c_str(),
-                        endNode->getUniqueName().c_str());
-            }
-
-            getCriticalPathIntern(startNode, endNode, GRAPH_MPI, mpiNodes);
-
-            distributeCriticalMPINodes(mpiNodes);
-            distributeCriticalPathSections(mpiNodes, localNodes, sectionsMap);
-        } else
-        {
-            receiveCriticalMPINodes();
-            receiveCriticalPathSections(localNodes, sectionsMap);
-        }
-#else
         // better reverse replay strategy
         MPIAnalysis::CriticalSectionsList sectionsList;
         reverseReplayMPICriticalPath(sectionsList);
         getCriticalLocalSections(sectionsList.data(), sectionsList.size(), localNodes, sectionsMap);
-#endif
     } else
     {
         /* compute local critical path on root, only */
@@ -747,10 +707,14 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
 
         getCriticalPathIntern(analysis.getSourceNode(),
                 analysis.getLastGraphNode(PARADIGM_COMPUTE_LOCAL),
-                PARADIGM_COMPUTE_LOCAL, localNodes);
+                localNodes, analysis.getGraph());
     }
 
     /* compute the time-on-critical-path counter */
+    if (mpiRank == 0)
+        printf("[%u] Computing additional counters\n", mpiRank);
+    
+    VT_USER_START("CTRS");
     Allocation::ProcessList processes;
     analysis.getProcesses(processes);
     uint32_t cpCtrId = analysis.getCtrTable().getCtrId(CTR_CRITICALPATH);
@@ -795,9 +759,11 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
             lastNode = node;
         }
     }
-    
+    VT_USER_END("CTRS");
     if (options.mergeActivities)
     {
+        if (mpiRank == 0)
+            printf("[%u] Merging activity statistics\n", mpiRank);
         Process::SortedGraphNodeList allCriticalEvents;
         allCriticalEvents.insert(allCriticalEvents.end(), mpiNodes.begin(), mpiNodes.end());
         allCriticalEvents.insert(allCriticalEvents.end(), localNodes.begin(), localNodes.end());
@@ -824,7 +790,7 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
 }
 
 void CDMRunner::getCriticalPathIntern(GraphNode *start, GraphNode *end,
-        Paradigm paradigm, Process::SortedGraphNodeList& cpNodes)
+        Process::SortedGraphNodeList& cpNodes, Graph& subGraph)
 {
     VT_TRACER("getCriticalPathIntern");
     if (options.printCriticalPath)
@@ -836,16 +802,14 @@ void CDMRunner::getCriticalPathIntern(GraphNode *start, GraphNode *end,
     }
 
     GraphNode::GraphNodeList criticalPath;
-    analysis.getCriticalPath(start, end, &criticalPath, paradigm);
+    subGraph.getLongestPath(start, end, criticalPath);
 
     uint32_t i = 0;
-    for (GraphNode::GraphNodeList::iterator cpNode = criticalPath.begin();
+    for (GraphNode::GraphNodeList::const_iterator cpNode = criticalPath.begin();
             cpNode != criticalPath.end(); ++cpNode)
     {
         GraphNode *node = *cpNode;
         cpNodes.push_back(node);
-
-        node->setCounter(analysis.getCtrTable().getCtrId(CTR_CRITICALPATH), 1);
 
         if (options.printCriticalPath)
         {
@@ -864,6 +828,14 @@ void CDMRunner::getCriticalLocalSections(MPIAnalysis::CriticalPathSection *secti
         MPIAnalysis::CriticalSectionsMap& sectionsMap)
 {
     uint32_t mpiRank = analysis.getMPIRank();
+    Graph *subGraph = analysis.getGraph(PARADIGM_COMPUTE_LOCAL);
+    
+    omp_lock_t localNodesLock;
+    omp_init_lock(&localNodesLock);
+    
+    uint32_t lastSecCtr = 0;
+
+#pragma omp parallel for
     for (uint32_t i = 0; i < numSections; ++i)
     {
         MPIAnalysis::CriticalPathSection *section = &(sections[i]);
@@ -876,7 +848,7 @@ void CDMRunner::getCriticalLocalSections(MPIAnalysis::CriticalPathSection *secti
 
         // find local MPI nodes with their IDs
         GraphNode *startNode = NULL, *endNode = NULL;
-        Process::SortedNodeList &mpiNodes =
+        const Process::SortedNodeList &mpiNodes =
                 analysis.getProcess(sections->processID)->getNodes();
         for (Process::SortedNodeList::const_iterator iter = mpiNodes.begin();
                 iter != mpiNodes.end(); ++iter)
@@ -917,13 +889,9 @@ void CDMRunner::getCriticalLocalSections(MPIAnalysis::CriticalPathSection *secti
         }
 
         MPIAnalysis::CriticalPathSection mappedSection;
-        //mappedSection.nextProcessID = section->nextProcessID;
-        //mappedSection.prevProcessID = section->prevProcessID;
         mappedSection.processID = section->processID;
         mappedSection.nodeStartID = section->nodeStartID;
         mappedSection.nodeEndID = section->nodeEndID;
-
-
 
         if (startNode->isEnter())
             startNode = startNode->getPartner();
@@ -973,10 +941,31 @@ void CDMRunner::getCriticalLocalSections(MPIAnalysis::CriticalPathSection *secti
         }
 
         Process::SortedGraphNodeList sectionLocalNodes;
-        getCriticalPathIntern(startLocalNode, endLocalNode, PARADIGM_COMPUTE_LOCAL, sectionLocalNodes);
+        getCriticalPathIntern(startLocalNode, endLocalNode, sectionLocalNodes, *subGraph);
         
+        omp_set_lock(&localNodesLock);
         localNodes.insert(localNodes.end(), sectionLocalNodes.begin(), sectionLocalNodes.end());
+        omp_unset_lock(&localNodesLock);
+        
+        if ((mpiRank == 0) && (omp_get_thread_num() == 0) && (i - lastSecCtr > numSections / 10))
+        {
+            printf("[%u] %lu%% ", mpiRank, (size_t)(100.0 * (double) i / (double) numSections));
+            fflush(NULL);
+            lastSecCtr = i;
+        }
     }
+    
+    const uint32_t cpCtrId = analysis.getCtrTable().getCtrId(CTR_CRITICALPATH);
+    for (Process::SortedGraphNodeList::const_iterator iter = localNodes.begin();
+            iter != localNodes.end(); ++iter)
+    {
+        (*iter)->setCounter(cpCtrId, 1);
+    }
+    
+    omp_destroy_lock(&localNodesLock);
+    
+    if (mpiRank == 0)
+        printf("[%u] 100%%\n", mpiRank);
 }
 
 void CDMRunner::findLastMpiNode(GraphNode **node)
@@ -1106,6 +1095,8 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
                         section.nodeStartID = currentNode->getId();
                         section.nodeEndID = sectionEndNode->getId();
                         sectionsList.push_back(section);
+                        
+                        currentNode->setCounter(cpCtrId, 1);
                     }
                     sectionEndNode = NULL;
                 }
@@ -1288,7 +1279,8 @@ void CDMRunner::runAnalysis(Paradigm paradigm, Process::SortedNodeList &allNodes
     switch (paradigm)
     {
         case PARADIGM_CUDA:
-            printf("[%u] Running analysis: CUDA\n", analysis.getMPIRank());
+            if (mpiRank == 0)
+                printf("[%u] Running analysis: CUDA\n", mpiRank);
 
             analysis.addRule(new KernelLaunchRule(9));
             analysis.addRule(new BlameSyncRule(1));
@@ -1301,7 +1293,8 @@ void CDMRunner::runAnalysis(Paradigm paradigm, Process::SortedNodeList &allNodes
             break;
 
         case PARADIGM_MPI:
-            printf("[%u] Running analysis: MPI\n", analysis.getMPIRank());
+            if (mpiRank == 0)
+                printf("[%u] Running analysis: MPI\n", mpiRank);
 
             analysis.addRule(new RecvRule(1));
             analysis.addRule(new SendRule(1));
@@ -1312,7 +1305,8 @@ void CDMRunner::runAnalysis(Paradigm paradigm, Process::SortedNodeList &allNodes
             break;
 
         case PARADIGM_OMP:
-            printf("[%u] Running analysis: OMP\n", analysis.getMPIRank());
+            if (mpiRank == 0)
+                printf("[%u] Running analysis: OMP\n", mpiRank);
 
             analysis.addRule(new OMPParallelRegionRule(1));
             analysis.addRule(new OMPComputeRule(1));
@@ -1320,8 +1314,9 @@ void CDMRunner::runAnalysis(Paradigm paradigm, Process::SortedNodeList &allNodes
             break;
 
         default:
-            printf("[%u] No analysis for unknown paradigm %d\n",
-                    analysis.getMPIRank(), paradigm);
+            if (mpiRank == 0)
+                printf("[%u] No analysis for unknown paradigm %d\n",
+                        mpiRank, paradigm);
             return;
     }
 
@@ -1343,16 +1338,18 @@ void CDMRunner::runAnalysis(Paradigm paradigm, Process::SortedNodeList &allNodes
 
         analysis.applyRules(node, options.verbose >= VERBOSE_BASIC);
 
-        if ((analysis.getMPIRank() == 0) && (ctr - last_ctr > num_nodes / 10))
+        if ((mpiRank == 0) && (ctr - last_ctr > num_nodes / 10))
         {
-            printf("[%u] %3.2f%% ", analysis.getMPIRank(), 100.0 * (double) ctr / (double) num_nodes);
+            printf("[%u] %lu%% ", mpiRank, (size_t)(100.0 * (double) ctr / (double) num_nodes));
+            fflush(NULL);
             last_ctr = ctr;
         }
     }
-    printf("\n");
+    if (mpiRank == 0)
+        printf("[%u] 100%%\n", mpiRank);
     
 #ifdef DEBUG
-    analysis.runSanityCheck(analysis.getMPIRank());
+    analysis.runSanityCheck(mpiRank);
 #endif
 }
 
@@ -1361,7 +1358,7 @@ void CDMRunner::printAllActivities(uint64_t globalCPLength)
     std::map<uint64_t, ActivityGroup> activityGroupMap;
     mergeActivityGroups(activityGroupMap, false);
 
-    if (analysis.getMPIRank() == 0)
+    if (mpiRank == 0)
     {
         printf("\n%50s %10s %10s %11s %12s %21s %9s\n", "Activity Group",
                 "Instances", "Time", "Time on CP", "Fraction CP", "Fraction Global Blame", "Rating");

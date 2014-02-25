@@ -18,6 +18,10 @@
 #include <vt_user.h>
 #else
 #define VT_TRACER(_arg)
+#define VT_ON()
+#define VT_OFF()
+#define VT_USER_START()
+#define VT_USER_END()
 #endif
 
 #define VERBOSE_NONE 0
