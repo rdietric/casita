@@ -532,8 +532,7 @@ void CDMRunner::getOptFactors(char *optKernels, std::map<uint64_t, double>& optF
     }
 }
 
-void CDMRunner::mergeActivityGroups(std::map<uint64_t, ActivityGroup> &activityGroupMap,
-        bool cpKernelsOnly)
+void CDMRunner::mergeActivityGroups(ActivityGroupMap& activityGroupMap, bool cpKernelsOnly)
 {
     /* phase 1: each MPI process*/
 
@@ -759,9 +758,7 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
                 /* compute time for non-stacked function (parts) */
                 if (lastNodeOnCP && (lastNode == node->getPartner() || lastNode->isLeave()))
                     myCPTime += node->getTime() - lastNode->getTime();
-                
-                if (mpiRank == 0)
-                    std::cout << "adding " << myCPTime << " to " << node->getPartner()->getUniqueName() << std::endl;
+
                 node->getPartner()->setCounter(cpTimeCtrId, myCPTime);
             }
                 
@@ -793,7 +790,9 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
 
         uint64_t globalCPLength = lastTimestamp - firstTimestamp;
 
-        printAllActivities(globalCPLength);
+        ActivityGroupMap activityGroupMap;
+        mergeActivityGroups(activityGroupMap, false);
+        printAllActivities(globalCPLength, activityGroupMap);
         MPI_Barrier(MPI_COMM_WORLD);
     }
 }
@@ -1322,13 +1321,10 @@ void CDMRunner::runAnalysis(Paradigm paradigm, Process::SortedNodeList &allNodes
 #endif
 }
 
-void CDMRunner::printAllActivities(uint64_t globalCPLength)
+void CDMRunner::printAllActivities(uint64_t globalCPLength, std::map<uint64_t, ActivityGroup>& activityGroupMap)
 {
-    std::map<uint64_t, ActivityGroup> activityGroupMap;
-    mergeActivityGroups(activityGroupMap, false);
-
     if (mpiRank == 0)
-    {
+    { 
         printf("\n%50s %10s %10s %11s %12s %21s %9s\n", "Activity Group",
                 "Instances", "Time", "Time on CP", "Fraction CP", "Fraction Global Blame", "Rating");
 
@@ -1347,9 +1343,12 @@ void CDMRunner::printAllActivities(uint64_t globalCPLength)
             sortedActivityGroups.insert(iter->second);
         }
 
+        const size_t max_ctr = 10;
+        size_t ctr = 0;
         for (std::set<ActivityGroup, ActivityGroupCompare>::const_iterator iter =
-                sortedActivityGroups.begin(); iter != sortedActivityGroups.end(); ++iter)
+                sortedActivityGroups.begin(); iter != sortedActivityGroups.end() && ctr < max_ctr; ++iter) 
         {
+            ++ctr;
             printf("%50.50s %10u %10f %11f %11.2f%% %20.2f%%  %7.6f\n",
                     analysis.getFunctionName(iter->functionId),
                     iter->numInstances,
