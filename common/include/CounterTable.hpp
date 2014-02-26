@@ -52,7 +52,7 @@ namespace cdm
                 OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS},
         {CTR_CRITICALPATH, "Critical Path", true, false, 0,
                 OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS},
-        {CTR_CRITICALPATH_TIME, "Time on Critical Path", true, true, 0,
+        {CTR_CRITICALPATH_TIME, "Time on Critical Path", true, false, 0,
                 OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS}
     };
 
