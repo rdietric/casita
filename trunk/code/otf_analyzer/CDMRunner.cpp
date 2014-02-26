@@ -426,16 +426,19 @@ void CDMRunner::readOTF()
     uint32_t mpiRank = analysis.getMPIRank();
     ITraceReader *traceReader;
     
-    printf("[%u] Reading OTF %s\n", mpiRank, options.filename);
+    if (mpiRank == 0)
+        printf("[%u] Reading OTF %s\n", mpiRank, options.filename);
     //OTF1MODE
     if(strstr(options.filename,".otf2")==NULL)
     {
-        printf("Operating in OTF1-Mode.\n");
+        if (mpiRank == 0)
+            printf("Operating in OTF1-Mode.\n");
         traceReader = new OTF1TraceReader(this, mpiRank);
     }
     else
     {
-        printf("Operating in OTF2-Mode.\n");
+        if (mpiRank == 0)
+            printf("Operating in OTF2-Mode.\n");
         traceReader = new OTF2TraceReader(this, mpiRank);
     }
      
@@ -752,6 +755,13 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
             {
                 uint64_t myCPTime = cpTime.top();
                 cpTime.pop();
+                
+                /* compute time for non-stacked function (parts) */
+                if (lastNodeOnCP && (lastNode == node->getPartner() || lastNode->isLeave()))
+                    myCPTime += node->getTime() - lastNode->getTime();
+                
+                if (mpiRank == 0)
+                    std::cout << "adding " << myCPTime << " to " << node->getPartner()->getUniqueName() << std::endl;
                 node->getPartner()->setCounter(cpTimeCtrId, myCPTime);
             }
                 
@@ -978,8 +988,8 @@ void CDMRunner::findLastMpiNode(GraphNode **node)
     if (myLastMpiNode)
         lastMpiNodeTime = myLastMpiNode->getTime();
 
-    MPI_CHECK(MPI_Allgather(&lastMpiNodeTime, 1, MPI_INTEGER8, nodeTimes,
-            1, MPI_INTEGER8, MPI_COMM_WORLD));
+    MPI_CHECK(MPI_Allgather(&lastMpiNodeTime, 1, MPI_UNSIGNED_LONG_LONG, nodeTimes,
+            1, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD));
 
     for (uint32_t i = 0; i < analysis.getMPIAnalysis().getMPISize(); ++i)
         if (nodeTimes[i] > lastMpiNodeTime)
@@ -1188,7 +1198,6 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
 
             if (recvBfr[2] == PATH_FOUND_MSG)
             {
-                printf("Abort \n");
                 if (options.verbose >= VERBOSE_ANNOY)
                     printf("[%u] * terminate requested by master\n", mpiRank);
                 break;

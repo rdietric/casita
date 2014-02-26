@@ -11,6 +11,7 @@
 #include <otf.h>
 #include <vector>
 #include <map>
+#include <stack>
 #include "otf/IParallelTraceWriter.hpp"
 
 namespace cdm
@@ -65,6 +66,7 @@ namespace cdm
             std::vector<uint32_t> deviceProcesses;
             std::vector<uint32_t> deviceMasterProcesses;
             std::map<uint32_t, std::list<uint64_t> > processTimeEndMap;
+            std::stack<uint64_t> cpTimeCtrStack;
 
             uint32_t streamRefKey, eventRefKey, funcResultKey;
             uint32_t attrListCUDAToken;
