@@ -61,6 +61,8 @@ namespace cdm
             double fractionCP;
             double fractionBlame;
         } ActivityGroup;
+        
+        typedef std::map<uint64_t, ActivityGroup> ActivityGroupMap;
 
         typedef struct
         {
@@ -106,9 +108,8 @@ namespace cdm
         ProgramOptions options;
 
         void printNode(GraphNode *node, Process *process);
-        void printAllActivities(uint64_t globalCPLength);
-        void mergeActivityGroups(std::map<uint64_t, ActivityGroup> &activityGroupMap,
-            bool cpKernelsOnly);
+        void printAllActivities(uint64_t globalCPLength, ActivityGroupMap &activityGroupMap);
+        void mergeActivityGroups(ActivityGroupMap &activityGroupMap, bool cpKernelsOnly);
 
         // optimization
         void getOptFactors(char *optKernels, std::map<uint64_t, double>& optFactors);
