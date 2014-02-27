@@ -16,6 +16,7 @@
 #include <map>
 
 #include "common.hpp"
+#include "Parser.hpp"
 #include "AnalysisEngine.hpp"
 #include "otf/ITraceReader.hpp"
 #include "otf/IKeyValueList.hpp"
@@ -35,20 +36,6 @@ namespace cdm
         typedef std::vector<MPIAnalysis::ProcessNodePair > MPINodeList;
         
     public:
-
-        typedef struct
-        {
-            bool createOTF;
-            bool createGraphs;
-            bool printCriticalPath;
-            bool mergeActivities;
-            bool noErrors;
-            int verbose;
-            int maxEvents, eventsProcessed;
-            int memLimit;
-            char *outOtfFile;
-            char *filename;
-        } ProgramOptions;
 
         typedef struct
         {
@@ -80,7 +67,7 @@ namespace cdm
 
         } ActivityGroupCompare;
 
-        CDMRunner(int mpiRank, int mpiSize, ProgramOptions options);
+        CDMRunner(int mpiRank, int mpiSize);
         virtual ~CDMRunner();
 
         void readOTF();
@@ -105,7 +92,7 @@ namespace cdm
         int mpiRank;
         int mpiSize;
         AnalysisEngine analysis;
-        ProgramOptions options;
+        ProgramOptions& options;
 
         void printNode(GraphNode *node, Process *process);
         void printAllActivities(uint64_t globalCPLength, ActivityGroupMap &activityGroupMap);

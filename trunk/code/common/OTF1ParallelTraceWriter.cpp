@@ -252,7 +252,6 @@ void OTF1ParallelTraceWriter::writeDefProcess(uint64_t id, uint64_t parentId,
 {
     
     uint32_t otf1_id = (uint32_t) id;
-    uint32_t otf1_parentId = (uint32_t) parentId;
     
     if (pg == PG_DEVICE)
         deviceProcesses.push_back(otf1_id);

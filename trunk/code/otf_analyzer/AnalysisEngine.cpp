@@ -20,6 +20,7 @@ using namespace cdm::io;
 
 AnalysisEngine::AnalysisEngine(uint32_t mpiRank, uint32_t mpiSize) :
 mpiAnalysis(mpiRank, mpiSize),
+pendingParallelRegion(NULL),
 maxFunctionId(0),
 waitStateFuncId(0)
 {
@@ -454,9 +455,8 @@ static bool processSort(Process* p1, Process* p2)
     return p1->getId() <= p2->getId();
 }
 
-void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
-        const char *origFilename,
-        bool enableWaitStates, bool verbose)
+void AnalysisEngine::saveParallelAllocationToFile(std::string filename,
+        std::string origFilename, bool enableWaitStates, bool verbose)
 {
     Allocation::ProcessList allProcs;
     getProcesses(allProcs);
@@ -469,8 +469,8 @@ void AnalysisEngine::saveParallelAllocationToFile(const char* filename,
             VT_CUPTI_CUDA_CURESULT_KEY,
             mpiAnalysis.getMPIRank(),
             mpiAnalysis.getMPISize(),
-            origFilename);
-    writer->open(filename, 100, allProcs.size(), this->ticksPerSecond);
+            origFilename.c_str());
+    writer->open(filename.c_str(), 100, allProcs.size(), this->ticksPerSecond);
 
     CounterTable::CtrIdSet ctrIdSet = this->ctrTable.getAllCounterIDs();
     uint32_t cpCtrId = this->ctrTable.getCtrId(CTR_CRITICALPATH);

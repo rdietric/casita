@@ -8,7 +8,7 @@
 #ifndef OTF1TRACEREADER_HPP
 #define	OTF1TRACEREADER_HPP
 
-#include <otf.h>
+#include <open-trace-format/otf.h>
 #include <map>
 #include <vector>
 #include <stack>

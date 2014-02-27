@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include <map>
 #include <set>
-#include <otf.h>
+#include <open-trace-format/otf.h>
 
 namespace cdm
 {

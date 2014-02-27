@@ -1,9 +1,9 @@
 # Projekt name
 
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8.5)
 
 # enable VampirTrace
-OPTION(VAMPIR "enable tracing" OFF)
+OPTION(VAMPIR "enable tracing using Score-P" OFF)
 IF(VAMPIR)
 	SET(CMAKE_CXX_COMPILER "scorep_cxx")
 ENDIF(VAMPIR)
@@ -34,10 +34,7 @@ ENDIF(NOT RELEASE)
 # enable VampirTrace
 IF(VAMPIR)
 	ADD_DEFINITIONS(-DVAMPIR)
-    #INCLUDE_DIRECTORIES($ENV{VT_INC})
-    #ADD_DEFINITIONS(-DVTRACE)
-    #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-	message("building with tracing support")
+	message("building with Score-P tracing support")
 ENDIF(VAMPIR)
 
 # enable gprof
@@ -56,10 +53,39 @@ SET(LIBS ${LIBS} ${MPI_C_LIBRARIES} ${MPI_CXX_LIBRARIES})
 FIND_PACKAGE(CUDA REQUIRED)
 INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
 
-# include OTF
-INCLUDE_DIRECTORIES($ENV{OTF_INC} $ENV{OTF2_INC} $ENV{VT_INC}/vampirtrace)
-LINK_DIRECTORIES($ENV{OTF_LIB} $ENV{OTF2_LIB} $ENV{VT_LIB})
-SET(LIBS ${LIBS} open-trace-format otf2)
+# include OTF1
+find_path(PROJ_OTF1_DIR
+  NAMES include/open-trace-format/otf.h lib/libopen-trace-format.so
+  PATHS ENV OTF_ROOT
+  DOC "OTF1 ROOT location"
+)
+
+IF(PROJ_OTF1_DIR)
+    MESSAGE(STATUS "Found OTF1: "${PROJ_OTF1_DIR})
+    INCLUDE_DIRECTORIES(SYSTEM ${PROJ_OTF1_DIR}/include)
+    LINK_DIRECTORIES(${PROJ_OTF1_DIR}/lib)
+    set(LIBS ${LIBS} open-trace-format)
+ELSE(PROJ_OTF1_DIR)
+    MESSAGE(STATUS "Could NOT find OTF1")
+ENDIF(PROJ_OTF1_DIR)
+
+
+# include OTF2
+find_path(PROJ_OTF2_DIR
+  NAMES include/otf2/otf2.h lib/libotf2.so
+  PATHS ENV OTF2_ROOT
+  DOC "OTF2 ROOT location"
+)
+
+IF(PROJ_OTF2_DIR)
+    MESSAGE(STATUS "Found OTF2: "${PROJ_OTF2_DIR})
+    INCLUDE_DIRECTORIES(SYSTEM ${PROJ_OTF2_DIR}/include)
+    LINK_DIRECTORIES(${PROJ_OTF2_DIR}/lib)
+    set(LIBS ${LIBS} otf2)
+ELSE(PROJ_OTF2_DIR)
+    MESSAGE(STATUS "Could NOT find OTF2")
+ENDIF(PROJ_OTF2_DIR)
+
 
 # include Boost
 FIND_PACKAGE(Boost REQUIRED COMPONENTS program_options regex)
@@ -67,7 +93,7 @@ INCLUDE_DIRECTORIES(SYSTEM ${Boost_INCLUDE_DIRS})
 SET(LIBS ${LIBS} ${Boost_LIBRARIES})
 
 # own includes
-INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/include/cuda" 
+INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/include" 
                     "${CMAKE_SOURCE_DIR}/../common/include")
 
 file(GLOB SRCFILES "*.cpp")

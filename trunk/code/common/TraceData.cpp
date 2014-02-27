@@ -597,7 +597,7 @@ ITraceWriter::ProcessGroup TraceData::processTypeToGroup(Process::ProcessType pt
     }
 }
 
-void TraceData::saveAllocationToFile(const char* filename,
+void TraceData::saveAllocationToFile(std::string filename,
         bool enableWaitStates, bool verbose)
 {
     Allocation::ProcessList allProcs;
@@ -605,7 +605,7 @@ void TraceData::saveAllocationToFile(const char* filename,
 
     ITraceWriter *writer = new OTF1TraceWriter(VT_CUPTI_CUDA_STREAMREF_KEY,
             VT_CUPTI_CUDA_EVENTREF_KEY, VT_CUPTI_CUDA_CURESULT_KEY);
-    writer->open(filename, 100, allProcs.size(), ticksPerSecond);
+    writer->open(filename.c_str(), 100, allProcs.size(), ticksPerSecond);
 
     CounterTable::CtrIdSet ctrIdSet = ctrTable.getAllCounterIDs();
     std::set<uint64_t> knownFunctions;

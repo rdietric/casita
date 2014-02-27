@@ -8,7 +8,7 @@
 #ifndef OTF1TRACEWRITER_HPP
 #define	OTF1TRACEWRITER_HPP
 
-#include "otf.h"
+#include "open-trace-format/otf.h"
 #include <vector>
 #include <map>
 #include "ITraceWriter.hpp"
