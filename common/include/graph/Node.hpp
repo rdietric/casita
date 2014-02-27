@@ -13,6 +13,7 @@
 #include <vector>
 #include <map>
 #include <list>
+#include <iostream>
 
 #include <string.h>
 #include <stdio.h>
@@ -45,8 +46,8 @@ namespace cdm
         PARADIGM_ALL = (PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_MPI | PARADIGM_OMP | PARADIGM_VT)
     };
 
-    const size_t NODE_PARADIGM_COUNT = 4;
-    const size_t NODE_PARADIGM_INVALID = (1 << 4);
+    const size_t NODE_PARADIGM_COUNT = 5;
+    const size_t NODE_PARADIGM_INVALID = (1 << 5);
 
     enum NodeTypeMisc
     {
@@ -353,7 +354,7 @@ namespace cdm
             return isOMP() && (nodeType & OMP_SYNC);
         }
 
-        bool isOMPParellelRegion() const
+        bool isOMPParallelRegion() const
         {
             return isOMP() && (nodeType & OMP_PAR_REGION);
         }

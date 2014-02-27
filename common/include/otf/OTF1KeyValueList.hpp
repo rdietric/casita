@@ -8,7 +8,7 @@
 #ifndef OTF1KEYVALUELIST_HPP
 #define	OTF1KEYVALUELIST_HPP
 
-#include <otf.h>
+#include <open-trace-format/otf.h>
 #include "IKeyValueList.hpp"
 
 namespace cdm

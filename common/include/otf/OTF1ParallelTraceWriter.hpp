@@ -8,7 +8,7 @@
 #ifndef OTF1PARALLELTRACEWRITER_HPP
 #define	OTF1PARALLELTRACEWRITER_HPP
 
-#include <otf.h>
+#include <open-trace-format/otf.h>
 #include <vector>
 #include <map>
 #include <stack>

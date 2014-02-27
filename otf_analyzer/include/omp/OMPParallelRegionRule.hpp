@@ -34,7 +34,7 @@ namespace cdm
             bool apply(AnalysisEngine *analysis, Node *node)
             {
                 VT_TRACER("OMPParallelRegionRule");
-                if (!node->isOMPParellelRegion())
+                if (!node->isOMPParallelRegion())
                     return false;
 
                 GraphNode* ppr = analysis->getPendingParallelRegion();

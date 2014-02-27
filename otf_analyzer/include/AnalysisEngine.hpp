@@ -91,9 +91,8 @@ namespace cdm
 
         void reset();
 
-        void saveParallelAllocationToFile(const char* filename,
-                const char* origFilename,
-                bool enableWaitStates, bool verbose);
+        void saveParallelAllocationToFile(std::string filename,
+                std::string origFilename, bool enableWaitStates, bool verbose);
 
         double getRealTime(uint64_t t);
 
