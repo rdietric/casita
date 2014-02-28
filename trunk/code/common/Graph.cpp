@@ -302,7 +302,7 @@ void Graph::getLongestPath(GraphNode *start, GraphNode *end,
 
     // pendingNodes is already sorted after construction
 
-    while (pendingNodes.size() > 0)
+    while (!pendingNodes.empty())
     {
         VT_TRACER("getLongestPath:processNode");
         GraphNode *current_node = pendingNodes.front();
@@ -344,11 +344,10 @@ void Graph::getLongestPath(GraphNode *start, GraphNode *end,
     GraphNode *currentNode = end;
     while (currentNode != start)
     {
-        //VT_TRACER("getLongestPath:findBestPath");
         // get all ingoing nodes for current node, ignore blocking and
         // reverse edges
         GraphNode::GraphNodeList possibleInNodes;
-
+        
         if (hasInEdges(currentNode))
         {
             const Graph::EdgeList &inEdges = getInEdges(currentNode);

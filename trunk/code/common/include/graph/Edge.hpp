@@ -90,6 +90,8 @@ namespace cdm
                     name << "MPI,";
                 if (edgeParadigm & PARADIGM_OMP)
                     name << "OMP,";
+                if (edgeParadigm & PARADIGM_CPU)
+                    name << "CPU,";
             }
 
             name << ")]";

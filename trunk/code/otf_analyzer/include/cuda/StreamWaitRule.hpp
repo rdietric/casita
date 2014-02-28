@@ -217,14 +217,12 @@ namespace cdm
                                 waitStateEnterTime,
                                 waitingDevProc,
                                 NAME_WAITSTATE,
-                                PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE,
-                                NULL);
+                                PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE);
                         GraphNode *waitLeave = analysis->addNewGraphNode(
                                 lastSyncKernelLeave->getTime(),
                                 waitingDevProc,
                                 NAME_WAITSTATE,
-                                PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE,
-                                NULL);
+                                PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE);
 
                         analysis->newEdge(lastLeaveNode, waitEnter);
                         analysis->newEdge(waitEnter, waitLeave, EDGE_IS_BLOCKING);

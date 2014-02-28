@@ -87,11 +87,11 @@ namespace cdm
 
         GraphNode *addNewGraphNode(uint64_t time, Process *process,
                 const char *name, Paradigm paradigm, NodeRecordType recordType,
-                int nodeType, Edge::ParadigmEdgeMap *resultEdges);
+                int nodeType);
         EventNode *addNewEventNode(uint64_t time, uint32_t eventId,
                 EventNode::FunctionResultType fResult, Process *process,
                 const char *name, Paradigm paradigm, NodeRecordType recordType,
-                int nodeType, Edge::ParadigmEdgeMap *resultEdges);
+                int nodeType);
 
         Edge* getEdge(GraphNode *source, GraphNode *target);
         void removeEdge(Edge *e);
@@ -139,8 +139,7 @@ namespace cdm
         
 
         void sanityCheckEdge(Edge *edge, uint32_t mpiRank);
-        void addNewGraphNodeInternal(GraphNode *node, Process *process,
-                Edge::ParadigmEdgeMap *resultEdges);
+        void addNewGraphNodeInternal(GraphNode *node, Process *process);
 
         static io::ITraceWriter::ProcessGroup processTypeToGroup(Process::ProcessType pt);
     };

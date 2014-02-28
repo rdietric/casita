@@ -404,10 +404,10 @@ GraphNode* AnalysisEngine::newGraphNode(uint64_t time, uint64_t processId,
 
 GraphNode* AnalysisEngine::addNewGraphNode(uint64_t time, Process *process,
         const char *name, Paradigm paradigm, NodeRecordType recordType,
-        int nodeType, Edge::ParadigmEdgeMap *resultEdges)
+        int nodeType)
 {
     GraphNode *node = TraceData::addNewGraphNode(time, process, name, paradigm,
-            recordType, nodeType, resultEdges);
+            recordType, nodeType);
 
     if (node->isWaitstate())
     {

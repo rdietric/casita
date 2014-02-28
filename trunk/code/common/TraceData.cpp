@@ -114,7 +114,7 @@ bool TraceData::getFunctionType(uint64_t id, const char *name, Process *process,
                     case MPI_MISC:
                         return true;
                 }
-                
+
             case PARADIGM_VT:
                 switch (descr->type)
                 {
@@ -128,7 +128,7 @@ bool TraceData::getFunctionType(uint64_t id, const char *name, Process *process,
     }
     // not an MPI or CUDA API function
 
-    if (strstr(name, "omp"))
+    if (strstr(name, "!$omp"))
     {
         descr->paradigm = PARADIGM_OMP;
         if (strstr(name, "barrier"))
@@ -138,7 +138,7 @@ bool TraceData::getFunctionType(uint64_t id, const char *name, Process *process,
         return true;
     }
 
-    if ((strstr(name, "parallel")) && (strstr(name, "region")))
+    if (strstr(name, "parallel region"))
     {
         descr->paradigm = PARADIGM_OMP;
         descr->type = OMP_PAR_REGION;
@@ -668,7 +668,7 @@ void TraceData::saveAllocationToFile(std::string filename,
                 if (!node->isWaitstate() || enableWaitStates)
                 {
                     ++iter;
-                    writer->writeNode(node, ctrTable, node == p->getLastGraphNode(),*iter);
+                    writer->writeNode(node, ctrTable, node == p->getLastGraphNode(), *iter);
                     --iter;
                 }
             }
@@ -680,17 +680,9 @@ void TraceData::saveAllocationToFile(std::string filename,
     delete writer;
 }
 
-void TraceData::addNewGraphNodeInternal(GraphNode *node, Process *process,
-        Edge::ParadigmEdgeMap *resultEdges)
+void TraceData::addNewGraphNodeInternal(GraphNode *node, Process *process)
 {
     GraphNode::ParadigmNodeMap predNodeMap, nextNodeMap;
-    typedef Edge* EdgePtr;
-    EdgePtr edges[NODE_PARADIGM_COUNT];
-
-    for (size_t p = 0; p < NODE_PARADIGM_COUNT; ++p)
-    {
-        edges[p] = NULL;
-    }
 
     if (!process->getLastNode() || Node::compareLess(process->getLastNode(), node))
     {
@@ -702,87 +694,157 @@ void TraceData::addNewGraphNodeInternal(GraphNode *node, Process *process,
 
     // to support nesting we use a stack to keep track of open activities
     GraphNode * stackNode = topGraphNodeStack(node->getProcessId());
-            
+
     if (node->isLeave())
     {
-        if(stackNode == NULL)
+        if (stackNode == NULL)
         {
             throw RTException("StackNode NULL and found leave event %s.\n",
                     node->getUniqueName().c_str());
-        }
-        else 
+        } else
         {
             node->setPartner(stackNode);
             stackNode->setPartner(node);
-                
+
             if (!process->isRemoteProcess())
                 activities.push_back(new Activity(stackNode, node));
 
             popGraphNodeStack(node->getProcessId());
-            
+
             // use the stack to get the caller/parent of this node
             node->setCaller(topGraphNodeStack(node->getProcessId()));
         }
-    } 
-    else if(node->isEnter())
+    } else if (node->isEnter())
     {
         // use the stack to get the caller/parent of this node
         node->setCaller(stackNode);
-        pushGraphNodeStack(node,node->getProcessId());
+        pushGraphNodeStack(node, node->getProcessId());
     }
-    
+
+    /* 
+     * Link the node to its direct pred/next node and to the pred/next node
+     * of its paradigm, if these are not the same.
+     */
+
+    // get direct predecessor and successor
+    GraphNode *directPredecessor = NULL;
+    GraphNode *directSuccessor = NULL;
     for (size_t p_index = 0; p_index < NODE_PARADIGM_COUNT; ++p_index)
     {
         Paradigm paradigm = (Paradigm) (1 << p_index);
         GraphNode::ParadigmNodeMap::const_iterator predPnmIter = predNodeMap.find(paradigm);
-        if (predPnmIter != predNodeMap.end())
+        GraphNode::ParadigmNodeMap::const_iterator nextPnmIter = nextNodeMap.find(paradigm);
+
+        if (predPnmIter != predNodeMap.end() && (!directPredecessor ||
+                Node::compareLess(directPredecessor, predPnmIter->second)))
+            directPredecessor = predPnmIter->second;
+
+        if (nextPnmIter != nextNodeMap.end() && (!directSuccessor ||
+                Node::compareLess(nextPnmIter->second, directSuccessor)))
+            directSuccessor = nextPnmIter->second;
+    }
+
+    bool directPredLinked = false;
+    bool directSuccLinked = false;
+    if (directPredecessor)
+    {
+        Paradigm nodeParadigm = node->getParadigm();
+        Paradigm predParadigm = directPredecessor->getParadigm();
+
+        for (size_t p_index = 0; p_index < NODE_PARADIGM_COUNT; ++p_index)
         {
-            GraphNode *predNode = predPnmIter->second;
+            Paradigm paradigm = (Paradigm) (1 << p_index);
+            if ((paradigm & nodeParadigm) != nodeParadigm)
+                continue;
 
-            int edgeProp = EDGE_NONE;
-
-            if (predNode->isEnter() && node->isLeave())
+            GraphNode::ParadigmNodeMap::const_iterator predPnmIter = predNodeMap.find(paradigm);
+            if (predPnmIter != predNodeMap.end())
             {
-                if (predNode->isWaitstate() && node->isWaitstate())
-                    edgeProp |= EDGE_IS_BLOCKING;
-            }
- 
-            edges[p_index] = newEdge(predNode, node, edgeProp, &paradigm);
-            //std::cout << " linked to " << predNodes[g]->getUniqueName().c_str() << std::endl;
+                GraphNode *pred = predPnmIter->second;
+                int edgeProp = EDGE_NONE;
 
-            GraphNode::ParadigmNodeMap::const_iterator nextPnmIter = nextNodeMap.find(paradigm);
-            if (nextPnmIter != nextNodeMap.end())
-            {
-                GraphNode *nextNode = nextPnmIter->second;
-                Edge *oldEdge = getEdge(predNode, nextNode);
-                if (!oldEdge)
+                if (pred->isEnter() && node->isLeave())
                 {
-                    graph.saveToFile("error_dump.dot", NULL);
-                    throw RTException("No edge between %s (p %u) and %s (p %u)",
-                            predNode->getUniqueName().c_str(),
-                            predNode->getProcessId(),
-                            nextNode->getUniqueName().c_str(),
-                            nextNode->getProcessId());
+                    if (pred->isWaitstate() && node->isWaitstate())
+                        edgeProp |= EDGE_IS_BLOCKING;
                 }
-                removeEdge(oldEdge);
-                // can't be a blocking edge, as we never insert leave nodes
-                // before enter nodes from the same function
-                newEdge(node, nextNode, EDGE_NONE, &paradigm);
+
+                // link to this predecessor
+                newEdge(pred, node, edgeProp, &paradigm);
+
+                // check if this already is the direct predecessor
+                if (directPredecessor == pred)
+                    directPredLinked = true;
+
+                if (directSuccessor)
+                {
+                    GraphNode::ParadigmNodeMap::const_iterator nextPnmIter = nextNodeMap.find(paradigm);
+                    if (nextPnmIter != nextNodeMap.end())
+                    {
+                        GraphNode *succ = nextPnmIter->second;
+
+                        Edge *oldEdge = getEdge(pred, succ);
+                        if (!oldEdge)
+                        {
+                            graph.saveToFile("error_dump.dot", NULL);
+                            throw RTException("No edge between %s (p %u) and %s (p %u)",
+                                    pred->getUniqueName().c_str(),
+                                    pred->getProcessId(),
+                                    succ->getUniqueName().c_str(),
+                                    succ->getProcessId());
+                        }
+                        removeEdge(oldEdge);
+                        // link to direct successor
+                        // can't be a blocking edge, as we never insert leave nodes
+                        // before enter nodes from the same function
+                        newEdge(node, succ, EDGE_NONE, &paradigm);
+
+                        if (directSuccessor == succ)
+                            directSuccLinked = true;
+                    }
+                }
             }
         }
 
-        if (resultEdges)
-            resultEdges->insert(std::make_pair(paradigm, edges[p_index]));
+        if (!directPredLinked)
+        {
+            int edgeProp = EDGE_NONE;
+
+            if (directPredecessor->isEnter() && node->isLeave())
+            {
+                if (directPredecessor->isWaitstate() && node->isWaitstate())
+                    edgeProp |= EDGE_IS_BLOCKING;
+            }
+
+            // link to direct predecessor
+            newEdge(directPredecessor, node, edgeProp, &predParadigm);
+        }
+
+        if (directSuccessor)
+        {
+            Paradigm succParadigm = directSuccessor->getParadigm();
+
+            if (!directSuccLinked)
+            {
+                Edge *oldEdge = getEdge(directPredecessor, directSuccessor);
+                if (oldEdge)
+                    removeEdge(oldEdge);
+
+                // link to direct successor
+                newEdge(node, directSuccessor, EDGE_NONE, &succParadigm);
+            }
+
+        }
     }
 }
 
 GraphNode *TraceData::addNewGraphNode(uint64_t time, Process *process,
         const char *name, Paradigm paradigm, NodeRecordType recordType,
-        int nodeType, Edge::ParadigmEdgeMap *resultEdges)
+        int nodeType)
 {
     GraphNode *node = newGraphNode(time, process->getId(), name,
             paradigm, recordType, nodeType);
-    addNewGraphNodeInternal(node, process, resultEdges);
+    addNewGraphNodeInternal(node, process);
 
     return node;
 }
@@ -790,24 +852,27 @@ GraphNode *TraceData::addNewGraphNode(uint64_t time, Process *process,
 EventNode *TraceData::addNewEventNode(uint64_t time, uint32_t eventId,
         EventNode::FunctionResultType fResult, Process *process,
         const char *name, Paradigm paradigm, NodeRecordType recordType,
-        int nodeType, Edge::ParadigmEdgeMap *resultEdges)
+        int nodeType)
 {
     EventNode *node = newEventNode(time, process->getId(), eventId,
             fResult, name, paradigm, recordType, nodeType);
-    addNewGraphNodeInternal(node, process, resultEdges);
+    addNewGraphNodeInternal(node, process);
     return node;
 }
 
-GraphNode* TraceData::topGraphNodeStack(uint64_t processId){
-    if(pendingGraphNodeStackMap[processId].empty())
+GraphNode* TraceData::topGraphNodeStack(uint64_t processId)
+{
+    if (pendingGraphNodeStackMap[processId].empty())
         return NULL;
     return pendingGraphNodeStackMap[processId].top();
 }
 
-void TraceData::popGraphNodeStack(uint64_t processId){
+void TraceData::popGraphNodeStack(uint64_t processId)
+{
     pendingGraphNodeStackMap[processId].pop();
 }
 
-void TraceData::pushGraphNodeStack(GraphNode* node, uint64_t processId){
+void TraceData::pushGraphNodeStack(GraphNode* node, uint64_t processId)
+{
     pendingGraphNodeStackMap[processId].push(node);
 }

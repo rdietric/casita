@@ -73,8 +73,7 @@ namespace cdm
         void readOTF();
         void runAnalysis(Paradigm paradigm, Process::SortedNodeList &allNodes);
 
-        void getCriticalPath(Process::SortedGraphNodeList &gpuNodes,
-                Process::SortedGraphNodeList &mpiNodes);
+        void getCriticalPath(Process::SortedGraphNodeList &criticalNodes);
 
         ProgramOptions &getOptions();
         AnalysisEngine &getAnalysis();

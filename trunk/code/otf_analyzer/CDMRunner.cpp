@@ -145,7 +145,7 @@ void CDMRunner::printNode(GraphNode *node, Process *process)
                 process->getName(),
                 process->getId(),
                 Node::typeToStr(node->getParadigm(), node->getType()).c_str());
-        
+
         uint64_t refProcess = node->getReferencedProcessId();
         if (refProcess)
             printf(", ref = %lu", refProcess);
@@ -245,7 +245,7 @@ void CDMRunner::handleEnter(ITraceReader *reader, uint64_t time, uint64_t functi
 
     FunctionDescriptor functionType;
     TraceData::getFunctionType(functionId, funcName, process, &functionType);
-    
+
     if (functionType.paradigm == PARADIGM_VT)
         return;
 
@@ -253,11 +253,11 @@ void CDMRunner::handleEnter(ITraceReader *reader, uint64_t time, uint64_t functi
     if (Node::isCUDAEventType(functionType.paradigm, functionType.type))
     {
         enterNode = analysis.addNewEventNode(time, 0, EventNode::FR_UNKNOWN, process,
-                funcName, functionType.paradigm, RECORD_ENTER, functionType.type, NULL);
+                funcName, functionType.paradigm, RECORD_ENTER, functionType.type);
     } else
     {
         enterNode = analysis.addNewGraphNode(time, process, funcName,
-                functionType.paradigm, RECORD_ENTER, functionType.type, NULL);
+                functionType.paradigm, RECORD_ENTER, functionType.type);
     }
 
     enterNode->setFunctionId(functionId);
@@ -276,7 +276,6 @@ void CDMRunner::handleEnter(ITraceReader *reader, uint64_t time, uint64_t functi
         int memUsage = getCurrentResources();
         if (memUsage > options.memLimit)
         {
-            std::cout << sizeof (Edge) << std::endl;
             throw RTException("Memory limit exceeded (%d KByte / %d KByte)",
                     memUsage, options.memLimit);
         }
@@ -298,7 +297,7 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
 
     FunctionDescriptor functionType;
     TraceData::getFunctionType(functionId, funcName, process, &functionType);
-    
+
     if (functionType.paradigm == PARADIGM_VT)
         return;
 
@@ -312,7 +311,7 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
             fResult = EventNode::FR_SUCCESS;
 
         leaveNode = runner->getAnalysis().addNewEventNode(time, eventId, fResult, process,
-                funcName, functionType.paradigm, RECORD_LEAVE, functionType.type, NULL);
+                funcName, functionType.paradigm, RECORD_LEAVE, functionType.type);
 
         if (eventId == 0)
             throw RTException("No eventId for event node %s found",
@@ -320,7 +319,7 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
     } else
     {
         leaveNode = analysis.addNewGraphNode(time, process, funcName,
-                functionType.paradigm, RECORD_LEAVE, functionType.type, NULL);
+                functionType.paradigm, RECORD_LEAVE, functionType.type);
     }
 
     leaveNode->setFunctionId(functionId);
@@ -348,7 +347,7 @@ void CDMRunner::handleLeave(ITraceReader *reader, uint64_t time,
                         *tmpId = iter->rootId;
                         leaveNode->setData(tmpId);
                     }
-                    break;  
+                    break;
 
                 case Process::MPI_SEND:
                     tmpId = new uint64_t;
@@ -419,23 +418,22 @@ void CDMRunner::readOTF()
 {
     uint32_t mpiRank = analysis.getMPIRank();
     ITraceReader *traceReader;
-    
+
     if (mpiRank == 0)
         printf("[%u] Reading OTF %s\n", mpiRank, options.filename.c_str());
     //OTF1MODE
-    if(strstr(options.filename.c_str(), ".otf2") == NULL)
+    if (strstr(options.filename.c_str(), ".otf2") == NULL)
     {
         if (mpiRank == 0)
             printf("Operating in OTF1-Mode.\n");
         traceReader = new OTF1TraceReader(this, mpiRank);
-    }
-    else
+    } else
     {
         if (mpiRank == 0)
             printf("Operating in OTF2-Mode.\n");
         traceReader = new OTF2TraceReader(this, mpiRank);
     }
-     
+
     traceReader->handleDefProcess = handleDefProcess;
     traceReader->handleDefFunction = handleDefFunction;
     traceReader->handleEnter = handleEnter;
@@ -681,20 +679,18 @@ void CDMRunner::mergeActivityGroups(ActivityGroupMap& activityGroupMap, bool cpK
     }
 }
 
-void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
-        Process::SortedGraphNodeList &mpiNodes)
+void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &criticalNodes)
 {
     VT_TRACER("getCriticalPath");
     MPIAnalysis::CriticalSectionsMap sectionsMap;
-    localNodes.clear();
-    mpiNodes.clear();
+    criticalNodes.clear();
 
     if (mpiSize > 1)
     {
         // better reverse replay strategy
         MPIAnalysis::CriticalSectionsList sectionsList;
         reverseReplayMPICriticalPath(sectionsList);
-        getCriticalLocalSections(sectionsList.data(), sectionsList.size(), localNodes, sectionsMap);
+        getCriticalLocalSections(sectionsList.data(), sectionsList.size(), criticalNodes, sectionsMap);
     } else
     {
         /* compute local critical path on root, only */
@@ -705,8 +701,8 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
 
         getCriticalPathIntern(analysis.getSourceNode(),
                 analysis.getLastGraphNode(PARADIGM_COMPUTE_LOCAL),
-                localNodes, *subGraph);
-        
+                criticalNodes, *subGraph);
+
         delete subGraph;
     }
 
@@ -714,22 +710,29 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
     if (mpiRank == 0)
         printf("[%u] Computing additional counters\n", mpiRank);
     
+    const uint32_t cpCtrId = analysis.getCtrTable().getCtrId(CTR_CRITICALPATH);
+    for (Process::SortedGraphNodeList::const_iterator iter = criticalNodes.begin();
+            iter != criticalNodes.end(); ++iter)
+    {
+        (*iter)->setCounter(cpCtrId, 1);
+    }
+
     Allocation::ProcessList processes;
     analysis.getProcesses(processes);
-    uint32_t cpCtrId = analysis.getCtrTable().getCtrId(CTR_CRITICALPATH);
-    uint32_t cpTimeCtrId = analysis.getCtrTable().getCtrId(CTR_CRITICALPATH_TIME);
-    for (Allocation::ProcessList::const_iterator pIter = processes.begin();
-            pIter != processes.end(); ++pIter)
+    const uint32_t cpTimeCtrId = analysis.getCtrTable().getCtrId(CTR_CRITICALPATH_TIME);
+    
+#pragma omp parallel for
+    for (size_t i = 0; i < processes.size(); ++i)
     {
-        Process *p = *pIter;
+        Process *p = processes[i];
         if (p->isRemoteProcess())
             continue;
-        
+
         Process::SortedNodeList &nodes = p->getNodes();
-        
+
         GraphNode *lastNode = NULL;
         std::stack<uint64_t> cpTime;
-        
+
         for (Process::SortedNodeList::const_iterator nIter = nodes.begin();
                 nIter != nodes.end(); ++nIter)
         {
@@ -739,7 +742,7 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
             GraphNode *node = (GraphNode*)(*nIter);
             if (!lastNode)
                 lastNode = node;
-            
+
             bool lastNodeOnCP = lastNode->getCounter(cpCtrId, NULL);
             if (node->isEnter())
             {
@@ -752,14 +755,14 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
             {
                 uint64_t myCPTime = cpTime.top();
                 cpTime.pop();
-                
+
                 /* compute time for non-stacked function (parts) */
                 if (lastNodeOnCP && (lastNode == node->getPartner() || lastNode->isLeave()))
                     myCPTime += node->getTime() - lastNode->getTime();
 
                 node->getPartner()->setCounter(cpTimeCtrId, myCPTime);
             }
-                
+
             lastNode = node;
         }
     }
@@ -769,25 +772,19 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
         if (mpiRank == 0)
             printf("[%u] Merging activity statistics\n", mpiRank);
 
-        Process::SortedGraphNodeList allCriticalEvents;
-        if (mpiNodes.size() > 0)
-            allCriticalEvents.insert(allCriticalEvents.end(), mpiNodes.begin(), mpiNodes.end());
-        if (localNodes.size() > 0)
-            allCriticalEvents.insert(allCriticalEvents.end(), localNodes.begin(), localNodes.end());
-        
         /* compute total program runtime, i.e. total length of the critical path */
         GraphNode *firstNode = NULL;
         GraphNode *lastNode = NULL;
-        
-        for (Process::SortedGraphNodeList::const_iterator iter = allCriticalEvents.begin(); 
-                iter != allCriticalEvents.end(); ++iter)
+
+        for (Process::SortedGraphNodeList::const_iterator iter = criticalNodes.begin();
+                iter != criticalNodes.end(); ++iter)
         {
             GraphNode* currentEvent = *iter;
             if (!firstNode || (Node::compareLess(currentEvent, firstNode)))
             {
                 firstNode = currentEvent;
             }
-            
+
             if (!lastNode || (Node::compareLess(lastNode, currentEvent)))
             {
                 lastNode = currentEvent;
@@ -795,13 +792,9 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
         }
 
         uint64_t firstTimestamp = firstNode->getTime();
+        if (firstNode->isMPIInit() && firstNode->isLeave())
+            firstTimestamp = firstNode->getPartner()->getTime();
         uint64_t lastTimestamp = lastNode->getTime();
-
-        if (allCriticalEvents.size() > 0)
-        {
-            firstTimestamp = allCriticalEvents[0]->getTime();
-            lastTimestamp = allCriticalEvents[allCriticalEvents.size() - 1]->getTime();
-        }
 
         if (mpiSize > 1)
         {
@@ -810,6 +803,8 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &localNodes,
         }
 
         uint64_t globalCPLength = lastTimestamp - firstTimestamp;
+        if (mpiRank == 0)
+            std::cout << "[0] Critical path length: " << analysis.getRealTime(globalCPLength);
 
         ActivityGroupMap activityGroupMap;
         mergeActivityGroups(activityGroupMap, false);
@@ -853,15 +848,15 @@ void CDMRunner::getCriticalPathIntern(GraphNode *start, GraphNode *end,
 }
 
 void CDMRunner::getCriticalLocalSections(MPIAnalysis::CriticalPathSection *sections,
-        uint32_t numSections, Process::SortedGraphNodeList& localNodes,
+        uint32_t numSections, Process::SortedGraphNodeList& criticalNodes,
         MPIAnalysis::CriticalSectionsMap& sectionsMap)
 {
     uint32_t mpiRank = analysis.getMPIRank();
     Graph *subGraph = analysis.getGraph(PARADIGM_COMPUTE_LOCAL);
-    
+
     omp_lock_t localNodesLock;
     omp_init_lock(&localNodesLock);
-    
+
     uint32_t lastSecCtr = 0;
 
 #pragma omp parallel for
@@ -942,11 +937,11 @@ void CDMRunner::getCriticalLocalSections(MPIAnalysis::CriticalPathSection *secti
             if (options.verbose >= VERBOSE_BASIC)
             {
                 printf("[%u] No local path possible between MPI nodes %s (link %p) and %s (link %p)\n",
-                    mpiRank,
-                    startNode->getUniqueName().c_str(),
-                    startLocalNode,
-                    endNode->getUniqueName().c_str(),
-                    endLocalNode);
+                        mpiRank,
+                        startNode->getUniqueName().c_str(),
+                        startLocalNode,
+                        endNode->getUniqueName().c_str(),
+                        endLocalNode);
                 if (startLocalNode && endLocalNode)
                 {
                     printf("[%u] local nodes %s and %s\n",
@@ -970,12 +965,18 @@ void CDMRunner::getCriticalLocalSections(MPIAnalysis::CriticalPathSection *secti
         }
 
         Process::SortedGraphNodeList sectionLocalNodes;
+        sectionLocalNodes.push_back(startNode);
+
         getCriticalPathIntern(startLocalNode, endLocalNode, sectionLocalNodes, *subGraph);
-        
+
+        sectionLocalNodes.push_back(endNode);
+        if (endNode->isMPIFinalize() && endNode->isEnter())
+            sectionLocalNodes.push_back(endNode->getPartner());
+
         omp_set_lock(&localNodesLock);
-        localNodes.insert(localNodes.end(), sectionLocalNodes.begin(), sectionLocalNodes.end());
+        criticalNodes.insert(criticalNodes.end(), sectionLocalNodes.begin(), sectionLocalNodes.end());
         omp_unset_lock(&localNodesLock);
-        
+
         if ((mpiRank == 0) && (omp_get_thread_num() == 0) && (i - lastSecCtr > numSections / 10))
         {
             printf("[%u] %lu%% ", mpiRank, (size_t)(100.0 * (double) i / (double) numSections));
@@ -983,19 +984,12 @@ void CDMRunner::getCriticalLocalSections(MPIAnalysis::CriticalPathSection *secti
             lastSecCtr = i;
         }
     }
-    
-    const uint32_t cpCtrId = analysis.getCtrTable().getCtrId(CTR_CRITICALPATH);
-    for (Process::SortedGraphNodeList::const_iterator iter = localNodes.begin();
-            iter != localNodes.end(); ++iter)
-    {
-        (*iter)->setCounter(cpCtrId, 1);
-    }
-    
+
     omp_destroy_lock(&localNodesLock);
-    
+
     if (mpiRank == 0)
         printf("[%u] 100%%\n", mpiRank);
-    
+
     delete subGraph;
 }
 
@@ -1085,7 +1079,7 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
             {
                 /* isLeave */
                 Edge *activityEdge = analysis.getEdge(currentNode->getPartner(), currentNode);
-                
+
                 if (activityEdge->isBlocking() || currentNode->isMPIInit())
                 {
                     /* create section */
@@ -1096,7 +1090,7 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
                         section.nodeStartID = currentNode->getId();
                         section.nodeEndID = sectionEndNode->getId();
                         sectionsList.push_back(section);
-                        
+
                         currentNode->setCounter(cpCtrId, 1);
                     }
                     sectionEndNode = NULL;
@@ -1258,7 +1252,7 @@ void CDMRunner::reverseReplayMPICriticalPath(MPIAnalysis::CriticalSectionsList &
             }
         }
     }
-    
+
     MPI_Barrier(MPI_COMM_WORLD);
 
 }
@@ -1307,20 +1301,20 @@ void CDMRunner::runAnalysis(Paradigm paradigm, Process::SortedNodeList &allNodes
         default:
             if (mpiRank == 0)
                 printf("[%u] No analysis for unknown paradigm %d\n",
-                        mpiRank, paradigm);
+                    mpiRank, paradigm);
             return;
     }
 
     size_t ctr = 0, last_ctr = 0;
     size_t num_nodes = allNodes.size();
-    
+
     for (Process::SortedNodeList::const_iterator nIter = allNodes.begin();
             nIter != allNodes.end(); ++nIter)
     {
         VT_TRACER("analysis iter");
         Node *node = *nIter;
         ctr++;
-        
+
         if (!node->isGraphNode()) // || !node->isLeave())
             continue;
 
@@ -1338,7 +1332,7 @@ void CDMRunner::runAnalysis(Paradigm paradigm, Process::SortedNodeList &allNodes
     }
     if (mpiRank == 0)
         printf("[%u] 100%%\n", mpiRank);
-    
+
 #ifdef DEBUG
     analysis.runSanityCheck(mpiRank);
 #endif
@@ -1347,7 +1341,7 @@ void CDMRunner::runAnalysis(Paradigm paradigm, Process::SortedNodeList &allNodes
 void CDMRunner::printAllActivities(uint64_t globalCPLength, std::map<uint64_t, ActivityGroup>& activityGroupMap)
 {
     if (mpiRank == 0)
-    { 
+    {
         printf("\n%50s %10s %10s %11s %12s %21s %9s\n", "Activity Group",
                 "Instances", "Time", "Time on CP", "Fraction CP", "Fraction Global Blame", "Rating");
 
@@ -1369,7 +1363,7 @@ void CDMRunner::printAllActivities(uint64_t globalCPLength, std::map<uint64_t, A
         const size_t max_ctr = 10;
         size_t ctr = 0;
         for (std::set<ActivityGroup, ActivityGroupCompare>::const_iterator iter =
-                sortedActivityGroups.begin(); iter != sortedActivityGroups.end() && ctr < max_ctr; ++iter) 
+                sortedActivityGroups.begin(); iter != sortedActivityGroups.end() && ctr < max_ctr; ++iter)
         {
             ++ctr;
             printf("%50.50s %10u %10f %11f %11.2f%% %20.2f%%  %7.6f\n",
