@@ -12,26 +12,17 @@ using namespace cdm::io;
 
 void computeCriticalPaths(CDMRunner *runner, uint32_t mpiRank)
 {
-    Process::SortedGraphNodeList localCriticalPathNodes;
-    Process::SortedGraphNodeList mpiCriticalPathNodes;
+    Process::SortedGraphNodeList criticalPathNodes;
 
-    runner->getCriticalPath(localCriticalPathNodes, mpiCriticalPathNodes);
+    runner->getCriticalPath(criticalPathNodes);
 
     if (Parser::getInstance().getProgramOptions().createGraphs)
     {
         std::set<GraphNode*> cnodes;
-        cnodes.insert(localCriticalPathNodes.begin(), localCriticalPathNodes.end());
+        cnodes.insert(criticalPathNodes.begin(), criticalPathNodes.end());
         std::stringstream local_graph_filename;
         local_graph_filename << runner->getAnalysis().getMPIRank() << "_" <<
                 GRAPH_LOCAL_FILENAME;
-
-        if (mpiRank == 0)
-        {
-            cnodes.insert(mpiCriticalPathNodes.begin(), mpiCriticalPathNodes.end());
-            Graph *mpiGraph = runner->getAnalysis().getGraph().getSubGraph(PARADIGM_MPI);
-            mpiGraph->saveToFile(GRAPH_MPI_FILENAME, &cnodes);
-            delete mpiGraph;
-        }
 
         Graph *localGraph = runner->getAnalysis().getGraph().getSubGraph(PARADIGM_COMPUTE_LOCAL);
         localGraph->saveToFile(local_graph_filename.str().c_str(), &cnodes);

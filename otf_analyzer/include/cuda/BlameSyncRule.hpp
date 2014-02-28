@@ -73,16 +73,14 @@ namespace cdm
                                     std::max(lastLeaveNode->getTime(),
                                     kernel.second->getTime()),
                                     deviceProcess, NAME_WAITSTATE,
-                                    PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE,
-                                    NULL);
+                                    PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE);
                         }
                     } else
                     {
                         waitEnter = analysis->addNewGraphNode(
                                 kernel.second->getTime(),
                                 deviceProcess, NAME_WAITSTATE,
-                                PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE,
-                                NULL);
+                                PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE);
                     }
 
                     if (!waitLeave)
@@ -90,8 +88,7 @@ namespace cdm
                         waitLeave = analysis->addNewGraphNode(
                                 sync.second->getTime(),
                                 deviceProcess, NAME_WAITSTATE,
-                                PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE,
-                                NULL);
+                                PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE);
                     }
 
                     analysis->newEdge(sync.second, waitLeave, EDGE_CAUSES_WAITSTATE);

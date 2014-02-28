@@ -59,7 +59,7 @@ namespace cdm
                 NodeRecordType recordType, int nodeType);
         GraphNode* addNewGraphNode(uint64_t time, Process *process,
                 const char *name, Paradigm paradigm, NodeRecordType recordType,
-                int nodeType, Edge::ParadigmEdgeMap *resultEdges);
+                int nodeType);
         RemoteGraphNode *addNewRemoteNode(uint64_t time, uint64_t remoteProcId,
                 uint32_t remoteNodeId, Paradigm paradigm, NodeRecordType recordType,
                 int nodeType, uint32_t mpiRank);
