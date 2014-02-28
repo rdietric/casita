@@ -45,11 +45,13 @@ namespace cdm
     bool Parser::init(int argc, char** argv)
     throw (std::runtime_error)
     {
+        bool noSummary = false;
+        
         options.createGraphs = false;
         options.createOTF = false;
         options.eventsProcessed = 0;
         options.filename = "";
-        options.mergeActivities = false;
+        options.mergeActivities = true;
         options.noErrors = false;
         options.outOtfFile = "";
         options.printCriticalPath = false;
@@ -69,7 +71,7 @@ namespace cdm
 
                     ("input", po::value<std::string > (&options.filename), "input OTF file")
                     ("output,o", po::value<std::string > (&options.outOtfFile), "output OTF file")
-                    ("aggregate,a", po::value<bool> (&options.mergeActivities)->zero_tokens(), "aggregate statistics and print summary")
+                    ("no-summary", po::value<bool> (&noSummary)->zero_tokens(), "do not aggregate statistics to summary")
                     ("path,p", po::value<bool> (&options.printCriticalPath)->zero_tokens(), "print critical paths")
                     ("verbose,v", po::value<int>(&options.verbose), "verbosity level")
                     ("mem-limit", po::value<int>(&options.memLimit), "set memory limit (MB)")
@@ -102,6 +104,11 @@ namespace cdm
                 std::cout << "Please specify exactly one input OTF file." << std::endl;
                 std::cout << desc << "\n";
                 return false;
+            }
+            
+            if (noSummary)
+            {
+                options.mergeActivities = false;
             }
 
         } catch (boost::program_options::error& e)
