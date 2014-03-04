@@ -13,8 +13,9 @@
 #include <vector>
 #include <stack>
 #include <set>
+#include <list>
 #include "ITraceReader.hpp"
-
+#include "OTF2KeyValueList.hpp"
 namespace cdm
 {
     namespace io
@@ -38,11 +39,12 @@ namespace cdm
             typedef std::map<Token, std::string> TokenNameMap;
             typedef std::map<uint64_t,Token> IdNameTokenMap;
             typedef std::map<Token, Token> TokenTokenMap;
+            typedef std::map<uint64_t,uint64_t> TokenTokenMap64;
+            typedef std::map<uint64_t,Token> IdTokenMap;
             typedef std::set<Token> TokenSet;
             typedef std::map<Token, TokenSet> TokenSetMap;
 
             typedef std::map<Token, ProcessGroup*> ProcessGroupMap;
-            typedef std::map<Token, std::stack<Token> > ProcessFuncStack;
 
             OTF2TraceReader(void *userData, uint32_t mpiRank);
             ~OTF2TraceReader();
@@ -51,8 +53,8 @@ namespace cdm
             uint64_t getMPIProcessId();
             void setMPIProcessId(uint64_t processId);
 
-            TokenTokenMap &getProcessRankMap();
-            TokenTokenMap &getProcessFamilyMap();
+            IdTokenMap &getProcessRankMap();
+            TokenTokenMap64 &getProcessFamilyMap();
 
             void open(const std::string otfFilename, uint32_t maxFiles);
             void close();
@@ -60,9 +62,11 @@ namespace cdm
             void readEventsForProcess(uint64_t id);
             void readDefinitions();
 
+            NameTokenMap& getNameKeysMap();
+            TokenNameMap& getKeyNameMap();
             TokenNameMap& getDefinitionTokenStringMap();
             ProcessGroupMap& getProcGoupMap();
-            ProcessFuncStack& getFuncStack();
+            OTF2KeyValueList& getKVList();
 
             std::string getStringRef(Token t);
             std::string getKeyName(uint32_t id);
@@ -110,6 +114,8 @@ namespace cdm
                     OTF2_LocationRef location, OTF2_StringRef name, 
                     OTF2_LocationType locationType, uint64_t numberOfEvents,
                     OTF2_LocationGroupRef locationGroup);
+            static OTF2_CallbackCode OTF2_GlobalDefReaderCallback_Attribute(void *userData, 
+                    OTF2_AttributeRef self, OTF2_StringRef name, OTF2_Type type);
             static OTF2_CallbackCode OTF2_GlobalDefReaderCallback_ClockProperties(void *userData, 
                     uint64_t timerResolution, uint64_t globalOffset, uint64_t traceLength);
             static OTF2_CallbackCode  OTF2_GlobalDefReaderCallback_LocationGroup(void *userData,
@@ -131,26 +137,33 @@ namespace cdm
                     OTF2_StringRef description, OTF2_RegionRole regionRole, OTF2_Paradigm paradigm,
                     OTF2_RegionFlag regionFlags, OTF2_StringRef sourceFile, uint32_t beginLineNumber,
                     uint32_t endLineNumber);
-
+            
+            static OTF2_CallbackCode GlobDefLocation_Register1( void* userdata, OTF2_LocationRef location,
+                    OTF2_StringRef name,  OTF2_LocationType type, uint64_t time, OTF2_LocationGroupRef group);
+            static OTF2_CallbackCode Enter_print( OTF2_LocationRef location, OTF2_TimeStamp time, void* userData,
+                    OTF2_AttributeList* attributes, OTF2_RegionRef region );
+            static OTF2_CallbackCode Leave_print( OTF2_LocationRef location, OTF2_TimeStamp time, void* userData, 
+                    OTF2_AttributeList* attributes, OTF2_RegionRef region );
             
 
             void setEventCallbacks(OTF2_GlobalEvtReaderCallbacks* evtReaderCallbacks);
 
             uint32_t mpiRank;
             uint64_t mpiProcessId;
-            TokenTokenMap processRankMap; // maps (parent) process ID to MPI rank
-            TokenTokenMap processFamilyMap; // tracks for each process its direct parent
+            IdTokenMap processRankMap; // maps (parent) process ID to MPI rank
+            TokenTokenMap64 processFamilyMap; // tracks for each process its direct parent
 
             OTF2_Reader *reader;
             OTF2_GlobalDefReader* gobal_def_reader;
-
+            OTF2KeyValueList kvList;
+            
             std::string baseFilename;
             NameTokenMap nameKeysMap;
+            TokenNameMap kNameMap;
             IdNameTokenMap processNameTokenMap;
             IdNameTokenMap functionNameTokenMap;
             TokenNameMap definitionTokenStringMap;
             ProcessGroupMap processGroupMap;
-            ProcessFuncStack funcStack;
             uint64_t ticksPerSecond;
             
             int processingPhase;
