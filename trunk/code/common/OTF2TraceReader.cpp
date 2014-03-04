@@ -8,14 +8,14 @@
 #include <stdexcept>
 #include <stack>
 #include <cstring>
-
+#include <list>
 #include "common.hpp"
 #include "otf/OTF2TraceReader.hpp"
 
 #define OTF2_CHECK(cmd) \
         { \
                 int _status = cmd; \
-                if (!_status) \
+                if (_status) \
                         throw RTException("OTF2 command '%s' returned error", #cmd); \
         }
 
@@ -56,6 +56,40 @@ OTF2TraceReader::IdNameTokenMap& OTF2TraceReader::getFunctionNameTokenMap()
     return functionNameTokenMap;
 }
 
+OTF2TraceReader::NameTokenMap& OTF2TraceReader::getNameKeysMap()
+{
+    return nameKeysMap;
+}
+
+OTF2TraceReader::TokenNameMap& OTF2TraceReader::getKeyNameMap()
+{
+    return kNameMap;
+}
+
+OTF2TraceReader::TokenTokenMap64& OTF2TraceReader::getProcessFamilyMap()
+{
+    return processFamilyMap;
+}
+
+OTF2TraceReader::IdTokenMap& OTF2TraceReader::getProcessRankMap()
+{
+    return processRankMap;
+}
+
+OTF2KeyValueList& OTF2TraceReader::getKVList()
+{
+    return kvList;
+}
+
+uint64_t OTF2TraceReader::getMPIProcessId()
+{
+    return mpiProcessId;
+}
+
+void OTF2TraceReader::setMPIProcessId(uint64_t processId)
+{
+    mpiProcessId = processId;
+}
 
 void OTF2TraceReader::open(const std::string otfFilename, uint32_t maxFiles)
 {
@@ -75,40 +109,69 @@ void OTF2TraceReader::close()
     OTF2_CHECK(OTF2_Reader_Close(reader));
 }
 
-void OTF2TraceReader::setEventCallbacks(OTF2_GlobalEvtReaderCallbacks* callbacks)
-{
-    OTF2_GlobalEvtReaderCallbacks_SetEnterCallback(callbacks, &otf2CallbackEnter);
-    OTF2_GlobalEvtReaderCallbacks_SetLeaveCallback(callbacks, &otf2CallbackLeave);
-    OTF2_GlobalEvtReaderCallbacks_SetMpiCollectiveBeginCallback(callbacks, &otf2Callback_MpiCollectiveBegin);
-    OTF2_GlobalEvtReaderCallbacks_SetMpiCollectiveEndCallback(callbacks, &otf2Callback_MpiCollectiveEnd);
-    OTF2_GlobalEvtReaderCallbacks_SetMpiRecvCallback(callbacks, &otf2Callback_MpiRecv);
-    OTF2_GlobalEvtReaderCallbacks_SetMpiSendCallback(callbacks, &otf2Callback_MpiSend);
-    OTF2_GlobalEvtReaderCallbacks_SetOmpForkCallback(callbacks, &otf2Callback_OmpFork);
-    OTF2_GlobalEvtReaderCallbacks_SetOmpJoinCallback(callbacks, &otf2Callback_OmpJoin);
-}
-
 void OTF2TraceReader::readEvents()
 {
+    for(IdNameTokenMap::const_iterator iter = processNameTokenMap.begin();
+            iter != processNameTokenMap.end(); ++iter)
+    {
+        OTF2_Reader_SelectLocation(reader, iter->first);
+        OTF2_Reader_GetEvtReader( reader, iter->first );
+    }
+    
+    OTF2_Reader_OpenEvtFiles(reader);
+    
     OTF2_GlobalEvtReader* global_evt_reader = OTF2_Reader_GetGlobalEvtReader( reader );
     
-    OTF2_GlobalEvtReaderCallbacks* callbacks = OTF2_GlobalEvtReaderCallbacks_New();
-    setEventCallbacks(callbacks);
-       
-    OTF2_CHECK(OTF2_Reader_RegisterGlobalEvtCallbacks( reader, global_evt_reader, 
-            callbacks, this ));
-    OTF2_GlobalEvtReaderCallbacks_Delete(callbacks);
-
+    OTF2_GlobalEvtReaderCallbacks* event_callbacks = OTF2_GlobalEvtReaderCallbacks_New();
+    OTF2_GlobalEvtReaderCallbacks_SetEnterCallback( event_callbacks, &otf2CallbackEnter );
+    OTF2_GlobalEvtReaderCallbacks_SetLeaveCallback( event_callbacks, &otf2CallbackLeave );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiCollectiveBeginCallback( event_callbacks, &otf2Callback_MpiCollectiveBegin );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiRecvCallback(event_callbacks, &otf2Callback_MpiRecv );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiSendCallback(event_callbacks, &otf2Callback_MpiSend );
+    OTF2_Reader_RegisterGlobalEvtCallbacks( reader, global_evt_reader, event_callbacks, this );
+    OTF2_GlobalEvtReaderCallbacks_Delete( event_callbacks );
+    
     uint64_t events_read = 0;
 
     // returns 0 if successfull, >0 otherwise
     if (OTF2_Reader_ReadAllGlobalEvents(reader, global_evt_reader, &events_read))
         throw RTException("Failed to read OTF2 events");
     
+    OTF2_Reader_CloseGlobalEvtReader(reader, global_evt_reader);
+    
+    OTF2_Reader_CloseEvtFiles(reader);
+    
 }
 
 void OTF2TraceReader::readEventsForProcess(uint64_t id)
 {
-    ;
+    OTF2_Reader_SelectLocation(reader, id);
+    
+    OTF2_Reader_OpenEvtFiles(reader);
+    
+    OTF2_Reader_GetEvtReader( reader, id );
+    
+    OTF2_GlobalEvtReader* global_evt_reader = OTF2_Reader_GetGlobalEvtReader( reader );
+    
+    OTF2_GlobalEvtReaderCallbacks* event_callbacks = OTF2_GlobalEvtReaderCallbacks_New();
+    OTF2_GlobalEvtReaderCallbacks_SetEnterCallback( event_callbacks, &otf2CallbackEnter );
+    OTF2_GlobalEvtReaderCallbacks_SetLeaveCallback( event_callbacks, &otf2CallbackLeave );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiCollectiveBeginCallback( event_callbacks, &otf2Callback_MpiCollectiveBegin );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiRecvCallback(event_callbacks, &otf2Callback_MpiRecv );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiSendCallback(event_callbacks, &otf2Callback_MpiSend );
+    OTF2_Reader_RegisterGlobalEvtCallbacks( reader, global_evt_reader, event_callbacks, this );
+    OTF2_GlobalEvtReaderCallbacks_Delete( event_callbacks );
+    
+    uint64_t events_read = 0;
+
+    // returns 0 if successfull, >0 otherwise
+    if (OTF2_Reader_ReadAllGlobalEvents(reader, global_evt_reader, &events_read))
+        throw RTException("Failed to read OTF2 events");
+    
+    OTF2_Reader_CloseGlobalEvtReader(reader, global_evt_reader);
+    
+    OTF2_Reader_CloseEvtFiles(reader);
+    
 }
 
 void OTF2TraceReader::readDefinitions()
@@ -154,9 +217,6 @@ OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_ClockProperties(
 {
     OTF2TraceReader *tr = (OTF2TraceReader*) userData;
 
-    if (tr->getMPIRank() == 0)
-        printf("[0] timer resolution = %llu\n", (long long unsigned)timerResolution);
-    
     tr->setTimerResolution(timerResolution);
 
     return OTF2_CALLBACK_SUCCESS;
@@ -166,11 +226,6 @@ OTF2_CallbackCode  OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationGroup(v
         OTF2_LocationGroupRef self, OTF2_StringRef name, OTF2_LocationGroupType locationGroupType, 
         OTF2_SystemTreeNodeRef systemTreeParent)
 {
-    OTF2TraceReader *tr = (OTF2TraceReader*) userData;
-    uint32_t i = tr->getMPIRank();
-    if (tr->getMPIRank() == 0)
-        printf("[%u][LG] %s \n", i, tr->getStringRef(name).c_str());
-    
     //\TODO save locationGroups somewhere
     
     return OTF2_CALLBACK_SUCCESS;
@@ -181,11 +236,29 @@ OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(void *u
         uint64_t numberOfEvents, OTF2_LocationGroupRef locationGroup)
 {
     OTF2TraceReader *tr = (OTF2TraceReader*) userData;
-    if (tr->getMPIRank() == 0)
-        printf("[%u][LoCation] %s \n", tr->getMPIRank(), tr->getStringRef(name).c_str());
+    
+    tr->getProcessFamilyMap()[self] = locationGroup;
     
     //Locations are processes
     tr->getProcessNameTokenMap()[self] = name;
+    
+    if (tr->handleProcessMPIMapping)
+    {
+        tr->handleProcessMPIMapping(tr, self, locationGroup);
+    }
+    
+    // skip all processes but the mapping MPI master process and its children
+    //\TODO deactivated it, causes usage of more memory, but does not require additional run over definitions
+//    if (self != tr->getMPIProcessId() && (!tr->isChildOf(self, tr->getMPIProcessId())))
+//        return OTF2_CALLBACK_SUCCESS;
+
+    if (tr->handleDefProcess)
+    {
+        tr->handleDefProcess(tr, 0, self, locationGroup, tr->getStringRef(name).c_str(),
+                NULL, locationType == OTF2_LOCATION_TYPE_GPU ? true : false , false);
+    }
+    
+    
     
     return OTF2_CALLBACK_SUCCESS;
 }
@@ -196,9 +269,7 @@ OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group(void *user
                     const uint64_t *members)
 {
     OTF2TraceReader *tr = (OTF2TraceReader*) userData;
-    if (tr->getMPIRank() == 0)
-        printf("[%u][Group] %s \n", tr->getMPIRank(), tr->getStringRef(name).c_str());
-    
+
     if(paradigm == OTF2_PARADIGM_MPI)
     {
         if(tr->handleMPICommGroup)
@@ -215,17 +286,13 @@ OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group(void *user
                 throw RTException("Process group MPI_COMM_WORLD has no process for this mpi rank (%u)",
                     mpiRank);
             
-            TokenTokenMap &processRankMap = tr->getProcessRankMap();
+            IdTokenMap &processRankMap = tr->getProcessRankMap();
             tr->setMPIProcessId(members[mpiRank]);
             for (uint32_t i = 0; i < numberOfMembers; ++i)
             {
                 processRankMap[members[i]] = i;
             }
             
-            printf("Rank %u maps to process %lu\n", mpiRank, members[mpiRank]);
-
-            if (tr->handleMPICommGroup)
-                tr->handleMPICommGroup(tr, 0, numberOfMembers, members);
         }
     }
     
@@ -235,9 +302,7 @@ OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group(void *user
 OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_Comm(void *userData, 
                     OTF2_CommRef self, OTF2_StringRef name, OTF2_GroupRef group, OTF2_CommRef parent)
 {
-    OTF2TraceReader *tr = (OTF2TraceReader*) userData;
-    if (tr->getMPIRank() == 0)
-        printf("[%u][COMM] %s \n", tr->getMPIRank(), tr->getStringRef(name).c_str());
+    //\TODO Handle communication
     return OTF2_CALLBACK_SUCCESS;    
 }
 
@@ -249,9 +314,6 @@ OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_String(void *use
     uint32_t max_length = 1000;
     std::string str(string, strnlen(string, max_length));
     tr->getDefinitionTokenStringMap()[self] = str;
-    uint32_t i = tr->getMPIRank();
-    if (tr->getMPIRank() == 0)
-        printf("[%u] stringref = %s \n", i,string );
     
     return OTF2_CALLBACK_SUCCESS;    
 }
@@ -266,27 +328,72 @@ OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_Region(void *use
     //Locations are processes
     tr->getFunctionNameTokenMap()[self] = name;
     
-    if (tr->getMPIRank() == 0)
-        printf("[%u] mappedFunction: %s \n", tr->getMPIRank(), tr->getFunctionName(self).c_str());
+    if (tr->handleDefFunction)
+        tr->handleDefFunction(tr, 0, self, tr->getFunctionName(self).c_str(), paradigm);
     
+    return OTF2_CALLBACK_SUCCESS;
+}
+
+OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_Attribute(void *userData, 
+                    OTF2_AttributeRef self, OTF2_StringRef name, OTF2_Type type)
+{
+    OTF2TraceReader *tr = (OTF2TraceReader*) userData;
+    std::string s = tr->getKeyName(name);
+    tr->getNameKeysMap().insert(std::make_pair(s, self));
+    tr->getKeyNameMap().insert(std::make_pair(self, s));
+
+    if (tr->handleDefKeyValue)
+    {
+        tr->handleDefKeyValue(tr, 0, self, s.c_str(), "");
+    }
     return OTF2_CALLBACK_SUCCESS;
 }
 
 OTF2_CallbackCode OTF2TraceReader::otf2CallbackEnter(OTF2_LocationRef location, OTF2_TimeStamp time, 
                     void *userData, OTF2_AttributeList *attributes, OTF2_RegionRef region)
 {
+    OTF2TraceReader *tr = (OTF2TraceReader*) userData;
+    
+    
+    
+    if (tr->handleEnter)
+    {
+        OTF2KeyValueList& kvList = tr->getKVList();
+        kvList.setList(attributes);
+        
+        tr->handleEnter(tr, time, region, location, (IKeyValueList*) & kvList);
+    }
+    
     return OTF2_CALLBACK_SUCCESS;
 }
 
 OTF2_CallbackCode OTF2TraceReader::otf2CallbackLeave(OTF2_LocationRef location, OTF2_TimeStamp time, 
                     void *userData, OTF2_AttributeList *attributes,OTF2_RegionRef region)
 {
+    
+    OTF2TraceReader *tr = (OTF2TraceReader*) userData;
+
+    if (tr->handleLeave)
+    {
+        OTF2KeyValueList& kvList = tr->getKVList();
+        kvList.setList(attributes);
+        
+        tr->handleLeave(tr, time, region, location, (IKeyValueList*) & kvList);
+    }
+    
     return OTF2_CALLBACK_SUCCESS;
 }
 
 OTF2_CallbackCode OTF2TraceReader::otf2Callback_MpiCollectiveBegin(OTF2_LocationRef locationID, OTF2_TimeStamp time, 
                     void *userData, OTF2_AttributeList *attributeList)
 {
+    OTF2TraceReader *tr = (OTF2TraceReader*) userData;
+    
+    if (tr->handleMPIComm)
+    {
+//        tr->handleMPIComm(tr, MPI_COLLECTIVE, process, procGroup, rootProc, 0);
+    }
+    
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -295,6 +402,13 @@ OTF2_CallbackCode OTF2TraceReader::otf2Callback_MpiCollectiveEnd(OTF2_LocationRe
                     OTF2_CollectiveOp collectiveOp, OTF2_CommRef communicator, uint32_t root,
                     uint64_t sizeSent, uint64_t sizeReceived)
 {
+    OTF2TraceReader *tr = (OTF2TraceReader*) userData;
+    
+    if (tr->handleMPIComm)
+    {
+        tr->handleMPIComm(tr, MPI_COLLECTIVE, locationID, communicator, root, 0);
+    }
+    
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -303,6 +417,13 @@ OTF2_CallbackCode OTF2TraceReader::otf2Callback_MpiRecv(OTF2_LocationRef locatio
         uint32_t sender, OTF2_CommRef communicator, uint32_t msgTag, 
         uint64_t msgLength)
 {
+    OTF2TraceReader *tr = (OTF2TraceReader*) userData;
+
+    if (tr->handleMPIComm)
+    {
+        tr->handleMPIComm(tr, MPI_RECV, sender, locationID, 0, msgTag);
+    }
+    
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -311,6 +432,13 @@ OTF2_CallbackCode OTF2TraceReader::otf2Callback_MpiSend(OTF2_LocationRef locatio
         uint32_t receiver, OTF2_CommRef communicator, uint32_t msgTag, 
         uint64_t msgLength)
 {
+    OTF2TraceReader *tr = (OTF2TraceReader*) userData;
+    
+    if (tr->handleMPIComm)
+    {
+        tr->handleMPIComm(tr, MPI_SEND, locationID, receiver, 0, msgTag);
+    }
+    
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -318,11 +446,14 @@ OTF2_CallbackCode OTF2TraceReader::otf2Callback_OmpFork(OTF2_LocationRef locatio
         OTF2_TimeStamp time, void *userData, OTF2_AttributeList *attributeList,      
         uint32_t numberOfRequestedThreads)
 {
+    //\TODO implement
     return OTF2_CALLBACK_SUCCESS;
 }
     
 OTF2_CallbackCode OTF2TraceReader::otf2Callback_OmpJoin(OTF2_LocationRef locationID, 
         OTF2_TimeStamp time, void *userData, OTF2_AttributeList *attributeList){
+    
+    //\TODO implement
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -373,11 +504,6 @@ OTF2TraceReader::ProcessGroupMap& OTF2TraceReader::getProcGoupMap()
     return processGroupMap;
 }
 
-OTF2TraceReader::ProcessFuncStack& OTF2TraceReader::getFuncStack()
-{
-    return funcStack;
-}
-
 std::string OTF2TraceReader::getProcessName(uint64_t id)
 {
     return getKeyName(id);
@@ -406,14 +532,4 @@ uint32_t OTF2TraceReader::getFirstKey(const std::string keyName)
         return range.first->second;
     else
         return 0;
-}
-
-OTF2TraceReader::TokenTokenMap& OTF2TraceReader::getProcessRankMap()
-{
-    return processRankMap;
-}
-
-void OTF2TraceReader::setMPIProcessId(uint64_t processId)
-{
-    mpiProcessId = processId;
 }

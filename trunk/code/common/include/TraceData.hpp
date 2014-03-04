@@ -47,7 +47,7 @@ namespace cdm
         typedef std::map<uint64_t, Process*> ProcessMap;
         typedef std::list<Activity*> ActivityList;
         typedef std::stack<GraphNode*> GraphNodeStack;
-        typedef std::map<uint32_t, GraphNodeStack > GraphNodeStackMap;
+        typedef std::map<uint64_t, GraphNodeStack > GraphNodeStackMap;
 
         TraceData();
         virtual ~TraceData();

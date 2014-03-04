@@ -445,12 +445,6 @@ namespace cdm
                 if (paradigm1 != paradigm2)
                     return paradigm1 < paradigm2;
 
-                if (n1->isProcess())
-                    return true;
-
-                if (n2->isProcess())
-                    return false;
-
                 // nodes from same or different processes
                 if (n1->getProcessId() == n2->getProcessId())
                 {
