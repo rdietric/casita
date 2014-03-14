@@ -33,7 +33,7 @@ namespace cdm
                 // applied at MPI collective leave
                 if (!node->isMPICollective() || !node->isLeave())
                     return false;
-
+                
                 // get the complete execution
                 GraphNode::GraphNodePair coll = ((GraphNode*) node)->getGraphPair();
                 uint32_t mpiGroupId = node->getReferencedProcessId();
@@ -41,6 +41,11 @@ namespace cdm
                         analysis->getMPIAnalysis().getMPICommGroup(mpiGroupId);
                 uint32_t myMpiRank = analysis->getMPIRank();
 
+                if(mpiCommGroup.comm == MPI_COMM_SELF)
+                {
+                    return false;
+                }
+                
                 const uint32_t BUFFER_SIZE = 7;
                 uint32_t recvBufferSize = mpiCommGroup.procs.size() * BUFFER_SIZE;
                 uint64_t sendBuffer[BUFFER_SIZE];

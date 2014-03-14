@@ -78,6 +78,7 @@ namespace cdm
             std::vector<uint32_t> getKeys(const std::string keyName);
             uint32_t getFirstKey(const std::string keyName);
             uint64_t getTimerResolution();
+            uint64_t getTimerOffset();
             void setTimerResolution(uint64_t ticksPerSecond);
             bool isChildOf(uint32_t child, uint32_t parent);
             int getProcessingPhase();
@@ -135,6 +136,7 @@ namespace cdm
             AttrListMap attrListMap;
             ProcessFuncStack funcStack;
             uint64_t ticksPerSecond;
+            uint64_t timerOffset;
             
             int processingPhase;
         };

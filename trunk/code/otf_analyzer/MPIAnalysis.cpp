@@ -16,7 +16,7 @@ MPIAnalysis::~MPIAnalysis()
     for (MPICommGroupMap::iterator iter = mpiCommGroupMap.begin();
             iter != mpiCommGroupMap.end(); ++iter)
     {
-        if (iter->second.comm != MPI_COMM_NULL)
+        if (iter->second.comm != MPI_COMM_NULL && iter->second.comm != MPI_COMM_SELF)
             MPI_CHECK(MPI_Comm_free(&(iter->second.comm)));
     }
 }
@@ -66,6 +66,11 @@ void MPIAnalysis::setMPICommGroupMap(uint32_t group, uint32_t numProcs,
     {
         mpiCommGroupMap[group].procs.insert(procs[i]);
     }
+    
+    if(numProcs==0)
+    {
+        mpiCommGroupMap[group].procs.clear();
+    }
 }
 
 void MPIAnalysis::createMPICommunicatorsFromMap()
@@ -83,13 +88,19 @@ void MPIAnalysis::createMPICommunicatorsFromMap()
             ranks[i] = getMPIRank(*iter);
             ++i;
         }
-
+        
         MPI_Group worldGroup, commGroup;
-        MPI_CHECK(MPI_Comm_group(MPI_COMM_WORLD, &worldGroup));
-        MPI_CHECK(MPI_Group_incl(worldGroup, group.procs.size(), ranks, &commGroup));
-        MPI_CHECK(MPI_Comm_create(MPI_COMM_WORLD, commGroup, &(group.comm)));
-        MPI_CHECK(MPI_Group_free(&commGroup));
-        MPI_CHECK(MPI_Group_free(&worldGroup));
+        if(group.procs.empty())
+        {
+            group.comm = MPI_COMM_SELF;
+        } else 
+        {
+            MPI_CHECK(MPI_Comm_group(MPI_COMM_WORLD, &worldGroup));
+            MPI_CHECK(MPI_Group_incl(worldGroup, group.procs.size(), ranks, &commGroup));
+            MPI_CHECK(MPI_Comm_create(MPI_COMM_WORLD, commGroup, &(group.comm)));
+            MPI_CHECK(MPI_Group_free(&commGroup));
+            MPI_CHECK(MPI_Group_free(&worldGroup));
+        }
     }
 }
 

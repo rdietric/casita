@@ -34,6 +34,16 @@ namespace cdm
                 uint64_t *procs;
             } ProcessGroup;
 
+            typedef struct
+            {
+                uint32_t groupId;
+                uint32_t stringRef;
+                uint32_t numberOfMembers;
+                uint8_t paradigm;
+                uint8_t groupType;
+                const uint64_t *members;
+            } OTF2Group;
+            
             typedef uint32_t Token;
             typedef std::multimap<std::string, Token> NameTokenMap;
             typedef std::map<Token, std::string> TokenNameMap;
@@ -43,6 +53,7 @@ namespace cdm
             typedef std::map<uint64_t,Token> IdTokenMap;
             typedef std::set<Token> TokenSet;
             typedef std::map<Token, TokenSet> TokenSetMap;
+            typedef std::map<uint32_t,OTF2Group> GroupIdGroupMap;
 
             typedef std::map<Token, ProcessGroup*> ProcessGroupMap;
 
@@ -67,6 +78,7 @@ namespace cdm
             TokenNameMap& getDefinitionTokenStringMap();
             ProcessGroupMap& getProcGoupMap();
             OTF2KeyValueList& getKVList();
+            GroupIdGroupMap& getGroupMap();
 
             std::string getStringRef(Token t);
             std::string getKeyName(uint32_t id);
@@ -78,6 +90,8 @@ namespace cdm
             uint32_t getFirstKey(const std::string keyName);
             uint64_t getTimerResolution();
             void setTimerResolution(uint64_t ticksPerSecond);
+            uint64_t getTimerOffset();
+            void setTimerOffset(uint64_t offset);
             bool isChildOf(uint64_t child, uint64_t parent);
             int getProcessingPhase();
 
@@ -88,8 +102,6 @@ namespace cdm
             static OTF2_CallbackCode otf2CallbackLeave(OTF2_LocationRef location, 
                     OTF2_TimeStamp time, void *userData, OTF2_AttributeList *attributes,
                     OTF2_RegionRef region);
-            static OTF2_CallbackCode otf2Callback_MpiCollectiveBegin(OTF2_LocationRef locationID, 
-                    OTF2_TimeStamp time, void *userData, OTF2_AttributeList *attributeList);
             static OTF2_CallbackCode otf2Callback_MpiCollectiveEnd(OTF2_LocationRef locationID,
                     OTF2_TimeStamp time, void *userData, OTF2_AttributeList *attributeList,
                     OTF2_CollectiveOp collectiveOp, OTF2_CommRef communicator, uint32_t root,
@@ -163,8 +175,11 @@ namespace cdm
             IdNameTokenMap processNameTokenMap;
             IdNameTokenMap functionNameTokenMap;
             TokenNameMap definitionTokenStringMap;
+            GroupIdGroupMap groupMap;
+            
             ProcessGroupMap processGroupMap;
             uint64_t ticksPerSecond;
+            uint64_t timerOffset;
             
             int processingPhase;
         };

@@ -36,7 +36,7 @@ namespace cdm
 
         enum MPIType
         {
-            MPI_SEND, MPI_RECV, MPI_COLLECTIVE, MPI_SENDRECV
+            MPI_SEND, MPI_RECV, MPI_COLLECTIVE, MPI_SENDRECV, MPI_ONEANDALL
         };
 
         typedef struct
