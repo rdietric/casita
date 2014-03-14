@@ -22,7 +22,7 @@ namespace cdm
 
         enum MPIType
         {
-            MPI_SEND, MPI_RECV, MPI_COLLECTIVE, MPI_ONETOALL
+            MPI_SEND, MPI_RECV, MPI_COLLECTIVE, MPI_ONEANDALL
         };
 
         typedef void (*HandleEnter)(ITraceReader *reader, uint64_t time,

@@ -44,10 +44,16 @@ namespace cdm
                 const MPIAnalysis::MPICommGroup& mpiCommGroup =
                         analysis->getMPIAnalysis().getMPICommGroup(mpiGroupId);
                 
+                if(mpiCommGroup.comm == MPI_COMM_SELF)
+                {
+                    return false;
+                }
+                
                 uint64_t rootId = *root;
-                uint32_t rootMPIRank = analysis->getMPIAnalysis().getMPIRank(rootId, mpiCommGroup);
+                uint32_t rootMPIRank;
+                rootMPIRank = analysis->getMPIAnalysis().getMPIRank(rootId, mpiCommGroup);
 
-                const uint32_t BUFFER_SIZE = 7;
+                const uint32_t BUFFER_SIZE = 5;
                 uint32_t recvBufferSize = 0;
                 if (node->getProcessId() == rootId)
                     recvBufferSize = mpiCommGroup.procs.size() * BUFFER_SIZE;
@@ -61,14 +67,12 @@ namespace cdm
                 uint64_t oneToAllStartTime = oneToAll.first->getTime();
                 uint64_t oneToAllEndTime = oneToAll.second->getTime();
 
-                //memcpy(sendBuffer, &oneToAllStartTime, sizeof (uint64_t));
-                //memcpy(sendBuffer + 2, &oneToAllEndTime, sizeof (uint64_t));
                 sendBuffer[0] = oneToAllStartTime;
                 sendBuffer[1] = oneToAllEndTime;
                 sendBuffer[2] = oneToAll.first->getId();
                 sendBuffer[3] = oneToAll.second->getId();
                 sendBuffer[4] = node->getProcessId();
-
+                
                 MPI_CHECK(MPI_Gather(sendBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                         recvBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                         rootMPIRank, mpiCommGroup.comm));

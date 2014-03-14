@@ -634,7 +634,11 @@ int OTF1TraceReader::otf1HandleBeginCollectiveOperation(void * userData, uint64_
 
     if (tr->handleMPIComm)
     {
-        tr->handleMPIComm(tr, MPI_COLLECTIVE, process, procGroup, rootProc, 0);
+        io::MPIType mpiType = io::MPI_COLLECTIVE;
+        if (rootProc)
+            mpiType = io::MPI_ONEANDALL;
+
+        tr->handleMPIComm(tr, mpiType, process, procGroup, rootProc, 0);
     }
 
     return OTF_RETURN_OK;
