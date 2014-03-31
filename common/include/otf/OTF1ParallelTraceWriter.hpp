@@ -48,7 +48,7 @@ namespace cdm
             void writeRMANode(const Node *node, uint64_t prevProcessId,
                     uint64_t nextProcessId);
             
-            void *getWriteObject(uint32_t id);
+            void *getWriteObject(uint64_t id);
         private:
             uint32_t totalNumStreams;
             uint64_t timerResolution;

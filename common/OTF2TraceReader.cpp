@@ -28,6 +28,7 @@ mpiProcessId(1),
 reader(NULL),
 ticksPerSecond(1),
 timerOffset(0),
+traceLength(0),
 processingPhase(0)
 {
 
@@ -81,6 +82,42 @@ OTF2TraceReader::GroupIdGroupMap& OTF2TraceReader::getGroupMap()
 {
     return groupMap;
 }
+
+std::list<OTF2TraceReader::OTF2Region>& OTF2TraceReader::getRegionList()
+{
+    return regionList;
+}
+
+std::list<OTF2TraceReader::OTF2Location>& OTF2TraceReader::getLocationList()
+{
+    return locationList;
+}
+
+std::list<OTF2TraceReader::OTF2LocationGroup>& OTF2TraceReader::getLocationGroupList()
+{
+    return locationGroupList;
+}
+
+std::list<OTF2TraceReader::OTF2SystemTreeNode>& OTF2TraceReader::getSystemTreeNodeList()
+{
+    return systemTreeNodeList;
+}
+
+std::list<OTF2TraceReader::OTF2SystemTreeNodeDomain>& OTF2TraceReader::getSystemTreeNodeDomainList()
+{
+    return systemTreeNodeDomainList;
+}
+
+std::list<OTF2TraceReader::OTF2SystemTreeNodeProperty>& OTF2TraceReader::getSystemTreeNodePropertyList()
+{
+    return systemTreeNodePropertyList;
+}
+
+std::list<OTF2TraceReader::OTF2Attribute>& OTF2TraceReader::getAttributeList() 
+{
+    return attributeList;
+}
+
 
 int OTF2TraceReader::getProcessingPhase()
 {
@@ -214,6 +251,8 @@ void OTF2TraceReader::readDefinitions()
     processingPhase = 1;
     
     // Phase 1 -> read string definitions and Groups
+    OTF2_GlobalDefReaderCallbacks_SetAttributeCallback(global_def_callbacks,
+            &OTF2_GlobalDefReaderCallback_Attribute);
     OTF2_GlobalDefReaderCallbacks_SetStringCallback(global_def_callbacks, 
             &OTF2_GlobalDefReaderCallback_String);
     OTF2_GlobalDefReaderCallbacks_SetClockPropertiesCallback(global_def_callbacks, 
@@ -228,6 +267,12 @@ void OTF2TraceReader::readDefinitions()
            &OTF2_GlobalDefReaderCallback_Comm);
     OTF2_GlobalDefReaderCallbacks_SetRegionCallback(global_def_callbacks,
             &OTF2_GlobalDefReaderCallback_Region);
+    OTF2_GlobalDefReaderCallbacks_SetSystemTreeNodeCallback(global_def_callbacks,
+            &OTF2_GlobalDefReaderCallback_SystemTreeNode);
+    OTF2_GlobalDefReaderCallbacks_SetSystemTreeNodePropertyCallback(global_def_callbacks,
+            &OTF2_GlobalDefReaderCallback_SystemTreeNodeProperty);
+    OTF2_GlobalDefReaderCallbacks_SetSystemTreeNodeDomainCallback(global_def_callbacks,
+            &OTF2_GlobalDefReaderCallback_SystemTreeNodeDomain);
     
     // register callbacks
     OTF2_Reader_RegisterGlobalDefCallbacks( reader, global_def_reader, global_def_callbacks, this );
@@ -275,6 +320,7 @@ OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_ClockProperties(
 
     tr->setTimerOffset(globalOffset);
     tr->setTimerResolution(timerResolution);
+    tr->setTraceLength(traceLength);
 
     return OTF2_CALLBACK_SUCCESS;
 }
@@ -283,7 +329,12 @@ OTF2_CallbackCode  OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationGroup(v
         OTF2_LocationGroupRef self, OTF2_StringRef name, OTF2_LocationGroupType locationGroupType, 
         OTF2_SystemTreeNodeRef systemTreeParent)
 {
-    //\TODO save locationGroups somewhere
+    OTF2TraceReader *tr = (OTF2TraceReader*) userData;
+    
+    OTF2LocationGroup l;
+    l.self = self; l.name = name; l.locationGroupType = locationGroupType;
+    l.systemTreeParent = systemTreeParent;
+    tr->getLocationGroupList().push_back(l);
     
     return OTF2_CALLBACK_SUCCESS;
 }
@@ -297,6 +348,11 @@ OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(void *u
     
     if(phase == 1)
     {
+        OTF2Location l;
+        l.self = self; l.name = name; l.locationGroup = locationGroup;
+        l.numberOfEvents = numberOfEvents; l.locationType = locationType;
+        tr->getLocationList().push_back(l);
+        
         tr->getProcessFamilyMap()[self] = locationGroup;
     }
     
@@ -399,6 +455,49 @@ OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_String(void *use
     return OTF2_CALLBACK_SUCCESS;    
 }
 
+OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_SystemTreeNode(void *userData, 
+                    OTF2_SystemTreeNodeRef self, OTF2_StringRef name, OTF2_StringRef className, 
+                    OTF2_SystemTreeNodeRef parent)
+{
+    OTF2SystemTreeNode node;
+    node.className = className;
+    node.name = name;
+    node.parent = parent;
+    node.self = self;
+    
+    OTF2TraceReader *tr = (OTF2TraceReader*) userData;
+    tr->getSystemTreeNodeList().push_back(node);
+    
+    return OTF2_CALLBACK_SUCCESS;
+}
+
+OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_SystemTreeNodeProperty(void *userData, 
+                    OTF2_SystemTreeNodeRef systemTreeNode, OTF2_StringRef name, OTF2_StringRef value)
+{
+    OTF2SystemTreeNodeProperty prop;
+    prop.name= name;
+    prop.systemTreeNode = systemTreeNode;
+    prop.value = value;
+    
+    OTF2TraceReader *tr = (OTF2TraceReader*) userData;
+    tr->getSystemTreeNodePropertyList().push_back(prop);
+    
+    return OTF2_CALLBACK_SUCCESS;
+}
+
+OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_SystemTreeNodeDomain(void *userData, 
+                    OTF2_SystemTreeNodeRef systemTreeNode, OTF2_SystemTreeDomain systemTreeDomain)
+{
+    OTF2SystemTreeNodeDomain domain;
+    domain.systemTreeDomain = systemTreeDomain;
+    domain.systemTreeNode = systemTreeNode;
+    
+    OTF2TraceReader *tr = (OTF2TraceReader*) userData;
+    tr->getSystemTreeNodeDomainList().push_back(domain);
+    
+    return OTF2_CALLBACK_SUCCESS;
+}
+
 OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_Region(void *userData,
                     OTF2_RegionRef self, OTF2_StringRef name, OTF2_StringRef cannonicalName,
                     OTF2_StringRef description, OTF2_RegionRole regionRole, OTF2_Paradigm paradigm,
@@ -408,6 +507,12 @@ OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_Region(void *use
     OTF2TraceReader *tr = (OTF2TraceReader*) userData;
     //Locations are processes
     tr->getFunctionNameTokenMap()[self] = name;
+    OTF2Region r;
+    r.self = self; r.name = name; r.cannonicalName = cannonicalName;
+    r.regionFlags = regionFlags; r.regionRole = regionRole; r.description = description;
+    r.sourceFile = sourceFile; r.beginLineNumber = beginLineNumber; r.endLineNumber = endLineNumber;
+    r.paradigm = paradigm;
+    tr->getRegionList().push_back(r);
     
     if (tr->handleDefFunction)
         tr->handleDefFunction(tr, 0, self, tr->getFunctionName(self).c_str(), paradigm);
@@ -416,16 +521,23 @@ OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_Region(void *use
 }
 
 OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_Attribute(void *userData, 
-                    OTF2_AttributeRef self, OTF2_StringRef name, OTF2_Type type)
+                    OTF2_AttributeRef self, OTF2_StringRef name, OTF2_StringRef description, OTF2_Type type)
 {
     OTF2TraceReader *tr = (OTF2TraceReader*) userData;
     std::string s = tr->getKeyName(name);
     tr->getNameKeysMap().insert(std::make_pair(s, self));
     tr->getKeyNameMap().insert(std::make_pair(self, s));
-
+    
+    OTF2Attribute att;
+    att.self = self;
+    att.description = description;
+    att.name = name;
+    att.type = type;
+    tr->getAttributeList().push_back(att);
+    
     if (tr->handleDefKeyValue)
     {
-        tr->handleDefKeyValue(tr, 0, self, s.c_str(), "");
+        tr->handleDefKeyValue(tr, 0, self, s.c_str(), tr->getKeyName(description).c_str());
     }
     return OTF2_CALLBACK_SUCCESS;
 }
@@ -458,7 +570,7 @@ OTF2_CallbackCode OTF2TraceReader::otf2CallbackLeave(OTF2_LocationRef location, 
     {
         OTF2KeyValueList& kvList = tr->getKVList();
         kvList.setList(attributes);
-        
+
         tr->handleLeave(tr, time - tr->getTimerOffset(), region, location, (IKeyValueList*) & kvList);
     }
     
@@ -570,6 +682,16 @@ void OTF2TraceReader::setTimerOffset(uint64_t offset)
     this->timerOffset = offset;
 }
 
+uint64_t OTF2TraceReader::getTraceLength()
+{
+    return traceLength;
+}
+
+void OTF2TraceReader::setTraceLength(uint64_t length)
+{
+    this->traceLength = length;
+}
+
 uint32_t OTF2TraceReader::getMPIRank()
 {
     return mpiRank;
@@ -614,7 +736,7 @@ std::vector<uint32_t> OTF2TraceReader::getKeys(const std::string keyName)
     return keys;
 }
 
-uint32_t OTF2TraceReader::getFirstKey(const std::string keyName)
+int32_t OTF2TraceReader::getFirstKey(const std::string keyName)
 {
     std::pair <NameTokenMap::iterator, NameTokenMap::iterator> range;
     range = nameKeysMap.equal_range(keyName);
@@ -622,7 +744,7 @@ uint32_t OTF2TraceReader::getFirstKey(const std::string keyName)
     if (range.first != range.second)
         return range.first->second;
     else
-        return 0;
+        return -1;
 }
 
 bool OTF2TraceReader::isChildOf(uint64_t child, uint64_t parent)

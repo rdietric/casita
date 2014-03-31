@@ -37,6 +37,14 @@ namespace cdm
                 this->list = list;
             }
 
+            uint8_t getLocationRef(uint32_t key, uint64_t *value)
+            {
+                uint32_t processId;
+                uint8_t status = OTF_KeyValueList_getUint32(list, key, &processId);
+                *value = (uint64_t) processId;
+                return status;
+            }
+            
             uint8_t getUInt32(uint32_t key, uint32_t *value)
             {
                 return OTF_KeyValueList_getUint32(list, key, value);
@@ -50,6 +58,11 @@ namespace cdm
             uint8_t getInt32(uint32_t key, int32_t *value)
             {
                 return OTF_KeyValueList_getInt32(list, key, value);
+            }
+            
+            uint32_t getSize()
+            {
+                return OTF_KeyValueList_getCount(list);
             }
             
         private:

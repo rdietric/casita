@@ -74,7 +74,7 @@ namespace cdm
             virtual std::string getFunctionName(uint64_t id) = 0;
             virtual std::string getProcessName(uint64_t id) = 0;
             virtual std::vector<uint32_t> getKeys(const std::string keyName) = 0;
-            virtual uint32_t getFirstKey(const std::string keyName) = 0;
+            virtual int32_t getFirstKey(const std::string keyName) = 0;
             virtual uint64_t getTimerResolution() = 0;
             
             void *getUserData()

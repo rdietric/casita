@@ -436,7 +436,8 @@ void OTF1ParallelTraceWriter::writeRMANode(const Node *node,
     }
 }
 
-void* OTF1ParallelTraceWriter::getWriteObject(uint32_t id)
+void* OTF1ParallelTraceWriter::getWriteObject(uint64_t id)
 {
-    return processWStreamMap[id];
+    uint32_t otf1Id = (uint32_t) id;
+    return processWStreamMap[otf1Id];
 }

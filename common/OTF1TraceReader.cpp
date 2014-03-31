@@ -293,7 +293,7 @@ std::vector<uint32_t> OTF1TraceReader::getKeys(const std::string keyName)
     return keys;
 }
 
-uint32_t OTF1TraceReader::getFirstKey(const std::string keyName)
+int32_t OTF1TraceReader::getFirstKey(const std::string keyName)
 {
     std::pair <NameTokenMap::iterator, NameTokenMap::iterator> range;
     range = nameKeysMap.equal_range(keyName);
@@ -301,7 +301,7 @@ uint32_t OTF1TraceReader::getFirstKey(const std::string keyName)
     if (range.first != range.second)
         return range.first->second;
     else
-        return 0;
+        return -1;
 }
 
 uint64_t OTF1TraceReader::getTimerResolution()
