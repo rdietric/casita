@@ -14,6 +14,7 @@
 #include "common.hpp"
 #include "otf/OTF1TraceReader.hpp"
 #include "otf/OTF1ParallelTraceWriter.hpp"
+#include "otf/OTF2ParallelTraceWriter.hpp"
 
 using namespace cdm;
 using namespace cdm::io;
@@ -463,13 +464,28 @@ void AnalysisEngine::saveParallelAllocationToFile(std::string filename,
     
     std::sort(allProcs.begin(), allProcs.end(), processSort);
 
-    IParallelTraceWriter *writer = new OTF1ParallelTraceWriter(
+    IParallelTraceWriter *writer;
+    if (strstr(origFilename.c_str(), ".otf2") == NULL)
+    {
+        writer = new OTF1ParallelTraceWriter(
             VT_CUPTI_CUDA_STREAMREF_KEY,
             VT_CUPTI_CUDA_EVENTREF_KEY,
             VT_CUPTI_CUDA_CURESULT_KEY,
             mpiAnalysis.getMPIRank(),
             mpiAnalysis.getMPISize(),
             origFilename.c_str());
+    } else
+    {
+        writer = new OTF2ParallelTraceWriter(
+            VT_CUPTI_CUDA_STREAMREF_KEY,
+            VT_CUPTI_CUDA_EVENTREF_KEY,
+            VT_CUPTI_CUDA_CURESULT_KEY,
+            mpiAnalysis.getMPIRank(),
+            mpiAnalysis.getMPISize(),
+            mpiAnalysis.getMPICommGroup(0).comm, //just get CommWorld
+            origFilename.c_str(),
+            this->ctrTable.getAllCounterIDs());
+    }
     writer->open(filename.c_str(), 100, allProcs.size(), this->ticksPerSecond);
 
     CounterTable::CtrIdSet ctrIdSet = this->ctrTable.getAllCounterIDs();
@@ -482,6 +498,10 @@ void AnalysisEngine::saveParallelAllocationToFile(std::string filename,
             writer->writeDefCounter(*ctrIter, entry->name, entry->otfMode);
     }
 
+    printf("[%u] wrote defs \n", mpiAnalysis.getMPIRank());
+    
+    MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+    
     for (Allocation::ProcessList::const_iterator pIter = allProcs.begin();
             pIter != allProcs.end(); ++pIter)
     {
@@ -550,7 +570,7 @@ void AnalysisEngine::saveParallelAllocationToFile(std::string filename,
 
         }
     }
-
+    
     writer->close();
     delete writer;
 }

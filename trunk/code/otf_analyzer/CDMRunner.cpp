@@ -163,9 +163,13 @@ void CDMRunner::printNode(GraphNode *node, Process *process)
 
 void CDMRunner::applyStreamRefsEnter(ITraceReader *reader, Node *node, IKeyValueList *list)
 {
-    uint32_t refValue = 0;
-    uint32_t streamRefKey = reader->getFirstKey(VT_CUPTI_CUDA_STREAMREF_KEY);
-    if (streamRefKey != 0 && list && list->getUInt32(streamRefKey, &refValue) == 0)
+    uint64_t refValue = 0;
+    int32_t streamRefKey = reader->getFirstKey(VT_CUPTI_CUDA_STREAMREF_KEY);
+    // give it another try, maybe it was scorep, not vt
+    if(streamRefKey < 0)
+        streamRefKey = reader->getFirstKey(SCOREP_CUPTI_CUDA_STREAMREF_KEY);
+    
+    if (streamRefKey > -1 && list && list->getSize() > 0 && list->getLocationRef((uint32_t) streamRefKey, &refValue) == 0)
     {
         node->setReferencedProcessId(refValue);
     }
@@ -173,9 +177,13 @@ void CDMRunner::applyStreamRefsEnter(ITraceReader *reader, Node *node, IKeyValue
 
 void CDMRunner::applyStreamRefsLeave(ITraceReader *reader, Node *node, Node *oldNode, IKeyValueList *list)
 {
-    uint32_t refValue = 0;
-    uint32_t streamRefKey = reader->getFirstKey(VT_CUPTI_CUDA_STREAMREF_KEY);
-    if (streamRefKey != 0 && list && list->getUInt32(streamRefKey, &refValue) == 0)
+    uint64_t refValue = 0;
+    int32_t streamRefKey = reader->getFirstKey(VT_CUPTI_CUDA_STREAMREF_KEY);
+    // give it another try, maybe it was scorep, not vt
+    if(streamRefKey < 0)
+        streamRefKey = reader->getFirstKey(SCOREP_CUPTI_CUDA_STREAMREF_KEY);
+
+    if (streamRefKey > -1 && list && list->getSize() > 0 && list->getLocationRef((uint32_t) streamRefKey, &refValue) == 0)
     {
         node->setReferencedProcessId(refValue);
         oldNode->setReferencedProcessId(refValue);
@@ -185,10 +193,10 @@ void CDMRunner::applyStreamRefsLeave(ITraceReader *reader, Node *node, Node *old
 uint32_t CDMRunner::readKeyVal(ITraceReader *reader, const char * keyName, IKeyValueList *list)
 {
     uint32_t keyVal = 0;
-    uint32_t key = reader->getFirstKey(keyName);
-    if (key != 0 && list)
+    int32_t key = reader->getFirstKey(keyName);
+    if (key > -1 && list)
     {
-        list->getUInt32(key, &keyVal);
+        list->getUInt32((uint32_t) key, &keyVal);
     }
 
     return keyVal;

@@ -42,6 +42,11 @@ namespace cdm
                 return OTF2_AttributeList_GetUint32(list, key, value);
             }
 
+            uint8_t getLocationRef(uint32_t key, uint64_t *value)
+            {
+                return OTF2_AttributeList_GetLocationRef(list, key, value);
+            }
+            
             uint8_t getUInt64(uint32_t key, uint64_t *value)
             {
                 return OTF2_AttributeList_GetUint64(list, key, value);
@@ -50,6 +55,11 @@ namespace cdm
             uint8_t getInt32(uint32_t key, int32_t *value)
             {
                 return OTF2_AttributeList_GetInt32(list, key, value);
+            }
+            
+            uint32_t getSize()
+            {
+                return OTF2_AttributeList_GetNumberOfElements(list);
             }
             
         private:

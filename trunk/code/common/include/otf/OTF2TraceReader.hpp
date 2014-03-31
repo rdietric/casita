@@ -44,6 +44,67 @@ namespace cdm
                 const uint64_t *members;
             } OTF2Group;
             
+            typedef struct 
+            {
+                OTF2_RegionRef self;
+                OTF2_StringRef name; 
+                OTF2_StringRef cannonicalName;
+                OTF2_StringRef description; 
+                OTF2_RegionRole regionRole;
+                OTF2_Paradigm paradigm;
+                OTF2_RegionFlag regionFlags; 
+                OTF2_StringRef sourceFile; 
+                uint32_t beginLineNumber;
+                uint32_t endLineNumber;
+            } OTF2Region;
+            
+            typedef struct 
+            {
+                OTF2_LocationRef self;
+                OTF2_StringRef name;
+                OTF2_LocationType locationType;
+                uint64_t numberOfEvents; 
+                OTF2_LocationGroupRef locationGroup;
+            } OTF2Location;
+            
+            typedef struct
+            {
+                OTF2_LocationGroupRef self; 
+                OTF2_StringRef name; 
+                OTF2_LocationGroupType locationGroupType;
+                OTF2_SystemTreeNodeRef systemTreeParent;
+            } OTF2LocationGroup;
+            
+            typedef struct 
+            {
+                OTF2_SystemTreeNodeRef self;
+                OTF2_StringRef	 name;
+                OTF2_StringRef	 className;
+                OTF2_SystemTreeNodeRef	 parent;
+            } OTF2SystemTreeNode;
+            
+            typedef struct 
+            {
+                OTF2_SystemTreeNodeRef	 systemTreeNode;
+                OTF2_StringRef	 name;
+                OTF2_StringRef	 value;
+            } OTF2SystemTreeNodeProperty;
+            
+            typedef struct 
+            {
+                OTF2_SystemTreeNodeRef	 systemTreeNode;
+                OTF2_SystemTreeDomain	 systemTreeDomain;
+            } OTF2SystemTreeNodeDomain;
+            
+            typedef struct
+            {
+                OTF2_AttributeRef self;
+                OTF2_StringRef name;
+                OTF2_StringRef description;
+                OTF2_Type type;
+            } OTF2Attribute;
+            
+            
             typedef uint32_t Token;
             typedef std::multimap<std::string, Token> NameTokenMap;
             typedef std::map<Token, std::string> TokenNameMap;
@@ -79,6 +140,13 @@ namespace cdm
             ProcessGroupMap& getProcGoupMap();
             OTF2KeyValueList& getKVList();
             GroupIdGroupMap& getGroupMap();
+            std::list<OTF2Region>& getRegionList();
+            std::list<OTF2Location>& getLocationList();
+            std::list<OTF2LocationGroup>& getLocationGroupList();
+            std::list<OTF2SystemTreeNode>& getSystemTreeNodeList();
+            std::list<OTF2SystemTreeNodeDomain>& getSystemTreeNodeDomainList();
+            std::list<OTF2SystemTreeNodeProperty>& getSystemTreeNodePropertyList();
+            std::list<OTF2Attribute>& getAttributeList();
 
             std::string getStringRef(Token t);
             std::string getKeyName(uint32_t id);
@@ -87,11 +155,13 @@ namespace cdm
             IdNameTokenMap& getProcessNameTokenMap();
             IdNameTokenMap& getFunctionNameTokenMap();
             std::vector<uint32_t> getKeys(const std::string keyName);
-            uint32_t getFirstKey(const std::string keyName);
+            int32_t getFirstKey(const std::string keyName);
             uint64_t getTimerResolution();
             void setTimerResolution(uint64_t ticksPerSecond);
             uint64_t getTimerOffset();
             void setTimerOffset(uint64_t offset);
+            uint64_t getTraceLength();
+            void setTraceLength(uint64_t length);
             bool isChildOf(uint64_t child, uint64_t parent);
             int getProcessingPhase();
 
@@ -127,7 +197,8 @@ namespace cdm
                     OTF2_LocationType locationType, uint64_t numberOfEvents,
                     OTF2_LocationGroupRef locationGroup);
             static OTF2_CallbackCode OTF2_GlobalDefReaderCallback_Attribute(void *userData, 
-                    OTF2_AttributeRef self, OTF2_StringRef name, OTF2_Type type);
+                    OTF2_AttributeRef self, OTF2_StringRef name, OTF2_StringRef description,
+                    OTF2_Type type);
             static OTF2_CallbackCode OTF2_GlobalDefReaderCallback_ClockProperties(void *userData, 
                     uint64_t timerResolution, uint64_t globalOffset, uint64_t traceLength);
             static OTF2_CallbackCode  OTF2_GlobalDefReaderCallback_LocationGroup(void *userData,
@@ -149,15 +220,14 @@ namespace cdm
                     OTF2_StringRef description, OTF2_RegionRole regionRole, OTF2_Paradigm paradigm,
                     OTF2_RegionFlag regionFlags, OTF2_StringRef sourceFile, uint32_t beginLineNumber,
                     uint32_t endLineNumber);
+            static OTF2_CallbackCode OTF2_GlobalDefReaderCallback_SystemTreeNode(void *userData, 
+                    OTF2_SystemTreeNodeRef self, OTF2_StringRef name, OTF2_StringRef className, 
+                    OTF2_SystemTreeNodeRef parent);
+            static OTF2_CallbackCode OTF2_GlobalDefReaderCallback_SystemTreeNodeProperty(void *userData, 
+                    OTF2_SystemTreeNodeRef systemTreeNode, OTF2_StringRef name, OTF2_StringRef value);
+            static OTF2_CallbackCode OTF2_GlobalDefReaderCallback_SystemTreeNodeDomain(void *userData, 
+                    OTF2_SystemTreeNodeRef systemTreeNode, OTF2_SystemTreeDomain systemTreeDomain);
             
-            static OTF2_CallbackCode GlobDefLocation_Register1( void* userdata, OTF2_LocationRef location,
-                    OTF2_StringRef name,  OTF2_LocationType type, uint64_t time, OTF2_LocationGroupRef group);
-            static OTF2_CallbackCode Enter_print( OTF2_LocationRef location, OTF2_TimeStamp time, void* userData,
-                    OTF2_AttributeList* attributes, OTF2_RegionRef region );
-            static OTF2_CallbackCode Leave_print( OTF2_LocationRef location, OTF2_TimeStamp time, void* userData, 
-                    OTF2_AttributeList* attributes, OTF2_RegionRef region );
-            
-
             void setEventCallbacks(OTF2_GlobalEvtReaderCallbacks* evtReaderCallbacks);
 
             uint32_t mpiRank;
@@ -176,10 +246,18 @@ namespace cdm
             IdNameTokenMap functionNameTokenMap;
             TokenNameMap definitionTokenStringMap;
             GroupIdGroupMap groupMap;
+            std::list<OTF2Region> regionList;
+            std::list<OTF2Location> locationList;
+            std::list<OTF2LocationGroup> locationGroupList;
+            std::list<OTF2SystemTreeNode> systemTreeNodeList;
+            std::list<OTF2SystemTreeNodeDomain> systemTreeNodeDomainList;
+            std::list<OTF2SystemTreeNodeProperty> systemTreeNodePropertyList;
+            std::list<OTF2Attribute> attributeList;
             
             ProcessGroupMap processGroupMap;
             uint64_t ticksPerSecond;
             uint64_t timerOffset;
+            uint64_t traceLength;
             
             int processingPhase;
         };

@@ -42,10 +42,7 @@ namespace cdm
             virtual void writeRMANode(const Node *node, uint64_t prevRank,
                     uint64_t nextRank) = 0;
             
-            virtual void *getWriteObject(uint32_t id)
-            {
-                return NULL;
-            }
+            virtual void *getWriteObject(uint64_t id) = 0;
 
         protected:
             uint32_t mpiRank, mpiSize;

@@ -76,7 +76,7 @@ namespace cdm
             std::string getFunctionName(uint64_t id);
             std::string getProcessName(uint64_t id);
             std::vector<uint32_t> getKeys(const std::string keyName);
-            uint32_t getFirstKey(const std::string keyName);
+            int32_t getFirstKey(const std::string keyName);
             uint64_t getTimerResolution();
             uint64_t getTimerOffset();
             void setTimerResolution(uint64_t ticksPerSecond);
