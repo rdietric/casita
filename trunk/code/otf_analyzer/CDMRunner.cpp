@@ -571,7 +571,8 @@ void CDMRunner::mergeActivityGroups(ActivityGroupMap& activityGroupMap, bool cpK
         {
             // update
             groupIter->second.numInstances++;
-            groupIter->second.totalBlame += blameStatCtr + blameLocalCtr;
+            if(cpTimeCtr)
+                groupIter->second.totalBlame += blameStatCtr + blameLocalCtr;
             groupIter->second.totalDuration += activity->getDuration();
             groupIter->second.totalDurationOnCP += cpTimeCtr;
         } else
@@ -579,7 +580,8 @@ void CDMRunner::mergeActivityGroups(ActivityGroupMap& activityGroupMap, bool cpK
             activityGroupMap[fId].functionId = fId;
             activityGroupMap[fId].numInstances = 1;
             activityGroupMap[fId].numUnifyProcesses = 1;
-            activityGroupMap[fId].totalBlame = blameStatCtr + blameLocalCtr;
+            if(cpTimeCtr)
+                activityGroupMap[fId].totalBlame = blameStatCtr + blameLocalCtr;
             activityGroupMap[fId].totalDuration = activity->getDuration();
             activityGroupMap[fId].totalDurationOnCP = cpTimeCtr;
         }

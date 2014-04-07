@@ -9,6 +9,7 @@
 #include <stack>
 #include <cstring>
 #include <list>
+#include <algorithm>
 #include "common.hpp"
 #include "otf/OTF2TraceReader.hpp"
 
@@ -399,15 +400,23 @@ OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group(void *user
 {
     OTF2TraceReader *tr = (OTF2TraceReader*) userData;
 
+    uint64_t *myMembers;
+    myMembers = new uint64_t[numberOfMembers];
+    
+    for(uint32_t i=0;i<numberOfMembers;i++)
+    {
+        myMembers[i]=members[i];
+    }
+    
     OTF2Group myGroup;
     myGroup.groupId = self;
-    myGroup.members = members;
+    myGroup.members = myMembers;
     myGroup.numberOfMembers = numberOfMembers;
     myGroup.paradigm = paradigm;
     myGroup.stringRef = name;
     
     tr->getGroupMap()[self] = myGroup;
-    
+
     if((groupType == OTF2_GROUP_TYPE_COMM_LOCATIONS) && (paradigm == OTF2_PARADIGM_MPI))
     {
         uint32_t mpiRank = tr->getMPIRank();
