@@ -41,7 +41,7 @@ namespace cdm
                 uint32_t numberOfMembers;
                 uint8_t paradigm;
                 uint8_t groupType;
-                const uint64_t *members;
+                uint64_t *members;
             } OTF2Group;
             
             typedef struct 
