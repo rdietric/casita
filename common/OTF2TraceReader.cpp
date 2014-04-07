@@ -29,6 +29,7 @@ reader(NULL),
 ticksPerSecond(1),
 timerOffset(0),
 traceLength(0),
+ompParallelRegionRef(0),
 processingPhase(0)
 {
 
@@ -146,7 +147,7 @@ void OTF2TraceReader::open(const std::string otfFilename, uint32_t maxFiles)
    reader = OTF2_Reader_Open(baseFilename.c_str());
    
    // \todo remove this again -> just for reading serially -> one process after the other
-   //OTF2_Reader_SetSerialCollectiveCallbacks(reader);
+   OTF2_Reader_SetSerialCollectiveCallbacks(reader);
    
    if (!reader)
         throw RTException("Failed to open OTF2 trace file %s", baseFilename.c_str());
@@ -189,6 +190,8 @@ void OTF2TraceReader::readEvents()
     OTF2_GlobalEvtReaderCallbacks_SetMpiCollectiveEndCallback( event_callbacks, &otf2Callback_MpiCollectiveEnd );
     OTF2_GlobalEvtReaderCallbacks_SetMpiRecvCallback(event_callbacks, &otf2Callback_MpiRecv );
     OTF2_GlobalEvtReaderCallbacks_SetMpiSendCallback(event_callbacks, &otf2Callback_MpiSend );
+    OTF2_GlobalEvtReaderCallbacks_SetThreadForkCallback(event_callbacks, &OTF2_GlobalEvtReaderCallback_ThreadFork);
+    OTF2_GlobalEvtReaderCallbacks_SetThreadJoinCallback(event_callbacks, &OTF2_GlobalEvtReaderCallback_ThreadJoin);
     OTF2_Reader_RegisterGlobalEvtCallbacks( reader, global_evt_reader, event_callbacks, this );
     OTF2_GlobalEvtReaderCallbacks_Delete( event_callbacks );
     
@@ -227,6 +230,8 @@ void OTF2TraceReader::readEventsForProcess(uint64_t id)
     OTF2_GlobalEvtReaderCallbacks_SetMpiCollectiveEndCallback( event_callbacks, &otf2Callback_MpiCollectiveEnd );
     OTF2_GlobalEvtReaderCallbacks_SetMpiRecvCallback(event_callbacks, &otf2Callback_MpiRecv );
     OTF2_GlobalEvtReaderCallbacks_SetMpiSendCallback(event_callbacks, &otf2Callback_MpiSend );
+    OTF2_GlobalEvtReaderCallbacks_SetThreadForkCallback(event_callbacks, &OTF2_GlobalEvtReaderCallback_ThreadFork);
+    OTF2_GlobalEvtReaderCallbacks_SetThreadJoinCallback(event_callbacks, &OTF2_GlobalEvtReaderCallback_ThreadJoin);
     OTF2_Reader_RegisterGlobalEvtCallbacks( reader, global_evt_reader, event_callbacks, this );
     OTF2_GlobalEvtReaderCallbacks_Delete( event_callbacks );
     
@@ -310,6 +315,12 @@ void OTF2TraceReader::readDefinitions()
     OTF2_Reader_ReadAllGlobalDefinitions( reader, global_def_reader, &definitions_read );
     
     printf("Read %lu definitions in Phase 2 \n ", definitions_read);
+    
+    // add "parallel Region" - region to support internal OMP-fork/join model
+    uint32_t stringSize = definitionTokenStringMap.size();
+    definitionTokenStringMap[stringSize]="parallel region";
+    ompParallelRegionRef = functionNameTokenMap.size();
+    functionNameTokenMap[ompParallelRegionRef] = stringSize;
 }
 
 
@@ -635,21 +646,23 @@ OTF2_CallbackCode OTF2TraceReader::otf2Callback_MpiSend(OTF2_LocationRef locatio
     return OTF2_CALLBACK_SUCCESS;
 }
 
-OTF2_CallbackCode OTF2TraceReader::otf2Callback_OmpFork(OTF2_LocationRef locationID,    
+OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadFork(OTF2_LocationRef locationID,    
         OTF2_TimeStamp time, void *userData, OTF2_AttributeList *attributeList,      
-        uint32_t numberOfRequestedThreads)
+        OTF2_Paradigm paradigm, uint32_t numberOfRequestedThreads)
 {
-    //\TODO implement
-    return OTF2_CALLBACK_SUCCESS;
+    OTF2TraceReader *tr = (OTF2TraceReader*) userData;
+    
+    return OTF2TraceReader::otf2CallbackEnter(locationID, time, userData, attributeList, tr->getOmpRegionRef());
 }
     
-OTF2_CallbackCode OTF2TraceReader::otf2Callback_OmpJoin(OTF2_LocationRef locationID, 
-        OTF2_TimeStamp time, void *userData, OTF2_AttributeList *attributeList){
+OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadJoin(OTF2_LocationRef locationID, 
+        OTF2_TimeStamp time, void *userData, OTF2_AttributeList *attributeList,
+        OTF2_Paradigm paradigm)
+{
+    OTF2TraceReader *tr = (OTF2TraceReader*) userData;
     
-    //\TODO implement
-    return OTF2_CALLBACK_SUCCESS;
+    return OTF2TraceReader::otf2CallbackLeave(locationID, time, userData, attributeList, tr->getOmpRegionRef());
 }
-
 
 std::string OTF2TraceReader::getStringRef(Token t)
 {
@@ -690,6 +703,11 @@ uint64_t OTF2TraceReader::getTraceLength()
 void OTF2TraceReader::setTraceLength(uint64_t length)
 {
     this->traceLength = length;
+}
+
+uint32_t OTF2TraceReader::getOmpRegionRef()
+{
+    return ompParallelRegionRef;
 }
 
 uint32_t OTF2TraceReader::getMPIRank()

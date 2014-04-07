@@ -162,6 +162,7 @@ namespace cdm
             void setTimerOffset(uint64_t offset);
             uint64_t getTraceLength();
             void setTraceLength(uint64_t length);
+            uint32_t getOmpRegionRef();
             bool isChildOf(uint64_t child, uint64_t parent);
             int getProcessingPhase();
 
@@ -184,12 +185,12 @@ namespace cdm
                     OTF2_TimeStamp time, void *userData, OTF2_AttributeList *attributeList, 
                     uint32_t receiver, OTF2_CommRef communicator, uint32_t msgTag, 
                     uint64_t msgLength);
-            static OTF2_CallbackCode otf2Callback_OmpFork(OTF2_LocationRef locationID, 
+            static OTF2_CallbackCode OTF2_GlobalEvtReaderCallback_ThreadFork(OTF2_LocationRef locationID, 
                     OTF2_TimeStamp time, void *userData, OTF2_AttributeList *attributeList, 
-                    uint32_t numberOfRequestedThreads);
-            static OTF2_CallbackCode otf2Callback_OmpJoin(OTF2_LocationRef locationID, 
-                    OTF2_TimeStamp time, void *userData, OTF2_AttributeList *attributeList);
-
+                    OTF2_Paradigm paradigm, uint32_t numberOfRequestedThreads);
+            static OTF2_CallbackCode OTF2_GlobalEvtReaderCallback_ThreadJoin(OTF2_LocationRef locationID, 
+                    OTF2_TimeStamp time, void *userData, OTF2_AttributeList *attributeList, 
+                    OTF2_Paradigm paradigm);
 
             // Definition callbacks
             static OTF2_CallbackCode GlobDefLocation_Register(void* userData, 
@@ -258,6 +259,7 @@ namespace cdm
             uint64_t ticksPerSecond;
             uint64_t timerOffset;
             uint64_t traceLength;
+            uint32_t ompParallelRegionRef;
             
             int processingPhase;
         };

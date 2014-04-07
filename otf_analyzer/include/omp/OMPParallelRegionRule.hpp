@@ -72,7 +72,7 @@ namespace cdm
                 {
                     Process *p = *pIter;
                     GraphNode* kernel = analysis->getOmpCompute(p->getId());
-                    if ((kernel != NULL))
+                    if ((kernel != NULL) && (kernel->getProcessId() != parallelRegionSecond->getProcessId()))
                     {
                         analysis->newEdge(kernel, parallelRegionSecond);
                     }

@@ -12,8 +12,8 @@
 #include <inttypes.h>
 
 // following adjustments necessary to use MPI_Collectives
-#define OTF2_MPI_UINT64 MPI_UNSIGNED_LONG
-#define OTF2_MPI_INT64  MPI_LONG
+#define OTF2_MPI_UINT64_T MPI_UNSIGNED_LONG
+#define OTF2_MPI_INT64_T  MPI_LONG
 
 #include "otf2/OTF2_MPI_Collectives.h"
 #include "otf/OTF2ParallelTraceWriter.hpp"
@@ -392,12 +392,24 @@ void OTF2ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
     { 
         if (node->isEnter())
         {
-            OTF2_CHECK(OTF2_EvtWriter_Enter(evt_writer, NULL, nodeTime,
+            if(node->isOMPParallelRegion())
+            {
+                OTF2_CHECK(OTF2_EvtWriter_ThreadFork(evt_writer, NULL, nodeTime,OTF2_PARADIGM_OPENMP, 1))
+            } else
+            {
+                OTF2_CHECK(OTF2_EvtWriter_Enter(evt_writer, NULL, nodeTime,
                     node->getFunctionId()));
+            }
         } else
         {
-            OTF2_CHECK(OTF2_EvtWriter_Leave(evt_writer, NULL, nodeTime,
+            if(node->isOMPParallelRegion())
+            {
+                OTF2_CHECK(OTF2_EvtWriter_ThreadJoin(evt_writer, NULL, nodeTime, OTF2_PARADIGM_OPENMP))
+            } else
+            {
+                OTF2_CHECK(OTF2_EvtWriter_Leave(evt_writer, NULL, nodeTime,
                     node->getFunctionId()));
+            }
         }
     }
     
@@ -412,8 +424,6 @@ void OTF2ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
         if (counter->isInternal)
             continue;
 
-//        OTF2_EvtWriter *m_evt_writer = evt_writerMap[ctrIdLocationMetricLocationMap[otf2CtrId][processId]];
-        
         CounterType ctrType = counter->type;
         if (ctrType == CTR_WAITSTATE_LOG10 || ctrType == CTR_BLAME_LOG10)
             continue;
@@ -435,18 +445,9 @@ void OTF2ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
                 OTF2_MetricValue values[1];
                 values[0].unsigned_int = ctrValLog10;
 
-//                printf("[%u] Writing Counter WAITSTATE %u on process %lu at time %lu \n", mpiRank, 
-//                            processCtrInstanceMap[processId][ctrTable.getCtrId(CTR_WAITSTATE_LOG10)],
-//                            processId, nodeTime);
-//                OTF2_CHECK(OTF2_EvtWriter_Metric(m_evt_writer,NULL, nodeTime,
-//                        processCtrInstanceMap[processId][otf2CounterMapping[ctrTable.getCtrId(CTR_WAITSTATE_LOG10)]],
-//                        1,types,values));
                 OTF2_CHECK(OTF2_EvtWriter_Metric(evt_writer,NULL, nodeTime,
                         otf2CounterMapping[ctrTable.getCtrId(CTR_WAITSTATE_LOG10)],
                         1,types,values));
-
-                //OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
-                //    processId, ctrTable.getCtrId(CTR_WAITSTATE_LOG10), ctrValLog10));
             }
 
             if (ctrType == CTR_BLAME)
@@ -459,19 +460,9 @@ void OTF2ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
                 OTF2_MetricValue values[1];
                 values[0].unsigned_int = ctrValLog10;
 
-//                printf("[%u] Writing Counter BLAME %u on process %lu at time %lu \n", mpiRank, 
-//                            processCtrInstanceMap[processId][ctrTable.getCtrId(CTR_BLAME_LOG10)],
-//                            processId, nodeTime);
-                
-//                OTF2_CHECK(OTF2_EvtWriter_Metric(m_evt_writer,NULL, nodeTime,
-//                        processCtrInstanceMap[processId][otf2CounterMapping[ctrTable.getCtrId(CTR_BLAME_LOG10)]],
-//                        1,types,values));
                  OTF2_CHECK(OTF2_EvtWriter_Metric(evt_writer,NULL, nodeTime,
                         otf2CounterMapping[ctrTable.getCtrId(CTR_BLAME_LOG10)],
                         1,types,values));
-
-                //OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
-                //    processId, ctrTable.getCtrId(CTR_BLAME_LOG10), ctrValLog10));
             }
 
             if (ctrType == CTR_CRITICALPATH_TIME)
@@ -489,14 +480,8 @@ void OTF2ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
             OTF2_MetricValue values[1];
             values[0].unsigned_int = ctrVal;
 
-//            printf("[%u] Writing Counter %u on process %lu  at time %lu\n", mpiRank, 
-//                           processCtrInstanceMap[processId][ctrId],
-//                            processId, nodeTime);
             OTF2_CHECK(OTF2_EvtWriter_Metric(evt_writer, NULL, nodeTime,
                     otf2CtrId, 1, types, values));
-
-            //OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
-            //        processId, ctrId, ctrVal));
 
             if ((ctrType == CTR_CRITICALPATH) && (ctrVal == 1) && node->isGraphNode()) 
             {        
@@ -506,30 +491,20 @@ void OTF2ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
                     OTF2_MetricValue values[1];
                     values[0].unsigned_int = 0;
 
-//                    printf("[%u] Writing Counter CP %u on process %lu  at time %lu\n", mpiRank, 
-//                            processCtrInstanceMap[processId][ctrId],
-//                            processId, nodeTime);
                     OTF2_CHECK(OTF2_EvtWriter_Metric(evt_writer, NULL, nodeTime,
                             otf2CtrId, 1, types, values));
-                    //OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
-                    //        processId, ctrId, 0));
                 }
 
                 // make critical path stop in current process if next cp node in different process
                 if((node->isLeave()) && (futureNode != NULL) && 
-                        ((uint32_t)futureNode->getProcessId() != processId))
+                        (futureNode->getProcessId() != processId))
                 {
                     OTF2_Type types[1] = {OTF2_TYPE_UINT64};
                     OTF2_MetricValue values[1];
                     values[0].unsigned_int = 0;
 
-//                    printf("[%u] Writing Counter CP %u on process %lu at time %lu \n", mpiRank, 
-//                            processCtrInstanceMap[processId][ctrId],
-//                            processId, nodeTime);
                     OTF2_CHECK(OTF2_EvtWriter_Metric(evt_writer, NULL, nodeTime,
                             otf2CtrId, 1, types, values));
-                    //    OTF_CHECK(OTF_WStream_writeCounter(wstream, node->getTime(),
-                  //          processId, ctrId, 0));
                 }
             } 
         }

@@ -864,8 +864,8 @@ void CDMRunner::getCriticalLocalSections(MPIAnalysis::CriticalPathSection *secti
         MPIAnalysis::CriticalSectionsMap& sectionsMap)
 {
     uint32_t mpiRank = analysis.getMPIRank();
-    Graph *subGraph = analysis.getGraph(PARADIGM_COMPUTE_LOCAL);
-
+    Graph *subGraph = analysis.getGraph(PARADIGM_ALL);
+    
     omp_lock_t localNodesLock;
     omp_init_lock(&localNodesLock);
 
