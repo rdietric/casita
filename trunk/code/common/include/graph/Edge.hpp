@@ -143,8 +143,7 @@ namespace cdm
 
         bool isIntraProcessEdge() const
         {
-            return pair.first->isLeave() &&
-                    (pair.first->getProcessId() == pair.second->getProcessId());
+            return pair.first->getProcessId() == pair.second->getProcessId();
         }
 
         bool isInterProcessEdge() const

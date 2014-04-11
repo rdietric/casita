@@ -19,6 +19,10 @@ namespace cdm
         static bool processWalkCallback(void *userData, GraphNode* node)
         {
             ProcessWalkInfo *listAndWaitTime = (ProcessWalkInfo*) userData;
+            
+            listAndWaitTime->list.push_back(node);
+            listAndWaitTime->waitStateTime += node->getCounter(CTR_WAITSTATE, NULL);
+            
             if (listAndWaitTime->list.size() > 0)
             {
                 if (node->getTime() < listAndWaitTime->list.back()->getTime() &&
@@ -27,9 +31,6 @@ namespace cdm
                     return false;
                 }
             }
-            
-            listAndWaitTime->list.push_back(node);
-            listAndWaitTime->waitStateTime += node->getCounter(CTR_WAITSTATE, NULL);
             
             if (node->isProcess() || (node->isLeave() && node->isOMPSync()))
                 return false;
