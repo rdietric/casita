@@ -118,10 +118,11 @@ namespace cdm
 
             typedef std::map<Token, ProcessGroup*> ProcessGroupMap;
 
-            OTF2TraceReader(void *userData, uint32_t mpiRank);
+            OTF2TraceReader(void *userData, uint32_t mpiRank, uint32_t mpiSize);
             ~OTF2TraceReader();
 
             uint32_t getMPIRank();
+            uint32_t getMPISize();
             uint64_t getMPIProcessId();
             void setMPIProcessId(uint64_t processId);
 
@@ -232,6 +233,7 @@ namespace cdm
             void setEventCallbacks(OTF2_GlobalEvtReaderCallbacks* evtReaderCallbacks);
 
             uint32_t mpiRank;
+            uint32_t mpiSize;
             uint64_t mpiProcessId;
             IdTokenMap processRankMap; // maps (parent) process ID to MPI rank
             TokenTokenMap64 processFamilyMap; // tracks for each process its direct parent

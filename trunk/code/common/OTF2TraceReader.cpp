@@ -22,9 +22,10 @@
 
 using namespace cdm::io;
 
-OTF2TraceReader::OTF2TraceReader(void *userData, uint32_t mpiRank) :
+OTF2TraceReader::OTF2TraceReader(void *userData, uint32_t mpiRank, uint32_t mpiSize) :
 ITraceReader(userData),
 mpiRank(mpiRank),
+mpiSize(mpiSize),
 mpiProcessId(1),
 reader(NULL),
 ticksPerSecond(1),
@@ -377,8 +378,11 @@ OTF2_CallbackCode OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(void *u
         }
 
         // skip all processes but the mapping MPI master process and its children
-        if (self != tr->getMPIProcessId() && (!tr->isChildOf(self, tr->getMPIProcessId())))
-            return OTF2_CALLBACK_SUCCESS;
+        if (tr->getMPISize() > 1)
+        {
+            if (self != tr->getMPIProcessId() && (!tr->isChildOf(self, tr->getMPIProcessId())))
+                return OTF2_CALLBACK_SUCCESS;
+        }
 
         //Locations are processes
         tr->getProcessNameTokenMap()[self] = name;
@@ -722,6 +726,11 @@ uint32_t OTF2TraceReader::getOmpRegionRef()
 uint32_t OTF2TraceReader::getMPIRank()
 {
     return mpiRank;
+}
+
+uint32_t OTF2TraceReader::getMPISize()
+{
+    return mpiSize;
 }
 
 std::string OTF2TraceReader::getKeyName(uint32_t id)
