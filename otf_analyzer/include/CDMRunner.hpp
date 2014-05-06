@@ -101,6 +101,8 @@ namespace cdm
         void getOptFactors(char *optKernels, std::map<uint64_t, double>& optFactors);
 
         // critical path
+        void getLocalCriticalPath(Process::SortedGraphNodeList &criticalNodes,
+                GraphNode *startNode, GraphNode *lastNode, Graph &subGraph);
         void getCriticalPathIntern(GraphNode *start, GraphNode *end,
                 Process::SortedGraphNodeList& cpNodes, Graph& subGraph);
         void getCriticalLocalSections(MPIAnalysis::CriticalPathSection *sections,

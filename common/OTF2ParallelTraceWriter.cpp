@@ -209,7 +209,7 @@ void OTF2ParallelTraceWriter::open(const std::string otfFilename, uint32_t maxFi
     //OTF2_Archive_SetCollectiveCallbacks( archive, &userData->callbacks, userData, &userData->global,&userData->local);
     
     // read old OTF2-definitions
-    tr = new OTF2TraceReader(this, mpiRank);
+    tr = new OTF2TraceReader(this, mpiRank, mpiSize);
     tr->open(originalFilename,100);
     tr->readDefinitions();
     
