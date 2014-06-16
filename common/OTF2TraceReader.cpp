@@ -801,7 +801,7 @@ OTF2_CallbackCode OTF2TraceReader::otf2CallbackComm_MpiCollectiveEnd(OTF2_Locati
     collE.root = root;
     collE.sizeReceived = sizeReceived;
     collE.sizeSent = sizeSent;
-    collE.attributeList = attributeList;
+    collE.attributeList = NULL;
     tr->getMpiCollEndList(locationID).push_back(collE);
     
     return OTF2_CALLBACK_SUCCESS;
@@ -821,7 +821,7 @@ OTF2_CallbackCode OTF2TraceReader::otf2CallbackComm_MpiCollectiveBegin(OTF2_Loca
     OTF2MpiCollBegin collB;
     collB.location = location;
     collB.time = time;
-    collB.attributeList = attributeList;
+    collB.attributeList = NULL;
 
     tr->getMpiCollBeginList(location).push_back(collB);
    
@@ -844,7 +844,7 @@ OTF2_CallbackCode OTF2TraceReader::otf2CallbackComm_RmaWinCreate(OTF2_LocationRe
     rmaWC.location = location;
     rmaWC.time = time;
     rmaWC.win = win;
-    rmaWC.attributeList = attributeList;
+    rmaWC.attributeList = NULL;
    
     tr->getRmaWinCreateList(location).push_back(rmaWC);
     
@@ -866,7 +866,7 @@ OTF2_CallbackCode OTF2TraceReader::otf2CallbackComm_RmaWinDestroy(OTF2_LocationR
     rmaWD.location = location;
     rmaWD.time = time;
     rmaWD.win = win;
-    rmaWD.attributeList = attributeList;
+    rmaWD.attributeList = NULL;
     tr->getRmaWinDestroyList(location).push_back(rmaWD);
    
     return OTF2_CALLBACK_SUCCESS;
@@ -891,7 +891,7 @@ OTF2_CallbackCode OTF2TraceReader::otf2CallbackComm_RmaPut(OTF2_LocationRef loca
     rmaP.remote = remote;
     rmaP.bytes = bytes;
     rmaP.matchingId = matchingId;
-    rmaP.attributeList = attributeList;
+    rmaP.attributeList = NULL;
     tr->getRmaPutList(location).push_back(rmaP);
    
     return OTF2_CALLBACK_SUCCESS;
@@ -914,7 +914,7 @@ OTF2_CallbackCode OTF2TraceReader::otf2CallbackComm_RmaOpCompleteBlocking(OTF2_L
     rmaOCB.time = time;
     rmaOCB.win = win;
     rmaOCB.matchingId = matchingId;
-    rmaOCB.attributeList = attributeList;
+    rmaOCB.attributeList = NULL;
     
     tr->getRmaOpCompleteBlockingList(location).push_back(rmaOCB);
     
@@ -940,7 +940,7 @@ OTF2_CallbackCode OTF2TraceReader::otf2CallbackComm_RmaGet(OTF2_LocationRef loca
     rmaG.remote = remote;
     rmaG.bytes = bytes;
     rmaG.matchingId = matchingId;
-    rmaG.attributeList = attributeList;
+    rmaG.attributeList = NULL;
    
     tr->getRmaGetList(location).push_back(rmaG);
     
@@ -959,7 +959,7 @@ OTF2_CallbackCode OTF2TraceReader::otf2CallbackComm_ThreadTeamBegin(OTF2_Locatio
     tr->getCommEventList(locationID).push_back(commEvent);
     
     OTF2ThreadTeamBegin TTB;
-    TTB.attributeList = attributeList;
+    TTB.attributeList = NULL;
     TTB.locationID = locationID;
     TTB.threadTeam = threadTeam;
     TTB.time = time;
@@ -981,7 +981,7 @@ OTF2_CallbackCode OTF2TraceReader::otf2CallbackComm_ThreadTeamEnd(OTF2_LocationR
     tr->getCommEventList(locationID).push_back(commEvent);
     
     OTF2ThreadTeamEnd TTE;
-    TTE.attributeList = attributeList;
+    TTE.attributeList = NULL;
     TTE.locationID = locationID;
     TTE.threadTeam = threadTeam;
     TTE.time = time;
