@@ -13,6 +13,7 @@
 #include <map>
 #include <stack>
 #include "otf/IParallelTraceWriter.hpp"
+#include "OTF1TraceReader.hpp"
 
 namespace cdm
 {
@@ -48,6 +49,8 @@ namespace cdm
             void writeRMANode(const Node *node, uint64_t prevProcessId,
                     uint64_t nextProcessId);
             
+            void writeRemainingCommEvents();
+            
             void *getWriteObject(uint64_t id);
         private:
             uint32_t totalNumStreams;
@@ -61,6 +64,8 @@ namespace cdm
             OTF_FileManager* fileMgr;
             OTF_KeyValueList *kvList;
             OTF_Writer *globalWriter;
+            
+            OTF1TraceReader *tr;
 
             std::map<uint32_t, OTF_WStream_ptr> processWStreamMap;
             std::vector<uint32_t> deviceProcesses;

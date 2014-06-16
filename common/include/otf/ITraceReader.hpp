@@ -69,6 +69,7 @@ namespace cdm
             virtual void readEvents() = 0;
             virtual void readEventsForProcess(uint64_t id) = 0;
             virtual void readDefinitions() = 0;
+            virtual void readCommunication() = 0;
 
             virtual std::string getKeyName(uint32_t id) = 0;
             virtual std::string getFunctionName(uint64_t id) = 0;

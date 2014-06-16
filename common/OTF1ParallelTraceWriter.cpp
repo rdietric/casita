@@ -225,10 +225,23 @@ void OTF1ParallelTraceWriter::open(const std::string otfFilename, uint32_t maxFi
     }
 
     MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+    
+    // read old OTF1-Communication
+    tr = new OTF1TraceReader(this, mpiRank);
+    
+    std::cout << originalFilename << std::endl;
+
+    tr->open(originalFilename,100);
+    tr->readCommunication();
+    
+    MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 }
 
 void OTF1ParallelTraceWriter::close()
 {
+    
+    tr->close();
+    
     // close global writer
     if (mpiRank == 0)
     {
@@ -282,7 +295,82 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
     uint32_t processId = (uint32_t)node->getProcessId();
     OTF_WStream_ptr wstream = processWStreamMap[processId];
     uint64_t nodeTime = node->getTime();
+    uint64_t commEventTime = tr->getCurrentCommEventTime(processId);
+    OTF1TraceReader::OTF1CommEvent commEvent;
+    bool writeCommAfterwards = false;
 
+    // Is there a commEvent that needs to be written before I write my event?
+    while(commEventTime <= nodeTime && commEventTime > 0)
+    {
+        commEvent = tr->getCurrentCommEvent(processId);
+        
+        if(commEventTime == nodeTime && (commEvent.type == OTF1TraceReader::OTF1_COLL_BEGIN 
+                || commEvent.type == OTF1TraceReader::OTF1_SEND_MSG
+                || commEvent.type == OTF1TraceReader::OTF1_RMA_END))
+        {
+            writeCommAfterwards = true;
+            break;
+        }
+        
+        switch(commEvent.type)
+        {
+            case OTF1TraceReader::OTF1_COLL_END:
+            {
+                OTF1TraceReader::OTF1CollEndOp ce = tr->getCollEndList(processId)[commEvent.idInList];
+                OTF_CHECK(OTF_WStream_writeEndCollectiveOperationKV(wstream, ce.time, 
+                        ce.process, ce.matchingId, ce.list));
+                break;
+            }
+            
+            case OTF1TraceReader::OTF1_RECV_MSG:
+            {
+                OTF1TraceReader::OTF1RecvMsg rMsg = tr->getRecvMsgList(processId)[commEvent.idInList];
+                OTF_CHECK(OTF_WStream_writeRecvMsgKV(wstream, rMsg.time, rMsg.receiver, rMsg.sender,
+                        rMsg.group, rMsg.type, rMsg.length, rMsg.source, rMsg.list));
+                break;
+            }
+            
+            case OTF1TraceReader::OTF1_RMA_END:
+            {
+                OTF1TraceReader::OTF1RMAEnd rmaE = tr->getRmaEndList(processId)[commEvent.idInList];
+                OTF_CHECK(OTF_WStream_writeRMAEndKV(wstream, rmaE.time, rmaE.process, rmaE.remote, rmaE.communicator,
+                        rmaE.tag, rmaE.source, rmaE.list));
+                break;
+            }
+            case OTF1TraceReader::OTF1_RMA_GET:
+            {
+                OTF1TraceReader::OTF1RMAGet rmaG = tr->getRmaGetList(processId)[commEvent.idInList];
+                OTF_CHECK(OTF_WStream_writeRMAGetKV(wstream, rmaG.time, rmaG.process, rmaG.origin,
+                        rmaG.target, rmaG.communicator, rmaG.tag, rmaG.bytes, rmaG.source, rmaG.list));
+                break;
+            }
+            case OTF1TraceReader::OTF1_RMA_PUT:
+            {
+                OTF1TraceReader::OTF1RMAPut rmaP = tr->getRmaPutList(processId)[commEvent.idInList];
+                OTF_CHECK(OTF_WStream_writeRMAPutKV(wstream, rmaP.time, rmaP.process, rmaP.origin,
+                        rmaP.target, rmaP.communicator, rmaP.tag, rmaP.bytes, rmaP.source, rmaP.list));
+                break;
+            }
+            case OTF1TraceReader::OTF1_COLL_BEGIN:
+            {
+                OTF1TraceReader::OTF1CollBeginOp cb = tr->getCollBeginList(processId)[commEvent.idInList];
+                OTF_CHECK(OTF_WStream_writeBeginCollectiveOperationKV(wstream, cb.time, cb.process, cb.collOp,
+                        cb.matchingId, cb.procGroup, cb.rootProc, cb.sent, cb.received, cb.scltoken,
+                        cb.list));
+                break;
+            }
+            case OTF1TraceReader::OTF1_SEND_MSG:
+            {
+                OTF1TraceReader::OTF1SendMsg sMsg = tr->getSendMsgList(processId)[commEvent.idInList];
+                OTF_CHECK(OTF_WStream_writeSendMsgKV(wstream, sMsg.time, sMsg.sender, sMsg.receiver,
+                        sMsg.group, sMsg.type, sMsg.length, sMsg.source, sMsg.list));
+                break;
+            }
+        }
+
+        commEventTime = tr->getCurrentCommEventTime(processId);
+    }
+    
     if (node->isEnter() || node->isLeave())
     { 
         /*if (processTimeEndMap.find(processId) != processTimeEndMap.end())
@@ -404,6 +492,40 @@ void OTF1ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
             } 
         }
     }
+    
+    if(writeCommAfterwards)
+    {
+        switch(commEvent.type)
+        {
+            case OTF1TraceReader::OTF1_COLL_BEGIN:
+            {
+                OTF1TraceReader::OTF1CollBeginOp cb = tr->getCollBeginList(processId)[commEvent.idInList];
+                OTF_CHECK(OTF_WStream_writeBeginCollectiveOperationKV(wstream, cb.time, cb.process, cb.collOp,
+                        cb.matchingId, cb.procGroup, cb.rootProc, cb.sent, cb.received, cb.scltoken,
+                        cb.list));
+                break;
+            }
+            case OTF1TraceReader::OTF1_SEND_MSG:
+            {
+                OTF1TraceReader::OTF1SendMsg sMsg = tr->getSendMsgList(processId)[commEvent.idInList];
+                OTF_CHECK(OTF_WStream_writeSendMsgKV(wstream, sMsg.time, sMsg.sender, sMsg.receiver,
+                        sMsg.group, sMsg.type, sMsg.length, sMsg.source, sMsg.list));
+                break;
+            }
+            default: 
+                break;
+        }
+    }
+    
+}
+
+void OTF1ParallelTraceWriter::writeRemainingCommEvents()
+{
+    /* This function does not have to do anything. All the supported commEvents are written
+     * since there is an "endProcess"-event for each process.
+     * 
+     */
+      
 }
 
 void OTF1ParallelTraceWriter::writeRMANode(const Node *node,

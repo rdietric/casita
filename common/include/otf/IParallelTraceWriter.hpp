@@ -44,6 +44,8 @@ namespace cdm
             
             virtual void *getWriteObject(uint64_t id) = 0;
 
+            virtual void writeRemainingCommEvents() = 0;
+            
         protected:
             uint32_t mpiRank, mpiSize;
 
