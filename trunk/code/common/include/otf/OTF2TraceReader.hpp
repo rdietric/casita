@@ -41,8 +41,26 @@ namespace cdm
                 uint32_t numberOfMembers;
                 uint8_t paradigm;
                 uint8_t groupType;
+                OTF2_GroupFlag groupFlag;
                 uint64_t *members;
             } OTF2Group;
+            
+            typedef struct 
+            {
+                OTF2_CommRef self;
+                OTF2_StringRef name;
+                OTF2_GroupRef group;
+                OTF2_CommRef parent;
+                
+            } OTF2Comm;
+            
+            typedef struct
+            {
+                OTF2_RmaWinRef self;
+                OTF2_StringRef name; 
+                OTF2_CommRef comm;
+                
+            } OTF2RmaWin;
             
             typedef struct 
             {
@@ -104,6 +122,98 @@ namespace cdm
                 OTF2_Type type;
             } OTF2Attribute;
             
+            enum CommEventType {OTF2_MPI_COLL_BEGIN, OTF2_MPI_COLL_END, OTF2_RMA_WIN_CREATE, OTF2_RMA_WIN_DESTROY, 
+                    OTF2_RMA_OP_COMPLETE_BLOCKING, OTF2_RMA_GET, OTF2_RMA_PUT, OTF2_THREAD_TEAM_BEGIN, OTF2_THREAD_TEAM_END};
+            
+            typedef struct
+            {
+                CommEventType type;
+                uint32_t idInList;
+                uint64_t time;
+            } OTF2CommEvent;
+            
+            typedef struct
+            {
+                OTF2_LocationRef location;
+                OTF2_TimeStamp time; 
+                OTF2_AttributeList *attributeList;
+            } OTF2MpiCollBegin;
+            
+            typedef struct
+            {
+                OTF2_LocationRef locationID;
+                OTF2_TimeStamp time;
+                OTF2_AttributeList *attributeList;
+                OTF2_CollectiveOp collectiveOp;
+                OTF2_CommRef communicator; 
+                uint32_t root;
+                uint64_t sizeSent;
+                uint64_t sizeReceived;
+            } OTF2MpiCollEnd;
+            
+            typedef struct
+            {
+                OTF2_LocationRef location;
+                OTF2_TimeStamp time;
+                OTF2_AttributeList *attributeList;
+                OTF2_RmaWinRef win;
+            } OTF2RmaWinCreate;            
+
+            typedef struct
+            {
+                OTF2_LocationRef location;
+                OTF2_TimeStamp time;
+                OTF2_AttributeList *attributeList;
+                OTF2_RmaWinRef win;
+            } OTF2RmaWinDestroy;            
+
+            typedef struct
+            {
+                OTF2_LocationRef location;
+                OTF2_TimeStamp time;
+                OTF2_AttributeList *attributeList;
+                OTF2_RmaWinRef win;
+                uint64_t matchingId;
+            } OTF2RmaOpCompleteBlocking;            
+
+            typedef struct
+            {
+                OTF2_LocationRef location;
+                OTF2_TimeStamp time;
+                OTF2_AttributeList *attributeList;
+                OTF2_RmaWinRef win;
+                uint32_t remote;
+                uint64_t bytes;
+                uint64_t matchingId;
+            } OTF2RmaGet;            
+
+            typedef struct
+            {
+                OTF2_LocationRef location;
+                OTF2_TimeStamp time;
+                OTF2_AttributeList *attributeList;
+                OTF2_RmaWinRef win;
+                uint32_t remote;
+                uint64_t bytes;
+                uint64_t matchingId;
+            } OTF2RmaPut;       
+            
+            typedef struct
+            {
+                OTF2_LocationRef locationID;
+                OTF2_TimeStamp time;
+                OTF2_AttributeList *attributeList;
+                OTF2_CommRef threadTeam;
+            } OTF2ThreadTeamEnd;
+
+            typedef struct
+            {
+                OTF2_LocationRef locationID;
+                OTF2_TimeStamp time;
+                OTF2_AttributeList *attributeList;
+                OTF2_CommRef threadTeam;
+            } OTF2ThreadTeamBegin;
+            
             
             typedef uint32_t Token;
             typedef std::multimap<std::string, Token> NameTokenMap;
@@ -134,6 +244,7 @@ namespace cdm
             void readEvents();
             void readEventsForProcess(uint64_t id);
             void readDefinitions();
+            void readCommunication();
 
             NameTokenMap& getNameKeysMap();
             TokenNameMap& getKeyNameMap();
@@ -147,7 +258,22 @@ namespace cdm
             std::list<OTF2SystemTreeNode>& getSystemTreeNodeList();
             std::list<OTF2SystemTreeNodeDomain>& getSystemTreeNodeDomainList();
             std::list<OTF2SystemTreeNodeProperty>& getSystemTreeNodePropertyList();
+            std::list<OTF2Comm>& getCommList();
+            std::list<OTF2RmaWin>& getRmaWinList();
             std::list<OTF2Attribute>& getAttributeList();
+            
+            std::list<OTF2CommEvent>& getCommEventList(uint64_t processId);
+            OTF2CommEvent getCurrentCommEvent(uint64_t processId);
+            uint64_t getCurrentCommEventTime(uint64_t processId);
+            std::vector<OTF2MpiCollBegin>& getMpiCollBeginList(uint64_t processId);
+            std::vector<OTF2MpiCollEnd>& getMpiCollEndList(uint64_t processId);
+            std::vector<OTF2RmaWinCreate>& getRmaWinCreateList(uint64_t processId);
+            std::vector<OTF2RmaWinDestroy>& getRmaWinDestroyList(uint64_t processId);
+            std::vector<OTF2RmaOpCompleteBlocking>& getRmaOpCompleteBlockingList(uint64_t processId);
+            std::vector<OTF2RmaGet>& getRmaGetList(uint64_t processId);
+            std::vector<OTF2RmaPut>& getRmaPutList(uint64_t processId);
+            std::vector<OTF2ThreadTeamBegin>& getThreadTeamBeginList(uint64_t processId);
+            std::vector<OTF2ThreadTeamEnd>& getThreadTeamEndList(uint64_t processId);
 
             std::string getStringRef(Token t);
             std::string getKeyName(uint32_t id);
@@ -229,6 +355,42 @@ namespace cdm
                     OTF2_SystemTreeNodeRef systemTreeNode, OTF2_StringRef name, OTF2_StringRef value);
             static OTF2_CallbackCode OTF2_GlobalDefReaderCallback_SystemTreeNodeDomain(void *userData, 
                     OTF2_SystemTreeNodeRef systemTreeNode, OTF2_SystemTreeDomain systemTreeDomain);
+            static OTF2_CallbackCode OTF2_GlobalDefReaderCallback_RmaWin(void *userData, 
+                    OTF2_RmaWinRef self, OTF2_StringRef name, OTF2_CommRef comm);
+
+            
+            // communication callbacks
+            static OTF2_CallbackCode otf2CallbackComm_MpiCollectiveEnd(OTF2_LocationRef locationID,
+                    OTF2_TimeStamp time, void *userData, OTF2_AttributeList *attributeList,
+                    OTF2_CollectiveOp collectiveOp, OTF2_CommRef communicator, uint32_t root,
+                    uint64_t sizeSent, uint64_t sizeReceived);
+            
+            static OTF2_CallbackCode otf2CallbackComm_MpiCollectiveBegin(OTF2_LocationRef location, 
+                    OTF2_TimeStamp time, void *userData, OTF2_AttributeList *attributeList);
+            
+            static OTF2_CallbackCode otf2CallbackComm_RmaWinCreate(OTF2_LocationRef location, OTF2_TimeStamp time, 
+                    void *userData, OTF2_AttributeList *attributeList, OTF2_RmaWinRef win);
+            
+            static OTF2_CallbackCode otf2CallbackComm_RmaWinDestroy(OTF2_LocationRef location, OTF2_TimeStamp time, 
+                    void *userData, OTF2_AttributeList *attributeList, OTF2_RmaWinRef win);
+            
+            static OTF2_CallbackCode otf2CallbackComm_RmaPut(OTF2_LocationRef location, OTF2_TimeStamp time, 
+                    void *userData, OTF2_AttributeList *attributeList, OTF2_RmaWinRef win, 
+                    uint32_t remote, uint64_t bytes, uint64_t matchingId);
+
+            static OTF2_CallbackCode otf2CallbackComm_RmaOpCompleteBlocking(OTF2_LocationRef location, OTF2_TimeStamp time, 
+                    void *userData, OTF2_AttributeList *attributeList, OTF2_RmaWinRef win, 
+                    uint64_t matchingId);
+
+            static OTF2_CallbackCode otf2CallbackComm_RmaGet(OTF2_LocationRef location, OTF2_TimeStamp time,
+                    void *userData, OTF2_AttributeList *attributeList, 
+                    OTF2_RmaWinRef win, uint32_t remote, uint64_t bytes, uint64_t matchingId);
+            static OTF2_CallbackCode otf2CallbackComm_ThreadTeamBegin(OTF2_LocationRef locationID, 
+                    OTF2_TimeStamp time, void *userData, OTF2_AttributeList *attributeList, OTF2_CommRef threadTeam);
+            static OTF2_CallbackCode otf2CallbackComm_ThreadTeamEnd(OTF2_LocationRef locationID, 
+                    OTF2_TimeStamp time, void *userData, OTF2_AttributeList *attributeList, OTF2_CommRef threadTeam);
+
+            
             
             void setEventCallbacks(OTF2_GlobalEvtReaderCallbacks* evtReaderCallbacks);
 
@@ -256,6 +418,19 @@ namespace cdm
             std::list<OTF2SystemTreeNodeDomain> systemTreeNodeDomainList;
             std::list<OTF2SystemTreeNodeProperty> systemTreeNodePropertyList;
             std::list<OTF2Attribute> attributeList;
+            std::list<OTF2Comm> commList;
+            std::list<OTF2RmaWin> rmaWinList;
+            
+            std::map<uint64_t,std::list<OTF2CommEvent> > commEventListMap;
+            std::map<uint64_t,std::vector<OTF2MpiCollBegin> > mpiCollBeginListMap;
+            std::map<uint64_t,std::vector<OTF2MpiCollEnd> > mpiCollEndListMap;
+            std::map<uint64_t,std::vector<OTF2RmaWinCreate> > rmaWinCreateListMap;
+            std::map<uint64_t,std::vector<OTF2RmaWinDestroy> > rmaWinDestroyListMap;
+            std::map<uint64_t,std::vector<OTF2RmaOpCompleteBlocking> > rmaOpCompleteBlockingListMap;
+            std::map<uint64_t,std::vector<OTF2RmaGet> > rmaGetListMap;
+            std::map<uint64_t,std::vector<OTF2RmaPut> > rmaPutListMap;
+            std::map<uint64_t,std::vector<OTF2ThreadTeamBegin> > threadTeamBeginListMap;
+            std::map<uint64_t,std::vector<OTF2ThreadTeamEnd> > threadTeamEndListMap;
             
             ProcessGroupMap processGroupMap;
             uint64_t ticksPerSecond;

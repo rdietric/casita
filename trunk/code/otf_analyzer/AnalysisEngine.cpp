@@ -571,6 +571,8 @@ void AnalysisEngine::saveParallelAllocationToFile(std::string filename,
         }
     }
     
+    writer->writeRemainingCommEvents();
+    
     writer->close();
     delete writer;
 }

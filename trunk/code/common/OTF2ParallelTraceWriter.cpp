@@ -296,7 +296,35 @@ void OTF2ParallelTraceWriter::open(const std::string otfFilename, uint32_t maxFi
                     iter->regionFlags, iter->sourceFile, iter->beginLineNumber, iter->endLineNumber));
         }
         
-        // write Attributes
+        // write groups
+        OTF2TraceReader::GroupIdGroupMap gMap = tr->getGroupMap();
+        for(OTF2TraceReader::GroupIdGroupMap::const_iterator iter = gMap.begin();
+                iter != gMap.end(); iter++)
+        {
+            OTF2_CHECK(OTF2_GlobalDefWriter_WriteGroup(global_def_writer,iter->second.groupId,iter->second.stringRef,
+                    iter->second.groupType,iter->second.paradigm, iter->second.groupFlag, iter->second.numberOfMembers,
+                    iter->second.members));
+        }
+        
+        // write comm
+        std::list<OTF2TraceReader::OTF2Comm> cList = tr->getCommList();
+        for(std::list<OTF2TraceReader::OTF2Comm>::const_iterator iter = cList.begin();
+                iter != cList.end(); iter++)
+        {
+            OTF2_CHECK(OTF2_GlobalDefWriter_WriteComm(global_def_writer,iter->self,iter->name,
+                    iter->group,iter->parent));
+        }
+        
+        // write RMA
+        std::list<OTF2TraceReader::OTF2RmaWin> rmaList = tr->getRmaWinList();
+        for(std::list<OTF2TraceReader::OTF2RmaWin>::const_iterator iter = rmaList.begin();
+                iter != rmaList.end(); iter++)
+        {
+            OTF2_CHECK(OTF2_GlobalDefWriter_WriteRmaWin(global_def_writer,iter->self,iter->name,
+                    iter->comm));
+        }
+        
+                // write Attributes
         std::list<OTF2TraceReader::OTF2Attribute> aList = tr->getAttributeList();
         for(std::list<OTF2TraceReader::OTF2Attribute>::const_iterator iter = aList.begin();
                 iter != aList.end(); iter++)
@@ -306,6 +334,10 @@ void OTF2ParallelTraceWriter::open(const std::string otfFilename, uint32_t maxFi
         }
         
     } 
+    
+    MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+    
+    tr->readCommunication();
     
     // open event to start creating event files for each location
     OTF2_Archive_OpenEvtFiles( archive );
@@ -385,16 +417,103 @@ void OTF2ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
     
     uint64_t processId = node->getProcessId();
     uint64_t nodeTime = node->getTime() + timerOffset;
+    uint64_t commEventTime = tr->getCurrentCommEventTime(processId);
+    OTF2TraceReader::OTF2CommEvent commEvent;
+    bool writeCommAfterwards = false;
     
     OTF2_EvtWriter *evt_writer = evt_writerMap[processId];
+    
+    // Is there a commEvent that needs to be written before I write my event?
+    while(commEventTime <= nodeTime && commEventTime > 0)
+    {
+        commEvent = tr->getCurrentCommEvent(processId);
+        
+        if(commEventTime == nodeTime && (commEvent.type == OTF2TraceReader::OTF2_MPI_COLL_BEGIN 
+                || commEvent.type == OTF2TraceReader::OTF2_RMA_WIN_CREATE
+                || commEvent.type == OTF2TraceReader::OTF2_RMA_WIN_DESTROY))
+        {
+            writeCommAfterwards = true;
+            break;
+        }
+        
+        switch(commEvent.type)
+        {
+            case OTF2TraceReader::OTF2_MPI_COLL_END:
+            {
+                OTF2TraceReader::OTF2MpiCollEnd mpiCE = tr->getMpiCollEndList(processId)[commEvent.idInList];
+                OTF2_CHECK(OTF2_EvtWriter_MpiCollectiveEnd(evt_writer, mpiCE.attributeList, mpiCE.time, 
+                        mpiCE.collectiveOp, mpiCE.communicator, mpiCE.root, mpiCE.sizeSent, mpiCE.sizeReceived));
+                break;
+            }
+            case OTF2TraceReader::OTF2_RMA_GET:
+            {
+                OTF2TraceReader::OTF2RmaGet rmaG = tr->getRmaGetList(processId)[commEvent.idInList];
+                OTF2_CHECK(OTF2_EvtWriter_RmaGet(evt_writer, rmaG.attributeList, rmaG.time, 
+                        rmaG.win, rmaG.remote, rmaG.bytes, rmaG.matchingId));
+                break;
+            }
+            case OTF2TraceReader::OTF2_RMA_PUT:
+            {
+                OTF2TraceReader::OTF2RmaPut rmaP = tr->getRmaPutList(processId)[commEvent.idInList];
+                OTF2_CHECK(OTF2_EvtWriter_RmaPut(evt_writer, rmaP.attributeList, rmaP.time, 
+                        rmaP.win, rmaP.remote, rmaP.bytes, rmaP.matchingId));
+                break;
+            }
+            case OTF2TraceReader::OTF2_RMA_OP_COMPLETE_BLOCKING:
+            {
+                OTF2TraceReader::OTF2RmaOpCompleteBlocking rmaOCB = tr->getRmaOpCompleteBlockingList(processId)[commEvent.idInList];
+                OTF2_CHECK(OTF2_EvtWriter_RmaOpCompleteBlocking(evt_writer, rmaOCB.attributeList, rmaOCB.time, 
+                        rmaOCB.win, rmaOCB.matchingId));
+                break;
+            }
+            case OTF2TraceReader::OTF2_THREAD_TEAM_BEGIN:
+            {
+                OTF2TraceReader::OTF2ThreadTeamBegin TTB = tr->getThreadTeamBeginList(processId)[commEvent.idInList];
+                OTF2_CHECK(OTF2_EvtWriter_ThreadTeamBegin(evt_writer, TTB.attributeList, TTB.time, 
+                        TTB.threadTeam));
+                break;
+            }
+            case OTF2TraceReader::OTF2_THREAD_TEAM_END:
+            {
+                OTF2TraceReader::OTF2ThreadTeamEnd TTE = tr->getThreadTeamEndList(processId)[commEvent.idInList];
+                OTF2_CHECK(OTF2_EvtWriter_ThreadTeamEnd(evt_writer, TTE.attributeList, TTE.time, 
+                        TTE.threadTeam));
+                break;
+            }
+            case OTF2TraceReader::OTF2_RMA_WIN_CREATE:
+                {
+                    OTF2TraceReader::OTF2RmaWinCreate rmaWC = tr->getRmaWinCreateList(processId)[commEvent.idInList];
+                    OTF2_CHECK(OTF2_EvtWriter_RmaWinCreate(evt_writer, rmaWC.attributeList, rmaWC.time, 
+                            rmaWC.win));
+                    break;
+                }
+            case OTF2TraceReader::OTF2_RMA_WIN_DESTROY:
+            {
+                OTF2TraceReader::OTF2RmaWinDestroy rmaWD = tr->getRmaWinDestroyList(processId)[commEvent.idInList];
+                OTF2_CHECK(OTF2_EvtWriter_RmaWinDestroy(evt_writer, rmaWD.attributeList, rmaWD.time, 
+                        rmaWD.win));
+                break;
+            }
+            case OTF2TraceReader::OTF2_MPI_COLL_BEGIN:
+            {
+                OTF2TraceReader::OTF2MpiCollBegin mpiCB = tr->getMpiCollBeginList(processId)[commEvent.idInList];
+                OTF2_CHECK(OTF2_EvtWriter_MpiCollectiveBegin(evt_writer, mpiCB.attributeList, mpiCB.time));
+                break;
+            break;
+            }
+                
+        }
 
+        commEventTime = tr->getCurrentCommEventTime(processId);
+    }
+    
     if (node->isEnter() || node->isLeave())
     { 
         if (node->isEnter())
         {
             if(node->isOMPParallelRegion())
             {
-                OTF2_CHECK(OTF2_EvtWriter_ThreadFork(evt_writer, NULL, nodeTime,OTF2_PARADIGM_OPENMP, 1))
+                OTF2_CHECK(OTF2_EvtWriter_ThreadFork(evt_writer, NULL, nodeTime,OTF2_PARADIGM_OPENMP, 1));
             } else
             {
                 OTF2_CHECK(OTF2_EvtWriter_Enter(evt_writer, NULL, nodeTime,
@@ -404,7 +523,7 @@ void OTF2ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
         {
             if(node->isOMPParallelRegion())
             {
-                OTF2_CHECK(OTF2_EvtWriter_ThreadJoin(evt_writer, NULL, nodeTime, OTF2_PARADIGM_OPENMP))
+                OTF2_CHECK(OTF2_EvtWriter_ThreadJoin(evt_writer, NULL, nodeTime, OTF2_PARADIGM_OPENMP));
             } else
             {
                 OTF2_CHECK(OTF2_EvtWriter_Leave(evt_writer, NULL, nodeTime,
@@ -509,7 +628,130 @@ void OTF2ParallelTraceWriter::writeNode(const Node *node, CounterTable &ctrTable
             } 
         }
     }
+    
+    if(writeCommAfterwards)
+    {
+        switch(commEvent.type)
+        {
+            case OTF2TraceReader::OTF2_RMA_WIN_CREATE:
+            {
+                OTF2TraceReader::OTF2RmaWinCreate rmaWC = tr->getRmaWinCreateList(processId)[commEvent.idInList];
+                OTF2_CHECK(OTF2_EvtWriter_RmaWinCreate(evt_writer, rmaWC.attributeList, rmaWC.time, 
+                        rmaWC.win));
+                break;
+            }
+            case OTF2TraceReader::OTF2_RMA_WIN_DESTROY:
+            {
+                OTF2TraceReader::OTF2RmaWinDestroy rmaWD = tr->getRmaWinDestroyList(processId)[commEvent.idInList];
+                OTF2_CHECK(OTF2_EvtWriter_RmaWinDestroy(evt_writer, rmaWD.attributeList, rmaWD.time, 
+                        rmaWD.win));
+                break;
+            }
+            case OTF2TraceReader::OTF2_MPI_COLL_BEGIN:
+            {
+                OTF2TraceReader::OTF2MpiCollBegin mpiCB = tr->getMpiCollBeginList(processId)[commEvent.idInList];
+                OTF2_CHECK(OTF2_EvtWriter_MpiCollectiveBegin(evt_writer, mpiCB.attributeList, mpiCB.time));
+                break;
+            }
+            default:
+                break;
+        }
+    }
+    
+}
 
+void OTF2ParallelTraceWriter::writeRemainingCommEvents()
+{
+    OTF2_EvtWriter *evt_writer;
+    OTF2TraceReader::OTF2CommEvent commEvent;
+    uint64_t processId = 0;
+            
+            
+    std::list<OTF2TraceReader::OTF2Location>& locations = tr->getLocationList();
+    for(std::list<OTF2TraceReader::OTF2Location>::iterator locationIter = locations.begin();
+            locationIter != locations.end(); locationIter++)
+    {
+        processId = locationIter->self;
+        evt_writer = evt_writerMap[processId];
+        
+        
+        while( !(tr->getCommEventList(processId).empty()))
+        {
+            commEvent = tr->getCurrentCommEvent(processId);
+            
+            switch(commEvent.type)
+            {
+                case OTF2TraceReader::OTF2_MPI_COLL_END:
+                {
+                    OTF2TraceReader::OTF2MpiCollEnd mpiCE = tr->getMpiCollEndList(processId)[commEvent.idInList];
+                    OTF2_CHECK(OTF2_EvtWriter_MpiCollectiveEnd(evt_writer, mpiCE.attributeList, mpiCE.time, 
+                            mpiCE.collectiveOp, mpiCE.communicator, mpiCE.root, mpiCE.sizeSent, mpiCE.sizeReceived));
+                    break;
+                }
+                case OTF2TraceReader::OTF2_RMA_GET:
+                {
+                    OTF2TraceReader::OTF2RmaGet rmaG = tr->getRmaGetList(processId)[commEvent.idInList];
+                    OTF2_CHECK(OTF2_EvtWriter_RmaGet(evt_writer, rmaG.attributeList, rmaG.time, 
+                            rmaG.win, rmaG.remote, rmaG.bytes, rmaG.matchingId));
+                    break;
+                }
+                case OTF2TraceReader::OTF2_RMA_PUT:
+                {
+                    OTF2TraceReader::OTF2RmaPut rmaP = tr->getRmaPutList(processId)[commEvent.idInList];
+                    OTF2_CHECK(OTF2_EvtWriter_RmaPut(evt_writer, rmaP.attributeList, rmaP.time, 
+                            rmaP.win, rmaP.remote, rmaP.bytes, rmaP.matchingId));
+                    break;
+                }
+                case OTF2TraceReader::OTF2_RMA_OP_COMPLETE_BLOCKING:
+                {
+                    OTF2TraceReader::OTF2RmaOpCompleteBlocking rmaOCB = tr->getRmaOpCompleteBlockingList(processId)[commEvent.idInList];
+                    OTF2_CHECK(OTF2_EvtWriter_RmaOpCompleteBlocking(evt_writer, rmaOCB.attributeList, rmaOCB.time, 
+                            rmaOCB.win, rmaOCB.matchingId));
+                    break;
+                }
+                case OTF2TraceReader::OTF2_THREAD_TEAM_BEGIN:
+                {
+                    OTF2TraceReader::OTF2ThreadTeamBegin TTB = tr->getThreadTeamBeginList(processId)[commEvent.idInList];
+                    OTF2_CHECK(OTF2_EvtWriter_ThreadTeamBegin(evt_writer, TTB.attributeList, TTB.time, 
+                            TTB.threadTeam));
+                    break;
+                }
+                case OTF2TraceReader::OTF2_THREAD_TEAM_END:
+                {
+                    OTF2TraceReader::OTF2ThreadTeamEnd TTE = tr->getThreadTeamEndList(processId)[commEvent.idInList];
+                    OTF2_CHECK(OTF2_EvtWriter_ThreadTeamEnd(evt_writer, TTE.attributeList, TTE.time, 
+                            TTE.threadTeam));
+                    break;
+                }
+                case OTF2TraceReader::OTF2_RMA_WIN_CREATE:
+                    {
+                        OTF2TraceReader::OTF2RmaWinCreate rmaWC = tr->getRmaWinCreateList(processId)[commEvent.idInList];
+                        OTF2_CHECK(OTF2_EvtWriter_RmaWinCreate(evt_writer, rmaWC.attributeList, rmaWC.time, 
+                                rmaWC.win));
+                        break;
+                    }
+                case OTF2TraceReader::OTF2_RMA_WIN_DESTROY:
+                {
+                    OTF2TraceReader::OTF2RmaWinDestroy rmaWD = tr->getRmaWinDestroyList(processId)[commEvent.idInList];
+                    OTF2_CHECK(OTF2_EvtWriter_RmaWinDestroy(evt_writer, rmaWD.attributeList, rmaWD.time, 
+                            rmaWD.win));
+                    break;
+                }
+                case OTF2TraceReader::OTF2_MPI_COLL_BEGIN:
+                {
+                    OTF2TraceReader::OTF2MpiCollBegin mpiCB = tr->getMpiCollBeginList(processId)[commEvent.idInList];
+                    OTF2_CHECK(OTF2_EvtWriter_MpiCollectiveBegin(evt_writer, mpiCB.attributeList, mpiCB.time));
+                    break;
+                break;
+                }
+
+            }
+            
+        }
+        
+        
+    }
+   
 }
 
 void OTF2ParallelTraceWriter::writeRMANode(const Node *node,

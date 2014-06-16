@@ -81,7 +81,11 @@ void OTF1TraceReader::open(const std::string otfFilename, uint32_t maxFiles)
     fileMgr = OTF_FileManager_open(maxFiles);
 
     baseFilename.assign("");
-    baseFilename.append(otfFilename.c_str(), otfFilename.length() - 4);
+    if(strstr(otfFilename.c_str(), ".otf") != NULL)
+        baseFilename.append(otfFilename.c_str(), otfFilename.length() - 4);
+    else
+        baseFilename.append(otfFilename.c_str(), otfFilename.length());
+    
     reader = OTF_Reader_open(baseFilename.c_str(), fileMgr);
     
     if (!reader)
@@ -94,6 +98,32 @@ void OTF1TraceReader::close()
 {
     OTF_CHECK(OTF_Reader_close(reader));
     OTF_FileManager_close(fileMgr);
+}
+
+void OTF1TraceReader::setCommEventHandlers(OTF_HandlerArray* handlers)
+{
+    
+    OTF_HandlerArray_setHandler(handlers, (OTF_FunctionPointer*) otf1HandleRecvMsg,
+            OTF_RECEIVE_RECORD);
+    OTF_HandlerArray_setFirstHandlerArg(handlers, this, OTF_RECEIVE_RECORD);
+    OTF_HandlerArray_setHandler(handlers, (OTF_FunctionPointer*) otf1HandleSendMsg,
+            OTF_SEND_RECORD);
+    OTF_HandlerArray_setFirstHandlerArg(handlers, this, OTF_SEND_RECORD);
+    OTF_HandlerArray_setHandler(handlers, (OTF_FunctionPointer*) otf1HandleBeginCollectiveOperation,
+            OTF_BEGINCOLLOP_RECORD);
+    OTF_HandlerArray_setFirstHandlerArg(handlers, this, OTF_BEGINCOLLOP_RECORD);
+    OTF_HandlerArray_setHandler(handlers, (OTF_FunctionPointer*) otf1HandleEndCollectiveOperation,
+            OTF_ENDCOLLOP_RECORD);
+    OTF_HandlerArray_setFirstHandlerArg(handlers, this, OTF_ENDCOLLOP_RECORD);
+    OTF_HandlerArray_setHandler(handlers, (OTF_FunctionPointer*) otf1HandleRMAEnd,
+            OTF_RMAEND_RECORD);
+    OTF_HandlerArray_setFirstHandlerArg(handlers, this, OTF_RMAEND_RECORD);
+    OTF_HandlerArray_setHandler(handlers, (OTF_FunctionPointer*) otf1HandleRMAGet,
+            OTF_RMAGET_RECORD);
+    OTF_HandlerArray_setFirstHandlerArg(handlers, this, OTF_RMAGET_RECORD);
+    OTF_HandlerArray_setHandler(handlers, (OTF_FunctionPointer*) otf1HandleRMAPut,
+            OTF_RMAPUT_RECORD);
+    OTF_HandlerArray_setFirstHandlerArg(handlers, this, OTF_RMAPUT_RECORD);
 }
 
 void OTF1TraceReader::setEventHandlers(OTF_HandlerArray* handlers)
@@ -124,6 +154,21 @@ void OTF1TraceReader::readEvents()
     if (OTF_Reader_readEvents(reader, handlers) == OTF_READ_ERROR)
         throw RTException("Failed to read OTF events");
     OTF_HandlerArray_close(handlers);
+}
+
+/*
+ *  Just reading communication events to place them again into the output trace 
+ */
+void OTF1TraceReader::readCommunication()
+{
+    OTF_HandlerArray* handlers = OTF_HandlerArray_open();
+    
+    setCommEventHandlers(handlers);
+    
+    if (OTF_Reader_readEvents(reader, handlers) == OTF_READ_ERROR)
+        throw RTException("Failed to read OTF events");
+    OTF_HandlerArray_close(handlers);
+    
 }
 
 void OTF1TraceReader::readEventsForProcess(uint64_t id)
@@ -603,6 +648,24 @@ int OTF1TraceReader::otf1HandleSendMsg(void *userData, uint64_t time, uint32_t s
 {
     OTF1TraceReader *tr = (OTF1TraceReader*) userData;
 
+    OTF1CommEvent commEvent;
+    commEvent.type = OTF1_SEND_MSG;
+    commEvent.time = time;
+    commEvent.idInList = tr->getSendMsgList(sender).size();
+    tr->getCommEventList(sender).push_back(commEvent);
+    
+    OTF1SendMsg msg;
+    msg.time = time;
+    msg.sender = sender;
+    msg.receiver = receiver;
+    msg.group = group;
+    msg.type = type;
+    msg.length = length;
+    msg.source = source;
+    msg.list = list;
+    
+    tr->getSendMsgList(sender).push_back(msg);
+    
     if (tr->handleMPIComm)
     {
         tr->handleMPIComm(tr, MPI_SEND, sender, receiver, 0, 0);
@@ -617,6 +680,24 @@ int OTF1TraceReader::otf1HandleRecvMsg(void *userData, uint64_t time, uint32_t r
 {
     OTF1TraceReader *tr = (OTF1TraceReader*) userData;
 
+    OTF1CommEvent commEvent;
+    commEvent.type = OTF1_RECV_MSG;
+    commEvent.time = time;
+    commEvent.idInList = tr->getRecvMsgList(receiver).size();
+    tr->getCommEventList(receiver).push_back(commEvent);
+    
+    OTF1RecvMsg msg;
+    msg.time = time;
+    msg.sender = sender;
+    msg.receiver = receiver;
+    msg.group = group;
+    msg.type = type;
+    msg.length = length;
+    msg.source = source;
+    msg.list = list;
+    
+    tr->getRecvMsgList(receiver).push_back(msg);
+    
     if (tr->handleMPIComm)
     {
         tr->handleMPIComm(tr, MPI_RECV, receiver, sender, 0, 0);
@@ -632,6 +713,26 @@ int OTF1TraceReader::otf1HandleBeginCollectiveOperation(void * userData, uint64_
 {
     OTF1TraceReader *tr = (OTF1TraceReader*) userData;
 
+    OTF1CommEvent commEvent;
+    commEvent.type = OTF1_COLL_BEGIN;
+    commEvent.time = time;
+    commEvent.idInList = tr->getCollBeginList(process).size();
+    tr->getCommEventList(process).push_back(commEvent);
+    
+    OTF1CollBeginOp coll;
+    coll.collOp = collOp;
+    coll.time = time;
+    coll.process = process;
+    coll.matchingId = matchingId;
+    coll.procGroup = procGroup;
+    coll.sent = sent;
+    coll.rootProc = rootProc;
+    coll.received = received;
+    coll.scltoken = scltoken;
+    coll.list = list;
+
+    tr->getCollBeginList(process).push_back(coll);
+    
     if (tr->handleMPIComm)
     {
         io::MPIType mpiType = io::MPI_COLLECTIVE;
@@ -642,4 +743,167 @@ int OTF1TraceReader::otf1HandleBeginCollectiveOperation(void * userData, uint64_
     }
 
     return OTF_RETURN_OK;
+}
+
+int OTF1TraceReader::otf1HandleEndCollectiveOperation	(void *	userData, uint64_t time,
+                        uint32_t process, uint64_t matchingId, OTF_KeyValueList * list)
+{
+    OTF1TraceReader *tr = (OTF1TraceReader*) userData;
+
+    OTF1CommEvent commEvent;
+    commEvent.type = OTF1_COLL_END;
+    commEvent.time = time;
+    commEvent.idInList = tr->getCollEndList(process).size();
+    tr->getCommEventList(process).push_back(commEvent);
+    
+    OTF1CollEndOp coll;
+    coll.time = time;
+    coll.process = process;
+    coll.matchingId = matchingId;
+    coll.list = list;
+
+    tr->getCollEndList(process).push_back(coll);
+    
+    return OTF_RETURN_OK;
+    
+}
+    
+int OTF1TraceReader::otf1HandleRMAEnd	(void * userData, uint64_t time, uint32_t process,
+                        uint32_t remote, uint32_t communicator, uint32_t tag, uint32_t source,
+                        OTF_KeyValueList * list)
+{
+    OTF1TraceReader *tr = (OTF1TraceReader*) userData;
+
+    OTF1CommEvent commEvent;
+    commEvent.type = OTF1_RMA_END;
+    commEvent.time = time;
+    commEvent.idInList = tr->getRmaEndList(process).size();
+    tr->getCommEventList(process).push_back(commEvent);
+    
+    OTF1RMAEnd rma;
+    rma.time = time;
+    rma.process = process;
+    rma.remote = remote;
+    rma.communicator = communicator;
+    rma.tag = tag;
+    rma.source = source;
+    rma.list = list;
+
+    tr->getRmaEndList(process).push_back(rma);
+    
+    return OTF_RETURN_OK;
+    
+}
+            
+int OTF1TraceReader::otf1HandleRMAGet	(void * userData, uint64_t time, uint32_t process,
+                        uint32_t origin, uint32_t target, uint32_t communicator,
+                        uint32_t tag, uint64_t bytes, uint32_t source, OTF_KeyValueList * list)
+{
+    OTF1TraceReader *tr = (OTF1TraceReader*) userData;
+
+    OTF1CommEvent commEvent;
+    commEvent.type = OTF1_RMA_GET;
+    commEvent.time = time;
+    commEvent.idInList = tr->getRmaGetList(process).size();
+    tr->getCommEventList(process).push_back(commEvent);
+    
+    OTF1RMAGet rma;
+    rma.time = time;
+    rma.process = process;
+    rma.origin = origin;
+    rma.target = target;
+    rma.communicator = communicator;
+    rma.tag = tag;
+    rma.bytes = bytes;
+    rma.source = source;
+    rma.list = list;
+
+    tr->getRmaGetList(process).push_back(rma);
+    
+    return OTF_RETURN_OK;
+    
+}
+            
+int OTF1TraceReader::otf1HandleRMAPut	(void * userData, uint64_t time, uint32_t process,
+                        uint32_t origin, uint32_t target, uint32_t communicator, uint32_t tag,
+                        uint64_t bytes, uint32_t source, OTF_KeyValueList * list)
+{
+    OTF1TraceReader *tr = (OTF1TraceReader*) userData;
+
+    OTF1CommEvent commEvent;
+    commEvent.type = OTF1_RMA_PUT;
+    commEvent.time = time;
+    commEvent.idInList = tr->getRmaPutList(process).size();
+    tr->getCommEventList(process).push_back(commEvent);
+    
+    OTF1RMAPut rma;
+    rma.time = time;
+    rma.process = process;
+    rma.origin = origin;
+    rma.target = target;
+    rma.communicator = communicator;
+    rma.tag = tag;
+    rma.bytes = bytes;
+    rma.source = source;
+    rma.list = list;
+
+    tr->getRmaPutList(process).push_back(rma);
+    
+    return OTF_RETURN_OK;
+}
+
+std::list<OTF1TraceReader::OTF1CommEvent>& OTF1TraceReader::getCommEventList(uint32_t processId)
+{
+    return commEventListMap[processId];
+}
+
+OTF1TraceReader::OTF1CommEvent OTF1TraceReader::getCurrentCommEvent(uint32_t processId)
+{
+    OTF1CommEvent commEvent = *(commEventListMap[processId].begin());
+    if(commEventListMap[processId].size()>0)
+        commEventListMap[processId].pop_front();    
+    return commEvent;
+}
+    
+uint64_t OTF1TraceReader::getCurrentCommEventTime(uint32_t processId)
+{
+    if(commEventListMap[processId].size()>0)
+        return commEventListMap[processId].begin()->time;
+    else
+        return 0;
+}
+    
+std::vector<OTF1TraceReader::OTF1CollBeginOp>& OTF1TraceReader::getCollBeginList(uint32_t processId)
+{
+    return collBeginListMap[processId];    
+}
+
+std::vector<OTF1TraceReader::OTF1CollEndOp>& OTF1TraceReader::getCollEndList(uint32_t processId)
+{
+    return collEndListMap[processId];
+}
+    
+std::vector<OTF1TraceReader::OTF1RMAEnd>& OTF1TraceReader::getRmaEndList(uint32_t processId)
+{
+    return rmaEndListMap[processId];
+}
+    
+std::vector<OTF1TraceReader::OTF1RMAGet>& OTF1TraceReader::getRmaGetList(uint32_t processId)
+{
+    return rmaGetListMap[processId]; 
+}
+    
+std::vector<OTF1TraceReader::OTF1RMAPut>& OTF1TraceReader::getRmaPutList(uint32_t processId)
+{
+    return rmaPutListMap[processId];
+}
+
+std::vector<OTF1TraceReader::OTF1SendMsg>& OTF1TraceReader::getSendMsgList(uint32_t processId)
+{
+    return sendMsgListMap[processId];
+}
+
+std::vector<OTF1TraceReader::OTF1RecvMsg>& OTF1TraceReader::getRecvMsgList(uint32_t processId)
+{
+    return recvMsgListMap[processId];
 }
