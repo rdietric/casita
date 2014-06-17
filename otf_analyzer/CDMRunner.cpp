@@ -694,15 +694,35 @@ void CDMRunner::mergeActivityGroups(ActivityGroupMap& activityGroupMap, bool cpK
     }
 }
 
+// DEPRECATED!! -> produces wrong results
 void CDMRunner::getLocalCriticalPath(Process::SortedGraphNodeList &criticalNodes,
         GraphNode *startNode, GraphNode *lastNode, Graph &subGraph)
 {
+    
+    if (options.printCriticalPath)
+    {
+        printf("\n[%u] Longest path (%s,%s):\n",
+                analysis.getMPIRank(),
+                startNode->getUniqueName().c_str(),
+                lastNode->getUniqueName().c_str());
+    }
+    
     GraphNode *current = lastNode;
     const uint32_t wtCtrId = analysis.getCtrTable().getCtrId(CTR_WAITSTATE);
 
+    uint32_t i = 0;
     while (current != startNode)
     {
         criticalNodes.push_back(current);
+        
+        if (options.printCriticalPath)
+        {
+            printf("[%u] %u: %s (%f)\n",
+                    analysis.getMPIRank(), i,
+                    current->getUniqueName().c_str(),
+                    analysis.getRealTime(current->getTime()));
+        }
+        i++;
         
         Edge *predEdge = NULL;
         const Graph::EdgeList &inEdges = subGraph.getInEdges(current);
@@ -772,15 +792,18 @@ void CDMRunner::getCriticalPath(Process::SortedGraphNodeList &criticalNodes)
 
         Graph &subGraph = analysis.getGraph();
 
-        getLocalCriticalPath(
+        /* This new version might be faster, but does not produce correct results
+         * At least for mpiSize >1 -> single process case needs to be tested
+         */
+        /*getLocalCriticalPath(
                 criticalNodes,
                 analysis.getSourceNode(),
                 analysis.getLastGraphNode(PARADIGM_ALL),
-                subGraph);
+                subGraph);*/
 
-        /*        getCriticalPathIntern(analysis.getSourceNode(),
+        getCriticalPathIntern(analysis.getSourceNode(),
                         analysis.getLastGraphNode(PARADIGM_COMPUTE_LOCAL),
-                        criticalNodes, *subGraph);*/
+                        criticalNodes, subGraph);
     }
 
     /* compute the time-on-critical-path counter */
@@ -1049,13 +1072,14 @@ void CDMRunner::getCriticalLocalSections(MPIAnalysis::CriticalPathSection *secti
         Process::SortedGraphNodeList sectionLocalNodes;
         sectionLocalNodes.push_back(startNode);
 
-        getLocalCriticalPath(
+        // This new version might be faster, but does not produce correct results
+        /*getLocalCriticalPath(
                 sectionLocalNodes,
                 startLocalNode,
                 endLocalNode,
-                *subGraph);
+                *subGraph);*/
         
-        //getCriticalPathIntern(startLocalNode, endLocalNode, sectionLocalNodes, *subGraph);
+        getCriticalPathIntern(startLocalNode, endLocalNode, sectionLocalNodes, *subGraph);
 
         sectionLocalNodes.push_back(endNode);
         if (endNode->isMPIFinalize() && endNode->isEnter())
