@@ -387,7 +387,8 @@ void OTF2ParallelTraceWriter::close()
 void OTF2ParallelTraceWriter::writeDefProcess(uint64_t id, uint64_t parentId,
         const char* name, ProcessGroup pg)
 {
-    
+    // Only necessary in OTF1 for begin/end-process
+    // \TODO -> place to create evtWriter
 }
 
 void OTF2ParallelTraceWriter::writeDefCounter(uint32_t otfId, const char* name, int properties)
@@ -764,8 +765,3 @@ void* OTF2ParallelTraceWriter::getWriteObject(uint64_t id)
 {
     return evt_writerMap[id];
 }
-
-
-
-
-
