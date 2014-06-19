@@ -486,10 +486,9 @@ void AnalysisEngine::saveParallelAllocationToFile(std::string filename,
             origFilename.c_str(),
             this->ctrTable.getAllCounterIDs());
     }
-    writer->open(filename.c_str(), 100, allProcs.size(), this->ticksPerSecond);
+    writer->open(filename.c_str(), 100, allProcs.size());
 
     CounterTable::CtrIdSet ctrIdSet = this->ctrTable.getAllCounterIDs();
-    uint32_t cpCtrId = this->ctrTable.getCtrId(CTR_CRITICALPATH);
     for (CounterTable::CtrIdSet::const_iterator ctrIter = ctrIdSet.begin();
             ctrIter != ctrIdSet.end(); ++ctrIter)
     {
@@ -498,7 +497,7 @@ void AnalysisEngine::saveParallelAllocationToFile(std::string filename,
             writer->writeDefCounter(*ctrIter, entry->name, entry->otfMode);
     }
 
-    printf("[%u] wrote defs \n", mpiAnalysis.getMPIRank());
+    printf("[%u] wrote definition \n", mpiAnalysis.getMPIRank());
     
     MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
     
@@ -524,103 +523,16 @@ void AnalysisEngine::saveParallelAllocationToFile(std::string filename,
         Process::SortedNodeList &nodes = p->getNodes();
         GraphNode *pLastGraphNode = p->getLastGraphNode();
 
-        for (Process::SortedNodeList::const_iterator iter = nodes.begin();
-                iter != nodes.end(); ++iter)
-        {
-            Node *node = *iter;
+        writer->writeProcess((*pIter)->getId(), &nodes, enableWaitStates, pLastGraphNode,
+                    verbose, &(this->getCtrTable()), &(this->getGraph()));
+        continue;
 
-            // find next connected node on critical path
-            GraphNode *futureCPNode = NULL;
-            Graph::EdgeList outEdges = this->getOutEdges((GraphNode*)node);
-            Graph::EdgeList::const_iterator edgeIter = outEdges.begin();
-            uint64_t timeNextCPNode = 0;
-
-            while(edgeIter != outEdges.end())
-            {
-                GraphNode *edgeEndNode = (*edgeIter)->getEndNode();
-                
-                if((edgeEndNode->getCounter(cpCtrId, NULL) == 1) && 
-                        ((timeNextCPNode > edgeEndNode->getTime()) || timeNextCPNode == 0))
-                {
-                    futureCPNode = edgeEndNode;
-                    timeNextCPNode = futureCPNode->getTime();
-                }
-                ++edgeIter;
-            }
-            
-            if (node->isEnter() || node->isLeave())
-            {
-                if ((!node->isPureWaitstate()) || enableWaitStates)
-                {
-                    if (verbose)
-                    {
-                        printf("[%u] [%12lu:%12.8fs] %60s in %8lu (FID %lu)\n",
-                                mpiAnalysis.getMPIRank(),
-                                node->getTime(),
-                                (double) (node->getTime()) / (double) this->ticksPerSecond,
-                                node->getUniqueName().c_str(),
-                                node->getProcessId(),
-                                node->getFunctionId());
-                    }
-
-                    writer->writeNode(node, this->ctrTable,
-                            node == pLastGraphNode, futureCPNode);
-                }
-            }
-
-        }
     }
     
-    writer->writeRemainingCommEvents();
+    printf("[%u] wrote events \n", mpiAnalysis.getMPIRank());
     
     writer->close();
     delete writer;
-}
-
-/*if (node->isGraphNode())
-{
-    MPIAnalysis::CriticalSectionsMap::const_iterator sIter =
-            sectionsMap.find((GraphNode*) node);
-    if (sIter != sectionsMap.end())
-    {
-        MPIAnalysis::CriticalPathSection section = sIter->second;
-        writer->writeRMANode(node, section.prevProcessID,
-                section.nextProcessID);
-    }
-}*/
-
-void AnalysisEngine::pushOnOMPBackTraceStack(GraphNode* node, uint64_t processId)
-{
-    ompBackTraceStackMap[processId].push(node);
-}
-
-GraphNode* AnalysisEngine::ompBackTraceStackTop(uint64_t processId)
-{
-    if(ompBackTraceStackMap[processId].empty())
-        return NULL;
-    return ompBackTraceStackMap[processId].top();
-}
-
-GraphNode* AnalysisEngine::ompBackTraceStackPop(uint64_t processId)
-{
-    GraphNode* node = ompBackTraceStackMap[processId].top();
-    ompBackTraceStackMap[processId].pop();
-    return node;
-}
-
-bool AnalysisEngine::ompBackTraceStackIsEmpty(uint64_t processId)
-{
-    return ompBackTraceStackMap[processId].empty();
-}
-
-GraphNode* AnalysisEngine::getLastOmpNode(uint64_t processId)
-{
-    return lastOmpEventMap[processId];
-}
-
-void AnalysisEngine::setLastOmpNode(GraphNode* node, uint64_t processId)
-{
-    lastOmpEventMap[processId] = node;
 }
 
 GraphNode* AnalysisEngine::getPendingParallelRegion()

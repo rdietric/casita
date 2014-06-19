@@ -112,8 +112,6 @@ namespace cdm
 
         void runSanityCheck(uint32_t mpiRank);
 
-        void saveAllocationToFile(std::string filename,
-                bool enableWaitStates, bool verbose);
     protected:
         Allocation allocation;
         uint64_t ticksPerSecond;

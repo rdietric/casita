@@ -96,15 +96,6 @@ namespace cdm
 
         double getRealTime(uint64_t t);
 
-        void pushOnOMPBackTraceStack(GraphNode* node, uint64_t processId);
-        
-        GraphNode* ompBackTraceStackTop(uint64_t processId);
-        GraphNode* ompBackTraceStackPop(uint64_t processId);
-        bool ompBackTraceStackIsEmpty(uint64_t processId);
-        
-        GraphNode* getLastOmpNode(uint64_t processId);
-        void setLastOmpNode(GraphNode* node, uint64_t processId);
-        
         GraphNode* getPendingParallelRegion();
         void setPendingParallelRegion(GraphNode* node);
         
