@@ -39,12 +39,9 @@ namespace cdm
             {
             }
 
-            virtual void writeRMANode(const Node *node, uint64_t prevRank,
-                    uint64_t nextRank) = 0;
-            
-            virtual void *getWriteObject(uint64_t id) = 0;
-
-            virtual void writeRemainingCommEvents() = 0;
+            virtual void writeProcess(uint64_t processId, Process::SortedNodeList *nodes,
+                        bool enableWaitStates, GraphNode *pLastGraphNode, bool verbose,
+                        CounterTable* ctrTable, Graph *graph) = 0;
             
         protected:
             uint32_t mpiRank, mpiSize;

@@ -10,7 +10,6 @@
 
 #include "TraceData.hpp"
 #include "FunctionTable.hpp"
-#include "otf/OTF1TraceWriter.hpp"
 #include "common.hpp"
 #include "include/graph/Node.hpp"
 
@@ -595,89 +594,6 @@ ITraceWriter::ProcessGroup TraceData::processTypeToGroup(Process::ProcessType pt
         default:
             return ITraceWriter::PG_HOST;
     }
-}
-
-void TraceData::saveAllocationToFile(std::string filename,
-        bool enableWaitStates, bool verbose)
-{
-    Allocation::ProcessList allProcs;
-    getProcesses(allProcs);
-
-    ITraceWriter *writer = new OTF1TraceWriter(VT_CUPTI_CUDA_STREAMREF_KEY,
-            VT_CUPTI_CUDA_EVENTREF_KEY, VT_CUPTI_CUDA_CURESULT_KEY);
-    writer->open(filename.c_str(), 100, allProcs.size(), ticksPerSecond);
-
-    CounterTable::CtrIdSet ctrIdSet = ctrTable.getAllCounterIDs();
-    std::set<uint64_t> knownFunctions;
-
-    for (CounterTable::CtrIdSet::const_iterator ctrIter = ctrIdSet.begin();
-            ctrIter != ctrIdSet.end(); ++ctrIter)
-    {
-        CtrTableEntry *entry = ctrTable.getCounter(*ctrIter);
-        if (!entry->isInternal)
-            writer->writeDefCounter(*ctrIter, entry->name, entry->otfMode);
-    }
-
-    for (Allocation::ProcessList::const_iterator pIter = allProcs.begin();
-            pIter != allProcs.end(); ++pIter)
-    {
-        Process *p = *pIter;
-        uint64_t pId = p->getId();
-        writer->writeDefProcess(pId, p->getParentId(), p->getName(),
-                processTypeToGroup(p->getProcessType()));
-
-        Process::SortedNodeList &nodes = p->getNodes();
-        for (Process::SortedNodeList::const_iterator iter = nodes.begin();
-                iter != nodes.end(); ++iter)
-        {
-            Node *node = *iter;
-            if (node->isMPI())
-                continue;
-
-            if (verbose)
-            {
-                printf("[%12lu:%12.8fs] %60s in %8lu (FID %lu)\n", node->getTime(),
-                        (double) (node->getTime()) / (double) ticksPerSecond,
-                        node->getUniqueName().c_str(),
-                        node->getProcessId(), node->getFunctionId());
-            }
-
-            if (node->isEnter() || node->isLeave())
-            {
-                if (node->isEnter() || node->isLeave())
-                {
-                    uint64_t functionId = node->getFunctionId();
-                    if (knownFunctions.find(functionId) == knownFunctions.end())
-                    {
-                        knownFunctions.insert(functionId);
-
-                        ITraceWriter::FunctionGroup fg = ITraceWriter::FG_CUDA_API;
-                        if (node->isCUDAKernel())
-                            fg = ITraceWriter::FG_KERNEL;
-
-                        if (node->isWaitstate())
-                            fg = ITraceWriter::FG_WAITSTATE;
-
-                        if (node->isCPU())
-                            fg = ITraceWriter::FG_APPLICATION;
-
-                        writer->writeDefFunction(functionId, node->getName(), fg);
-                    }
-                }
-
-                if (!node->isWaitstate() || enableWaitStates)
-                {
-                    ++iter;
-                    writer->writeNode(node, ctrTable, node == p->getLastGraphNode(), *iter);
-                    --iter;
-                }
-            }
-
-        }
-    }
-
-    writer->close();
-    delete writer;
 }
 
 void TraceData::addNewGraphNodeInternal(GraphNode *node, Process *process)

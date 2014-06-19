@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include "graph/Node.hpp"
 #include "CounterTable.hpp"
+#include "Process.hpp"
+#include "graph/Graph.hpp"
 
 namespace cdm
 {
@@ -51,7 +53,7 @@ namespace cdm
             }
 
             virtual void open(const std::string otfFilename, uint32_t maxFiles,
-                    uint32_t numStreams, uint64_t timerResolution) = 0;
+                    uint32_t numStreams) = 0;
             virtual void close() = 0;
 
             virtual void writeDefProcess(uint64_t id, uint64_t parentId, const char *name, ProcessGroup pg) = 0;

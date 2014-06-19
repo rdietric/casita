@@ -91,7 +91,7 @@ namespace cdm
             HandleProcessMPIMapping handleProcessMPIMapping;
             HandleMPIComm handleMPIComm;
             HandleMPICommGroup handleMPICommGroup;
-
+            
         private:
             void *userData;
         };
