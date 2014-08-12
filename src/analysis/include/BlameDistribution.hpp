@@ -48,12 +48,16 @@ namespace casita
      ErrorUtils::getInstance( ).throwError( "Can't walk list back from %s",
                                             node->getUniqueName( ).c_str( ) );
    }
-   
-   GraphNode *start = walkList.front();
-   GraphNode *end = walkList.back();
-   if(false)
-        std::cout << "[" << analysis->getMPIRank() << "]Walking: " << start->getUniqueName()
-                     << " to " << end->getUniqueName() << " Blame: " << totalBlame << std::endl;
+
+   GraphNode* start = walkList.front( );
+   GraphNode* end = walkList.back( );
+   if ( false )
+   {
+     std::cout << "[" << analysis->getMPIRank( ) << "]Walking: " <<
+     start->getUniqueName( )
+               << " to " << end->getUniqueName( ) << " Blame: " <<
+     totalBlame << std::endl;
+   }
 
    uint64_t totalWalkTime = walkList.front( )->getTime( ) -
                             walkList.back( )->getTime( );
@@ -68,10 +72,11 @@ namespace casita
          iter != walkList.end( ); ++iter )
    {
      GraphNode* currentWalkNode = *iter;
-     Edge* edge = analysis->getEdge(currentWalkNode, lastWalkNode);
-     uint64_t cpuTimeDiff = lastWalkNode->getTime( ) - edge->getCPUNodesStartTime();
-     uint64_t timeDiff = lastWalkNode->getTime( ) - currentWalkNode->getTime( ) 
-                            - cpuTimeDiff;
+     Edge* edge = analysis->getEdge( currentWalkNode, lastWalkNode );
+     uint64_t cpuTimeDiff = lastWalkNode->getTime( ) -
+                            edge->getCPUNodesStartTime( );
+     uint64_t timeDiff = lastWalkNode->getTime( ) - currentWalkNode->getTime( )
+                         - cpuTimeDiff;
      uint64_t ratioBlame = (double)totalBlame *
                            (double)( timeDiff -
                                      currentWalkNode->getCounter( waitCtrId,
@@ -79,22 +84,24 @@ namespace casita
                            (double)( totalWalkTime - waitTime );
 
      uint64_t cpuBlame = cpuTimeDiff == 0 ? 0 : (double)totalBlame *
-                           (double)( cpuTimeDiff -
-                                     currentWalkNode->getCounter( waitCtrId,
-                                                                  NULL ) ) /
-                           (double)( totalWalkTime - waitTime );
-     
-     edge->addCPUBlame(cpuBlame);
-     if(cpuBlame > 0 && false)
-         std::cout << "Write cpuBlame " << cpuBlame << " (of " << totalBlame
+                         (double)( cpuTimeDiff -
+                                   currentWalkNode->getCounter( waitCtrId,
+                                                                NULL ) ) /
+                         (double)( totalWalkTime - waitTime );
+
+     edge->addCPUBlame( cpuBlame );
+     if ( cpuBlame > 0 && false )
+     {
+       std::cout << "Write cpuBlame " << cpuBlame << " (of " << totalBlame
                  << " and " << ratioBlame << " cpuTimeDiff: " << cpuTimeDiff
-                 << " timediff: " << timeDiff << ") between " 
-                 << currentWalkNode->getUniqueName() << " and "
-                 << lastWalkNode->getUniqueName() 
-                 << " " << edge->getNumberOfCPUNodes() << " Nodes (" 
-                 << edge->getCPUNodesStartTime() << " - " 
-                 << edge->getCPUNodesEndTime() << std::endl;
-     
+                 << " timediff: " << timeDiff << ") between "
+                 << currentWalkNode->getUniqueName( ) << " and "
+                 << lastWalkNode->getUniqueName( )
+                 << " " << edge->getNumberOfCPUNodes( ) << " Nodes ("
+                 << edge->getCPUNodesStartTime( ) << " - "
+                 << edge->getCPUNodesEndTime( ) << std::endl;
+     }
+
      if ( ratioBlame > 0 )
      {
        currentWalkNode->incCounter( blameCtrId, ratioBlame );

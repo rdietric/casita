@@ -109,7 +109,8 @@ namespace casita
                                     targetHostWalkCallback,
                                     &waitsStateNodesList );
 
-          uint32_t ctrIdWaitState = analysis->getCtrTable( ).getCtrId( CTR_WAITSTATE );
+          uint32_t ctrIdWaitState = analysis->getCtrTable( ).getCtrId(
+            CTR_WAITSTATE );
 
           for ( GraphNode::GraphNodeList::const_iterator iter =
                   waitsStateNodesList.begin( );

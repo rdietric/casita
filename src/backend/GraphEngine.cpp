@@ -77,7 +77,7 @@ GraphEngine::newEventStream( uint64_t id,
   else
   {
     /* e->setWeight(e->getWeight() - 1); */
-      
+
     if ( streamType == EventStream::ES_DEVICE )
     {
       streamGroup.addDeviceStream( p );
@@ -89,7 +89,7 @@ GraphEngine::newEventStream( uint64_t id,
   }
 
   cpuDataPerProcess[id].numberOfEvents = 0;
-  
+
   return p;
 }
 
@@ -458,7 +458,8 @@ GraphEngine::reset( )
     if ( p->isRemoteStream( ) )
     {
       EventStream::SortedGraphNodeList& nodes = p->getNodes( );
-      for ( EventStream::SortedGraphNodeList::const_iterator nIter = nodes.begin( );
+      for ( EventStream::SortedGraphNodeList::const_iterator nIter =
+              nodes.begin( );
             nIter != nodes.end( ); ++nIter )
       {
         GraphNode* node = (GraphNode*)( *nIter );
@@ -582,28 +583,28 @@ GraphEngine::runSanityCheck( uint32_t mpiRank )
     for ( EventStream::SortedGraphNodeList::const_iterator nIter = nodes.begin( );
           nIter != nodes.end( ); ++nIter )
     {
-        GraphNode* node = (GraphNode*)( *nIter );
+      GraphNode* node = (GraphNode*)( *nIter );
 
-        if ( hasInEdges( node ) )
+      if ( hasInEdges( node ) )
+      {
+
+        Graph::EdgeList inEdges = getInEdges( node );
+        for ( Graph::EdgeList::const_iterator eIter = inEdges.begin( );
+              eIter != inEdges.end( ); ++eIter )
         {
-
-          Graph::EdgeList inEdges = getInEdges( node );
-          for ( Graph::EdgeList::const_iterator eIter = inEdges.begin( );
-                eIter != inEdges.end( ); ++eIter )
-          {
-            sanityCheckEdge( *eIter, mpiRank );
-          }
+          sanityCheckEdge( *eIter, mpiRank );
         }
+      }
 
-        if ( hasOutEdges( node ) )
+      if ( hasOutEdges( node ) )
+      {
+        Graph::EdgeList outEdges = getOutEdges( node );
+        for ( Graph::EdgeList::const_iterator eIter = outEdges.begin( );
+              eIter != outEdges.end( ); ++eIter )
         {
-          Graph::EdgeList outEdges = getOutEdges( node );
-          for ( Graph::EdgeList::const_iterator eIter = outEdges.begin( );
-                eIter != outEdges.end( ); ++eIter )
-          {
-            sanityCheckEdge( *eIter, mpiRank );
-          }
+          sanityCheckEdge( *eIter, mpiRank );
         }
+      }
     }
   }
 }
@@ -622,27 +623,29 @@ GraphEngine::streamTypeToGroup( EventStream::EventStreamType pt )
   }
 }
 
-void 
-GraphEngine::addCPUEvent(uint64_t time, uint64_t stream)
+void
+GraphEngine::addCPUEvent( uint64_t time, uint64_t stream )
 {
-    EdgeCPUData & cpuData = cpuDataPerProcess[stream];
-  
-    if(cpuData.numberOfEvents == 0)
-        cpuData.startTime = time;
+  EdgeCPUData& cpuData = cpuDataPerProcess[stream];
 
-    cpuData.numberOfEvents++;
-    cpuData.endTime = time;
+  if ( cpuData.numberOfEvents == 0 )
+  {
+    cpuData.startTime = time;
+  }
 
-    return;
+  cpuData.numberOfEvents++;
+  cpuData.endTime = time;
+
+  return;
 }
 
 void
 GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 {
   GraphNode::ParadigmNodeMap predNodeMap, nextNodeMap;
-  
-  EdgeCPUData & cpuData = cpuDataPerProcess[stream->getId()];
-  
+
+  EdgeCPUData& cpuData = cpuDataPerProcess[stream->getId( )];
+
   if ( !stream->getLastNode( ) ||
        Node::compareLess( stream->getLastNode( ), node ) )
   {
@@ -749,9 +752,10 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
         }
 
         /* link to this predecessor */
-        Edge *temp = newEdge( pred, node, edgeProp, &paradigm );
-        temp->addCPUData(cpuData.numberOfEvents, cpuData.startTime, cpuData.endTime);
-        
+        Edge* temp = newEdge( pred, node, edgeProp, &paradigm );
+        temp->addCPUData( cpuData.numberOfEvents,
+                          cpuData.startTime,
+                          cpuData.endTime );
 
         /* check if this already is the direct predecessor */
         if ( directPredecessor == pred )
@@ -806,8 +810,10 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
       /* link to direct predecessor */
       Edge* temp = newEdge( directPredecessor, node, edgeProp, &predParadigm );
-      temp->addCPUData(cpuData.numberOfEvents, cpuData.startTime, cpuData.endTime);
-      
+      temp->addCPUData( cpuData.numberOfEvents,
+                        cpuData.startTime,
+                        cpuData.endTime );
+
     }
 
     if ( directSuccessor )
@@ -828,9 +834,9 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
     }
   }
-  
+
   cpuData.numberOfEvents = 0;
-  
+
 }
 
 GraphNode*

@@ -38,8 +38,6 @@ namespace casita
 
    public:
 
-     
-
      Runner( int mpiRank, int mpiSize );
      virtual
      ~Runner( );
@@ -51,17 +49,17 @@ namespace casita
      runAnalysis( Paradigm paradigm, EventStream::SortedGraphNodeList& allNodes );
 
      void
-     getCriticalPath( ); 
+     getCriticalPath( );
 
      ProgramOptions&
      getOptions( );
 
      AnalysisEngine&
      getAnalysis( );
-     
-     uint64_t 
+
+     uint64_t
      getGlobalLengthCP( );
-     
+
      void
      printAllActivities( );
 

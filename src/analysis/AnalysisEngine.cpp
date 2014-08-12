@@ -44,8 +44,8 @@ AnalysisEngine::~AnalysisEngine( )
   {
     delete( *iter );
   }
-  
-  writer->close();
+
+  writer->close( );
   delete writer;
 }
 
@@ -58,8 +58,10 @@ AnalysisEngine::getFunctionType( uint32_t id,
   assert( name );
   assert( descr );
   assert( stream );
-  
-  return FunctionTable::getAPIFunctionType(name, descr, stream->isDeviceStream(), stream->isDeviceNullStream());
+
+  return FunctionTable::getAPIFunctionType( name, descr, stream->isDeviceStream(
+                                                                               ),
+                                            stream->isDeviceNullStream( ) );
 }
 
 MPIAnalysis&
@@ -627,7 +629,7 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
     }
   }
 
-  // printf( "[%u] wrote definition \n", mpiAnalysis.getMPIRank( ) );
+  /* printf( "[%u] wrote definition \n", mpiAnalysis.getMPIRank( ) ); */
 
   MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
@@ -650,30 +652,30 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
 
     writer->writeDefProcess( p->getId( ), p->getParentId( ), p->getName( ),
                              this->streamTypeToGroup( p->getStreamType( ) ) );
-    }
+  }
 
-    MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
+  MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
-    for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-            allStreams.begin( ); pIter != allStreams.end( ); ++pIter )
+  for ( EventStreamGroup::EventStreamList::const_iterator pIter =
+          allStreams.begin( ); pIter != allStreams.end( ); ++pIter )
+  {
+    EventStream* p = *pIter;
+
+    if ( p->isRemoteStream( ) )
     {
-      EventStream* p = *pIter;
-
-      if ( p->isRemoteStream( ) )
-      {
-        continue;
-      }
-
-      EventStream::SortedGraphNodeList& nodes = p->getNodes( );
-      GraphNode* pLastGraphNode = p->getLastNode( );
-
-      writer->writeProcess(
-        ( *pIter )->getId( ), &nodes, enableWaitStates, pLastGraphNode,
-        verbose, &( this->getCtrTable( ) ), &( this->getGraph( ) ) );
+      continue;
     }
 
-  // printf( "[%u] wrote events \n", mpiAnalysis.getMPIRank( ) );
-  
+    EventStream::SortedGraphNodeList& nodes = p->getNodes( );
+    GraphNode* pLastGraphNode = p->getLastNode( );
+
+    writer->writeProcess(
+      ( *pIter )->getId( ), &nodes, enableWaitStates, pLastGraphNode,
+      verbose, &( this->getCtrTable( ) ), &( this->getGraph( ) ) );
+  }
+
+  /* printf( "[%u] wrote events \n", mpiAnalysis.getMPIRank( ) ); */
+
 }
 
 GraphNode*
@@ -727,7 +729,9 @@ AnalysisEngine::clearBarrierEventList( bool device, int matchingId )
 }
 
 void
-AnalysisEngine::addBarrierEventToList( GraphNode* node, bool device, int matchingId )
+AnalysisEngine::addBarrierEventToList( GraphNode* node,
+                                       bool device,
+                                       int matchingId )
 {
   if ( device )
   {

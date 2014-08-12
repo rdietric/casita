@@ -23,9 +23,9 @@ using namespace casita;
 using namespace casita::io;
 
 void
-computeCriticalPaths( Runner* runner, uint32_t mpiRank) 
+computeCriticalPaths( Runner* runner, uint32_t mpiRank )
 {
-  runner->getCriticalPath( ); 
+  runner->getCriticalPath( );
 }
 
 int
@@ -67,7 +67,7 @@ main( int argc, char** argv )
   {
     printf( "[%u] Computing the critical path\n", mpiRank );
   }
-  
+
   computeCriticalPaths( runner, mpiRank );
 
   /* create OTF with wait states and critical path */
@@ -87,23 +87,24 @@ main( int argc, char** argv )
       VERBOSE_ANNOY );
   }
 
-  if(options.mergeActivities)
+  if ( options.mergeActivities )
   {
-    
+
     if ( mpiRank == 0 )
     {
       printf( "[%u] Merging activity statistics... \n", mpiRank );
     }
-      
+
     runner->mergeActivityGroups( );
-    
-    std::cout << "[" << mpiRank << "] after the merge. Now printing... " << std::endl;
-    
-    runner->printAllActivities(  );
-    
+
+    std::cout << "[" << mpiRank << "] after the merge. Now printing... " <<
+    std::endl;
+
+    runner->printAllActivities( );
+
     MPI_Barrier( MPI_COMM_WORLD );
   }
-  
+
   delete runner;
 
   MPI_CHECK( MPI_Finalize( ) );

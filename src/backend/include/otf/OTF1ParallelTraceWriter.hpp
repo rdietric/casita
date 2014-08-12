@@ -24,23 +24,23 @@ namespace casita
  namespace io
  {
 
-    typedef std::map< uint32_t, std::vector< OTF_ATTR_TYPE > > AttrListMap;
-    
+  typedef std::map< uint32_t, std::vector< OTF_ATTR_TYPE > > AttrListMap;
+
   typedef struct
   {
     uint32_t maxFunctionID;
     uint64_t timerResolution;
     OTF_Writer* writer;
   } WriterData;
-  
-  enum OTF1EVENT_TYPE {OTF1_ENTER, OTF1_LEAVE, OTF1_MISC};
-  
-  typedef struct 
+
+  enum OTF1EVENT_TYPE { OTF1_ENTER, OTF1_LEAVE, OTF1_MISC };
+
+  typedef struct
   {
-      uint64_t time;
-      uint32_t regionRef;
-      uint32_t location;
-      OTF1EVENT_TYPE type;
+    uint64_t time;
+    uint32_t regionRef;
+    uint32_t location;
+    OTF1EVENT_TYPE type;
   } OTF1Event;
 
   class OTF1ParallelTraceWriter :
@@ -112,12 +112,12 @@ namespace casita
 
       bool
       processNextNode( OTF1Event event );
-      
+
       bool
       processCPUEvent( OTF1Event event );
-      
+
       void
-      assignBlame(uint64_t currentTime, uint64_t currentStream);
+      assignBlame( uint64_t currentTime, uint64_t currentStream );
 
       EventStream::SortedGraphNodeList* processNodes;
       bool enableWaitStates;
@@ -125,25 +125,25 @@ namespace casita
       GraphNode* lastGraphNode;
       CounterTable* cTable;
       Graph* graph;
-      
+
       bool verbose;
-      
+
       uint32_t cpuNodes;
       uint32_t currentStackLevel;
-      
-      std::map< uint32_t ,std::list<OTF1Event> > currentCPUNodes;
-      std::map<uint32_t, std::string> regionNameList;
+
+      std::map< uint32_t, std::list< OTF1Event > > currentCPUNodes;
+      std::map< uint32_t, std::string > regionNameList;
       AttrListMap attrListMap;
-      std::map<uint32_t, std::list<uint32_t> > processGroupProcessListMap;
-      std::map<uint32_t, bool> deviceStreamMap;
-      std::map<uint64_t, GraphNode* > lastProcessedNodePerProcess;
-      std::map<uint64_t, OTF1Event> lastCPUEventPerProcess;
-      std::stack<uint32_t> eventStack;
-      std::map<uint64_t, uint64_t> lastTimeOnCriticalPath;
-      std::list<uint32_t> currentlyRunningCPUFunctions;
+      std::map< uint32_t, std::list< uint32_t > > processGroupProcessListMap;
+      std::map< uint32_t, bool > deviceStreamMap;
+      std::map< uint64_t, GraphNode* > lastProcessedNodePerProcess;
+      std::map< uint64_t, OTF1Event > lastCPUEventPerProcess;
+      std::stack< uint32_t > eventStack;
+      std::map< uint64_t, uint64_t > lastTimeOnCriticalPath;
+      std::list< uint32_t > currentlyRunningCPUFunctions;
       Graph::EdgeList openEdges;
       uint32_t lastNodeCheckedForEdgesId;
-      
+
       static int
       otf1HandleDefProcess( void* userData,
                             uint32_t stream,

@@ -143,17 +143,17 @@ OTF1ParallelTraceWriter::close( )
  * Copy definitions from original trace to new one
  */
 void
-OTF1ParallelTraceWriter::copyGlobalDefinitions(  )
+OTF1ParallelTraceWriter::copyGlobalDefinitions( )
 {
-  
+
   OTF_Reader* reader = OTF_Reader_open( originalFilename.c_str( ), fileMgr );
 
   OTF_HandlerArray* handlers = OTF_HandlerArray_open( );
-  
-  if(mpiRank == 0)
+
+  if ( mpiRank == 0 )
   {
     globalWriter = OTF_Writer_open(
-        outputFilename.c_str( ), totalNumStreams, fileMgr );
+      outputFilename.c_str( ), totalNumStreams, fileMgr );
 
     OTF_HandlerArray_setHandler(
       handlers,
@@ -169,9 +169,11 @@ OTF1ParallelTraceWriter::copyGlobalDefinitions(  )
                                  OTF_DEFPROCESS_RECORD );
     OTF_HandlerArray_setFirstHandlerArg( handlers, this, OTF_DEFPROCESS_RECORD );
 
-    OTF_HandlerArray_setHandler( handlers,
-                                 (OTF_FunctionPointer*)otf1HandleDefProcessGroup,
-                                 OTF_DEFPROCESSGROUP_RECORD );
+    OTF_HandlerArray_setHandler(
+      handlers,
+      (OTF_FunctionPointer*)
+      otf1HandleDefProcessGroup,
+      OTF_DEFPROCESSGROUP_RECORD );
     OTF_HandlerArray_setFirstHandlerArg( handlers,
                                          this,
                                          OTF_DEFPROCESSGROUP_RECORD );
@@ -181,16 +183,20 @@ OTF1ParallelTraceWriter::copyGlobalDefinitions(  )
                                  OTF_DEFFUNCTION_RECORD );
     OTF_HandlerArray_setFirstHandlerArg( handlers, this, OTF_DEFFUNCTION_RECORD );
 
-    OTF_HandlerArray_setHandler( handlers,
-                                 (OTF_FunctionPointer*)otf1HandleDefFunctionGroup,
-                                 OTF_DEFFUNCTIONGROUP_RECORD );
+    OTF_HandlerArray_setHandler(
+      handlers,
+      (OTF_FunctionPointer*)
+      otf1HandleDefFunctionGroup,
+      OTF_DEFFUNCTIONGROUP_RECORD );
     OTF_HandlerArray_setFirstHandlerArg( handlers,
                                          this,
                                          OTF_DEFFUNCTIONGROUP_RECORD );
 
-    OTF_HandlerArray_setHandler( handlers,
-                                 (OTF_FunctionPointer*)otf1HandleDefAttributeList,
-                                 OTF_DEFATTRLIST_RECORD );
+    OTF_HandlerArray_setHandler(
+      handlers,
+      (OTF_FunctionPointer*)
+      otf1HandleDefAttributeList,
+      OTF_DEFATTRLIST_RECORD );
     OTF_HandlerArray_setFirstHandlerArg( handlers, this, OTF_DEFATTRLIST_RECORD );
     OTF_HandlerArray_setHandler( handlers,
                                  (OTF_FunctionPointer*)otf1HandleDefKeyValue,
@@ -204,38 +210,43 @@ OTF1ParallelTraceWriter::copyGlobalDefinitions(  )
     OTF_HandlerArray_setFirstHandlerArg( handlers,
                                          this,
                                          OTF_DEFPROCESSORGROUPATTR_RECORD );
-  } else
-  { 
-    OTF_HandlerArray_setHandler(handlers,
-                        (OTF_FunctionPointer*)
-                        otf1HandleDefTimerResolution,
-                        OTF_DEFTIMERRESOLUTION_RECORD );
+  }
+  else
+  {
+    OTF_HandlerArray_setHandler( handlers,
+                                 (OTF_FunctionPointer*)
+                                 otf1HandleDefTimerResolution,
+                                 OTF_DEFTIMERRESOLUTION_RECORD );
     OTF_HandlerArray_setFirstHandlerArg( handlers,
-                        this,
-                        OTF_DEFTIMERRESOLUTION_RECORD );
-    
-    OTF_HandlerArray_setHandler( handlers,
-                        (OTF_FunctionPointer*)otf1HandleDefProcessGroup,
-                        OTF_DEFPROCESSGROUP_RECORD );
-    OTF_HandlerArray_setFirstHandlerArg( handlers,
-                        this,
-                        OTF_DEFPROCESSGROUP_RECORD );
-    
-    OTF_HandlerArray_setHandler( handlers,
-                        (OTF_FunctionPointer*)otf1HandleDefFunction,
-                        OTF_DEFFUNCTION_RECORD );
-    OTF_HandlerArray_setFirstHandlerArg( handlers, this, OTF_DEFFUNCTION_RECORD );
-    
-    OTF_HandlerArray_setHandler( handlers,
-                        (OTF_FunctionPointer*)otf1HandleDefAttributeList,
-                        OTF_DEFATTRLIST_RECORD );
-    OTF_HandlerArray_setFirstHandlerArg( handlers, this, OTF_DEFATTRLIST_RECORD );
-    
+                                         this,
+                                         OTF_DEFTIMERRESOLUTION_RECORD );
+
     OTF_HandlerArray_setHandler(
-                        handlers,
-                        (OTF_FunctionPointer*)
-                        otf1HandleDefProcessOrGroupAttributes,
-                        OTF_DEFPROCESSORGROUPATTR_RECORD );
+      handlers,
+      (OTF_FunctionPointer*)
+      otf1HandleDefProcessGroup,
+      OTF_DEFPROCESSGROUP_RECORD );
+    OTF_HandlerArray_setFirstHandlerArg( handlers,
+                                         this,
+                                         OTF_DEFPROCESSGROUP_RECORD );
+
+    OTF_HandlerArray_setHandler( handlers,
+                                 (OTF_FunctionPointer*)otf1HandleDefFunction,
+                                 OTF_DEFFUNCTION_RECORD );
+    OTF_HandlerArray_setFirstHandlerArg( handlers, this, OTF_DEFFUNCTION_RECORD );
+
+    OTF_HandlerArray_setHandler(
+      handlers,
+      (OTF_FunctionPointer*)
+      otf1HandleDefAttributeList,
+      OTF_DEFATTRLIST_RECORD );
+    OTF_HandlerArray_setFirstHandlerArg( handlers, this, OTF_DEFATTRLIST_RECORD );
+
+    OTF_HandlerArray_setHandler(
+      handlers,
+      (OTF_FunctionPointer*)
+      otf1HandleDefProcessOrGroupAttributes,
+      OTF_DEFPROCESSORGROUPATTR_RECORD );
     OTF_HandlerArray_setFirstHandlerArg( handlers,
                                          this,
                                          OTF_DEFPROCESSORGROUPATTR_RECORD );
@@ -249,15 +260,18 @@ OTF1ParallelTraceWriter::copyGlobalDefinitions(  )
 
   OTF_CHECK( OTF_Reader_close( reader ) );
 
-  if(mpiRank == 0)
+  if ( mpiRank == 0 )
   {
-    OTF_CHECK( OTF_Writer_writeDefKeyValue( globalWriter, 0, streamRefKey, OTF_UINT32,
+    OTF_CHECK( OTF_Writer_writeDefKeyValue( globalWriter, 0, streamRefKey,
+                                            OTF_UINT32,
                                             streamRefKeyName,
                                             "Referenced CUDA stream" ) );
-    OTF_CHECK( OTF_Writer_writeDefKeyValue( globalWriter, 0, eventRefKey, OTF_UINT32,
+    OTF_CHECK( OTF_Writer_writeDefKeyValue( globalWriter, 0, eventRefKey,
+                                            OTF_UINT32,
                                             eventRefKeyName,
                                             "Referenced CUDA event" ) );
-    OTF_CHECK( OTF_Writer_writeDefKeyValue( globalWriter, 0, funcResultKey, OTF_UINT32,
+    OTF_CHECK( OTF_Writer_writeDefKeyValue( globalWriter, 0, funcResultKey,
+                                            OTF_UINT32,
                                             funcResultKeyName,
                                             "CUDA API function result" ) );
   }
@@ -290,7 +304,6 @@ OTF1ParallelTraceWriter::writeDefProcess( uint64_t id, uint64_t parentId,
     outputFilename.c_str( ), otf1_id, fileMgr );
   processWStreamMap[otf1_id] = wstream;
 
-  
   OTF_WStream_writeBeginProcess( wstream, 0, otf1_id );
 }
 
@@ -323,29 +336,29 @@ OTF1ParallelTraceWriter::writeProcess( uint64_t processId,
                                        CounterTable* ctrTable,
                                        Graph* graph )
 {
-    cpuNodes = 0;
-    currentStackLevel = 0;
-    currentlyRunningCPUFunctions.clear();
-    lastTimeOnCriticalPath[processId] = 0;
+  cpuNodes = 0;
+  currentStackLevel = 0;
+  currentlyRunningCPUFunctions.clear( );
+  lastTimeOnCriticalPath[processId] = 0;
   lastProcessedNodePerProcess[processId] = new GraphNode( 0,
-                                processId,
-                                "START",
-                                PARADIGM_ALL,
-                                RECORD_ATOMIC,
-                                MISC_PROCESS );
-    
+                                                          processId,
+                                                          "START",
+                                                          PARADIGM_ALL,
+                                                          RECORD_ATOMIC,
+                                                          MISC_PROCESS );
+
   OTF1Event event;
   event.location = processId;
   event.type = OTF1_MISC;
   event.time = 0;
   lastCPUEventPerProcess[processId] = event;
-  
+
   if ( verbose )
   {
     std::cout << "[" << mpiRank << "] Start writing for process " <<
     processId << std::endl;
   }
-  
+
   /* create writer for this process */
   processNodes = nodes;
   this->enableWaitStates = enableWaitStates;
@@ -409,110 +422,142 @@ OTF1ParallelTraceWriter::writeProcess( uint64_t processId,
   OTF_HandlerArray_close( handlers );
 }
 
-/* processing the next CPU event, calculating blame 
- * 
+/* processing the next CPU event, calculating blame
+ *
  */
-bool OTF1ParallelTraceWriter::processCPUEvent(OTF1Event event)
+bool
+OTF1ParallelTraceWriter::processCPUEvent( OTF1Event event )
 {
-    OTF_WStream_ptr wstream = processWStreamMap[event.location];
-    GraphNode* node;
-    
-    node = *iter;
-    
-    OTF1Event bufferedCPUEvent = lastCPUEventPerProcess[event.location];
-    GraphNode * lastProcessedNode  = lastProcessedNodePerProcess[node->getStreamId()];
-    // Any buffered CPU-Events?
-    if( lastProcessedNode &&
-            bufferedCPUEvent.time > 
-            lastProcessedNode->getTime())
-    {
-        
-        if(bufferedCPUEvent.type != OTF1_ENTER 
-                && bufferedCPUEvent.type != OTF1_LEAVE)
-            return true;
-        // write counter for critical path for all pending cpu events
+  OTF_WStream_ptr wstream = processWStreamMap[event.location];
+  GraphNode* node;
 
-        uint64_t ctrVal =0;
-        bool valid;
-        if(lastProcessedNode && 
-                (lastProcessedNode->getCounter(cTable->getCtrId( CTR_CRITICALPATH ), &valid) == 1) &&
-                (node->getCounter(cTable->getCtrId( CTR_CRITICALPATH ), &valid) == 1)
-                && (lastTimeOnCriticalPath[event.location] != 0))
-        {
-            ctrVal = 1;
-            for(std::list<uint32_t>::iterator fIter = currentlyRunningCPUFunctions.begin();
-                    fIter != currentlyRunningCPUFunctions.end(); fIter++)
-            {
-                activityGroupMap[*fIter].totalDurationOnCP += event.time 
-                        - std::max(activityGroupMap[*fIter].lastEnter, lastTimeOnCriticalPath[event.location]);
-                //std::cout << "[" << mpiRank << "] + Time on CP " << event.time 
-                //        - std::max(activityGroupMap[*fIter].lastEnter, lastTimeOnCriticalPath[event.location]) << " to " 
-                //    << regionNameList[*fIter] 
-                //    << " last Enter: " << activityGroupMap[*fIter].lastEnter
-                //    << " last on CP: " << lastTimeOnCriticalPath[event.location]
-                //    << std::endl;
-            }
-            lastTimeOnCriticalPath[event.location] = event.time;
-        }
-        
-        // Write buffered CPU-event
-        if(bufferedCPUEvent.type == OTF1_ENTER)
-        {
-            OTF_CHECK( OTF_WStream_writeEnter( wstream, bufferedCPUEvent.time,
+  node = *iter;
+
+  OTF1Event bufferedCPUEvent = lastCPUEventPerProcess[event.location];
+  GraphNode* lastProcessedNode =
+    lastProcessedNodePerProcess[node->getStreamId( )];
+  /* Any buffered CPU-Events? */
+  if ( lastProcessedNode &&
+       bufferedCPUEvent.time >
+       lastProcessedNode->getTime( ) )
+  {
+
+    if ( bufferedCPUEvent.type != OTF1_ENTER
+         && bufferedCPUEvent.type != OTF1_LEAVE )
+    {
+      return true;
+    }
+    /* write counter for critical path for all pending cpu events */
+
+    uint64_t ctrVal = 0;
+    bool valid;
+    if ( lastProcessedNode &&
+         ( lastProcessedNode->getCounter( cTable->getCtrId( CTR_CRITICALPATH ),
+                                          &valid ) == 1 ) &&
+         ( node->getCounter( cTable->getCtrId( CTR_CRITICALPATH ),
+                             &valid ) == 1 )
+         && ( lastTimeOnCriticalPath[event.location] != 0 ) )
+    {
+      ctrVal = 1;
+      for ( std::list< uint32_t >::iterator fIter =
+              currentlyRunningCPUFunctions.begin( );
+            fIter != currentlyRunningCPUFunctions.end( ); fIter++ )
+      {
+        activityGroupMap[*fIter].totalDurationOnCP += event.time
+                                                      - std::max(
+          activityGroupMap[*fIter].lastEnter,
+          lastTimeOnCriticalPath[event.location] );
+        /* std::cout << "[" << mpiRank << "] + Time on CP " <<
+         * event.time */
+        /*        - std::max(activityGroupMap[*fIter].lastEnter,
+         * lastTimeOnCriticalPath[event.location]) << " to " */
+        /*    << regionNameList[*fIter] */
+        /*    << " last Enter: " << activityGroupMap[*fIter].lastEnter */
+        /*    << " last on CP: " <<
+         * lastTimeOnCriticalPath[event.location] */
+        /*    << std::endl; */
+      }
+      lastTimeOnCriticalPath[event.location] = event.time;
+    }
+
+    /* Write buffered CPU-event */
+    if ( bufferedCPUEvent.type == OTF1_ENTER )
+    {
+      OTF_CHECK( OTF_WStream_writeEnter( wstream, bufferedCPUEvent.time,
                                          bufferedCPUEvent.regionRef,
                                          bufferedCPUEvent.location, 0 ) );
-        }
-        if(bufferedCPUEvent.type == OTF1_LEAVE)
-        {
-            OTF_CHECK( OTF_WStream_writeLeave( wstream, bufferedCPUEvent.time, 
-                                        bufferedCPUEvent.regionRef,
-                                        bufferedCPUEvent.location, 0 ) );
-        }
-        
-        OTF_CHECK( OTF_WStream_writeCounter( wstream, bufferedCPUEvent.time,
-                                             bufferedCPUEvent.location,
-                                             cTable->getCtrId( CTR_CRITICALPATH ),
-                                             ctrVal ) );
-
-        if(bufferedCPUEvent.type == OTF1_LEAVE && (bufferedCPUEvent.regionRef != event.regionRef))
-        {
-            if(lastTimeOnCriticalPath[event.location] != 0)
-            {
-                if(activityGroupMap[bufferedCPUEvent.regionRef].lastEnter > 
-                        lastProcessedNode->getTime())
-                {
-                    //std::cout << "[" << mpiRank << "] time on CP " << 
-                    //        ctrVal* (bufferedCPUEvent.time -
-                    //            activityGroupMap[bufferedCPUEvent.regionRef].lastEnter) 
-                    //        << "from LAST Enter"  
-                    //<< " to leave " << regionNameList[bufferedCPUEvent.regionRef] << std::endl;
-                    activityGroupMap[bufferedCPUEvent.regionRef].totalDurationOnCP += 
-                            ctrVal* (bufferedCPUEvent.time -
-                                activityGroupMap[bufferedCPUEvent.regionRef].lastEnter);
-                } else
-                {
-                    //std::cout << "[" << mpiRank << "] time on CP " << 
-                    //        ctrVal* (bufferedCPUEvent.time -
-                    //            lastProcessedNode->getTime())
-                    //        << " from NODE " << lastProcessedNode->getUniqueName()  
-                    //<< " to leave " << regionNameList[bufferedCPUEvent.regionRef] << std::endl;
-                    activityGroupMap[bufferedCPUEvent.regionRef].totalDurationOnCP += 
-                            ctrVal* (bufferedCPUEvent.time -
-                                lastProcessedNode->getTime());
-                }
-            }
-        }
-                    
     }
-    
-    if(bufferedCPUEvent.type == OTF1_ENTER )
-        activityGroupMap[bufferedCPUEvent.regionRef].lastEnter = bufferedCPUEvent.time;
-    else if(bufferedCPUEvent.type == OTF1_LEAVE )
+    if ( bufferedCPUEvent.type == OTF1_LEAVE )
     {
-        activityGroupMap[bufferedCPUEvent.regionRef].totalDuration += bufferedCPUEvent.time - activityGroupMap[bufferedCPUEvent.regionRef].lastEnter;
+      OTF_CHECK( OTF_WStream_writeLeave( wstream, bufferedCPUEvent.time,
+                                         bufferedCPUEvent.regionRef,
+                                         bufferedCPUEvent.location, 0 ) );
     }
-    
-    return true;
+
+    OTF_CHECK( OTF_WStream_writeCounter( wstream, bufferedCPUEvent.time,
+                                         bufferedCPUEvent.location,
+                                         cTable->getCtrId( CTR_CRITICALPATH ),
+                                         ctrVal ) );
+
+    if ( bufferedCPUEvent.type == OTF1_LEAVE &&
+         ( bufferedCPUEvent.regionRef != event.regionRef ) )
+    {
+      if ( lastTimeOnCriticalPath[event.location] != 0 )
+      {
+        if ( activityGroupMap[bufferedCPUEvent.regionRef].lastEnter >
+             lastProcessedNode->getTime( ) )
+        {
+          /* std::cout << "[" << mpiRank << "] time on CP " << */
+          /*        ctrVal* (bufferedCPUEvent.time - */
+          /*
+           *
+           *
+           *
+           *
+           *
+           *
+           *
+           *
+           *
+           *   activityGroupMap[bufferedCPUEvent.regionRef].lastEnter) */
+          /*        << "from LAST Enter" */
+          /* << " to leave " <<
+           * regionNameList[bufferedCPUEvent.regionRef] << std::endl; */
+          activityGroupMap[bufferedCPUEvent.regionRef].totalDurationOnCP +=
+            ctrVal * ( bufferedCPUEvent.time -
+                       activityGroupMap[bufferedCPUEvent.regionRef].lastEnter );
+        }
+        else
+        {
+          /* std::cout << "[" << mpiRank << "] time on CP " << */
+          /*        ctrVal* (bufferedCPUEvent.time - */
+          /*            lastProcessedNode->getTime()) */
+          /*        << " from NODE " <<
+           * lastProcessedNode->getUniqueName() */
+          /* << " to leave " <<
+           * regionNameList[bufferedCPUEvent.regionRef] << std::endl; */
+          activityGroupMap[bufferedCPUEvent.regionRef].totalDurationOnCP +=
+            ctrVal * ( bufferedCPUEvent.time -
+                       lastProcessedNode->getTime( ) );
+        }
+      }
+    }
+
+  }
+
+  if ( bufferedCPUEvent.type == OTF1_ENTER )
+  {
+    activityGroupMap[bufferedCPUEvent.regionRef].lastEnter =
+      bufferedCPUEvent.time;
+  }
+  else
+  if ( bufferedCPUEvent.type == OTF1_LEAVE ) {
+    activityGroupMap[bufferedCPUEvent.regionRef].totalDuration +=
+      bufferedCPUEvent.time -
+      activityGroupMap[bufferedCPUEvent.regionRef].lastEnter;
+  }
+
+  return true;
 }
 
 /*
@@ -521,96 +566,116 @@ bool OTF1ParallelTraceWriter::processCPUEvent(OTF1Event event)
 bool
 OTF1ParallelTraceWriter::processNextNode( OTF1Event event )
 {
-    uint64_t time = event.time;
-    if(event.type == OTF1_LEAVE)
-    {
-        event.regionRef = eventStack.top();
-        eventStack.pop();
-    }
-    
-    if(activityGroupMap.find(event.regionRef) == activityGroupMap.end())
-    {
-        activityGroupMap[event.regionRef].functionId = event.regionRef;
-        activityGroupMap[event.regionRef].numInstances = 0;
-    }
-    
-    if(verbose > VERBOSE_ANNOY)
-        std::cout << "[" << mpiRank << "] process " << event.regionRef << " " << regionNameList[event.regionRef] << " " << event.type 
-            << " at " << event.time << std::endl;
-    
-    if(event.type == OTF1_ENTER )
-        activityGroupMap[event.regionRef].numInstances++;
-    
-    uint32_t funcId = event.regionRef;
-    
-    
-    if(iter == processNodes->end())   
-    {
-        std::cout << "[" << mpiRank << "] reached end of processNodes at " << event.time << std::endl;
-        if(event.type == OTF1_ENTER )
-        {
-            activityGroupMap[event.regionRef].lastEnter = event.time;
-            currentlyRunningCPUFunctions.push_back(event.regionRef);
-        } else if(event.type == OTF1_LEAVE )
-        {
-            activityGroupMap[event.regionRef].totalDuration += event.time - activityGroupMap[event.regionRef].lastEnter;
-            currentlyRunningCPUFunctions.pop_back();
-        }
-        return false;
-    }
+  uint64_t time = event.time;
+  if ( event.type == OTF1_LEAVE )
+  {
+    event.regionRef = eventStack.top( );
+    eventStack.pop( );
+  }
 
-    GraphNode* node = *iter;
-  
-  /* 
+  if ( activityGroupMap.find( event.regionRef ) == activityGroupMap.end( ) )
+  {
+    activityGroupMap[event.regionRef].functionId = event.regionRef;
+    activityGroupMap[event.regionRef].numInstances = 0;
+  }
+
+  if ( verbose > VERBOSE_ANNOY )
+  {
+    std::cout << "[" << mpiRank << "] process " << event.regionRef << " " <<
+    regionNameList[event.regionRef] << " " << event.type
+              << " at " << event.time << std::endl;
+  }
+
+  if ( event.type == OTF1_ENTER )
+  {
+    activityGroupMap[event.regionRef].numInstances++;
+  }
+
+  uint32_t funcId = event.regionRef;
+
+  if ( iter == processNodes->end( ) )
+  {
+    std::cout << "[" << mpiRank << "] reached end of processNodes at " <<
+    event.time << std::endl;
+    if ( event.type == OTF1_ENTER )
+    {
+      activityGroupMap[event.regionRef].lastEnter = event.time;
+      currentlyRunningCPUFunctions.push_back( event.regionRef );
+    }
+    else
+    if ( event.type == OTF1_LEAVE ) {
+      activityGroupMap[event.regionRef].totalDuration += event.time -
+                                                         activityGroupMap[event
+                                                                          .
+                                                                          regionRef
+                                                         ].lastEnter;
+      currentlyRunningCPUFunctions.pop_back( );
+    }
+    return false;
+  }
+
+  GraphNode* node = *iter;
+
+  /*
     * CPU events are not in nodes, hence they have to be written and countervalues have to be calculated first.
-    * Since we need the time between a node and its successor we buffer one cpu event at each time. 
+    * Since we need the time between a node and its successor we buffer one cpu event at each time.
     */
-   OTF1Event bufferedCPUEvent = lastCPUEventPerProcess[event.location];
-   GraphNode * lastProcessedNode  = lastProcessedNodePerProcess[node->getStreamId()];
-   
-   // Any buffered CPU-Events to be processed?
-   if( lastProcessedNode && (bufferedCPUEvent.time > 
-       lastProcessedNode->getTime()) )
-   {
-        processCPUEvent(event);
-   }
+  OTF1Event bufferedCPUEvent = lastCPUEventPerProcess[event.location];
+  GraphNode* lastProcessedNode =
+    lastProcessedNodePerProcess[node->getStreamId( )];
 
-   // CPU_nodes are to be buffered
-   FunctionDescriptor desc;
-   bool isDeviceStream = deviceStreamMap[event.location];
-   if(!FunctionTable::getAPIFunctionType(regionNameList[funcId].c_str() , &desc, isDeviceStream, false) 
-           || desc.paradigm == PARADIGM_VT)
-   {
-       if(verbose)
-           std::cout << "[" << mpiRank << "] Buffer: [" << event.location << "] function: " << event.regionRef << std::endl;
-       
-       if(event.type == OTF1_ENTER) 
-           activityGroupMap[event.regionRef].lastEnter = event.time;
+  /* Any buffered CPU-Events to be processed? */
+  if ( lastProcessedNode && ( bufferedCPUEvent.time >
+                              lastProcessedNode->getTime( ) ) )
+  {
+    processCPUEvent( event );
+  }
 
-       // Add Blame for area since last event
-        assignBlame(event.time, event.location);
-        
-        // Keep track of cpuFunctions
-        if(event.type == OTF1_ENTER)
-        {
-            currentlyRunningCPUFunctions.push_back(event.regionRef);
-        }
-        if(event.type == OTF1_LEAVE)
-        {
-            currentlyRunningCPUFunctions.pop_back();
-        }
-       
-       cpuNodes++;
+  /* CPU_nodes are to be buffered */
+  FunctionDescriptor desc;
+  bool isDeviceStream = deviceStreamMap[event.location];
+  if ( !FunctionTable::getAPIFunctionType( regionNameList[funcId].c_str( ),
+                                           &desc, isDeviceStream, false )
+       || desc.paradigm == PARADIGM_VT )
+  {
+    if ( verbose )
+    {
+      std::cout << "[" << mpiRank << "] Buffer: [" << event.location <<
+      "] function: " << event.regionRef << std::endl;
+    }
 
-       lastCPUEventPerProcess[event.location] = event;
+    if ( event.type == OTF1_ENTER )
+    {
+      activityGroupMap[event.regionRef].lastEnter = event.time;
+    }
 
-       return true;
-   }
+    /* Add Blame for area since last event */
+    assignBlame( event.time, event.location );
 
-   if(verbose)
-       std::cout << "[" << mpiRank << "] processed " << cpuNodes << " cpuNodes" << std::endl;
+    /* Keep track of cpuFunctions */
+    if ( event.type == OTF1_ENTER )
+    {
+      currentlyRunningCPUFunctions.push_back( event.regionRef );
+    }
+    if ( event.type == OTF1_LEAVE )
+    {
+      currentlyRunningCPUFunctions.pop_back( );
+    }
 
-   cpuNodes = 0;
+    cpuNodes++;
+
+    lastCPUEventPerProcess[event.location] = event;
+
+    return true;
+  }
+
+  if ( verbose )
+  {
+    std::cout << "[" << mpiRank << "] processed " << cpuNodes << " cpuNodes" <<
+    std::endl;
+  }
+
+  cpuNodes = 0;
 
   if ( time != node->getTime( ) )
   {
@@ -622,11 +687,17 @@ OTF1ParallelTraceWriter::processNextNode( OTF1Event event )
                 << "funcId " << funcId << " - " << node->getFunctionId( ) <<
       std::endl;
     }
-    if(event.type == OTF1_ENTER )
-        activityGroupMap[event.regionRef].lastEnter = event.time;
-    else if(event.type == OTF1_LEAVE )
+    if ( event.type == OTF1_ENTER )
     {
-        activityGroupMap[event.regionRef].totalDuration += event.time - activityGroupMap[event.regionRef].lastEnter;
+      activityGroupMap[event.regionRef].lastEnter = event.time;
+    }
+    else
+    if ( event.type == OTF1_LEAVE ) {
+      activityGroupMap[event.regionRef].totalDuration += event.time -
+                                                         activityGroupMap[event
+                                                                          .
+                                                                          regionRef
+                                                         ].lastEnter;
     }
 
     return false;
@@ -677,30 +748,38 @@ OTF1ParallelTraceWriter::processNextNode( OTF1Event event )
     }
   }
 
-  lastProcessedNodePerProcess[node->getStreamId()] = node;
+  lastProcessedNodePerProcess[node->getStreamId( )] = node;
   /* set iterator to next node in sorted list */
   iter++;
-  
-  if(event.type == OTF1_ENTER )
-    activityGroupMap[event.regionRef].lastEnter = event.time;
-  else if(event.type == OTF1_LEAVE )
+
+  if ( event.type == OTF1_ENTER )
   {
-    activityGroupMap[event.regionRef].totalDuration += event.time - activityGroupMap[event.regionRef].lastEnter;
+    activityGroupMap[event.regionRef].lastEnter = event.time;
+  }
+  else
+  if ( event.type == OTF1_LEAVE ) {
+    activityGroupMap[event.regionRef].totalDuration += event.time -
+                                                       activityGroupMap[event.
+                                                                        regionRef
+                                                       ].lastEnter;
   }
 
-  if(graph->hasOutEdges(node) && (node->getId() != lastNodeCheckedForEdgesId))
+  if ( graph->hasOutEdges( node ) &&
+       ( node->getId( ) != lastNodeCheckedForEdgesId ) )
   {
-      const Graph::EdgeList & edges = graph->getOutEdges(node);
-      for(Graph::EdgeList::const_iterator edgeIter = edges.begin(); edgeIter != edges.end(); edgeIter++)
+    const Graph::EdgeList& edges = graph->getOutEdges( node );
+    for ( Graph::EdgeList::const_iterator edgeIter = edges.begin( );
+          edgeIter != edges.end( );
+          edgeIter++ )
+    {
+      if ( ( ( *edgeIter )->getCPUBlame( ) > 0 ) )
       {
-          if(((*edgeIter)->getCPUBlame() > 0) )
-          {
-            openEdges.push_back(*edgeIter);
-          }
+        openEdges.push_back( *edgeIter );
       }
-      lastNodeCheckedForEdgesId = node->getId();
+    }
+    lastNodeCheckedForEdgesId = node->getId( );
   }
-  
+
   return true;
 
 }
@@ -714,19 +793,23 @@ OTF1ParallelTraceWriter::writeNode( GraphNode* node,
                                     CounterTable& ctrTable,
                                     bool lastProcessNode,
                                     const GraphNode* futureNode )
-{ 
+{
   uint32_t processId = (uint32_t)node->getStreamId( );
   OTF_WStream_ptr wstream = processWStreamMap[processId];
   uint64_t nodeTime = node->getTime( );
 
-  // Add Blame for area since last event
-  OTF1Event bufferedCPUEvent = lastCPUEventPerProcess[node->getStreamId()];
-  GraphNode * lastProcessedNode  = lastProcessedNodePerProcess[node->getStreamId()];
-  
-  // Add Blame for area since last event
-  if(!(currentStackLevel > currentlyRunningCPUFunctions.size()) && node->isEnter())
-     assignBlame(node->getTime(), node->getStreamId());
-  
+  /* Add Blame for area since last event */
+  OTF1Event bufferedCPUEvent = lastCPUEventPerProcess[node->getStreamId( )];
+  GraphNode* lastProcessedNode =
+    lastProcessedNodePerProcess[node->getStreamId( )];
+
+  /* Add Blame for area since last event */
+  if ( !( currentStackLevel > currentlyRunningCPUFunctions.size( ) ) &&
+       node->isEnter( ) )
+  {
+    assignBlame( node->getTime( ), node->getStreamId( ) );
+  }
+
   if ( node->isEnter( ) || node->isLeave( ) )
   {
 
@@ -806,34 +889,37 @@ OTF1ParallelTraceWriter::writeNode( GraphNode* node,
 
       if ( ctrType == CTR_BLAME )
       {
-          if(node->isLeave())
+        if ( node->isLeave( ) )
+        {
+          if ( graph->hasOutEdges( node ) )
           {
-              if(graph->hasOutEdges(node))
+
+            const Graph::EdgeList& edges = graph->getOutEdges( node );
+            GraphNode* closestNode = edges.front( )->getEndNode( );
+            /* get closest Node */
+            for ( Graph::EdgeList::const_iterator edgeIter = edges.begin( );
+                  edgeIter != edges.end( ); edgeIter++ )
+            {
+              if ( closestNode->getTime( ) >
+                   ( *edgeIter )->getEndNode( )->getTime( ) )
               {
-                  
-                  const Graph::EdgeList& edges = graph->getOutEdges(node);
-                  GraphNode * closestNode = edges.front()->getEndNode();
-                  // get closest Node
-                  for(Graph::EdgeList::const_iterator edgeIter = edges.begin();
-                          edgeIter != edges.end(); edgeIter++)
-                  {
-                      if(closestNode->getTime() > (*edgeIter)->getEndNode()->getTime())
-                          closestNode = (*edgeIter)->getEndNode();
-                  }
-                  //Add blame to edge with closes Node
-                  for(Graph::EdgeList::const_iterator edgeIter = edges.begin();
-                          edgeIter != edges.end(); edgeIter++)
-                  {
-                      if(closestNode == (*edgeIter)->getEndNode())
-                      {
-                          (*edgeIter)->addCPUBlame(ctrVal);
-                      }
-                  }
+                closestNode = ( *edgeIter )->getEndNode( );
               }
-              continue;
+            }
+            /* Add blame to edge with closes Node */
+            for ( Graph::EdgeList::const_iterator edgeIter = edges.begin( );
+                  edgeIter != edges.end( ); edgeIter++ )
+            {
+              if ( closestNode == ( *edgeIter )->getEndNode( ) )
+              {
+                ( *edgeIter )->addCPUBlame( ctrVal );
+              }
+            }
           }
-          
-          activityGroupMap[node->getFunctionId()].totalBlame += ctrVal;
+          continue;
+        }
+
+        activityGroupMap[node->getFunctionId( )].totalBlame += ctrVal;
         uint64_t ctrValLog10 = 0;
         if ( ctrVal > 0 )
         {
@@ -848,9 +934,10 @@ OTF1ParallelTraceWriter::writeNode( GraphNode* node,
 
       if ( ctrType == CTR_CRITICALPATH_TIME )
       {
-        activityGroupMap[node->getFunctionId()].totalDurationOnCP += ctrVal;
-        /* We used to write the counter for time on critical path. We don't do this anymore.*/
-          continue;
+        activityGroupMap[node->getFunctionId( )].totalDurationOnCP += ctrVal;
+        /* We used to write the counter for time on critical path. We
+         *don't do this anymore.*/
+        continue;
       }
 
       OTF_CHECK( OTF_WStream_writeCounter( wstream, node->getTime( ),
@@ -858,57 +945,68 @@ OTF1ParallelTraceWriter::writeNode( GraphNode* node,
 
       if ( ( ctrType == CTR_CRITICALPATH ) && ( ctrVal == 1 ) )
       {
-        if(lastTimeOnCriticalPath[node->getStreamId()] != 0 )
+        if ( lastTimeOnCriticalPath[node->getStreamId( )] != 0 )
         {
-          for(std::list<uint32_t>::iterator fIter = currentlyRunningCPUFunctions.begin();
-                  fIter != currentlyRunningCPUFunctions.end(); fIter++)
+          for ( std::list< uint32_t >::iterator fIter =
+                  currentlyRunningCPUFunctions.begin( );
+                fIter != currentlyRunningCPUFunctions.end( ); fIter++ )
           {
-              activityGroupMap[*fIter].totalDurationOnCP += node->getTime() 
-                      - std::max(activityGroupMap[*fIter].lastEnter, lastTimeOnCriticalPath[node->getStreamId()]);
-              //std::cout << "[" << mpiRank << "] + Time on CP " << node->getTime() 
-              //        - std::max(activityGroupMap[*fIter].lastEnter, lastTimeOnCriticalPath[node->getStreamId()]) << " to " 
-              //    << regionNameList[*fIter] << std::endl;
+            activityGroupMap[*fIter].totalDurationOnCP += node->getTime( )
+                                                          - std::max(
+              activityGroupMap[*fIter].lastEnter,
+              lastTimeOnCriticalPath[node->getStreamId( )] );
+            /* std::cout << "[" << mpiRank << "] + Time on CP " <<
+             * node->getTime() */
+            /*        - std::max(activityGroupMap[*fIter].lastEnter,
+             * lastTimeOnCriticalPath[node->getStreamId()]) << " to " */
+            /*    << regionNameList[*fIter] << std::endl; */
           }
         }
-        
-        lastTimeOnCriticalPath[node->getStreamId()] = node->getTime();
-          
+
+        lastTimeOnCriticalPath[node->getStreamId( )] = node->getTime( );
+
         if ( lastProcessNode )
         {
           OTF_CHECK( OTF_WStream_writeCounter( wstream, node->getTime( ),
                                                processId, ctrId, 0 ) );
-          lastTimeOnCriticalPath[node->getStreamId()] = 0;
+          lastTimeOnCriticalPath[node->getStreamId( )] = 0;
         }
 
         /* make critical path stop in current process if next cp node
          * in different process */
-        if ( ( node->isLeave( ) ) && (( futureNode == NULL ) ||
-             ( futureNode->getStreamId( ) != processId )) )
+        if ( ( node->isLeave( ) ) && ( ( futureNode == NULL ) ||
+                                       ( futureNode->getStreamId( ) !=
+                                         processId ) ) )
         {
           OTF_CHECK( OTF_WStream_writeCounter( wstream, node->getTime( ),
                                                processId, ctrId, 0 ) );
-          
-          lastTimeOnCriticalPath[node->getStreamId()] = 0;
+
+          lastTimeOnCriticalPath[node->getStreamId( )] = 0;
         }
 
       }
-      
+
       if ( ( ctrType == CTR_CRITICALPATH ) && ( ctrVal == 0 ) )
       {
-        if(lastTimeOnCriticalPath[node->getStreamId()] != 0 )
+        if ( lastTimeOnCriticalPath[node->getStreamId( )] != 0 )
         {
-          for(std::list<uint32_t>::iterator fIter = currentlyRunningCPUFunctions.begin();
-                  fIter != currentlyRunningCPUFunctions.end(); fIter++)
+          for ( std::list< uint32_t >::iterator fIter =
+                  currentlyRunningCPUFunctions.begin( );
+                fIter != currentlyRunningCPUFunctions.end( ); fIter++ )
           {
-              activityGroupMap[*fIter].totalDurationOnCP += node->getTime() 
-                      - std::max(activityGroupMap[*fIter].lastEnter, lastTimeOnCriticalPath[node->getStreamId()]);
-              //std::cout << "[" << mpiRank << "] + Time on CP " << node->getTime() 
-              //        - std::max(activityGroupMap[*fIter].lastEnter, lastTimeOnCriticalPath[node->getStreamId()]) << " to " 
-              //    << regionNameList[*fIter] << std::endl;
+            activityGroupMap[*fIter].totalDurationOnCP += node->getTime( )
+                                                          - std::max(
+              activityGroupMap[*fIter].lastEnter,
+              lastTimeOnCriticalPath[node->getStreamId( )] );
+            /* std::cout << "[" << mpiRank << "] + Time on CP " <<
+             * node->getTime() */
+            /*        - std::max(activityGroupMap[*fIter].lastEnter,
+             * lastTimeOnCriticalPath[node->getStreamId()]) << " to " */
+            /*    << regionNameList[*fIter] << std::endl; */
           }
         }
-        
-        lastTimeOnCriticalPath[node->getStreamId()] = 0;
+
+        lastTimeOnCriticalPath[node->getStreamId( )] = 0;
       }
     }
   }
@@ -917,58 +1015,77 @@ OTF1ParallelTraceWriter::writeNode( GraphNode* node,
 /*
  * Method handling blame distribution to events.
  */
-void 
-OTF1ParallelTraceWriter::assignBlame(uint64_t currentTime, uint64_t currentStream)
+void
+OTF1ParallelTraceWriter::assignBlame( uint64_t currentTime,
+                                      uint64_t currentStream )
 {
-  // Add Blame for area since last event
+  /* Add Blame for area since last event */
   OTF1Event bufferedCPUEvent = lastCPUEventPerProcess[currentStream];
-  GraphNode * lastProcessedNode  = lastProcessedNodePerProcess[currentStream];
+  GraphNode* lastProcessedNode = lastProcessedNodePerProcess[currentStream];
   OTF_WStream_ptr wstream = processWStreamMap[currentStream];
-  
-  if(!(bufferedCPUEvent.type == OTF1_ENTER) && !(bufferedCPUEvent.type == OTF1_LEAVE))
-      return;
 
-    bool valid;
-    uint32_t fId = currentlyRunningCPUFunctions.back();
-     uint64_t totalBlame = 0;
-     uint64_t edgeBlame = 0;
-     uint64_t blameAreaStart = std::max(bufferedCPUEvent.time, lastProcessedNode->getTime());
-     uint64_t timeDiff = currentTime - blameAreaStart;
-     for(Graph::EdgeList::iterator edgeIter = openEdges.begin();
-             edgeIter != openEdges.end(); )
-     {
+  if ( !( bufferedCPUEvent.type == OTF1_ENTER ) &&
+       !( bufferedCPUEvent.type == OTF1_LEAVE ) )
+  {
+    return;
+  }
 
-         Edge * edge = *edgeIter;
-         if(edge->getEndNode()->getTime() > lastProcessedNode->getTime())
-         {
-            edgeBlame += edge->getCPUBlame();
-            //std::cout << "[" << mpiRank << "] Blame " << edge->getCPUBlame() << " from " << edge->getStartNode()->getUniqueName()
-            //        << " -> " << edge->getEndNode()->getUniqueName() << std::endl;
-            if((edge->getDuration() > 0) && (edge->getStartNode()->getTime() < currentTime ))
-                totalBlame += (double)(edge->getCPUBlame()) *
-                    (double)timeDiff/
-                    (double)(edge->getDuration());
-            edgeIter++;
-         } else
-         {
-             openEdges.erase(edgeIter);
-         }
+  bool valid;
+  uint32_t fId = currentlyRunningCPUFunctions.back( );
+  uint64_t totalBlame = 0;
+  uint64_t edgeBlame = 0;
+  uint64_t blameAreaStart = std::max( bufferedCPUEvent.time,
+                                      lastProcessedNode->getTime( ) );
+  uint64_t timeDiff = currentTime - blameAreaStart;
+  for ( Graph::EdgeList::iterator edgeIter = openEdges.begin( );
+        edgeIter != openEdges.end( ); )
+  {
+
+    Edge* edge = *edgeIter;
+    if ( edge->getEndNode( )->getTime( ) > lastProcessedNode->getTime( ) )
+    {
+      edgeBlame += edge->getCPUBlame( );
+      /* std::cout << "[" << mpiRank << "] Blame " <<
+       * edge->getCPUBlame() << " from " <<
+       * edge->getStartNode()->getUniqueName() */
+      /*        << " -> " << edge->getEndNode()->getUniqueName() <<
+       * std::endl; */
+      if ( ( edge->getDuration( ) > 0 ) &&
+           ( edge->getStartNode( )->getTime( ) < currentTime ) )
+      {
+        totalBlame += (double)( edge->getCPUBlame( ) ) *
+                      (double)timeDiff /
+                      (double)( edge->getDuration( ) );
+      }
+      edgeIter++;
     }
+    else
+    {
+      openEdges.erase( edgeIter );
+    }
+  }
 
-    activityGroupMap[fId].totalBlame += totalBlame;
+  activityGroupMap[fId].totalBlame += totalBlame;
 
-    //std::cout << "[" << mpiRank << "] write blame " << totalBlame << " to " << blameAreaStart << " fid " << fId << " "
-    //        << idStringMap[regionNameIdList[fId]] << " on " << bufferedCPUEvent.location << " timeDiff " << timeDiff << std::endl;
+  /* std::cout << "[" << mpiRank << "] write blame " << totalBlame <<
+   * " to " << blameAreaStart << " fid " << fId << " " */
+  /*        << idStringMap[regionNameIdList[fId]] << " on " <<
+   * bufferedCPUEvent.location << " timeDiff " << timeDiff <<
+   * std::endl; */
 
-    OTF_CHECK( OTF_WStream_writeCounter( wstream, blameAreaStart,
-                                               bufferedCPUEvent.location, cTable->getCtrId(
-                                                        CTR_BLAME ), totalBlame ) );
-    if(totalBlame > 0)
-        totalBlame = std::log10((double) totalBlame);
+  OTF_CHECK( OTF_WStream_writeCounter( wstream, blameAreaStart,
+                                       bufferedCPUEvent.location,
+                                       cTable->getCtrId(
+                                         CTR_BLAME ), totalBlame ) );
+  if ( totalBlame > 0 )
+  {
+    totalBlame = std::log10( (double)totalBlame );
+  }
 
-    OTF_CHECK( OTF_WStream_writeCounter( wstream, blameAreaStart,
-                                           bufferedCPUEvent.location, cTable->getCtrId(
-                                                    CTR_BLAME_LOG10 ), totalBlame ) );
+  OTF_CHECK( OTF_WStream_writeCounter( wstream, blameAreaStart,
+                                       bufferedCPUEvent.location,
+                                       cTable->getCtrId(
+                                         CTR_BLAME_LOG10 ), totalBlame ) );
 
 }
 
@@ -1003,15 +1120,17 @@ OTF1ParallelTraceWriter::otf1HandleDefProcessGroup( void* userData,
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
 
-  for(uint32_t i=0; i< numberOfProcs; i++)
+  for ( uint32_t i = 0; i < numberOfProcs; i++ )
   {
-      writer->processGroupProcessListMap[procGroup].push_back(procs[i]);
+    writer->processGroupProcessListMap[procGroup].push_back( procs[i] );
   }
-  
-  if(writer->mpiRank == 0)
-        OTF_CHECK( OTF_Writer_writeDefProcessGroupKV( writer->globalWriter,
-                                                stream, procGroup, name,
-                                                numberOfProcs, procs, list ) );
+
+  if ( writer->mpiRank == 0 )
+  {
+    OTF_CHECK( OTF_Writer_writeDefProcessGroupKV( writer->globalWriter,
+                                                  stream, procGroup, name,
+                                                  numberOfProcs, procs, list ) );
+  }
 
   return OTF_RETURN_OK;
 }
@@ -1037,7 +1156,7 @@ OTF1ParallelTraceWriter::otf1HandleDefProcessOrGroupAttributes(
   }
 
   std::vector< OTF_ATTR_TYPE >& attrList = attrIter->second;
-  
+
   bool isCUDA = false;
   for ( std::vector< OTF_ATTR_TYPE >::iterator iter = attrList.begin( );
         iter != attrList.end( ); ++iter )
@@ -1048,20 +1167,24 @@ OTF1ParallelTraceWriter::otf1HandleDefProcessOrGroupAttributes(
     }
   }
 
-  if(isCUDA)
+  if ( isCUDA )
   {
-    for(std::list<uint32_t>::iterator iter = writer->processGroupProcessListMap[proc_token].begin();
-            iter != writer->processGroupProcessListMap[proc_token].end(); iter++ )
+    for ( std::list< uint32_t >::iterator iter =
+            writer->processGroupProcessListMap[proc_token].begin( );
+          iter != writer->processGroupProcessListMap[proc_token].end( ); iter++ )
     {
-        writer->deviceStreamMap[*iter] = true;
+      writer->deviceStreamMap[*iter] = true;
     }
   }
-  
-  if(writer->mpiRank == 0)
-        OTF_CHECK( OTF_Writer_writeDefProcessOrGroupAttributesKV( writer->
-                                                            globalWriter,
-                                                            stream, proc_token,
-                                                            attr_token, list ) );
+
+  if ( writer->mpiRank == 0 )
+  {
+    OTF_CHECK( OTF_Writer_writeDefProcessOrGroupAttributesKV( writer->
+                                                              globalWriter,
+                                                              stream,
+                                                              proc_token,
+                                                              attr_token, list ) );
+  }
 
   return OTF_RETURN_OK;
 }
@@ -1080,11 +1203,14 @@ OTF1ParallelTraceWriter::otf1HandleDefAttributeList( void* userData,
   {
     writer->attrListMap[attr_token].push_back( array[i] );
   }
-  
-  if(writer->mpiRank == 0)
-        OTF_CHECK( OTF_Writer_writeDefAttributeListKV( writer->globalWriter,
-                                                 stream, attr_token, num, array,
-                                                 list ) );
+
+  if ( writer->mpiRank == 0 )
+  {
+    OTF_CHECK( OTF_Writer_writeDefAttributeListKV( writer->globalWriter,
+                                                   stream, attr_token, num,
+                                                   array,
+                                                   list ) );
+  }
 
   return OTF_RETURN_OK;
 }
@@ -1101,10 +1227,13 @@ OTF1ParallelTraceWriter::otf1HandleDefFunction( void* userData,
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
 
   writer->regionNameList[func] = name;
-  
-  if(writer->mpiRank == 0)
+
+  if ( writer->mpiRank == 0 )
+  {
     OTF_CHECK( OTF_Writer_writeDefFunctionKV( writer->globalWriter, stream,
-                                            func, name, funcGroup, source, list ) );
+                                              func, name, funcGroup, source,
+                                              list ) );
+  }
 
   return OTF_RETURN_OK;
 }
@@ -1152,9 +1281,11 @@ OTF1ParallelTraceWriter::otf1HandleDefTimerResolution( void* userData,
 
   writer->timerResolution = ticksPerSecond;
 
-  if(writer->mpiRank == 0)
-        OTF_CHECK( OTF_Writer_writeDefTimerResolution( writer->globalWriter,
-                                                 stream, ticksPerSecond ) );
+  if ( writer->mpiRank == 0 )
+  {
+    OTF_CHECK( OTF_Writer_writeDefTimerResolution( writer->globalWriter,
+                                                   stream, ticksPerSecond ) );
+  }
 
   return OTF_RETURN_OK;
 }
@@ -1180,14 +1311,14 @@ OTF1ParallelTraceWriter::otf1HandleEnter( void* userData,
   event.regionRef = functionId;
   event.time = time;
   event.type = OTF1_ENTER;
-  
-  writer->eventStack.push(functionId);
-  
+
+  writer->eventStack.push( functionId );
+
   if ( !writer->processNextNode( event ) )
   {
     OTF_CHECK( OTF_WStream_writeEnterKV( writer->processWStreamMap[processId],
-                                   time, functionId,
-                                   processId, source, list ) );
+                                         time, functionId,
+                                         processId, source, list ) );
   }
 
   return OTF_RETURN_OK;
@@ -1210,12 +1341,12 @@ OTF1ParallelTraceWriter::otf1HandleLeave( void* userData,
   event.regionRef = functionId;
   event.time = time;
   event.type = OTF1_LEAVE;
-  
+
   if ( !writer->processNextNode( event ) )
   {
     OTF_CHECK( OTF_WStream_writeLeaveKV( writer->processWStreamMap[processId],
-                                   time, functionId,
-                                   processId, source, list ) );
+                                         time, functionId,
+                                         processId, source, list ) );
   }
 
   return OTF_RETURN_OK;

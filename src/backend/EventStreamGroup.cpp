@@ -123,7 +123,8 @@ EventStreamGroup::getHostStreams( ) const
 }
 
 void
-EventStreamGroup::getAllDeviceStreams( EventStreamGroup::EventStreamList& newDeviceStreams ) const
+EventStreamGroup::getAllDeviceStreams(
+  EventStreamGroup::EventStreamList& newDeviceStreams ) const
 {
   newDeviceStreams.clear( );
   if ( nullStream )

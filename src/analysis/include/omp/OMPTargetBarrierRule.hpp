@@ -49,7 +49,8 @@ namespace casita
         if ( node->isEnter( ) )
         {
           /* enter */
-          const uint32_t ompParentCtrId = analysis->getCtrTable( ).getCtrId( CTR_OMP_PARENT_REGION_ID );
+          const uint32_t ompParentCtrId = analysis->getCtrTable( ).getCtrId(
+            CTR_OMP_PARENT_REGION_ID );
           bool valid = false;
           uint64_t matchingId = node->getCounter( ompParentCtrId, &valid );
           if ( !valid )
@@ -69,7 +70,8 @@ namespace casita
         {
           /* leave */
           GraphNode* enterEvent = node->getPartner( );
-          const uint32_t ompParentCtrId = analysis->getCtrTable( ).getCtrId( CTR_OMP_PARENT_REGION_ID );
+          const uint32_t ompParentCtrId = analysis->getCtrTable( ).getCtrId(
+            CTR_OMP_PARENT_REGION_ID );
           bool valid = false;
           uint64_t matchingId = enterEvent->getCounter( ompParentCtrId, &valid );
           if ( !valid )
@@ -87,7 +89,8 @@ namespace casita
             analysis->getBarrierEventList( true, matchingId );
 
           size_t numLeaveNodesInList = 0;
-          for ( GraphNode::GraphNodeList::const_reverse_iterator rIter = barrierList.rbegin( );
+          for ( GraphNode::GraphNodeList::const_reverse_iterator rIter =
+                  barrierList.rbegin( );
                 rIter != barrierList.rend( ); ++rIter )
           {
             if ( ( *rIter )->isEnter( ) )
@@ -126,7 +129,8 @@ namespace casita
           GraphNode* maxEnterTimeNode = *iter;
           uint64_t blame = 0;
 
-          uint32_t ctrIdWaitState = analysis->getCtrTable( ).getCtrId( CTR_WAITSTATE );
+          uint32_t ctrIdWaitState = analysis->getCtrTable( ).getCtrId(
+            CTR_WAITSTATE );
 
           /* find last barrierEnter */
           for (; iter != tmpBarrierList.end( ); ++iter )
@@ -139,7 +143,9 @@ namespace casita
 
           /* accumulate blame, set edges from latest enter to all
            * other leaves */
-          for ( iter = tmpBarrierList.begin( ); iter != tmpBarrierList.end( ); ++iter )
+          for ( iter = tmpBarrierList.begin( );
+                iter != tmpBarrierList.end( );
+                ++iter )
           {
             GraphNode::GraphNodePair& barrier = ( *iter )->getGraphPair( );
             if ( barrier.first != maxEnterTimeNode )

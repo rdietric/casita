@@ -27,42 +27,42 @@ namespace casita
     public ITraceWriter
   {
     public:
-        
-        typedef struct
-     {
-       uint32_t functionId;
-       uint32_t numInstances;
-       uint32_t numUnifyStreams;
-       uint64_t totalDuration;
-       uint64_t totalDurationOnCP;
-       uint64_t totalBlame;
-       double fractionCP;
-       double fractionBlame;
-       uint64_t lastEnter;
-     } ActivityGroup;
 
-     typedef std::map< uint32_t, ActivityGroup > ActivityGroupMap;
+      typedef struct
+      {
+        uint32_t functionId;
+        uint32_t numInstances;
+        uint32_t numUnifyStreams;
+        uint64_t totalDuration;
+        uint64_t totalDurationOnCP;
+        uint64_t totalBlame;
+        double fractionCP;
+        double fractionBlame;
+        uint64_t lastEnter;
+      } ActivityGroup;
 
-     typedef struct
-     {
+      typedef std::map< uint32_t, ActivityGroup > ActivityGroupMap;
 
-       bool
-       operator()( const ActivityGroup& g1, const ActivityGroup& g2 ) const
-       {
-         double rating1 = g1.fractionBlame + g1.fractionCP;
-         double rating2 = g2.fractionBlame + g2.fractionCP;
+      typedef struct
+      {
 
-         if ( rating1 == rating2 )
-         {
-           return g1.functionId > g2.functionId;
-         }
-         else
-         {
-           return rating1 > rating2;
-         }
-       }
+        bool
+        operator()( const ActivityGroup& g1, const ActivityGroup& g2 ) const
+        {
+          double rating1 = g1.fractionBlame + g1.fractionCP;
+          double rating2 = g2.fractionBlame + g2.fractionCP;
 
-     } ActivityGroupCompare;
+          if ( rating1 == rating2 )
+          {
+            return g1.functionId > g2.functionId;
+          }
+          else
+          {
+            return rating1 > rating2;
+          }
+        }
+
+      } ActivityGroupCompare;
 
       IParallelTraceWriter( const char* streamRefKeyName,
                             const char* eventRefKeyName,
@@ -89,12 +89,12 @@ namespace casita
                     bool verbose,
                     CounterTable* ctrTable,
                     Graph* graph ) = 0;
-      
-      ActivityGroupMap& getActivityGroupMap()
+
+      ActivityGroupMap&
+      getActivityGroupMap( )
       {
-          return activityGroupMap;
+        return activityGroupMap;
       }
-      
 
     protected:
       uint32_t mpiRank, mpiSize;

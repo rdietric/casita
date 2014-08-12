@@ -88,7 +88,7 @@ Runner::Runner( int mpiRank, int mpiSize ) :
   analysis( mpiRank, mpiSize ),
   options( Parser::getInstance( ).getProgramOptions( ) ),
   callbacks( options, analysis ),
-  globalLengthCP(0)
+  globalLengthCP( 0 )
 {
   if ( options.noErrors )
   {
@@ -118,9 +118,9 @@ Runner::getAnalysis( )
 }
 
 uint64_t
-Runner::getGlobalLengthCP()
+Runner::getGlobalLengthCP( )
 {
-    return globalLengthCP;
+  return globalLengthCP;
 }
 
 void
@@ -213,9 +213,10 @@ Runner::readOTF( )
 void
 Runner::mergeActivityGroups( )
 {
-    
-    IParallelTraceWriter::ActivityGroupMap& activityGroupMap = analysis.getActivityGroupMap();
-    
+
+  IParallelTraceWriter::ActivityGroupMap& activityGroupMap =
+    analysis.getActivityGroupMap( );
+
   uint64_t lengthCritPath =
     analysis.getLastGraphNode( PARADIGM_COMPUTE_LOCAL )->getTime( ) -
     analysis.getSourceNode( )->getTime( );
@@ -223,10 +224,12 @@ Runner::mergeActivityGroups( )
   uint64_t globalBlame = 0;
 
   /* compute some final metrics */
-  for ( std::map< uint32_t, IParallelTraceWriter::ActivityGroup >::iterator groupIter =
+  for ( std::map< uint32_t,
+                  IParallelTraceWriter::ActivityGroup >::iterator groupIter =
           activityGroupMap.begin( ); groupIter != activityGroupMap.end( ); )
   {
-    std::map< uint32_t, IParallelTraceWriter::ActivityGroup >::iterator iter = groupIter;
+    std::map< uint32_t,
+              IParallelTraceWriter::ActivityGroup >::iterator iter = groupIter;
     groupIter->second.fractionCP =
       (double)( groupIter->second.totalDurationOnCP ) / (double)lengthCritPath;
     globalBlame += groupIter->second.totalBlame;
@@ -257,12 +260,19 @@ Runner::mergeActivityGroups( )
       /* receive entries */
       if ( numEntries > 0 )
       {
-        IParallelTraceWriter::ActivityGroup* buf = new IParallelTraceWriter::ActivityGroup[numEntries];
-        MPI_Recv( buf, numEntries * sizeof( IParallelTraceWriter::ActivityGroup ), MPI_BYTE,
-                  rank, 2, MPI_COMM_WORLD, &status );
+        IParallelTraceWriter::ActivityGroup* buf =
+          new IParallelTraceWriter::ActivityGroup[numEntries];
+        MPI_Recv( buf,
+                  numEntries * sizeof( IParallelTraceWriter::ActivityGroup ),
+                  MPI_BYTE,
+                  rank,
+                  2,
+                  MPI_COMM_WORLD,
+                  &status );
 
         /* combine with own activity groups */
-        std::map< uint32_t, IParallelTraceWriter::ActivityGroup >::iterator groupIter;
+        std::map< uint32_t,
+                  IParallelTraceWriter::ActivityGroup >::iterator groupIter;
         for ( uint32_t i = 0; i < numEntries; ++i )
         {
           IParallelTraceWriter::ActivityGroup* group = &( buf[i] );
@@ -296,11 +306,14 @@ Runner::mergeActivityGroups( )
       }
     }
 
-    for ( std::map< uint32_t, IParallelTraceWriter::ActivityGroup >::iterator groupIter =
+    for ( std::map< uint32_t,
+                    IParallelTraceWriter::ActivityGroup >::iterator groupIter =
             activityGroupMap.begin( );
           groupIter != activityGroupMap.end( ); ++groupIter )
     {
-      std::map< uint32_t, IParallelTraceWriter::ActivityGroup >::iterator iter = groupIter;
+      std::map< uint32_t,
+                IParallelTraceWriter::ActivityGroup >::iterator iter =
+        groupIter;
       groupIter->second.fractionCP /= (double)( iter->second.numUnifyStreams );
       if ( globalBlame > 0 )
       {
@@ -317,17 +330,20 @@ Runner::mergeActivityGroups( )
   {
     /* send to MPI master process (rank 0) */
     uint32_t numEntries = activityGroupMap.size( );
-    
+
     MPI_Send( &numEntries, 1, MPI_INTEGER4, 0, 1, MPI_COMM_WORLD );
 
-    IParallelTraceWriter::ActivityGroup* buf = new IParallelTraceWriter::ActivityGroup[numEntries];
+    IParallelTraceWriter::ActivityGroup* buf =
+      new IParallelTraceWriter::ActivityGroup[numEntries];
 
     uint32_t i = 0;
-    for ( std::map< uint32_t, IParallelTraceWriter::ActivityGroup >::iterator groupIter =
+    for ( std::map< uint32_t,
+                    IParallelTraceWriter::ActivityGroup >::iterator groupIter =
             activityGroupMap.begin( );
           groupIter != activityGroupMap.end( ); ++groupIter )
     {
-      memcpy( &( buf[i] ), &( groupIter->second ), sizeof( IParallelTraceWriter::ActivityGroup ) );
+      memcpy( &( buf[i] ), &( groupIter->second ),
+              sizeof( IParallelTraceWriter::ActivityGroup ) );
       ++i;
     }
 
@@ -438,7 +454,7 @@ Runner::getLocalCriticalPath( EventStream::SortedGraphNodeList& criticalNodes,
 }
 
 void
-Runner::getCriticalPath( ) 
+Runner::getCriticalPath( )
 {
   EventStream::SortedGraphNodeList criticalNodes;
   MPIAnalysis::CriticalSectionsMap sectionsMap;
@@ -512,7 +528,7 @@ Runner::getCriticalPath( )
     for ( EventStream::SortedGraphNodeList::const_iterator nIter = nodes.begin( );
           nIter != nodes.end( ); ++nIter )
     {
-      if (( *nIter )->isAtomic( ) )
+      if ( ( *nIter )->isAtomic( ) )
       {
         continue;
       }
@@ -593,7 +609,7 @@ Runner::getCriticalPath( )
       }
       lastTimestamp = lastNode->getTime( );
     }
-    
+
     if ( mpiSize > 1 )
     {
       MPI_Allreduce( &firstTimestamp,
@@ -692,7 +708,8 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
     GraphNode* startNode = NULL, * endNode = NULL;
     const EventStream::SortedGraphNodeList& mpiNodes =
       analysis.getStream( sections->streamID )->getNodes( );
-    for ( EventStream::SortedGraphNodeList::const_iterator iter = mpiNodes.begin( );
+    for ( EventStream::SortedGraphNodeList::const_iterator iter =
+            mpiNodes.begin( );
           iter != mpiNodes.end( ); ++iter )
     {
       if ( !( *iter )->isMPI( ) )
@@ -1020,8 +1037,8 @@ Runner::reverseReplayMPICriticalPath(
             }
 
             MPI_CHECK( MPI_Send( sendBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
-                                  commMpiRank, 0, MPI_COMM_WORLD) );
-            
+                                 commMpiRank, 0, MPI_COMM_WORLD ) );
+
           }
           /* continue main loop as slave */
         }
@@ -1105,7 +1122,7 @@ Runner::reverseReplayMPICriticalPath(
 
       if ( recvBfr[2] == PATH_FOUND_MSG )
       {
-        if ( options.verbose >= VERBOSE_ANNOY)
+        if ( options.verbose >= VERBOSE_ANNOY )
         {
           printf( "[%u] * terminate requested by master\n", mpiRank );
         }
@@ -1147,7 +1164,7 @@ Runner::reverseReplayMPICriticalPath(
                   currentNode->getUniqueName( ).c_str( ),
                   lastNode->getUniqueName( ).c_str( ) );
         }
-        
+
         /* continue main loop as master */
       }
     }
@@ -1254,8 +1271,9 @@ Runner::runAnalysis( Paradigm paradigm,
 void
 Runner::printAllActivities( )
 {
-    IParallelTraceWriter::ActivityGroupMap& activityGroupMap = analysis.getActivityGroupMap();
-    
+  IParallelTraceWriter::ActivityGroupMap& activityGroupMap =
+    analysis.getActivityGroupMap( );
+
   if ( mpiRank == 0 )
   {
     printf( "\n%50s %10s %10s %11s %12s %21s %9s\n",
@@ -1267,9 +1285,11 @@ Runner::printAllActivities( )
             "Fraction Global Blame",
             "Rating" );
 
-    std::set< IParallelTraceWriter::ActivityGroup, IParallelTraceWriter::ActivityGroupCompare > sortedActivityGroups;
+    std::set< IParallelTraceWriter::ActivityGroup,
+              IParallelTraceWriter::ActivityGroupCompare > sortedActivityGroups;
 
-    for ( std::map< uint32_t, IParallelTraceWriter::ActivityGroup >::iterator iter =
+    for ( std::map< uint32_t,
+                    IParallelTraceWriter::ActivityGroup >::iterator iter =
             activityGroupMap.begin( );
           iter != activityGroupMap.end( ); ++iter )
     {
@@ -1286,7 +1306,8 @@ Runner::printAllActivities( )
     const size_t max_ctr = 20;
     size_t ctr = 0;
     for ( std::set< IParallelTraceWriter::ActivityGroup,
-                    IParallelTraceWriter::ActivityGroupCompare >::const_iterator iter =
+                    IParallelTraceWriter::ActivityGroupCompare >::
+          const_iterator iter =
             sortedActivityGroups.begin( );
           iter != sortedActivityGroups.end( ) && ctr < max_ctr;
           ++iter )
@@ -1298,7 +1319,7 @@ Runner::printAllActivities( )
               analysis.getRealTime( iter->totalDuration ),
               analysis.getRealTime( iter->totalDurationOnCP ),
               100.0 * iter->fractionCP,
-              100.0 * iter->fractionBlame, 
+              100.0 * iter->fractionBlame,
               iter->fractionCP +
               iter->fractionBlame );
     }

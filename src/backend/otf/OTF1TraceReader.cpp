@@ -371,7 +371,7 @@ OTF1TraceReader::getKeyName( uint32_t id )
 std::string
 OTF1TraceReader::getFunctionName( uint32_t id )
 {
-  
+
   TokenNameMap::iterator iter = fNameMap.find( id );
   if ( iter != fNameMap.end( ) )
   {

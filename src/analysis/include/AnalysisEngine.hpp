@@ -170,11 +170,12 @@ namespace casita
                                    bool enableWaitStates,
                                    bool verbose );
 
-     io::IParallelTraceWriter::ActivityGroupMap& getActivityGroupMap()
+     io::IParallelTraceWriter::ActivityGroupMap&
+     getActivityGroupMap( )
      {
-         return writer->getActivityGroupMap();
+       return writer->getActivityGroupMap( );
      }
-     
+
      double
      getRealTime( uint64_t t );
 
@@ -189,7 +190,7 @@ namespace casita
 
      void
      setOmpCompute( GraphNode* node, uint64_t streamId );
-    
+
      const GraphNode::GraphNodeList&
      getBarrierEventList( bool device, int matchingId = 0 );
 
@@ -228,8 +229,8 @@ namespace casita
 
    private:
 
-    io::IParallelTraceWriter* writer;
-       
+     io::IParallelTraceWriter* writer;
+
      MPIAnalysis mpiAnalysis;
 
      std::vector< AbstractRule* > rules;
