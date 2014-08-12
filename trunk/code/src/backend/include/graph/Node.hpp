@@ -419,7 +419,7 @@ namespace casita
      {
        return isOMP( ) && ( nodeType & OMP_TARGET_FLUSH );
      }
-     
+
      static const std::string
      typeToStr( Paradigm paradigm, int type )
      {

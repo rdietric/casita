@@ -48,13 +48,12 @@ namespace casita
      Graph::EdgeList emptyEdgeList;
      typedef struct
      {
-         uint64_t startTime;
-         uint64_t endTime;
-         uint32_t numberOfEvents;
+       uint64_t startTime;
+       uint64_t endTime;
+       uint32_t numberOfEvents;
      } EdgeCPUData;
-     
-     std::map<uint64_t ,EdgeCPUData> cpuDataPerProcess;
-     
+
+     std::map< uint64_t, EdgeCPUData > cpuDataPerProcess;
 
    public:
      typedef std::map< uint64_t, EventStream* > EventStreamMap;
@@ -152,10 +151,10 @@ namespace casita
                       Paradigm paradigm,
                       NodeRecordType recordType,
                       int nodeType );
-     
+
      void
-     addCPUEvent(uint64_t time, uint64_t stream);
-     
+     addCPUEvent( uint64_t time, uint64_t stream );
+
      Edge*
      getEdge( GraphNode* source, GraphNode* target );
 

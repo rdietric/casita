@@ -33,12 +33,12 @@ namespace casita
    public:
      typedef std::map< uint32_t, uint64_t > TimeProfileMap;
      typedef std::map< Paradigm, Edge* > ParadigmEdgeMap;
-     typedef struct 
+     typedef struct
      {
-         uint64_t startTime;
-         uint64_t endTime;
+       uint64_t startTime;
+       uint64_t endTime;
      } cpuStartEndTime;
-    
+
      Edge( GraphNode* start, GraphNode* end, uint64_t duration,
            int properties, Paradigm edgeParadigm ) :
        properties( EDGE_NONE )
@@ -52,9 +52,9 @@ namespace casita
 
        cpuNodes = 0;
        cpuBlame = 0;
-       cpuStartEnd.startTime = end->getTime();
-       cpuStartEnd.endTime = end->getTime();
-       
+       cpuStartEnd.startTime = end->getTime( );
+       cpuStartEnd.endTime = end->getTime( );
+
        this->properties = properties;
        this->edgeDuration = duration;
        this->initialDuration = duration;
@@ -74,7 +74,7 @@ namespace casita
      {
        return edgeParadigm;
      }
-     
+
      uint64_t
      getDuration( ) const
      {
@@ -196,42 +196,48 @@ namespace casita
      {
        return timeProfile;
      }
-     
-     void addCPUData(uint32_t nodes, uint64_t startTime, uint64_t endTime)
+
+     void
+     addCPUData( uint32_t nodes, uint64_t startTime, uint64_t endTime )
      {
-         if(nodes > 0)
-         {
-            cpuNodes = nodes;
-            cpuStartEnd.startTime = startTime;
-            cpuStartEnd.endTime = endTime;
-         }
+       if ( nodes > 0 )
+       {
+         cpuNodes = nodes;
+         cpuStartEnd.startTime = startTime;
+         cpuStartEnd.endTime = endTime;
+       }
      }
 
-     uint64_t getCPUNodesStartTime()
+     uint64_t
+     getCPUNodesStartTime( )
      {
-         return cpuStartEnd.startTime;
+       return cpuStartEnd.startTime;
      }
-     
-     uint64_t getCPUNodesEndTime()
+
+     uint64_t
+     getCPUNodesEndTime( )
      {
-         return cpuStartEnd.endTime;
+       return cpuStartEnd.endTime;
      }
-     
-     uint32_t getNumberOfCPUNodes()
+
+     uint32_t
+     getNumberOfCPUNodes( )
      {
-         return cpuNodes;
+       return cpuNodes;
      }
-     
-     void addCPUBlame(uint64_t blame)
+
+     void
+     addCPUBlame( uint64_t blame )
      {
-         cpuBlame += blame;
+       cpuBlame += blame;
      }
-     
-     uint64_t getCPUBlame()
+
+     uint64_t
+     getCPUBlame( )
      {
-         return cpuBlame;
+       return cpuBlame;
      }
-     
+
    private:
      int properties;
      uint64_t edgeDuration;
@@ -244,7 +250,7 @@ namespace casita
      uint32_t cpuNodes;
      cpuStartEndTime cpuStartEnd;
      uint64_t cpuBlame;
-     
+
      void
      setWeight( uint64_t weight )
      {

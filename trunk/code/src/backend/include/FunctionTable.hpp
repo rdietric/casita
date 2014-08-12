@@ -131,7 +131,7 @@ namespace casita
    "MPI_Isend",
    "MPI_Irecv"
  };
- 
+
  static const char* FTABLE_MPI_COLL[] =
  {
    "MPI_Barrier",
@@ -202,7 +202,7 @@ namespace casita
  {
    { MPI_MISC, 2, FTABLE_MPI_ASYNC }
  };
- 
+
  static const size_t fTableEntriesVT = 1;
  static const FTableEntry fTableVT[fTableEntriesVT] =
  {
@@ -236,14 +236,14 @@ namespace casita
      }
 
      static bool
-     getAPIFunctionType( const char* name, FunctionDescriptor* descr, 
-                            bool deviceStream, bool deviceNullStream)
+     getAPIFunctionType( const char* name, FunctionDescriptor* descr,
+                         bool deviceStream, bool deviceNullStream )
      {
        descr->paradigm = PARADIGM_CPU;
        descr->type = 0;
-       
+
        bool set = false;
-       
+
        for ( size_t i = 0; i < fTableEntriesMPIAsync; ++i )
        {
          FTableEntry entry = fTableMPIAsync[i];
@@ -252,11 +252,11 @@ namespace casita
            if ( strcmp( entry.table[j], name ) == 0 )
            {
              throw RTException( "%s is ASYNC. This is not supported.",
-                             name );
+                                name );
            }
          }
        }
-       
+
        for ( size_t i = 0; i < fTableEntriesCUDA; ++i )
        {
          FTableEntry entry = fTableCUDA[i];
@@ -267,7 +267,7 @@ namespace casita
              descr->paradigm = PARADIGM_CUDA;
              descr->type = entry.type;
              set = true;
-             //return true;
+             /* return true; */
            }
          }
        }
@@ -282,7 +282,7 @@ namespace casita
              descr->paradigm = PARADIGM_MPI;
              descr->type = entry.type;
              set = true;
-             //return true;
+             /* return true; */
            }
          }
        }
@@ -297,120 +297,120 @@ namespace casita
              descr->paradigm = PARADIGM_VT;
              descr->type = entry.type;
              set = true;
-             //return true;
+             /* return true; */
            }
          }
        }
 
-        if ( set )
-        {
-          switch ( descr->paradigm )
-          {
-            case PARADIGM_CUDA:
-              switch ( descr->type )
-              {
-                case CUDA_COLLSYNC:
-                  descr->type = CUDA_COLLSYNC | CUDA_SYNC;
-                  return true;
+       if ( set )
+       {
+         switch ( descr->paradigm )
+         {
+           case PARADIGM_CUDA:
+             switch ( descr->type )
+             {
+               case CUDA_COLLSYNC:
+                 descr->type = CUDA_COLLSYNC | CUDA_SYNC;
+                 return true;
 
-                case CUDA_SYNC:
-                case CUDA_KERNEL_LAUNCH:
-                case CUDA_EV_LAUNCH:
-                case CUDA_EV_SYNC:
-                case CUDA_QUERY:
-                case CUDA_EV_QUERY:
-                case CUDA_STREAMWAIT:
-                  return true;
-              }
+               case CUDA_SYNC:
+               case CUDA_KERNEL_LAUNCH:
+               case CUDA_EV_LAUNCH:
+               case CUDA_EV_SYNC:
+               case CUDA_QUERY:
+               case CUDA_EV_QUERY:
+               case CUDA_STREAMWAIT:
+                 return true;
+             }
 
-            case PARADIGM_MPI:
-              switch ( descr->type )
-              {
-                case MPI_COLL:
-                case MPI_ONETOALL:
-                case MPI_ALLTOONE:
-                case MPI_WAIT:
-                case MPI_SENDRECV:
-                case MPI_RECV:
-                case MPI_SEND:
-                case MPI_MISC:
-                  return true;
-              }
+           case PARADIGM_MPI:
+             switch ( descr->type )
+             {
+               case MPI_COLL:
+               case MPI_ONETOALL:
+               case MPI_ALLTOONE:
+               case MPI_WAIT:
+               case MPI_SENDRECV:
+               case MPI_RECV:
+               case MPI_SEND:
+               case MPI_MISC:
+                 return true;
+             }
 
-            case PARADIGM_VT:
-              switch ( descr->type )
-              {
-                case VT_FLUSH:
-                  return true;
-              }
+           case PARADIGM_VT:
+             switch ( descr->type )
+             {
+               case VT_FLUSH:
+                 return true;
+             }
 
-            default:
-              break;
-          }
-        }
-        /* not an MPI or CUDA API function */
+           default:
+             break;
+         }
+       }
+       /* not an MPI or CUDA API function */
 
-        if ( strstr( name, "!$omp" ) )
-        {
-          descr->paradigm = PARADIGM_OMP;
-          if ( strstr( name, "barrier" ) )
-          {
-            descr->type = OMP_SYNC;
-          }
-          else
-            {
-              if ( strstr( name, "target " ) || strstr( name, "targetmap " ) )
-              {
-                descr->type = OMP_TARGET_OFFLOAD;
-              }
-              else
-              {
-                if ( strstr( name, "offloading flush" ) )
-                {
-                  descr->type = OMP_TARGET_FLUSH;
-                }
-                else
-                {
-                  descr->type = OMP_COMPUTE;
-                }
-              }
-            }
-          return true;
-        }
+       if ( strstr( name, "!$omp" ) )
+       {
+         descr->paradigm = PARADIGM_OMP;
+         if ( strstr( name, "barrier" ) )
+         {
+           descr->type = OMP_SYNC;
+         }
+         else
+         {
+           if ( strstr( name, "target " ) || strstr( name, "targetmap " ) )
+           {
+             descr->type = OMP_TARGET_OFFLOAD;
+           }
+           else
+           {
+             if ( strstr( name, "offloading flush" ) )
+             {
+               descr->type = OMP_TARGET_FLUSH;
+             }
+             else
+             {
+               descr->type = OMP_COMPUTE;
+             }
+           }
+         }
+         return true;
+       }
 
-        if ( strstr( name, "parallel region" ) )
-        {
-          descr->paradigm = PARADIGM_OMP;
-          descr->type = OMP_PAR_REGION;
-          return true;
-        }
+       if ( strstr( name, "parallel region" ) )
+       {
+         descr->paradigm = PARADIGM_OMP;
+         descr->type = OMP_PAR_REGION;
+         return true;
+       }
 
-        /* not recognized MPI_function */
-        if(!strncmp("MPI_", name, 4))
-          {
-              descr->paradigm = PARADIGM_MPI;
-              return true;
-          }
+       /* not recognized MPI_function */
+       if ( !strncmp( "MPI_", name, 4 ) )
+       {
+         descr->paradigm = PARADIGM_MPI;
+         return true;
+       }
 
-        /* kernel ? */
-        if ( deviceNullStream )
-        {
-          descr->type = ( CUDA_KERNEL | CUDA_SYNC | CUDA_COLLSYNC );
-          descr->paradigm = PARADIGM_CUDA;
-          return true;
-        }
+       /* kernel ? */
+       if ( deviceNullStream )
+       {
+         descr->type = ( CUDA_KERNEL | CUDA_SYNC | CUDA_COLLSYNC );
+         descr->paradigm = PARADIGM_CUDA;
+         return true;
+       }
 
-        if ( deviceStream )
-        {
-          descr->type = CUDA_KERNEL;
-          descr->paradigm = PARADIGM_CUDA;
-          return true;
-        }
+       if ( deviceStream )
+       {
+         descr->type = CUDA_KERNEL;
+         descr->paradigm = PARADIGM_CUDA;
+         return true;
+       }
 
-        /* anything else */
-        descr->paradigm = PARADIGM_CPU;
-        descr->type = MISC_CPU;
-        return false;
+       /* anything else */
+       descr->paradigm = PARADIGM_CPU;
+       descr->type = MISC_CPU;
+       return false;
      }
 
    private:

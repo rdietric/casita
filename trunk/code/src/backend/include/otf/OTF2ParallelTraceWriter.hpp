@@ -27,23 +27,23 @@ namespace casita
 
   typedef std::map< uint32_t, uint32_t > CtrInstanceMap;
 
-  enum OTF2EVENT_TYPE {ENTER, LEAVE, MISC};
-  
-  typedef struct 
+  enum OTF2EVENT_TYPE { ENTER, LEAVE, MISC };
+
+  typedef struct
   {
-      uint64_t time;
-      uint32_t regionRef;
-      uint64_t location;
-      OTF2EVENT_TYPE type;
+    uint64_t time;
+    uint32_t regionRef;
+    uint64_t location;
+    OTF2EVENT_TYPE type;
   } OTF2Event;
-    
-  typedef struct 
+
+  typedef struct
   {
-      uint64_t time;
-      uint32_t threadTeam;
-      uint64_t location;
+    uint64_t time;
+    uint32_t threadTeam;
+    uint64_t location;
   } OTF2ThreadTeamBegin;
-  
+
   typedef struct
   {
     OTF2_LocationRef locationID;
@@ -51,7 +51,7 @@ namespace casita
     OTF2_Paradigm paradigm;
     uint32_t numberOfRequestedThreads;
   } OTF2ThreadFork;
-  
+
   class OTF2ParallelTraceWriter :
     public IParallelTraceWriter
   {
@@ -139,19 +139,19 @@ namespace casita
        * it starts with 1, otf2 with 0...) */
       std::map< uint32_t, uint32_t > otf2CounterMapping;
 
-      std::map<uint32_t, const char*> idStringMap;
-      
+      std::map< uint32_t, const char* > idStringMap;
+
       void
       copyGlobalDefinitions( );
-      
+
       bool
       processNextNode( OTF2Event event );
-      
+
       bool
       processCPUEvent( OTF2Event event );
-      
+
       void
-      assignBlame(uint64_t currentTime, uint64_t currentStream);
+      assignBlame( uint64_t currentTime, uint64_t currentStream );
 
       EventStream::SortedGraphNodeList* processNodes;
       bool enableWaitStates;
@@ -163,19 +163,20 @@ namespace casita
       bool isFirstProcess;
       uint32_t cpuNodes;
       uint32_t currentStackLevel;
-      
-      std::map< uint64_t ,std::list<OTF2Event> > currentCPUNodes;
-      std::map<uint32_t, OTF2_StringRef> regionNameIdList;
-      std::map<uint64_t, bool> deviceStreamMap;
-      std::map<uint64_t, std::list<OTF2ThreadTeamBegin> > pendingThreadTeamBegin;
-      std::map<uint64_t, std::list<OTF2ThreadFork> > pendingThreadFork;
-      std::map<uint64_t, GraphNode* > lastProcessedNodePerProcess;
-      std::map<uint64_t, OTF2Event> lastCPUEventPerProcess;
-      std::map<uint64_t, uint64_t> lastTimeOnCriticalPath;
-      std::list<uint32_t> currentlyRunningCPUFunctions;
+
+      std::map< uint64_t, std::list< OTF2Event > > currentCPUNodes;
+      std::map< uint32_t, OTF2_StringRef > regionNameIdList;
+      std::map< uint64_t, bool > deviceStreamMap;
+      std::map< uint64_t,
+                std::list< OTF2ThreadTeamBegin > > pendingThreadTeamBegin;
+      std::map< uint64_t, std::list< OTF2ThreadFork > > pendingThreadFork;
+      std::map< uint64_t, GraphNode* > lastProcessedNodePerProcess;
+      std::map< uint64_t, OTF2Event > lastCPUEventPerProcess;
+      std::map< uint64_t, uint64_t > lastTimeOnCriticalPath;
+      std::list< uint32_t > currentlyRunningCPUFunctions;
       Graph::EdgeList openEdges;
       uint32_t lastNodeCheckedForEdgesId;
-      
+
       /* Definition callbacks */
       static OTF2_CallbackCode
       GlobDefLocation_Register( void* userData,
@@ -250,19 +251,28 @@ namespace casita
                                            OTF2_StringRef sourceFile,
                                            uint32_t beginLineNumber,
                                            uint32_t endLineNumber );
-      
+
       static OTF2_CallbackCode
-      OTF2_GlobalDefReaderCallback_Region_forParadigmMap( void* userData,
-                                           OTF2_RegionRef self,
-                                           OTF2_StringRef name,
-                                           OTF2_StringRef cannonicalName,
-                                           OTF2_StringRef description,
-                                           OTF2_RegionRole regionRole,
-                                           OTF2_Paradigm paradigm,
-                                           OTF2_RegionFlag regionFlags,
-                                           OTF2_StringRef sourceFile,
-                                           uint32_t beginLineNumber,
-                                           uint32_t endLineNumber );
+      OTF2_GlobalDefReaderCallback_Region_forParadigmMap(
+        void* userData,
+        OTF2_RegionRef self,
+        OTF2_StringRef name,
+        OTF2_StringRef
+        cannonicalName,
+        OTF2_StringRef
+        description,
+        OTF2_RegionRole
+        regionRole,
+        OTF2_Paradigm
+        paradigm,
+        OTF2_RegionFlag
+        regionFlags,
+        OTF2_StringRef
+        sourceFile,
+        uint32_t
+        beginLineNumber,
+        uint32_t
+        endLineNumber );
 
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_SystemTreeNode( void* userData,
@@ -400,23 +410,23 @@ namespace casita
 
       static OTF2_CallbackCode
       OTF2_EvtReaderCallback_ThreadFork( OTF2_LocationRef locationID,
-                                               OTF2_TimeStamp time,
-                                               uint64_t eventPosition,
-                                               void* userData,
-                                               OTF2_AttributeList*
-                                               attributeList,
-                                               OTF2_Paradigm paradigm,
-                                               uint32_t
-                                               numberOfRequestedThreads );
+                                         OTF2_TimeStamp time,
+                                         uint64_t eventPosition,
+                                         void* userData,
+                                         OTF2_AttributeList*
+                                         attributeList,
+                                         OTF2_Paradigm paradigm,
+                                         uint32_t
+                                         numberOfRequestedThreads );
 
       static OTF2_CallbackCode
       OTF2_EvtReaderCallback_ThreadJoin( OTF2_LocationRef locationID,
-                                               OTF2_TimeStamp time,
-                                               uint64_t eventPosition,
-                                               void* userData,
-                                               OTF2_AttributeList*
-                                               attributeList,
-                                               OTF2_Paradigm paradigm );
+                                         OTF2_TimeStamp time,
+                                         uint64_t eventPosition,
+                                         void* userData,
+                                         OTF2_AttributeList*
+                                         attributeList,
+                                         OTF2_Paradigm paradigm );
 
       static OTF2_CallbackCode
       otf2CallbackEnter( OTF2_LocationRef location,

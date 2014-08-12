@@ -149,7 +149,7 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( const char* streamRefKeyName,
   flush_callbacks.otf2_pre_flush = preFlush;
 
   commGroup = comm;
-  
+
   for ( CounterTable::CtrIdSet::const_iterator ctrIter = ctrIdSet.begin( );
         ctrIter != ctrIdSet.end( ); ++ctrIter )
   {
@@ -176,7 +176,7 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
 
   printf( "[%u] FILENAME: %s path: %s \n ", mpiRank,
           outputFilename.c_str( ), pathToFile.c_str( ) );
-  
+
   /* remove trace dir */
   if ( boost::filesystem::exists( pathToFile + std::string( "/" ) +
                                   outputFilename ) )
@@ -192,7 +192,7 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
     boost::filesystem::remove(
       boost::filesystem::change_extension( otfFilename, "def" ) );
   }
-  
+
   /* open new otf2 file */
   archive = OTF2_Archive_Open( pathToFile.c_str( ),
                                outputFilename.c_str( ),
@@ -259,8 +259,10 @@ void
 OTF2ParallelTraceWriter::copyGlobalDefinitions( )
 {
 
-    if(mpiRank == 0)
-        global_def_writer = OTF2_Archive_GetGlobalDefWriter( archive );
+  if ( mpiRank == 0 )
+  {
+    global_def_writer = OTF2_Archive_GetGlobalDefWriter( archive );
+  }
 
   OTF2_GlobalDefReader* global_def_reader = OTF2_Reader_GetGlobalDefReader(
     reader );
@@ -268,8 +270,8 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions( )
   OTF2_GlobalDefReaderCallbacks* global_def_callbacks =
     OTF2_GlobalDefReaderCallbacks_New( );
 
-  if(mpiRank == 0)
-    {
+  if ( mpiRank == 0 )
+  {
     OTF2_GlobalDefReaderCallbacks_SetAttributeCallback(
       global_def_callbacks,
       &
@@ -318,7 +320,8 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions( )
       global_def_callbacks,
       &
       OTF2_GlobalDefReaderCallback_RmaWin );
-  } else
+  }
+  else
   {
     OTF2_GlobalDefReaderCallbacks_SetLocationCallback(
       global_def_callbacks,
@@ -333,9 +336,9 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions( )
       &
       OTF2_GlobalDefReaderCallback_String );
     OTF2_GlobalDefReaderCallbacks_SetRegionCallback(
-        global_def_callbacks,
-        &
-        OTF2_GlobalDefReaderCallback_Region );
+      global_def_callbacks,
+      &
+      OTF2_GlobalDefReaderCallback_Region );
   }
 
   /* register callbacks */
@@ -370,7 +373,7 @@ OTF2ParallelTraceWriter::writeDefProcess( uint64_t id, uint64_t parentId,
     OTF2_UNDEFINED_LOCATION );
   OTF2_CHECK( OTF2_EvtWriter_SetLocationID( evt_writer, id ) );
   evt_writerMap[id] = evt_writer;
-  
+
   OTF2_Reader_SelectLocation( reader, id );
 }
 
@@ -425,21 +428,20 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t processId,
 {
   cpuNodes = 0;
   currentStackLevel = 0;
-  currentlyRunningCPUFunctions.clear();
-    lastTimeOnCriticalPath[processId] = 0;
+  currentlyRunningCPUFunctions.clear( );
+  lastTimeOnCriticalPath[processId] = 0;
   lastProcessedNodePerProcess[processId] = new GraphNode( 0,
-                                processId,
-                                "START",
-                                PARADIGM_ALL,
-                                RECORD_ATOMIC,
-                                MISC_PROCESS );
+                                                          processId,
+                                                          "START",
+                                                          PARADIGM_ALL,
+                                                          RECORD_ATOMIC,
+                                                          MISC_PROCESS );
   OTF2Event event;
   event.location = processId;
   event.type = MISC;
   event.time = timerOffset;
   lastCPUEventPerProcess[processId] = event;
-  
-         
+
   if ( verbose )
   {
     std::cout << "[" << mpiRank << "] Start writing for process " <<
@@ -460,46 +462,50 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t processId,
     OTF2_Reader_OpenDefFiles( reader );
     isFirstProcess = false;
   }
-  
+
   OTF2_DefReader* def_reader = OTF2_Reader_GetDefReader( reader, processId );
   uint64_t def_reads = 0;
   OTF2_Reader_ReadAllLocalDefinitions( reader, def_reader, &def_reads );
   OTF2_Reader_CloseDefReader( reader, def_reader );
 
   OTF2_Reader_GetEvtReader( reader, processId );
-  
+
   OTF2_EvtReader* evt_reader = OTF2_Reader_GetEvtReader( reader, processId );
 
   OTF2_EvtReaderCallbacks* event_callbacks = OTF2_EvtReaderCallbacks_New( );
   OTF2_EvtReaderCallbacks_SetEnterCallback( event_callbacks, &otf2CallbackEnter );
   OTF2_EvtReaderCallbacks_SetLeaveCallback( event_callbacks, &otf2CallbackLeave );
-  OTF2_EvtReaderCallbacks_SetThreadForkCallback( 
-          event_callbacks, &OTF2_EvtReaderCallback_ThreadFork );
+  OTF2_EvtReaderCallbacks_SetThreadForkCallback(
+    event_callbacks, &OTF2_EvtReaderCallback_ThreadFork );
   OTF2_EvtReaderCallbacks_SetThreadJoinCallback(
     event_callbacks, &OTF2_EvtReaderCallback_ThreadJoin );
   OTF2_EvtReaderCallbacks_SetMpiCollectiveBeginCallback(
     event_callbacks, &otf2CallbackComm_MpiCollectiveBegin );
   OTF2_EvtReaderCallbacks_SetMpiCollectiveEndCallback(
     event_callbacks, &otf2CallbackComm_MpiCollectiveEnd );
-  OTF2_EvtReaderCallbacks_SetMpiRecvCallback( event_callbacks, &otf2Callback_MpiRecv );
-  OTF2_EvtReaderCallbacks_SetMpiSendCallback( event_callbacks, &otf2Callback_MpiSend );
+  OTF2_EvtReaderCallbacks_SetMpiRecvCallback( event_callbacks,
+                                              &otf2Callback_MpiRecv );
+  OTF2_EvtReaderCallbacks_SetMpiSendCallback( event_callbacks,
+                                              &otf2Callback_MpiSend );
   OTF2_EvtReaderCallbacks_SetRmaOpCompleteBlockingCallback(
-          event_callbacks, &otf2CallbackComm_RmaOpCompleteBlocking );
+    event_callbacks, &otf2CallbackComm_RmaOpCompleteBlocking );
   OTF2_EvtReaderCallbacks_SetRmaWinCreateCallback(
     event_callbacks, &otf2CallbackComm_RmaWinCreate );
   OTF2_EvtReaderCallbacks_SetRmaWinDestroyCallback(
     event_callbacks, &otf2CallbackComm_RmaWinDestroy );
-  OTF2_EvtReaderCallbacks_SetRmaGetCallback( event_callbacks, &otf2CallbackComm_RmaGet );
-  OTF2_EvtReaderCallbacks_SetRmaPutCallback( event_callbacks, &otf2CallbackComm_RmaPut );
+  OTF2_EvtReaderCallbacks_SetRmaGetCallback( event_callbacks,
+                                             &otf2CallbackComm_RmaGet );
+  OTF2_EvtReaderCallbacks_SetRmaPutCallback( event_callbacks,
+                                             &otf2CallbackComm_RmaPut );
   OTF2_EvtReaderCallbacks_SetThreadTeamBeginCallback(
-          event_callbacks, &otf2CallbackComm_ThreadTeamBegin );
+    event_callbacks, &otf2CallbackComm_ThreadTeamBegin );
   OTF2_EvtReaderCallbacks_SetThreadTeamEndCallback(
     event_callbacks, &otf2CallbackComm_ThreadTeamEnd );
-  
+
   OTF2_Reader_RegisterEvtCallbacks( reader,
-                                          evt_reader,
-                                          event_callbacks,
-                                          this );
+                                    evt_reader,
+                                    event_callbacks,
+                                    this );
   OTF2_EvtReaderCallbacks_Delete( event_callbacks );
 
   uint64_t events_read = 0;
@@ -513,232 +519,311 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t processId,
   OTF2_Reader_CloseEvtReader( reader, evt_reader );
 }
 
-/* processing the next CPU event, calculating blame 
- * 
+/* processing the next CPU event, calculating blame
+ *
  */
-bool OTF2ParallelTraceWriter::processCPUEvent(OTF2Event event)
+bool
+OTF2ParallelTraceWriter::processCPUEvent( OTF2Event event )
 {
-    GraphNode* node;
-    
-    node = *iter;
-    
-    OTF2Event bufferedCPUEvent = lastCPUEventPerProcess[event.location];
-    GraphNode * lastProcessedNode  = lastProcessedNodePerProcess[node->getStreamId()];
-    // Any buffered CPU-Events?
-    if( lastProcessedNode &&
-            (bufferedCPUEvent.time > 
-            (lastProcessedNode->getTime() + timerOffset)) ) 
-    {
-        
-        if(bufferedCPUEvent.type != ENTER 
-                && bufferedCPUEvent.type != LEAVE)
-            return true;
-        // write counter for critical path for all pending cpu events
-        OTF2_Type types[1] = { OTF2_TYPE_UINT64 };
-        OTF2_MetricValue values[1];
-        bool valid;
-        
-        if(lastProcessedNode && 
-                (lastProcessedNode->getCounter(cTable->getCtrId( CTR_CRITICALPATH ), &valid) == 1) &&
-                (node->getCounter(cTable->getCtrId( CTR_CRITICALPATH ), &valid) == 1) 
-                && (lastTimeOnCriticalPath[event.location] != 0))
-        {
-            values[0].unsigned_int = 1;
-            for(std::list<uint32_t>::iterator fIter = currentlyRunningCPUFunctions.begin();
-                    fIter != currentlyRunningCPUFunctions.end(); fIter++)
-            {
-                activityGroupMap[*fIter].totalDurationOnCP += event.time 
-                        - std::max(activityGroupMap[*fIter].lastEnter, lastTimeOnCriticalPath[event.location]);
-                //std::cout << "[" << mpiRank << "] + Time on CP " << event.time 
-                //        - std::max(activityGroupMap[*fIter].lastEnter, lastTimeOnCriticalPath[event.location]) << " to " 
-                //  << idStringMap[regionNameIdList[*fIter]] << "( " << activityGroupMap[*fIter].totalDurationOnCP << ") " << std::endl;
-            }
-            lastTimeOnCriticalPath[event.location] = event.time;
-        } else
-            values[0].unsigned_int = 0;
+  GraphNode* node;
 
-        // Write buffered CPU-event
-        if(bufferedCPUEvent.type == ENTER)
-        {
-            OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[bufferedCPUEvent.location], NULL,
-                                  bufferedCPUEvent.time,
-                                  bufferedCPUEvent.regionRef) );
-        }
-        if(bufferedCPUEvent.type == LEAVE)
-        {
-            OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writerMap[bufferedCPUEvent.location], NULL,
-                                  bufferedCPUEvent.time,
-                                  bufferedCPUEvent.regionRef) );
-        }
-        
-        OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writerMap[bufferedCPUEvent.location], NULL, bufferedCPUEvent.time,
-                                     otf2CounterMapping[cTable->getCtrId( CTR_CRITICALPATH )], 
-                                    1, types, values ) );
-        
-        if(bufferedCPUEvent.type == LEAVE && (bufferedCPUEvent.regionRef != event.regionRef))
-        {
-            if(lastTimeOnCriticalPath[event.location] != 0)
-            {
-                if( (activityGroupMap[bufferedCPUEvent.regionRef].lastEnter > 
-                        lastProcessedNode->getTime()+timerOffset)
-                         )
-                {
-                    //std::cout << "[" << mpiRank << "] time on CP from LAST Enter "
-                    //        << (values[0].unsigned_int * (bufferedCPUEvent.time -
-                    //            activityGroupMap[bufferedCPUEvent.regionRef].lastEnter))
-                    //<< " to leave " << idStringMap[regionNameIdList[bufferedCPUEvent.regionRef]] << std::endl;
-                    activityGroupMap[bufferedCPUEvent.regionRef].totalDurationOnCP += 
-                            (values[0].unsigned_int* (bufferedCPUEvent.time -
-                                activityGroupMap[bufferedCPUEvent.regionRef].lastEnter));
-                } else
-                {
-                    //std::cout << "[" << mpiRank << "] time on CP from NODE " 
-                    //        << (values[0].unsigned_int * (bufferedCPUEvent.time -
-                    //            (lastProcessedNode->getTime() + timerOffset))) << " buffered: " << bufferedCPUEvent.time << " last: "
-                    //        << lastProcessedNode->getTime() + timerOffset << " value: " << values[0].unsigned_int << " "
-                    //        << lastProcessedNode->getUniqueName()  
-                    //          << " to leave " << idStringMap[regionNameIdList[bufferedCPUEvent.regionRef]] << std::endl;
-                    activityGroupMap[bufferedCPUEvent.regionRef].totalDurationOnCP += 
-                            (values[0].unsigned_int * (bufferedCPUEvent.time -
-                                (lastProcessedNode->getTime() + timerOffset)));
-                }
-            }
-        }
-        
-    }
-    
-    if(bufferedCPUEvent.type == ENTER )
-        activityGroupMap[bufferedCPUEvent.regionRef].lastEnter = bufferedCPUEvent.time;
-    else if(bufferedCPUEvent.type == LEAVE )
+  node = *iter;
+
+  OTF2Event bufferedCPUEvent = lastCPUEventPerProcess[event.location];
+  GraphNode* lastProcessedNode =
+    lastProcessedNodePerProcess[node->getStreamId( )];
+  /* Any buffered CPU-Events? */
+  if ( lastProcessedNode &&
+       ( bufferedCPUEvent.time >
+         ( lastProcessedNode->getTime( ) + timerOffset ) ) )
+  {
+
+    if ( bufferedCPUEvent.type != ENTER
+         && bufferedCPUEvent.type != LEAVE )
     {
-        activityGroupMap[bufferedCPUEvent.regionRef].totalDuration += bufferedCPUEvent.time - activityGroupMap[bufferedCPUEvent.regionRef].lastEnter;
+      return true;
     }
-    
-    return true;
+    /* write counter for critical path for all pending cpu events */
+    OTF2_Type types[1] = { OTF2_TYPE_UINT64 };
+    OTF2_MetricValue values[1];
+    bool valid;
+
+    if ( lastProcessedNode &&
+         ( lastProcessedNode->getCounter( cTable->getCtrId( CTR_CRITICALPATH ),
+                                          &valid ) == 1 ) &&
+         ( node->getCounter( cTable->getCtrId( CTR_CRITICALPATH ),
+                             &valid ) == 1 )
+         && ( lastTimeOnCriticalPath[event.location] != 0 ) )
+    {
+      values[0].unsigned_int = 1;
+      for ( std::list< uint32_t >::iterator fIter =
+              currentlyRunningCPUFunctions.begin( );
+            fIter != currentlyRunningCPUFunctions.end( ); fIter++ )
+      {
+        activityGroupMap[*fIter].totalDurationOnCP += event.time
+                                                      - std::max(
+          activityGroupMap[*fIter].lastEnter,
+          lastTimeOnCriticalPath[event.location] );
+        /* std::cout << "[" << mpiRank << "] + Time on CP " <<
+         * event.time */
+        /*        - std::max(activityGroupMap[*fIter].lastEnter,
+         * lastTimeOnCriticalPath[event.location]) << " to " */
+        /*  << idStringMap[regionNameIdList[*fIter]] << "( " <<
+         * activityGroupMap[*fIter].totalDurationOnCP << ") " <<
+         * std::endl; */
+      }
+      lastTimeOnCriticalPath[event.location] = event.time;
+    }
+    else
+    {
+      values[0].unsigned_int = 0;
+    }
+
+    /* Write buffered CPU-event */
+    if ( bufferedCPUEvent.type == ENTER )
+    {
+      OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[bufferedCPUEvent.location
+                                        ], NULL,
+                                        bufferedCPUEvent.time,
+                                        bufferedCPUEvent.regionRef ) );
+    }
+    if ( bufferedCPUEvent.type == LEAVE )
+    {
+      OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writerMap[bufferedCPUEvent.location
+                                        ], NULL,
+                                        bufferedCPUEvent.time,
+                                        bufferedCPUEvent.regionRef ) );
+    }
+
+    OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writerMap[bufferedCPUEvent.location],
+                                       NULL, bufferedCPUEvent.time,
+                                       otf2CounterMapping[cTable->getCtrId(
+                                                            CTR_CRITICALPATH )],
+                                       1, types, values ) );
+
+    if ( bufferedCPUEvent.type == LEAVE &&
+         ( bufferedCPUEvent.regionRef != event.regionRef ) )
+    {
+      if ( lastTimeOnCriticalPath[event.location] != 0 )
+      {
+        if ( ( activityGroupMap[bufferedCPUEvent.regionRef].lastEnter >
+               lastProcessedNode->getTime( ) + timerOffset )
+              )
+        {
+          /* std::cout << "[" << mpiRank << "] time on CP from LAST
+           * Enter " */
+          /*        << (values[0].unsigned_int *
+           * (bufferedCPUEvent.time - */
+          /*
+           *
+           *
+           *
+           *
+           *
+           *
+           *
+           *
+           *
+           *
+           *  activityGroupMap[bufferedCPUEvent.regionRef].lastEnter)) */
+          /* << " to leave " <<
+           * idStringMap[regionNameIdList[bufferedCPUEvent.regionRef]]
+           * << std::endl; */
+          activityGroupMap[bufferedCPUEvent.regionRef].totalDurationOnCP +=
+            ( values[0].unsigned_int * ( bufferedCPUEvent.time -
+                                         activityGroupMap[bufferedCPUEvent.
+                                                          regionRef].lastEnter ) );
+        }
+        else
+        {
+          /* std::cout << "[" << mpiRank << "] time on CP from NODE " */
+          /*        << (values[0].unsigned_int *
+           * (bufferedCPUEvent.time - */
+          /*            (lastProcessedNode->getTime() + timerOffset)))
+           * << " buffered: " << bufferedCPUEvent.time << " last: " */
+          /*        << lastProcessedNode->getTime() + timerOffset << "
+           * value: " << values[0].unsigned_int << " " */
+          /*        << lastProcessedNode->getUniqueName() */
+          /*          << " to leave " <<
+           * idStringMap[regionNameIdList[bufferedCPUEvent.regionRef]]
+           * << std::endl; */
+          activityGroupMap[bufferedCPUEvent.regionRef].totalDurationOnCP +=
+            ( values[0].unsigned_int * ( bufferedCPUEvent.time -
+                                         ( lastProcessedNode->getTime( ) +
+                                           timerOffset ) ) );
+        }
+      }
+    }
+
+  }
+
+  if ( bufferedCPUEvent.type == ENTER )
+  {
+    activityGroupMap[bufferedCPUEvent.regionRef].lastEnter =
+      bufferedCPUEvent.time;
+  }
+  else
+  if ( bufferedCPUEvent.type == LEAVE ) {
+    activityGroupMap[bufferedCPUEvent.regionRef].totalDuration +=
+      bufferedCPUEvent.time -
+      activityGroupMap[bufferedCPUEvent.regionRef].lastEnter;
+  }
+
+  return true;
 }
 
 /*
  * Process next node in list from analysis
  */
 bool
-OTF2ParallelTraceWriter::processNextNode( OTF2Event event)
+OTF2ParallelTraceWriter::processNextNode( OTF2Event event )
 {
-    
-    if(activityGroupMap.find(event.regionRef) == activityGroupMap.end())
+
+  if ( activityGroupMap.find( event.regionRef ) == activityGroupMap.end( ) )
+  {
+    activityGroupMap[event.regionRef].functionId = event.regionRef;
+    activityGroupMap[event.regionRef].numInstances = 0;
+  }
+
+  if ( verbose > VERBOSE_ANNOY || true )
+  {
+    std::cout << "[" << mpiRank << "] process " << event.regionRef << " " <<
+    idStringMap[regionNameIdList[event.regionRef]] << " " << event.type
+              << " at " <<
+    ( (double)event.time - (double)timerOffset ) / (double)timerResolution
+              << " on " << event.location
+              << std::endl;
+  }
+
+  if ( event.type == ENTER )
+  {
+    activityGroupMap[event.regionRef].numInstances++;
+  }
+
+  uint64_t time = event.time;
+  uint32_t funcId = event.regionRef;
+  GraphNode* node;
+
+  /* Skip threadFork/Join (also skips first inserted processNode that
+   * is not in original trace)
+   */
+  while ( ( iter != processNodes->end( ) ) && ( *iter )->isOMPParallelRegion( ) )
+  {
+    if ( verbose )
     {
-        activityGroupMap[event.regionRef].functionId = event.regionRef;
-        activityGroupMap[event.regionRef].numInstances = 0;
+      std::cout << "Skipping " << ( *iter )->getUniqueName( ) << std::endl;
     }
-    
-    if(verbose > VERBOSE_ANNOY || true )
-        std::cout << "[" << mpiRank << "] process " << event.regionRef << " " << idStringMap[regionNameIdList[event.regionRef] ] << " " << event.type 
-                << " at " << ((double)event.time - (double)timerOffset) / (double)timerResolution 
-                << " on " << event.location 
-                << std::endl;
-    
-    if(event.type == ENTER )
-        activityGroupMap[event.regionRef].numInstances++;
-    
-    uint64_t time = event.time;
-    uint32_t funcId = event.regionRef;
-    GraphNode* node;
-    
-    /* Skip threadFork/Join (also skips first inserted processNode that
-     * is not in original trace) 
-     */
-    while ( (iter != processNodes->end()) && ( *iter )->isOMPParallelRegion( ) )
+    iter++;
+  }
+
+  if ( iter == processNodes->end( ) )
+  {
+    std::cout << "[" << mpiRank << "] reached end of processNodes at " <<
+    event.time << std::endl;
+    if ( event.type == ENTER )
     {
-     if ( verbose )
-     {
-       std::cout << "Skipping " << ( *iter )->getUniqueName( ) << std::endl;
-     }
-     iter++;
+      activityGroupMap[event.regionRef].lastEnter = event.time;
+      currentlyRunningCPUFunctions.push_back( event.regionRef );
+    }
+    else
+    if ( event.type == LEAVE ) {
+      activityGroupMap[event.regionRef].totalDuration += event.time -
+                                                         activityGroupMap[event
+                                                                          .
+                                                                          regionRef
+                                                         ].lastEnter;
+      currentlyRunningCPUFunctions.pop_back( );
+    }
+    return false;
+  }
+
+  node = *iter;
+
+  /*
+   * CPU events are not in nodes, hence they have to be written and countervalues have to be calculated first.
+   * Since we need the time between a node and its successor we buffer one cpu event at each time.
+   */
+  OTF2Event bufferedCPUEvent = lastCPUEventPerProcess[event.location];
+  GraphNode* lastProcessedNode =
+    lastProcessedNodePerProcess[node->getStreamId( )];
+
+  /* Any buffered CPU-Events to be processed? */
+  if ( lastProcessedNode && bufferedCPUEvent.time >
+       ( lastProcessedNode->getTime( ) + timerOffset ) )
+  {
+    processCPUEvent( event );
+  }
+
+  /* CPU_nodes are to be buffered */
+  FunctionDescriptor desc;
+  bool isDeviceStream = deviceStreamMap[event.location];
+  if ( !FunctionTable::getAPIFunctionType( idStringMap[regionNameIdList[funcId]
+                                           ], &desc, isDeviceStream, false ) )
+  {
+    if ( verbose )
+    {
+      std::cout << "[" << mpiRank << "] Buffer: [" << event.location <<
+      "] function: " << idStringMap[regionNameIdList[funcId]] << std::endl;
     }
 
-    if(iter == processNodes->end())   
+    if ( event.type == ENTER )
     {
-        std::cout << "[" << mpiRank << "] reached end of processNodes at " << event.time << std::endl;
-        if(event.type == ENTER )
-        {
-            activityGroupMap[event.regionRef].lastEnter = event.time;
-            currentlyRunningCPUFunctions.push_back(event.regionRef);
-        } else if(event.type == LEAVE )
-        {
-            activityGroupMap[event.regionRef].totalDuration += event.time - activityGroupMap[event.regionRef].lastEnter;
-            currentlyRunningCPUFunctions.pop_back();
-        }
-        return false;
+      activityGroupMap[event.regionRef].lastEnter = event.time;
     }
-    
-    node = *iter;
 
-    /* 
-     * CPU events are not in nodes, hence they have to be written and countervalues have to be calculated first.
-     * Since we need the time between a node and its successor we buffer one cpu event at each time. 
-     */
-    OTF2Event bufferedCPUEvent = lastCPUEventPerProcess[event.location];
-    GraphNode * lastProcessedNode  = lastProcessedNodePerProcess[node->getStreamId()];
+    /* Add Blame for area since last event */
+    assignBlame( event.time, event.location );
 
-    // Any buffered CPU-Events to be processed?
-    if( lastProcessedNode && bufferedCPUEvent.time > 
-        (lastProcessedNode->getTime() + timerOffset))
-        processCPUEvent(event);
-    
-    // CPU_nodes are to be buffered
-    FunctionDescriptor desc;
-    bool isDeviceStream = deviceStreamMap[event.location];
-    if(!FunctionTable::getAPIFunctionType(idStringMap[regionNameIdList[funcId] ], &desc, isDeviceStream, false))
+    /* Keep track of cpuFunctions */
+    if ( event.type == ENTER )
     {
-        if(verbose)
-            std::cout << "[" << mpiRank << "] Buffer: [" << event.location << "] function: " << idStringMap[regionNameIdList[funcId] ] << std::endl;
-        
-        if(event.type == ENTER) 
-           activityGroupMap[event.regionRef].lastEnter = event.time;
-        
-        // Add Blame for area since last event
-        assignBlame(event.time, event.location);
-        
-        // Keep track of cpuFunctions
-        if(event.type == ENTER)
-        {
-            currentlyRunningCPUFunctions.push_back(event.regionRef);
-        }
-        if(event.type == LEAVE)
-        {
-            currentlyRunningCPUFunctions.pop_back();
-        }
-        
-        cpuNodes++;
-        
-        lastCPUEventPerProcess[event.location] = event;
-        
-        return true;
+      currentlyRunningCPUFunctions.push_back( event.regionRef );
     }
-    
-    if(verbose)
-        std::cout << "[" << mpiRank << "] processed " << cpuNodes << " cpuNodes" << std::endl;
-    
-    cpuNodes = 0;
-    
-    if ( time != ( node->getTime( ) + timerOffset ) )
+    if ( event.type == LEAVE )
     {
-     if ( verbose )
-     {
-       std::cout <<
-       "Node not written from original trace, since there is an inconsistency: TIME: "
-                 << time << " - " << node->getTime( ) + timerOffset
-                 << "funcId " << funcId << " - " << node->getFunctionId( ) <<
-       std::endl;
-     }
-        if(event.type == ENTER )
-            activityGroupMap[event.regionRef].lastEnter = event.time;
-        else if(event.type == LEAVE )
-        {
-            activityGroupMap[event.regionRef].totalDuration += event.time - activityGroupMap[event.regionRef].lastEnter;
-        }
-        return false;
+      currentlyRunningCPUFunctions.pop_back( );
     }
-    
+
+    cpuNodes++;
+
+    lastCPUEventPerProcess[event.location] = event;
+
+    return true;
+  }
+
+  if ( verbose )
+  {
+    std::cout << "[" << mpiRank << "] processed " << cpuNodes << " cpuNodes" <<
+    std::endl;
+  }
+
+  cpuNodes = 0;
+
+  if ( time != ( node->getTime( ) + timerOffset ) )
+  {
+    if ( verbose )
+    {
+      std::cout <<
+      "Node not written from original trace, since there is an inconsistency: TIME: "
+                << time << " - " << node->getTime( ) + timerOffset
+                << "funcId " << funcId << " - " << node->getFunctionId( ) <<
+      std::endl;
+    }
+    if ( event.type == ENTER )
+    {
+      activityGroupMap[event.regionRef].lastEnter = event.time;
+    }
+    else
+    if ( event.type == LEAVE ) {
+      activityGroupMap[event.regionRef].totalDuration += event.time -
+                                                         activityGroupMap[event
+                                                                          .
+                                                                          regionRef
+                                                         ].lastEnter;
+    }
+    return false;
+  }
+
   /* find next connected node on critical path */
   GraphNode* futureCPNode = NULL;
   Graph::EdgeList outEdges;
@@ -763,13 +848,17 @@ OTF2ParallelTraceWriter::processNextNode( OTF2Event event)
     }
     ++edgeIter;
   }
-  
-  if(futureCPNode == NULL)
-      std::cout << "[" << mpiRank << "] futureCP NULL " << std::endl;
-  else 
-      std::cout << "[" << mpiRank << "] futureCP: " 
-              << futureCPNode->getUniqueName()
+
+  if ( futureCPNode == NULL )
+  {
+    std::cout << "[" << mpiRank << "] futureCP NULL " << std::endl;
+  }
+  else
+  {
+    std::cout << "[" << mpiRank << "] futureCP: "
+              << futureCPNode->getUniqueName( )
               << std::endl;
+  }
 
   if ( node->isEnter( ) || node->isLeave( ) )
   {
@@ -791,31 +880,38 @@ OTF2ParallelTraceWriter::processNextNode( OTF2Event event)
     }
   }
 
-  lastProcessedNodePerProcess[node->getStreamId()] = node;
+  lastProcessedNodePerProcess[node->getStreamId( )] = node;
   /* set iterator to next node in sorted list */
   iter++;
 
-  if(event.type == ENTER )
+  if ( event.type == ENTER )
+  {
     activityGroupMap[event.regionRef].lastEnter = event.time;
-  else if(event.type == LEAVE )
-  {
-    activityGroupMap[event.regionRef].totalDuration += event.time - activityGroupMap[event.regionRef].lastEnter;
   }
-  
-  if(graph->hasOutEdges(node) && (node->getId() != lastNodeCheckedForEdgesId))
+  else
+  if ( event.type == LEAVE ) {
+    activityGroupMap[event.regionRef].totalDuration += event.time -
+                                                       activityGroupMap[event.
+                                                                        regionRef
+                                                       ].lastEnter;
+  }
+
+  if ( graph->hasOutEdges( node ) &&
+       ( node->getId( ) != lastNodeCheckedForEdgesId ) )
   {
-      const Graph::EdgeList & edges = graph->getOutEdges(node);
-      for(Graph::EdgeList::const_iterator edgeIter = edges.begin(); edgeIter != edges.end(); edgeIter++)
+    const Graph::EdgeList& edges = graph->getOutEdges( node );
+    for ( Graph::EdgeList::const_iterator edgeIter = edges.begin( );
+          edgeIter != edges.end( );
+          edgeIter++ )
+    {
+      if ( ( ( *edgeIter )->getCPUBlame( ) > 0 ) )
       {
-          if(((*edgeIter)->getCPUBlame() > 0) )
-          {
-            openEdges.push_back(*edgeIter);
-          }
+        openEdges.push_back( *edgeIter );
       }
-      lastNodeCheckedForEdgesId = node->getId();
+    }
+    lastNodeCheckedForEdgesId = node->getId( );
   }
-  
-  
+
   return true;
 
 }
@@ -834,10 +930,13 @@ OTF2ParallelTraceWriter::writeNode( GraphNode* node,
   uint64_t processId = node->getStreamId( );
   uint64_t nodeTime = node->getTime( ) + timerOffset;
 
-  // Add Blame for area since last event
-  if(!(currentStackLevel > currentlyRunningCPUFunctions.size()) && node->isEnter())
-     assignBlame(node->getTime() + timerOffset, node->getStreamId());
-  
+  /* Add Blame for area since last event */
+  if ( !( currentStackLevel > currentlyRunningCPUFunctions.size( ) ) &&
+       node->isEnter( ) )
+  {
+    assignBlame( node->getTime( ) + timerOffset, node->getStreamId( ) );
+  }
+
   OTF2_EvtWriter* evt_writer = evt_writerMap[processId];
 
   if ( node->isEnter( ) || node->isLeave( ) )
@@ -904,34 +1003,37 @@ OTF2ParallelTraceWriter::writeNode( GraphNode* node,
 
       if ( ctrType == CTR_BLAME )
       {
-          if(node->isLeave())
+        if ( node->isLeave( ) )
+        {
+          if ( graph->hasOutEdges( node ) )
           {
-              if(graph->hasOutEdges(node))
+
+            const Graph::EdgeList& edges = graph->getOutEdges( node );
+            GraphNode* closestNode = edges.front( )->getEndNode( );
+            /* get closest Node */
+            for ( Graph::EdgeList::const_iterator edgeIter = edges.begin( );
+                  edgeIter != edges.end( ); edgeIter++ )
+            {
+              if ( closestNode->getTime( ) >
+                   ( *edgeIter )->getEndNode( )->getTime( ) )
               {
-                  
-                  const Graph::EdgeList& edges = graph->getOutEdges(node);
-                  GraphNode * closestNode = edges.front()->getEndNode();
-                  // get closest Node
-                  for(Graph::EdgeList::const_iterator edgeIter = edges.begin();
-                          edgeIter != edges.end(); edgeIter++)
-                  {
-                      if(closestNode->getTime() > (*edgeIter)->getEndNode()->getTime())
-                          closestNode = (*edgeIter)->getEndNode();
-                  }
-                  //Add blame to edge with closes Node
-                  for(Graph::EdgeList::const_iterator edgeIter = edges.begin();
-                          edgeIter != edges.end(); edgeIter++)
-                  {
-                      if(closestNode == (*edgeIter)->getEndNode())
-                      {
-                          (*edgeIter)->addCPUBlame(ctrVal);
-                      }
-                  }
+                closestNode = ( *edgeIter )->getEndNode( );
               }
-              continue;
+            }
+            /* Add blame to edge with closes Node */
+            for ( Graph::EdgeList::const_iterator edgeIter = edges.begin( );
+                  edgeIter != edges.end( ); edgeIter++ )
+            {
+              if ( closestNode == ( *edgeIter )->getEndNode( ) )
+              {
+                ( *edgeIter )->addCPUBlame( ctrVal );
+              }
+            }
           }
-          
-          activityGroupMap[node->getFunctionId()].totalBlame += ctrVal;
+          continue;
+        }
+
+        activityGroupMap[node->getFunctionId( )].totalBlame += ctrVal;
         uint64_t ctrValLog10 = 0;
         if ( ctrVal > 0 )
         {
@@ -951,22 +1053,23 @@ OTF2ParallelTraceWriter::writeNode( GraphNode* node,
 
       if ( ctrType == CTR_CRITICALPATH_TIME )
       {
-          //std::cout << "[" << mpiRank << "] " << node->getUniqueName() << " Add TOCP " << ctrVal
-          //              << std::endl;
-          activityGroupMap[node->getFunctionId()].totalDurationOnCP += ctrVal;
-          
-          continue;
-          /* We used to write the counter for time on critical path. We don't do this anymore.
-        if ( node->isEnter( ) )
-        {
-          cpTimeCtrStack.push( ctrVal );
-        }
-        else
-        {
-          ctrVal = cpTimeCtrStack.top( );
-          cpTimeCtrStack.pop( );
-        }
-           * */
+        /* std::cout << "[" << mpiRank << "] " <<
+         * node->getUniqueName() << " Add TOCP " << ctrVal */
+        /*              << std::endl; */
+        activityGroupMap[node->getFunctionId( )].totalDurationOnCP += ctrVal;
+
+        continue;
+        /* We used to write the counter for time on critical path. We don't do this anymore.
+      if ( node->isEnter( ) )
+      {
+        cpTimeCtrStack.push( ctrVal );
+      }
+      else
+      {
+        ctrVal = cpTimeCtrStack.top( );
+        cpTimeCtrStack.pop( );
+      }
+         * */
       }
 
       OTF2_Type types[1] = { OTF2_TYPE_UINT64 };
@@ -978,23 +1081,32 @@ OTF2ParallelTraceWriter::writeNode( GraphNode* node,
 
       if ( ( ctrType == CTR_CRITICALPATH ) && ( ctrVal == 1 ) )
       {
-          if(lastTimeOnCriticalPath[node->getStreamId()] != 0 )
+        if ( lastTimeOnCriticalPath[node->getStreamId( )] != 0 )
         {
-          for(std::list<uint32_t>::iterator fIter = currentlyRunningCPUFunctions.begin();
-                  fIter != currentlyRunningCPUFunctions.end(); fIter++)
+          for ( std::list< uint32_t >::iterator fIter =
+                  currentlyRunningCPUFunctions.begin( );
+                fIter != currentlyRunningCPUFunctions.end( ); fIter++ )
           {
-                //std::cout << "[" << mpiRank << "] " << node->getUniqueName() << " Add TOCP " << (node->getTime()+ timerOffset 
-                //      - std::max(activityGroupMap[*fIter].lastEnter, lastTimeOnCriticalPath[node->getStreamId()])) 
-                //        << " to " << idStringMap[regionNameIdList[*fIter]]
-                //       << std::endl;
+            /* std::cout << "[" << mpiRank << "] " <<
+             * node->getUniqueName() << " Add TOCP " <<
+             * (node->getTime()+ timerOffset */
+            /*      - std::max(activityGroupMap[*fIter].lastEnter,
+             * lastTimeOnCriticalPath[node->getStreamId()])) */
+            /*        << " to " <<
+             * idStringMap[regionNameIdList[*fIter]] */
+            /*       << std::endl; */
 
-              activityGroupMap[*fIter].totalDurationOnCP += node->getTime()+ timerOffset 
-                      - std::max(activityGroupMap[*fIter].lastEnter, lastTimeOnCriticalPath[node->getStreamId()]);
+            activityGroupMap[*fIter].totalDurationOnCP += node->getTime( ) +
+                                                          timerOffset
+                                                          - std::max(
+              activityGroupMap[*fIter].lastEnter,
+              lastTimeOnCriticalPath[node->getStreamId( )] );
           }
         }
-        
-        lastTimeOnCriticalPath[node->getStreamId()] = node->getTime()+timerOffset;
-        
+
+        lastTimeOnCriticalPath[node->getStreamId( )] = node->getTime( ) +
+                                                       timerOffset;
+
         if ( lastProcessNode )
         {
           OTF2_Type types[1] = { OTF2_TYPE_UINT64 };
@@ -1003,14 +1115,14 @@ OTF2ParallelTraceWriter::writeNode( GraphNode* node,
 
           OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, nodeTime,
                                              otf2CtrId, 1, types, values ) );
-          
-          lastTimeOnCriticalPath[node->getStreamId()] = 0;
+
+          lastTimeOnCriticalPath[node->getStreamId( )] = 0;
         }
 
         /* make critical path stop in current process if next cp node
          * in different process or if there is no next cp node */
-        if ( (( futureNode == NULL ) ||
-             ( futureNode->getStreamId( ) != processId )) )
+        if ( ( ( futureNode == NULL ) ||
+               ( futureNode->getStreamId( ) != processId ) ) )
         {
           OTF2_Type types[1] = { OTF2_TYPE_UINT64 };
           OTF2_MetricValue values[1];
@@ -1018,28 +1130,36 @@ OTF2ParallelTraceWriter::writeNode( GraphNode* node,
 
           OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, nodeTime,
                                              otf2CtrId, 1, types, values ) );
-          
-          lastTimeOnCriticalPath[node->getStreamId()] = 0;
+
+          lastTimeOnCriticalPath[node->getStreamId( )] = 0;
         }
       }
-      
+
       if ( ( ctrType == CTR_CRITICALPATH ) && ( ctrVal == 0 ) )
       {
-        if(lastTimeOnCriticalPath[node->getStreamId()] != 0 )
+        if ( lastTimeOnCriticalPath[node->getStreamId( )] != 0 )
         {
-          for(std::list<uint32_t>::iterator fIter = currentlyRunningCPUFunctions.begin();
-                  fIter != currentlyRunningCPUFunctions.end(); fIter++)
+          for ( std::list< uint32_t >::iterator fIter =
+                  currentlyRunningCPUFunctions.begin( );
+                fIter != currentlyRunningCPUFunctions.end( ); fIter++ )
           {
-              activityGroupMap[*fIter].totalDurationOnCP += node->getTime()+timerOffset 
-                      - std::max(activityGroupMap[*fIter].lastEnter, lastTimeOnCriticalPath[node->getStreamId()]);
-              //std::cout << "[" << mpiRank << "] " << node->getUniqueName() << " + Time on CP " << (node->getTime() +timerOffset
-              //        - std::max(activityGroupMap[*fIter].lastEnter, lastTimeOnCriticalPath[node->getStreamId()])) << " to " 
-              //    << idStringMap[regionNameIdList[*fIter]] << std::endl;
+            activityGroupMap[*fIter].totalDurationOnCP += node->getTime( ) +
+                                                          timerOffset
+                                                          - std::max(
+              activityGroupMap[*fIter].lastEnter,
+              lastTimeOnCriticalPath[node->getStreamId( )] );
+            /* std::cout << "[" << mpiRank << "] " <<
+             * node->getUniqueName() << " + Time on CP " <<
+             * (node->getTime() +timerOffset */
+            /*        - std::max(activityGroupMap[*fIter].lastEnter,
+             * lastTimeOnCriticalPath[node->getStreamId()])) << " to " */
+            /*    << idStringMap[regionNameIdList[*fIter]] <<
+             * std::endl; */
           }
         }
-        lastTimeOnCriticalPath[node->getStreamId()] = 0;
+        lastTimeOnCriticalPath[node->getStreamId( )] = 0;
       }
-      
+
     }
   }
 }
@@ -1047,67 +1167,86 @@ OTF2ParallelTraceWriter::writeNode( GraphNode* node,
 /*
  * Method handling blame distribution to events.
  */
-void 
-OTF2ParallelTraceWriter::assignBlame(uint64_t currentTime, uint64_t currentStream)
+void
+OTF2ParallelTraceWriter::assignBlame( uint64_t currentTime,
+                                      uint64_t currentStream )
 {
-    // Add Blame for area since last event
+  /* Add Blame for area since last event */
   OTF2Event bufferedCPUEvent = lastCPUEventPerProcess[currentStream];
-  GraphNode * lastProcessedNode  = lastProcessedNodePerProcess[currentStream];
-  
-  if(!(bufferedCPUEvent.type == ENTER) && !(bufferedCPUEvent.type == LEAVE))
-      return;
+  GraphNode* lastProcessedNode = lastProcessedNodePerProcess[currentStream];
 
-    OTF2_Type types[1] = { OTF2_TYPE_UINT64 };
-    OTF2_MetricValue values[1];
-    uint32_t fId = currentlyRunningCPUFunctions.back();
-     uint64_t totalBlame = 0;
-     uint64_t edgeBlame = 0;
-     uint64_t blameAreaStart = std::max(bufferedCPUEvent.time, lastProcessedNode->getTime()+timerOffset);
-     uint64_t timeDiff = currentTime - blameAreaStart;
-     for(Graph::EdgeList::iterator edgeIter = openEdges.begin();
-             edgeIter != openEdges.end(); )
-     {
+  if ( !( bufferedCPUEvent.type == ENTER ) && !( bufferedCPUEvent.type == LEAVE ) )
+  {
+    return;
+  }
 
-         Edge * edge = *edgeIter;
-         if(edge->getEndNode()->getTime() > lastProcessedNode->getTime())
-         {
-            edgeBlame += edge->getCPUBlame();
-            //std::cout << "[" << mpiRank << "] Blame " << edge->getCPUBlame() << " from " << edge->getStartNode()->getUniqueName()
-            //        << " -> " << edge->getEndNode()->getUniqueName() << std::endl;
-            if((edge->getDuration() > 0) && (edge->getStartNode()->getTime()+timerOffset < currentTime ))
-                totalBlame += (double)(edge->getCPUBlame()) *
-                    (double)timeDiff/
-                    (double)(edge->getDuration());
-            edgeIter++;
-         } else
-         {
-             openEdges.erase(edgeIter);
-         }
+  OTF2_Type types[1] = { OTF2_TYPE_UINT64 };
+  OTF2_MetricValue values[1];
+  uint32_t fId = currentlyRunningCPUFunctions.back( );
+  uint64_t totalBlame = 0;
+  uint64_t edgeBlame = 0;
+  uint64_t blameAreaStart = std::max( bufferedCPUEvent.time,
+                                      lastProcessedNode->getTime( ) +
+                                      timerOffset );
+  uint64_t timeDiff = currentTime - blameAreaStart;
+  for ( Graph::EdgeList::iterator edgeIter = openEdges.begin( );
+        edgeIter != openEdges.end( ); )
+  {
+
+    Edge* edge = *edgeIter;
+    if ( edge->getEndNode( )->getTime( ) > lastProcessedNode->getTime( ) )
+    {
+      edgeBlame += edge->getCPUBlame( );
+      /* std::cout << "[" << mpiRank << "] Blame " <<
+       * edge->getCPUBlame() << " from " <<
+       * edge->getStartNode()->getUniqueName() */
+      /*        << " -> " << edge->getEndNode()->getUniqueName() <<
+       * std::endl; */
+      if ( ( edge->getDuration( ) > 0 ) &&
+           ( edge->getStartNode( )->getTime( ) + timerOffset < currentTime ) )
+      {
+        totalBlame += (double)( edge->getCPUBlame( ) ) *
+                      (double)timeDiff /
+                      (double)( edge->getDuration( ) );
+      }
+      edgeIter++;
     }
+    else
+    {
+      openEdges.erase( edgeIter );
+    }
+  }
 
-    values[0].unsigned_int = totalBlame;
+  values[0].unsigned_int = totalBlame;
 
-    activityGroupMap[fId].totalBlame += totalBlame;
+  activityGroupMap[fId].totalBlame += totalBlame;
 
-    //std::cout << "[" << mpiRank << "] write blame " << totalBlame << " to " << blameAreaStart << " fid " << fId << " "
-    //        << idStringMap[regionNameIdList[fId]] << " on " << bufferedCPUEvent.location << " timeDiff " << timeDiff << std::endl;
+  /* std::cout << "[" << mpiRank << "] write blame " << totalBlame <<
+   * " to " << blameAreaStart << " fid " << fId << " " */
+  /*        << idStringMap[regionNameIdList[fId]] << " on " <<
+   * bufferedCPUEvent.location << " timeDiff " << timeDiff <<
+   * std::endl; */
 
-    OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writerMap[bufferedCPUEvent.location], NULL, blameAreaStart,
-                                   otf2CounterMapping[cTable->getCtrId(
-                                                        CTR_BLAME )
-                                   ],
-                                   1, types, values ) );
+  OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writerMap[bufferedCPUEvent.location],
+                                     NULL, blameAreaStart,
+                                     otf2CounterMapping[cTable->getCtrId(
+                                                          CTR_BLAME )
+                                     ],
+                                     1, types, values ) );
 
-    if(totalBlame > 0)
-        totalBlame = std::log10((double) totalBlame);
+  if ( totalBlame > 0 )
+  {
+    totalBlame = std::log10( (double)totalBlame );
+  }
 
-    values[0].unsigned_int = totalBlame;
-    OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writerMap[bufferedCPUEvent.location], NULL, blameAreaStart,
-                                   otf2CounterMapping[cTable->getCtrId(
-                                                        CTR_BLAME_LOG10 )
-                                   ],
-                                   1, types, values ) );
-  
+  values[0].unsigned_int = totalBlame;
+  OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writerMap[bufferedCPUEvent.location],
+                                     NULL, blameAreaStart,
+                                     otf2CounterMapping[cTable->getCtrId(
+                                                          CTR_BLAME_LOG10 )
+                                     ],
+                                     1, types, values ) );
+
 }
 
 /*
@@ -1129,11 +1268,14 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_ClockProperties(
   tw->timerOffset = globalOffset;
   tw->timerResolution = timerResolution;
 
-  if(tw->mpiRank == 0)
-        OTF2_CHECK( OTF2_GlobalDefWriter_WriteClockProperties( tw->global_def_writer,
-                                                         timerResolution,
-                                                         globalOffset,
-                                                         traceLength ) );
+  if ( tw->mpiRank == 0 )
+  {
+    OTF2_CHECK( OTF2_GlobalDefWriter_WriteClockProperties( tw->
+                                                           global_def_writer,
+                                                           timerResolution,
+                                                           globalOffset,
+                                                           traceLength ) );
+  }
 
   return OTF2_CALLBACK_SUCCESS;
 }
@@ -1177,15 +1319,22 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Location(
 
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  if(locationType == OTF2_LOCATION_TYPE_GPU)
-        tw->deviceStreamMap[self] = true;
+  if ( locationType == OTF2_LOCATION_TYPE_GPU )
+  {
+    tw->deviceStreamMap[self] = true;
+  }
   else
-        tw->deviceStreamMap[self] = false;
-  
-  if(tw->mpiRank == 0)
+  {
+    tw->deviceStreamMap[self] = false;
+  }
+
+  if ( tw->mpiRank == 0 )
+  {
     OTF2_CHECK( OTF2_GlobalDefWriter_WriteLocation( tw->global_def_writer, self,
-                                                  name, locationType,
-                                                  numberOfEvents, locationGroup ) );
+                                                    name, locationType,
+                                                    numberOfEvents,
+                                                    locationGroup ) );
+  }
 
   return OTF2_CALLBACK_SUCCESS;
 }
@@ -1242,12 +1391,14 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_String( void* userData,
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
   tw->counterForStringDefinitions++;
-  
+
   tw->idStringMap[self] = string;
 
-  if(tw->mpiRank == 0)
+  if ( tw->mpiRank == 0 )
+  {
     OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( tw->global_def_writer, self,
-                                                string ) );
+                                                  string ) );
+  }
 
   return OTF2_CALLBACK_SUCCESS;
 }
@@ -1337,14 +1488,17 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Region( void* userData,
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
   tw->regionNameIdList[self] = name;
-  
-  if(tw->mpiRank == 0)
+
+  if ( tw->mpiRank == 0 )
+  {
     OTF2_CHECK( OTF2_GlobalDefWriter_WriteRegion( tw->global_def_writer, self,
-                                                name,
-                                                cannonicalName, description,
-                                                regionRole, paradigm,
-                                                regionFlags, sourceFile,
-                                                beginLineNumber, endLineNumber ) );
+                                                  name,
+                                                  cannonicalName, description,
+                                                  regionRole, paradigm,
+                                                  regionFlags, sourceFile,
+                                                  beginLineNumber,
+                                                  endLineNumber ) );
+  }
 
   return OTF2_CALLBACK_SUCCESS;
 }
@@ -1396,7 +1550,8 @@ OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackComm_MpiCollectiveEnd(
   OTF2_LocationRef locationID,
   OTF2_TimeStamp time,
-        uint64_t eventPosition,
+  uint64_t
+  eventPosition,
   void* userData,
   OTF2_AttributeList*
   attributeList,
@@ -1424,7 +1579,8 @@ OTF2ParallelTraceWriter::otf2CallbackComm_MpiCollectiveBegin(
   OTF2_LocationRef locationID,
   OTF2_TimeStamp
   time,
-        uint64_t eventPosition,
+  uint64_t
+  eventPosition,
   void* userData,
   OTF2_AttributeList
   * attributeList )
@@ -1442,7 +1598,7 @@ OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackComm_RmaWinCreate(
   OTF2_LocationRef location,
   OTF2_TimeStamp time,
-        uint64_t eventPosition,
+  uint64_t eventPosition,
   void* userData,
   OTF2_AttributeList*
   attributeList,
@@ -1450,7 +1606,7 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaWinCreate(
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-    OTF2_CHECK( OTF2_EvtWriter_RmaWinCreate( tw->evt_writerMap[location],
+  OTF2_CHECK( OTF2_EvtWriter_RmaWinCreate( tw->evt_writerMap[location],
                                            attributeList, time,
                                            win ) );
   return OTF2_CALLBACK_SUCCESS;
@@ -1460,7 +1616,7 @@ OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackComm_RmaWinDestroy(
   OTF2_LocationRef location,
   OTF2_TimeStamp time,
-        uint64_t eventPosition,
+  uint64_t eventPosition,
   void* userData,
   OTF2_AttributeList*
   attributeList,
@@ -1477,7 +1633,7 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaWinDestroy(
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackComm_RmaPut( OTF2_LocationRef location,
                                                   OTF2_TimeStamp time,
-                                                uint64_t eventPosition,
+                                                  uint64_t eventPosition,
                                                   void* userData,
                                                   OTF2_AttributeList*
                                                   attributeList,
@@ -1500,7 +1656,8 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaOpCompleteBlocking(
   OTF2_LocationRef location,
   OTF2_TimeStamp
   time,
-        uint64_t eventPosition,
+  uint64_t
+  eventPosition,
   void* userData,
   OTF2_AttributeList
   *
@@ -1522,7 +1679,7 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaOpCompleteBlocking(
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackComm_RmaGet( OTF2_LocationRef location,
                                                   OTF2_TimeStamp time,
-        uint64_t eventPosition,
+                                                  uint64_t eventPosition,
                                                   void* userData,
                                                   OTF2_AttributeList*
                                                   attributeList,
@@ -1544,7 +1701,8 @@ OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackComm_ThreadTeamBegin(
   OTF2_LocationRef locationID,
   OTF2_TimeStamp time,
-        uint64_t eventPosition,
+  uint64_t
+  eventPosition,
   void* userData,
   OTF2_AttributeList*
   attributeList,
@@ -1553,7 +1711,7 @@ OTF2ParallelTraceWriter::otf2CallbackComm_ThreadTeamBegin(
 {
 
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
-  
+
   OTF2_CHECK( OTF2_EvtWriter_ThreadTeamBegin( tw->evt_writerMap[locationID],
                                               attributeList, time,
                                               threadTeam ) );
@@ -1565,7 +1723,7 @@ OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackComm_ThreadTeamEnd(
   OTF2_LocationRef locationID,
   OTF2_TimeStamp time,
-        uint64_t eventPosition,
+  uint64_t eventPosition,
   void* userData,
   OTF2_AttributeList*
   attributeList,
@@ -1584,7 +1742,7 @@ OTF2ParallelTraceWriter::otf2CallbackComm_ThreadTeamEnd(
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackEnter( OTF2_LocationRef location,
                                             OTF2_TimeStamp time,
-        uint64_t eventPosition,
+                                            uint64_t eventPosition,
                                             void* userData,
                                             OTF2_AttributeList* attributes,
                                             OTF2_RegionRef region )
@@ -1597,7 +1755,7 @@ OTF2ParallelTraceWriter::otf2CallbackEnter( OTF2_LocationRef location,
   event.regionRef = region;
   event.time = time;
   event.type = ENTER;
-  
+
   if ( !tw->processNextNode( event ) )
   {
     OTF2_CHECK( OTF2_EvtWriter_Enter( tw->evt_writerMap[location], attributes,
@@ -1606,7 +1764,7 @@ OTF2ParallelTraceWriter::otf2CallbackEnter( OTF2_LocationRef location,
   }
 
   tw->currentStackLevel++;
-  
+
   return OTF2_CALLBACK_SUCCESS;
 
 }
@@ -1627,7 +1785,7 @@ OTF2ParallelTraceWriter::otf2CallbackLeave( OTF2_LocationRef location,
   event.regionRef = region;
   event.time = time;
   event.type = LEAVE;
-  
+
   if ( !tw->processNextNode( event ) )
   {
     OTF2_CHECK( OTF2_EvtWriter_Leave( tw->evt_writerMap[location], attributes,
@@ -1636,7 +1794,7 @@ OTF2ParallelTraceWriter::otf2CallbackLeave( OTF2_LocationRef location,
   }
 
   tw->currentStackLevel--;
-  
+
   return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -1645,7 +1803,8 @@ OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadFork(
   OTF2_LocationRef locationID,
   OTF2_TimeStamp
   time,
-  uint64_t eventPosition,
+  uint64_t
+  eventPosition,
   void*
   userData,
   OTF2_AttributeList
@@ -1663,23 +1822,23 @@ OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadFork(
   event.regionRef = 0;
   event.time = time;
   event.type = MISC;
-  
-    OTF2Event bufferedCPUEvent = tw->lastCPUEventPerProcess[locationID];
-    GraphNode * lastProcessedNode  = tw->lastProcessedNodePerProcess[locationID];
-    // Any buffered CPU-Events?
-    if( lastProcessedNode &&
-            bufferedCPUEvent.time > 
-            (lastProcessedNode->getTime() + tw->timerOffset))
+
+  OTF2Event bufferedCPUEvent = tw->lastCPUEventPerProcess[locationID];
+  GraphNode* lastProcessedNode = tw->lastProcessedNodePerProcess[locationID];
+  /* Any buffered CPU-Events? */
+  if ( lastProcessedNode &&
+       bufferedCPUEvent.time >
+       ( lastProcessedNode->getTime( ) + tw->timerOffset ) )
+  {
+    if ( bufferedCPUEvent.type == ENTER
+         || bufferedCPUEvent.type == LEAVE )
     {
-        if(bufferedCPUEvent.type == ENTER 
-                || bufferedCPUEvent.type == LEAVE)
-        {
-            tw->assignBlame(time, locationID);
-            tw->processCPUEvent(event);
-            tw->lastCPUEventPerProcess[locationID] = event;
-        }
+      tw->assignBlame( time, locationID );
+      tw->processCPUEvent( event );
+      tw->lastCPUEventPerProcess[locationID] = event;
     }
-  
+  }
+
   OTF2_CHECK( OTF2_EvtWriter_ThreadFork( tw->evt_writerMap[locationID],
                                          attributeList, time, paradigm,
                                          numberOfRequestedThreads ) );
@@ -1692,7 +1851,8 @@ OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadJoin(
   OTF2_LocationRef locationID,
   OTF2_TimeStamp
   time,
-  uint64_t eventPosition,
+  uint64_t
+  eventPosition,
   void*
   userData,
   OTF2_AttributeList
@@ -1708,9 +1868,9 @@ OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadJoin(
   event.regionRef = 0;
   event.time = time;
   event.type = MISC;
-  
+
   tw->lastCPUEventPerProcess[locationID] = event;
-  
+
   OTF2_CHECK( OTF2_EvtWriter_ThreadJoin( tw->evt_writerMap[locationID],
                                          attributeList, time, paradigm ) );
 

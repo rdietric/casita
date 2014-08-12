@@ -133,8 +133,10 @@ CallbackHandler::applyStreamRefsEnter( ITraceReader* reader,
 
           if ( node->isOMPSync( ) )
           {
-            uint32_t ompParentCtrId = this->analysis.getCtrTable( ).getCtrId( CTR_OMP_PARENT_REGION_ID );
-            std::cout << node->getUniqueName( ) << " has parent id " << key_value << std::endl;
+            uint32_t ompParentCtrId = this->analysis.getCtrTable( ).getCtrId(
+              CTR_OMP_PARENT_REGION_ID );
+            std::cout << node->getUniqueName( ) << " has parent id " <<
+            key_value << std::endl;
             node->setCounter( ompParentCtrId, key_value );
           }
         }
@@ -290,12 +292,12 @@ CallbackHandler::handleEnter( ITraceReader* reader,
   {
     return;
   }
-  
+
   if ( functionType.paradigm == PARADIGM_CPU )
   {
-      //std::cout << " skipping " << funcName << std::endl;
-      analysis.addCPUEvent(time, streamId);
-        return;
+    /* std::cout << " skipping " << funcName << std::endl; */
+    analysis.addCPUEvent( time, streamId );
+    return;
   }
 
   GraphNode* enterNode = NULL;
@@ -371,12 +373,12 @@ CallbackHandler::handleLeave( ITraceReader* reader,
   {
     return;
   }
-  
+
   if ( functionType.paradigm == PARADIGM_CPU )
   {
-      //std::cout << " skipping " << funcName << std::endl;
-      analysis.addCPUEvent(time, streamId);
-        return;
+    /* std::cout << " skipping " << funcName << std::endl; */
+    analysis.addCPUEvent( time, streamId );
+    return;
   }
 
   GraphNode* leaveNode = NULL;
@@ -420,10 +422,11 @@ CallbackHandler::handleLeave( ITraceReader* reader,
 
   leaveNode->setFunctionId( functionId );
 
-  //CallbackHandler::applyStreamRefsLeave( reader, leaveNode,
-    //                                     leaveNode->getGraphPair( ).first, list );
-  
-    /* MPI specific */
+  /* CallbackHandler::applyStreamRefsLeave( reader, leaveNode, */
+  /*                                     leaveNode->getGraphPair(
+   * ).first, list ); */
+
+  /* MPI specific */
   if ( leaveNode->isMPI( ) )
   {
     EventStream::MPICommRecordList mpiCommRecords =
@@ -496,7 +499,7 @@ CallbackHandler::handleLeave( ITraceReader* reader,
       analysis.popOmpTargetRegion( leaveNode );
     }
   }
-  
+
   handler->printNode( leaveNode, stream );
   options.eventsProcessed++;
 }

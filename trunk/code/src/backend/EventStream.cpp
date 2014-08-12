@@ -202,12 +202,12 @@ EventStream::addGraphNode( GraphNode* node,
 
   if ( nodeParadigm == PARADIGM_MPI )
   {
-    GraphNode* lastLocalCompute = getLastNode( ) ; 
+    GraphNode* lastLocalCompute = getLastNode( );
     node->setLinkLeft( lastLocalCompute );
     unlinkedMPINodes.push_back( node );
   }
 
-  if ( node->isEnter( ) ) 
+  if ( node->isEnter( ) )
   {
     for ( SortedGraphNodeList::const_iterator iter =
             unlinkedMPINodes.begin( );
@@ -261,11 +261,11 @@ EventStream::insertGraphNode( GraphNode* node,
     while ( current != nodes.begin( ) )
     {
       --current;
-        if ( (*current)->hasParadigm( (Paradigm)paradigm ) )
-        {
-          predNode = *current;
-          break;
-        }
+      if ( ( *current )->hasParadigm( (Paradigm)paradigm ) )
+      {
+        predNode = *current;
+        break;
+      }
     }
 
     if ( predNode )
@@ -290,12 +290,12 @@ EventStream::insertGraphNode( GraphNode* node,
 
     while ( next != nodes.end( ) )
     {
-        if ( (*next)->hasParadigm( (Paradigm)paradigm ) )
-        {
-          nextNode = *next;
-          hasNextNode[paradigm_index] = true;
-          break;
-        }
+      if ( ( *next )->hasParadigm( (Paradigm)paradigm ) )
+      {
+        nextNode = *next;
+        hasNextNode[paradigm_index] = true;
+        break;
+      }
       ++next;
     }
 
@@ -403,8 +403,8 @@ EventStream::getTimeProfile( )
 
 bool
 EventStream::walkBackward( GraphNode* node,
-                       StreamWalkCallback callback,
-                       void* userData )
+                           StreamWalkCallback callback,
+                           void* userData )
 {
   bool result = false;
 
@@ -418,11 +418,11 @@ EventStream::walkBackward( GraphNode* node,
 
   for (; iter != nodes.rend( ); ++iter )
   {
-      result = callback( userData, *iter );
-      if ( result == false )
-      {
-        return result;
-      }
+    result = callback( userData, *iter );
+    if ( result == false )
+    {
+      return result;
+    }
   }
 
   return result;
@@ -445,11 +445,11 @@ EventStream::walkForward( GraphNode* node,
 
   for (; iter != nodes.end( ); ++iter )
   {
-      result = callback( userData, *iter );
-      if ( result == false )
-      {
-        return result;
-      }
+    result = callback( userData, *iter );
+    if ( result == false )
+    {
+      return result;
+    }
   }
 
   return result;

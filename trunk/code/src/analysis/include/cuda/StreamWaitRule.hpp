@@ -244,8 +244,9 @@ namespace casita
            EventStream::SortedGraphNodeList& nodes = waitingDevProc->getNodes( );
 
            GraphNode* lastLeaveNode = NULL;
-           for ( EventStream::SortedGraphNodeList::const_reverse_iterator rIter =
-                   nodes.rbegin( );
+           for ( EventStream::SortedGraphNodeList::const_reverse_iterator rIter
+                   =
+                     nodes.rbegin( );
                  rIter != nodes.rend( ); ++rIter )
            {
              GraphNode* n = ( *rIter );
