@@ -253,26 +253,25 @@ namespace casita
                                            uint32_t endLineNumber );
 
       static OTF2_CallbackCode
-      OTF2_GlobalDefReaderCallback_Region_forParadigmMap(
-        void* userData,
-        OTF2_RegionRef self,
-        OTF2_StringRef name,
-        OTF2_StringRef
-        cannonicalName,
-        OTF2_StringRef
-        description,
-        OTF2_RegionRole
-        regionRole,
-        OTF2_Paradigm
-        paradigm,
-        OTF2_RegionFlag
-        regionFlags,
-        OTF2_StringRef
-        sourceFile,
-        uint32_t
-        beginLineNumber,
-        uint32_t
-        endLineNumber );
+      OTF2_GlobalDefReaderCallback_Region_forParadigmMap( void* userData,
+                                                          OTF2_RegionRef self,
+                                                          OTF2_StringRef name,
+                                                          OTF2_StringRef
+                                                          cannonicalName,
+                                                          OTF2_StringRef
+                                                          description,
+                                                          OTF2_RegionRole
+                                                          regionRole,
+                                                          OTF2_Paradigm
+                                                          paradigm,
+                                                          OTF2_RegionFlag
+                                                          regionFlags,
+                                                          OTF2_StringRef
+                                                          sourceFile,
+                                                          uint32_t
+                                                          beginLineNumber,
+                                                          uint32_t
+                                                          endLineNumber );
 
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_SystemTreeNode( void* userData,

@@ -615,16 +615,6 @@ OTF2ParallelTraceWriter::processCPUEvent( OTF2Event event )
           /*        << (values[0].unsigned_int *
            * (bufferedCPUEvent.time - */
           /*
-           *
-           *
-           *
-           *
-           *
-           *
-           *
-           *
-           *
-           *
            *  activityGroupMap[bufferedCPUEvent.regionRef].lastEnter)) */
           /* << " to leave " <<
            * idStringMap[regionNameIdList[bufferedCPUEvent.regionRef]]
@@ -663,10 +653,13 @@ OTF2ParallelTraceWriter::processCPUEvent( OTF2Event event )
       bufferedCPUEvent.time;
   }
   else
-  if ( bufferedCPUEvent.type == LEAVE ) {
-    activityGroupMap[bufferedCPUEvent.regionRef].totalDuration +=
-      bufferedCPUEvent.time -
-      activityGroupMap[bufferedCPUEvent.regionRef].lastEnter;
+  {
+    if ( bufferedCPUEvent.type == LEAVE )
+    {
+      activityGroupMap[bufferedCPUEvent.regionRef].totalDuration +=
+        bufferedCPUEvent.time -
+        activityGroupMap[bufferedCPUEvent.regionRef].lastEnter;
+    }
   }
 
   return true;
@@ -726,13 +719,17 @@ OTF2ParallelTraceWriter::processNextNode( OTF2Event event )
       currentlyRunningCPUFunctions.push_back( event.regionRef );
     }
     else
-    if ( event.type == LEAVE ) {
-      activityGroupMap[event.regionRef].totalDuration += event.time -
-                                                         activityGroupMap[event
-                                                                          .
-                                                                          regionRef
-                                                         ].lastEnter;
-      currentlyRunningCPUFunctions.pop_back( );
+    {
+      if ( event.type == LEAVE )
+      {
+        activityGroupMap[event.regionRef].totalDuration += event.time -
+                                                           activityGroupMap[
+          event
+          .
+          regionRef
+                                                           ].lastEnter;
+        currentlyRunningCPUFunctions.pop_back( );
+      }
     }
     return false;
   }
@@ -814,12 +811,16 @@ OTF2ParallelTraceWriter::processNextNode( OTF2Event event )
       activityGroupMap[event.regionRef].lastEnter = event.time;
     }
     else
-    if ( event.type == LEAVE ) {
-      activityGroupMap[event.regionRef].totalDuration += event.time -
-                                                         activityGroupMap[event
-                                                                          .
-                                                                          regionRef
-                                                         ].lastEnter;
+    {
+      if ( event.type == LEAVE )
+      {
+        activityGroupMap[event.regionRef].totalDuration += event.time -
+                                                           activityGroupMap[
+          event
+          .
+          regionRef
+                                                           ].lastEnter;
+      }
     }
     return false;
   }
@@ -889,11 +890,15 @@ OTF2ParallelTraceWriter::processNextNode( OTF2Event event )
     activityGroupMap[event.regionRef].lastEnter = event.time;
   }
   else
-  if ( event.type == LEAVE ) {
-    activityGroupMap[event.regionRef].totalDuration += event.time -
-                                                       activityGroupMap[event.
-                                                                        regionRef
-                                                       ].lastEnter;
+  {
+    if ( event.type == LEAVE )
+    {
+      activityGroupMap[event.regionRef].totalDuration += event.time -
+                                                         activityGroupMap[event
+                                                                          .
+                                                                          regionRef
+                                                         ].lastEnter;
+    }
   }
 
   if ( graph->hasOutEdges( node ) &&
