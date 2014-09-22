@@ -81,8 +81,8 @@ namespace casita
            *table */
           analysis->consumeOmpTargetBegin( node->getStreamId( ) );
 
-          GraphNode* targetBegin = node->getPartner( );
-          uint64_t refStreamId = targetBegin->getReferencedStreamId( );
+          GraphNode* targetBegin    = node->getPartner( );
+          uint64_t   refStreamId    = targetBegin->getReferencedStreamId( );
 
           if ( !refStreamId )
           {
@@ -91,7 +91,7 @@ namespace casita
 
           GraphNode* firstEventNode = analysis->consumeOmpTargetFirstEvent(
             refStreamId );
-          GraphNode* lastEventNode = analysis->consumeOmpTargetLastEvent(
+          GraphNode* lastEventNode  = analysis->consumeOmpTargetLastEvent(
             refStreamId );
 
           if ( !firstEventNode || !lastEventNode )
@@ -117,7 +117,7 @@ namespace casita
                 iter != waitsStateNodesList.end( ); )
           {
             GraphNode::GraphNodeList::const_iterator current_iter = iter;
-            GraphNode::GraphNodeList::const_iterator next_iter = ++iter;
+            GraphNode::GraphNodeList::const_iterator next_iter    = ++iter;
 
             if ( next_iter != waitsStateNodesList.end( ) )
             {
@@ -157,7 +157,7 @@ namespace casita
                 node->getUniqueName( ).c_str( ) );
             }
 
-            uint64_t refStreamId = node->getReferencedStreamId( );
+            uint64_t refStreamId   = node->getReferencedStreamId( );
             if ( !refStreamId )
             {
               return false;

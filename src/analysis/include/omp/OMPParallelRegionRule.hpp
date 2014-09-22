@@ -81,8 +81,8 @@ namespace casita
                 streams.begin( );
               pIter != streams.end( ); ++pIter )
         {
-          EventStream* p = *pIter;
-          GraphNode* kernel = analysis->getOmpCompute( p->getId( ) );
+          EventStream* p      = *pIter;
+          GraphNode*   kernel = analysis->getOmpCompute( p->getId( ) );
           if ( ( kernel != NULL ) &&
                ( kernel->getStreamId( ) != parallelRegionSecond->getStreamId( ) ) )
           {

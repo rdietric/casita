@@ -42,26 +42,26 @@ namespace casita
           return false;
         }
 
-        uint64_t partnerProcessId = node->getReferencedStreamId( );
+        uint64_t   partnerProcessId    = node->getReferencedStreamId( );
         GraphNode::GraphNodePair& recv = node->getGraphPair( );
 
-        const int BUFFER_SIZE = 8;
-        uint64_t buffer[BUFFER_SIZE];
+        const int  BUFFER_SIZE         = 8;
+        uint64_t   buffer[BUFFER_SIZE];
         /* uint64_t *bfr64 = (uint64_t*) buffer; */
 
         /* receive */
-        uint32_t partnerMPIRank = analysis->getMPIAnalysis( ).getMPIRank(
+        uint32_t   partnerMPIRank      = analysis->getMPIAnalysis( ).getMPIRank(
           partnerProcessId );
         MPI_Status status;
         MPI_CHECK( MPI_Recv( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                              partnerMPIRank, 0,
                              MPI_COMM_WORLD, &status ) );
-        uint64_t sendStartTime = buffer[0];         /* bfr64[0]; */
+        uint64_t   sendStartTime       = buffer[0]; /* bfr64[0]; */
         /* uint64_t sendEndTime = bfr64[1]; */
         /* int partnerType = buffer[BUFFER_SIZE - 1]; */
 
-        uint64_t recvStartTime = recv.first->getTime( );
-        uint64_t recvEndTime = recv.second->getTime( );
+        uint64_t   recvStartTime       = recv.first->getTime( );
+        uint64_t   recvEndTime         = recv.second->getTime( );
 
         /* compute wait states and edges */
         if ( recvStartTime < sendStartTime )

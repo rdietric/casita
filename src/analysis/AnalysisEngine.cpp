@@ -50,9 +50,9 @@ AnalysisEngine::~AnalysisEngine( )
 }
 
 bool
-AnalysisEngine::getFunctionType( uint32_t id,
-                                 const char* name,
-                                 EventStream* stream,
+AnalysisEngine::getFunctionType( uint32_t            id,
+                                 const char*         name,
+                                 EventStream*        stream,
                                  FunctionDescriptor* descr )
 {
   assert( name );
@@ -95,7 +95,7 @@ AnalysisEngine::rulePriorityCompare( AbstractRule* r1, AbstractRule* r2 )
 void
 AnalysisEngine::addFunction( uint32_t funcId, const char* name )
 {
-  maxFunctionId = std::max( maxFunctionId, funcId );
+  maxFunctionId       = std::max( maxFunctionId, funcId );
   functionMap[funcId] = name;
 }
 
@@ -276,7 +276,7 @@ AnalysisEngine::consumePendingKernelLaunch( uint64_t kernelProcessId )
 }
 
 void
-AnalysisEngine::addStreamWaitEvent( uint64_t waitingDeviceProcId,
+AnalysisEngine::addStreamWaitEvent( uint64_t   waitingDeviceProcId,
                                     EventNode* streamWaitLeave )
 {
   EventStream* nullStream = getNullStream( );
@@ -405,7 +405,7 @@ AnalysisEngine::linkEventQuery( EventNode* eventQueryLeave )
 {
   EventNode* lastEventQueryLeave = NULL;
 
-  IdEventNodeMap::iterator iter = eventQueryMap.find(
+  IdEventNodeMap::iterator iter  = eventQueryMap.find(
     eventQueryLeave->getEventId( ) );
   if ( iter != eventQueryMap.end( ) )
   {
@@ -438,7 +438,7 @@ AnalysisEngine::getLastLaunchLeave( uint64_t timestamp,
             listIter->second.rbegin( );
           launchIter != listIter->second.rend( ); ++launchIter )
     {
-      GraphNode* gLaunchLeave = *launchIter;
+      GraphNode* gLaunchLeave     = *launchIter;
 
       if ( gLaunchLeave->isEnter( ) )
       {
@@ -499,12 +499,12 @@ AnalysisEngine::getLastLeave( uint64_t timestamp, uint64_t streamId ) const
 }
 
 GraphNode*
-AnalysisEngine::newGraphNode( uint64_t time,
-                              uint64_t streamId,
+AnalysisEngine::newGraphNode( uint64_t          time,
+                              uint64_t          streamId,
                               const std::string name,
-                              Paradigm paradigm,
-                              NodeRecordType recordType,
-                              int nodeType )
+                              Paradigm          paradigm,
+                              NodeRecordType    recordType,
+                              int               nodeType )
 {
   GraphNode* node = GraphEngine::newGraphNode( time, streamId, name,
                                                paradigm, recordType, nodeType );
@@ -518,12 +518,12 @@ AnalysisEngine::newGraphNode( uint64_t time,
 }
 
 GraphNode*
-AnalysisEngine::addNewGraphNode( uint64_t time,
-                                 EventStream* stream,
-                                 const char* name,
-                                 Paradigm paradigm,
+AnalysisEngine::addNewGraphNode( uint64_t       time,
+                                 EventStream*   stream,
+                                 const char*    name,
+                                 Paradigm       paradigm,
                                  NodeRecordType recordType,
-                                 int nodeType )
+                                 int            nodeType )
 {
   GraphNode* node = GraphEngine::addNewGraphNode( time, stream, name, paradigm,
                                                   recordType, nodeType );
@@ -574,8 +574,8 @@ streamSort( EventStream* p1, EventStream* p2 )
 void
 AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
                                               std::string origFilename,
-                                              bool enableWaitStates,
-                                              bool verbose )
+                                              bool        enableWaitStates,
+                                              bool        verbose )
 {
   EventStreamGroup::EventStreamList allStreams;
   getStreams( allStreams );
@@ -730,8 +730,8 @@ AnalysisEngine::clearBarrierEventList( bool device, int matchingId )
 
 void
 AnalysisEngine::addBarrierEventToList( GraphNode* node,
-                                       bool device,
-                                       int matchingId )
+                                       bool       device,
+                                       int        matchingId )
 {
   if ( device )
   {
@@ -845,7 +845,7 @@ AnalysisEngine::popOmpTargetRegion( GraphNode* node )
 
 void
 AnalysisEngine::findOmpTargetParentRegion( GraphNode* node,
-                                           uint64_t parentRegionId )
+                                           uint64_t   parentRegionId )
 {
   /* search all current stream with parallel region ids */
   for ( OmpStreamRegionsMap::const_iterator esIter =

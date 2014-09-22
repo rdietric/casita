@@ -35,12 +35,12 @@ namespace casita
 
       enum ProcessGroup
       {
-        PG_HOST = 1, PG_DEVICE, PG_DEVICE_NULL
+        PG_HOST        = 1, PG_DEVICE, PG_DEVICE_NULL
       };
 
       enum MarkerGroup
       {
-        MG_Marker = 1
+        MG_Marker      = 1
       };
 
       ITraceWriter( const char* streamRefKeyName, const char* eventRefKeyName,
@@ -59,27 +59,27 @@ namespace casita
 
       virtual void
       open( const std::string otfFilename, uint32_t maxFiles,
-            uint32_t numStreams ) = 0;
+            uint32_t numStreams )        = 0;
 
       virtual void
       close( ) = 0;
 
       virtual void
-      writeDefProcess( uint64_t id,
-                       uint64_t parentId,
-                       const char* name,
+      writeDefProcess( uint64_t     id,
+                       uint64_t     parentId,
+                       const char*  name,
                        ProcessGroup pg ) = 0;
 
       virtual void
       writeDefFunction( uint64_t id, const char* name, FunctionGroup fg ) = 0;
 
       virtual void
-      writeDefCounter( uint32_t id, const char* name, int properties ) = 0;
+      writeDefCounter( uint32_t id, const char* name, int properties )    = 0;
 
       virtual void
-      writeNode( GraphNode* node,
-                 CounterTable& ctrTable,
-                 bool lastProcessNode,
+      writeNode( GraphNode*       node,
+                 CounterTable&    ctrTable,
+                 bool             lastProcessNode,
                  const GraphNode* futureNode ) = 0;
 
     protected:

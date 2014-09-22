@@ -43,9 +43,9 @@ namespace casita
 
        /* find the stream which launched this kernel and consume the
         * launch event */
-       uint64_t kernelProcessId = node->getStreamId( );
+       uint64_t   kernelProcessId      = node->getStreamId( );
 
-       GraphNode* launchEnterEvent = analysis->consumePendingKernelLaunch(
+       GraphNode* launchEnterEvent     = analysis->consumePendingKernelLaunch(
          kernelProcessId );
 
        if ( !launchEnterEvent )

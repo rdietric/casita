@@ -51,8 +51,8 @@ namespace casita
           /* enter */
           const uint32_t ompParentCtrId = analysis->getCtrTable( ).getCtrId(
             CTR_OMP_PARENT_REGION_ID );
-          bool valid = false;
-          uint64_t matchingId = node->getCounter( ompParentCtrId, &valid );
+          bool     valid = false;
+          uint64_t matchingId           = node->getCounter( ompParentCtrId, &valid );
           if ( !valid )
           {
             ErrorUtils::getInstance( ).throwError(
@@ -69,11 +69,11 @@ namespace casita
         else
         {
           /* leave */
-          GraphNode* enterEvent = node->getPartner( );
+          GraphNode*     enterEvent     = node->getPartner( );
           const uint32_t ompParentCtrId = analysis->getCtrTable( ).getCtrId(
             CTR_OMP_PARENT_REGION_ID );
-          bool valid = false;
-          uint64_t matchingId = enterEvent->getCounter( ompParentCtrId, &valid );
+          bool     valid = false;
+          uint64_t matchingId           = enterEvent->getCounter( ompParentCtrId, &valid );
           if ( !valid )
           {
             ErrorUtils::getInstance( ).throwError(
@@ -127,9 +127,9 @@ namespace casita
           GraphNode::GraphNodeList::const_iterator iter = tmpBarrierList.begin( );
           /* keep enter event with max enter timestamp */
           GraphNode* maxEnterTimeNode = *iter;
-          uint64_t blame = 0;
+          uint64_t   blame = 0;
 
-          uint32_t ctrIdWaitState = analysis->getCtrTable( ).getCtrId(
+          uint32_t   ctrIdWaitState   = analysis->getCtrTable( ).getCtrId(
             CTR_WAITSTATE );
 
           /* find last barrierEnter */

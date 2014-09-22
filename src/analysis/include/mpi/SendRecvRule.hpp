@@ -46,16 +46,16 @@ namespace casita
 
         uint64_t* data = (uint64_t*)( sendRecv.second->getData( ) );
 
-        uint64_t partnerProcessIdRecv = node->getReferencedStreamId( );
-        uint64_t partnerProcessIdSend = *data;
+        uint64_t  partnerProcessIdRecv    = node->getReferencedStreamId( );
+        uint64_t  partnerProcessIdSend    = *data;
 
         const int BUFFER_SIZE = 8;
-        uint64_t sendBuffer[BUFFER_SIZE], recvBuffer[BUFFER_SIZE];
+        uint64_t  sendBuffer[BUFFER_SIZE], recvBuffer[BUFFER_SIZE];
         /* uint64_t *sendBfr64 = (uint64_t*) sendBuffer; */
         /* uint64_t *recvBfr64 = (uint64_t*) recvBuffer; */
 
-        uint64_t myStartTime = sendRecv.first->getTime( );
-        uint64_t myEndTime = sendRecv.second->getTime( );
+        uint64_t  myStartTime = sendRecv.first->getTime( );
+        uint64_t  myEndTime   = sendRecv.second->getTime( );
 
         /* prepare send buffer */
         /* memcpy(sendBfr64 + 0, &myStartTime, sizeof (uint64_t)); */
@@ -66,9 +66,9 @@ namespace casita
         sendBuffer[3] = sendRecv.second->getId( );
 
         /* send + recv */
-        uint32_t partnerMPIRankRecv = analysis->getMPIAnalysis( ).getMPIRank(
+        uint32_t   partnerMPIRankRecv = analysis->getMPIAnalysis( ).getMPIRank(
           partnerProcessIdRecv );
-        uint32_t partnerMPIRankSend = analysis->getMPIAnalysis( ).getMPIRank(
+        uint32_t   partnerMPIRankSend = analysis->getMPIAnalysis( ).getMPIRank(
           partnerProcessIdSend );
         MPI_Status status;
 
@@ -84,8 +84,8 @@ namespace casita
         uint64_t otherStartTime = recvBuffer[0];         /*
                                                           *recvBfr64[0];
                                                           **/
-        uint64_t otherEnterId = recvBuffer[2];
-        uint64_t otherLeaveId = recvBuffer[3];
+        uint64_t otherEnterId   = recvBuffer[2];
+        uint64_t otherLeaveId   = recvBuffer[3];
 
         /* compute wait states */
         if ( ( myStartTime <= otherStartTime ) )
@@ -122,8 +122,8 @@ namespace casita
                                  MPI_COMM_WORLD, &status ) );
 
         otherStartTime = recvBuffer[0];         /* recvBfr64[0]; */
-        otherEnterId = recvBuffer[2];
-        otherLeaveId = recvBuffer[3];
+        otherEnterId   = recvBuffer[2];
+        otherLeaveId   = recvBuffer[3];
 
         /* compute wait states and edges */
         if ( myStartTime < otherStartTime )

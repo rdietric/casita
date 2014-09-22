@@ -40,9 +40,9 @@ namespace casita
        /* get the complete execution */
        GraphNode::GraphNodePair& sync = node->getGraphPair( );
 
-       uint64_t syncDeltaTicks = analysis->getDeltaTicks( );
+       uint64_t syncDeltaTicks        = analysis->getDeltaTicks( );
 
-       bool ruleResult = false;
+       bool     ruleResult = false;
        /* find all referenced (device) streams */
        EventStreamGroup::EventStreamList deviceStreams;
        analysis->getAllDeviceStreams( deviceStreams );
@@ -51,7 +51,7 @@ namespace casita
                deviceStreams.begin( );
              pIter != deviceStreams.end( ); ++pIter )
        {
-         EventStream* deviceProcess = *pIter;
+         EventStream* deviceProcess       = *pIter;
 
          if ( !sync.first->referencesStream( deviceProcess->getId( ) ) )
          {
@@ -59,7 +59,7 @@ namespace casita
          }
 
          /* test that there is a pending kernel (leave) */
-         GraphNode* kernelLeave = deviceProcess->getPendingKernel( );
+         GraphNode* kernelLeave           = deviceProcess->getPendingKernel( );
          if ( !kernelLeave )
          {
            break;
@@ -73,7 +73,7 @@ namespace casita
          {
            GraphNode* lastLeaveNode = analysis->getLastLeave(
              sync.second->getTime( ), deviceProcess->getId( ) );
-           GraphNode* waitEnter = NULL, * waitLeave = NULL;
+           GraphNode* waitEnter     = NULL, * waitLeave = NULL;
 
            if ( lastLeaveNode && lastLeaveNode->isWaitstate( ) )
            {

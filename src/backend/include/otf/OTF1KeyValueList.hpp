@@ -47,7 +47,7 @@ namespace casita
       getLocationRef( uint32_t key, uint64_t* value )
       {
         uint32_t processId;
-        uint8_t status = OTF_KeyValueList_getUint32( list, key, &processId );
+        uint8_t  status = OTF_KeyValueList_getUint32( list, key, &processId );
         *value = (uint64_t)processId;
         return status;
       }

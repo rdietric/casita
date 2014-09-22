@@ -38,10 +38,10 @@ namespace casita
  {
    CounterType type;
    const char* name;
-   bool hasDefault;
-   bool isInternal;
-   uint64_t defaultValue;
-   uint32_t otfMode;
+   bool        hasDefault;
+   bool        isInternal;
+   uint64_t    defaultValue;
+   uint32_t    otfMode;
  } CtrTableEntry;
 
  static const CtrTableEntry COUNTER_TABLE[] =
@@ -108,14 +108,14 @@ namespace casita
                  uint64_t defaultValue, uint32_t otfMode )
      {
        CtrTableEntry* entry = new CtrTableEntry( );
-       entry->type = ctrType;
-       entry->name = name;
-       entry->hasDefault = hasDefault;
-       entry->isInternal = isInternal;
+       entry->type         = ctrType;
+       entry->name         = name;
+       entry->hasDefault   = hasDefault;
+       entry->isInternal   = isInternal;
        entry->defaultValue = (uint64_t)defaultValue;
-       entry->otfMode = otfMode;
+       entry->otfMode      = otfMode;
 
-       counters[ctrId] = entry;
+       counters[ctrId]     = entry;
        ctrIDs.insert( ctrId );
 
        maxCtrId = std::max( maxCtrId, ctrId );
@@ -163,8 +163,8 @@ namespace casita
      }
 
    private:
-     uint32_t maxCtrId;
+     uint32_t    maxCtrId;
      CtrEntryMap counters;
-     CtrIdSet ctrIDs;
+     CtrIdSet    ctrIDs;
  };
 }

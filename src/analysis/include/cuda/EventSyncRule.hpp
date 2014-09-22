@@ -40,7 +40,7 @@ namespace casita
        /* get the complete execution */
        GraphNode::GraphNodePair& sync = node->getGraphPair( );
 
-       EventNode* eventLaunchLeave = analysis->getLastEventLaunchLeave(
+       EventNode* eventLaunchLeave    = analysis->getLastEventLaunchLeave(
          ( (EventNode*)sync.second )->getEventId( ) );
 
        if ( !eventLaunchLeave )
@@ -50,8 +50,8 @@ namespace casita
          return false;
        }
 
-       GraphNode* eventLaunchEnter = eventLaunchLeave->getGraphPair( ).first;
-       EventStream* refProcess = analysis->getStream(
+       GraphNode*   eventLaunchEnter  = eventLaunchLeave->getGraphPair( ).first;
+       EventStream* refProcess        = analysis->getStream(
          eventLaunchLeave->getReferencedStreamId( ) );
        EventStreamGroup::EventStreamList deviceProcs;
 
@@ -70,7 +70,7 @@ namespace casita
              iter != deviceProcs.end( ); ++iter )
        {
          /* last kernel launch before event record for this stream */
-         GraphNode* kernelLaunchLeave = analysis->getLastLaunchLeave(
+         GraphNode* kernelLaunchLeave           = analysis->getLastLaunchLeave(
            eventLaunchEnter->getTime( ), ( *iter )->getId( ) );
          if ( !kernelLaunchLeave )
          {

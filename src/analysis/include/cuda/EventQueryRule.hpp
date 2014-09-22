@@ -55,7 +55,7 @@ namespace casita
        analysis->removeEventQuery( evQueryLeave->getEventId( ) );
 
        /* get the device stream ID this event is queued on */
-       uint64_t refDeviceProcessId = analysis->getEventProcessId(
+       uint64_t refDeviceProcessId       = analysis->getEventProcessId(
          evQueryLeave->getEventId( ) );
        if ( !refDeviceProcessId )
        {
@@ -66,7 +66,7 @@ namespace casita
        }
 
        /* get the first kernel launch before eventLaunch/enter */
-       EventNode* eventLaunchLeave = analysis->getLastEventLaunchLeave(
+       EventNode* eventLaunchLeave  = analysis->getLastEventLaunchLeave(
          evQueryLeave->getEventId( ) );
        if ( !eventLaunchLeave )
        {
@@ -99,7 +99,7 @@ namespace casita
            return false;
          }
 
-         GraphNode* kernelLeave = kernelEnter->getGraphPair( ).second;
+         GraphNode* kernelLeave          = kernelEnter->getGraphPair( ).second;
          GraphNode::GraphNodePair kernel = kernelLeave->getGraphPair( );
 
          if ( evQuery.second->getTime( ) < kernelLeave->getTime( ) )

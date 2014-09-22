@@ -66,7 +66,7 @@ dumpAllocationTail( AnalysisEngine& analysis )
     EventStream* p = *iter;
     printf( "# %s (%lu)\n", p->getName( ), p->getId( ) );
     EventStream::SortedGraphNodeList& nodes = p->getNodes( );
-    int n = 0;
+    int n          = 0;
     for ( EventStream::SortedGraphNodeList::const_reverse_iterator rIter =
             nodes.rbegin( );
           rIter != nodes.rend( ); ++rIter )
@@ -126,7 +126,7 @@ Runner::getGlobalLengthCP( )
 void
 Runner::readOTF( )
 {
-  uint32_t mpiRank = analysis.getMPIRank( );
+  uint32_t      mpiRank     = analysis.getMPIRank( );
   ITraceReader* traceReader = NULL;
 
   if ( mpiRank == 0 )
@@ -161,14 +161,14 @@ Runner::readOTF( )
     throw RTException( "Could not create trace reader" );
   }
 
-  traceReader->handleDefProcess = CallbackHandler::handleDefProcess;
-  traceReader->handleDefFunction = CallbackHandler::handleDefFunction;
-  traceReader->handleEnter = CallbackHandler::handleEnter;
-  traceReader->handleLeave = CallbackHandler::handleLeave;
+  traceReader->handleDefProcess        = CallbackHandler::handleDefProcess;
+  traceReader->handleDefFunction       = CallbackHandler::handleDefFunction;
+  traceReader->handleEnter             = CallbackHandler::handleEnter;
+  traceReader->handleLeave             = CallbackHandler::handleLeave;
   traceReader->handleProcessMPIMapping =
     CallbackHandler::handleProcessMPIMapping;
-  traceReader->handleMPIComm = CallbackHandler::handleMPIComm;
-  traceReader->handleMPICommGroup = CallbackHandler::handleMPICommGroup;
+  traceReader->handleMPIComm           = CallbackHandler::handleMPIComm;
+  traceReader->handleMPICommGroup      = CallbackHandler::handleMPICommGroup;
 
   traceReader->open( options.filename, 10 );
   if ( options.verbose >= VERBOSE_BASIC )
@@ -221,7 +221,7 @@ Runner::mergeActivityGroups( )
     analysis.getLastGraphNode( PARADIGM_COMPUTE_LOCAL )->getTime( ) -
     analysis.getSourceNode( )->getTime( );
 
-  uint64_t globalBlame = 0;
+  uint64_t globalBlame    = 0;
 
   /* compute some final metrics */
   for ( std::map< uint32_t,
@@ -251,7 +251,7 @@ Runner::mergeActivityGroups( )
     for ( uint32_t rank = 1; rank < mpiSize; ++rank )
     {
       /* receive number of entries */
-      uint32_t numEntries = 0;
+      uint32_t   numEntries = 0;
       MPI_Status status;
 
       /* /\todo: receive from any */
@@ -281,22 +281,22 @@ Runner::mergeActivityGroups( )
 
           if ( groupIter != activityGroupMap.end( ) )
           {
-            groupIter->second.numInstances += group->numInstances;
-            groupIter->second.totalBlame += group->totalBlame;
-            groupIter->second.totalDuration += group->totalDuration;
+            groupIter->second.numInstances      += group->numInstances;
+            groupIter->second.totalBlame        += group->totalBlame;
+            groupIter->second.totalDuration     += group->totalDuration;
             groupIter->second.totalDurationOnCP += group->totalDurationOnCP;
-            groupIter->second.fractionCP += group->fractionCP;
+            groupIter->second.fractionCP        += group->fractionCP;
             groupIter->second.numUnifyStreams++;
           }
           else
           {
-            activityGroupMap[fId].functionId = fId;
-            activityGroupMap[fId].numInstances = group->numInstances;
-            activityGroupMap[fId].fractionCP = group->fractionCP;
-            activityGroupMap[fId].totalBlame = group->totalBlame;
-            activityGroupMap[fId].totalDuration = group->totalDuration;
+            activityGroupMap[fId].functionId        = fId;
+            activityGroupMap[fId].numInstances      = group->numInstances;
+            activityGroupMap[fId].fractionCP        = group->fractionCP;
+            activityGroupMap[fId].totalBlame        = group->totalBlame;
+            activityGroupMap[fId].totalDuration     = group->totalDuration;
             activityGroupMap[fId].totalDurationOnCP = group->totalDurationOnCP;
-            activityGroupMap[fId].numUnifyStreams = group->numUnifyStreams;
+            activityGroupMap[fId].numUnifyStreams   = group->numUnifyStreams;
           }
 
           globalBlame += group->totalBlame;
@@ -336,7 +336,7 @@ Runner::mergeActivityGroups( )
     IParallelTraceWriter::ActivityGroup* buf =
       new IParallelTraceWriter::ActivityGroup[numEntries];
 
-    uint32_t i = 0;
+    uint32_t i          = 0;
     for ( std::map< uint32_t,
                     IParallelTraceWriter::ActivityGroup >::iterator groupIter =
             activityGroupMap.begin( );
@@ -361,9 +361,9 @@ Runner::mergeActivityGroups( )
 /* DEPRECATED!! -> produces wrong results */
 void
 Runner::getLocalCriticalPath( EventStream::SortedGraphNodeList& criticalNodes,
-                              GraphNode* startNode,
-                              GraphNode* lastNode,
-                              Graph& subGraph )
+                              GraphNode*                        startNode,
+                              GraphNode*                        lastNode,
+                              Graph&                            subGraph )
 {
   assert( 0 );
 
@@ -375,7 +375,7 @@ Runner::getLocalCriticalPath( EventStream::SortedGraphNodeList& criticalNodes,
             lastNode->getUniqueName( ).c_str( ) );
   }
 
-  GraphNode* current = lastNode;
+  GraphNode*     current = lastNode;
   const uint32_t wtCtrId = analysis.getCtrTable( ).getCtrId( CTR_WAITSTATE );
 
   uint32_t i = 0;
@@ -498,7 +498,7 @@ Runner::getCriticalPath( )
     printf( "[%u] Computing additional counters\n", mpiRank );
   }
 
-  const uint32_t cpCtrId = analysis.getCtrTable( ).getCtrId( CTR_CRITICALPATH );
+  const uint32_t cpCtrId     = analysis.getCtrTable( ).getCtrId( CTR_CRITICALPATH );
   for ( EventStream::SortedGraphNodeList::const_iterator iter =
           criticalNodes.begin( );
         iter != criticalNodes.end( ); ++iter )
@@ -514,7 +514,7 @@ Runner::getCriticalPath( )
 #pragma omp parallel for
   for ( size_t i = 0; i < streams.size( ); ++i )
   {
-    EventStream* p = streams[i];
+    EventStream* p      = streams[i];
     if ( p->isRemoteStream( ) )
     {
       continue;
@@ -533,7 +533,7 @@ Runner::getCriticalPath( )
         continue;
       }
 
-      GraphNode* node = (GraphNode*)( *nIter );
+      GraphNode* node   = (GraphNode*)( *nIter );
       if ( !lastNode )
       {
         lastNode = node;
@@ -576,14 +576,14 @@ Runner::getCriticalPath( )
     }
 
     uint64_t firstTimestamp = 0;
-    uint64_t lastTimestamp = analysis.getLastGraphNode( )->getTime( );
+    uint64_t lastTimestamp  = analysis.getLastGraphNode( )->getTime( );
 
     /* compute total program runtime, i.e. total length of the
      *critical path */
     if ( criticalNodes.size( ) > 0 )
     {
       GraphNode* firstNode = NULL;
-      GraphNode* lastNode = NULL;
+      GraphNode* lastNode  = NULL;
 
       for ( EventStream::SortedGraphNodeList::const_iterator iter =
               criticalNodes.begin( );
@@ -607,7 +607,7 @@ Runner::getCriticalPath( )
       {
         firstTimestamp = firstNode->getPartner( )->getTime( );
       }
-      lastTimestamp = lastNode->getTime( );
+      lastTimestamp  = lastNode->getTime( );
     }
 
     if ( mpiSize > 1 )
@@ -638,10 +638,10 @@ Runner::getCriticalPath( )
 }
 
 void
-Runner::getCriticalPathIntern( GraphNode* start,
-                               GraphNode* end,
+Runner::getCriticalPathIntern( GraphNode*                        start,
+                               GraphNode*                        end,
                                EventStream::SortedGraphNodeList& cpNodes,
-                               Graph& subGraph )
+                               Graph&                            subGraph )
 {
   if ( options.printCriticalPath )
   {
@@ -675,19 +675,19 @@ Runner::getCriticalPathIntern( GraphNode* start,
 
 void
 Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
-                                  uint32_t numSections,
+                                  uint32_t                          numSections,
                                   EventStream::SortedGraphNodeList&
                                   criticalNodes,
                                   MPIAnalysis::CriticalSectionsMap&
                                   sectionsMap )
 {
-  uint32_t mpiRank = analysis.getMPIRank( );
-  Graph* subGraph = analysis.getGraph( PARADIGM_ALL );
+  uint32_t   mpiRank    = analysis.getMPIRank( );
+  Graph*     subGraph   = analysis.getGraph( PARADIGM_ALL );
 
   omp_lock_t localNodesLock;
   omp_init_lock( &localNodesLock );
 
-  uint32_t lastSecCtr = 0;
+  uint32_t   lastSecCtr = 0;
 
 #pragma omp parallel for
   for ( uint32_t i = 0; i < numSections; ++i )
@@ -755,9 +755,9 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
     }
 
     MPIAnalysis::CriticalPathSection mappedSection;
-    mappedSection.streamID = section->streamID;
+    mappedSection.streamID    = section->streamID;
     mappedSection.nodeStartID = section->nodeStartID;
-    mappedSection.nodeEndID = section->nodeEndID;
+    mappedSection.nodeEndID   = section->nodeEndID;
 
     if ( startNode->isEnter( ) )
     {
@@ -769,14 +769,14 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
       endNode = endNode->getPartner( );
     }
 
-    GraphNode* csStartOuter = startNode;
-    GraphNode* csEndOuter = endNode;
+    GraphNode* csStartOuter   = startNode;
+    GraphNode* csEndOuter     = endNode;
 
     sectionsMap[csStartOuter] = mappedSection;
-    sectionsMap[csEndOuter] = mappedSection;
+    sectionsMap[csEndOuter]   = mappedSection;
 
     GraphNode* startLocalNode = startNode->getLinkRight( );
-    GraphNode* endLocalNode = endNode->getLinkLeft( );
+    GraphNode* endLocalNode   = endNode->getLinkLeft( );
 
     if ( ( !startLocalNode ||
            !endLocalNode ) ||
@@ -865,12 +865,12 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
 void
 Runner::findLastMpiNode( GraphNode** node )
 {
-  uint64_t lastMpiNodeTime = 0;
-  int lastMpiRank = mpiRank;
-  uint64_t nodeTimes[analysis.getMPIAnalysis( ).getMPISize( )];
+  uint64_t   lastMpiNodeTime = 0;
+  int        lastMpiRank     = mpiRank;
+  uint64_t   nodeTimes[analysis.getMPIAnalysis( ).getMPISize( )];
   *node = NULL;
 
-  GraphNode* myLastMpiNode = analysis.getLastGraphNode( PARADIGM_MPI );
+  GraphNode* myLastMpiNode   = analysis.getLastGraphNode( PARADIGM_MPI );
   if ( myLastMpiNode )
   {
     lastMpiNodeTime = myLastMpiNode->getTime( );
@@ -885,7 +885,7 @@ Runner::findLastMpiNode( GraphNode** node )
     if ( nodeTimes[i] > lastMpiNodeTime )
     {
       lastMpiNodeTime = nodeTimes[i];
-      lastMpiRank = i;
+      lastMpiRank     = i;
     }
   }
 
@@ -906,29 +906,28 @@ Runner::findLastMpiNode( GraphNode** node )
 }
 
 void
-Runner::reverseReplayMPICriticalPath(
-  MPIAnalysis::CriticalSectionsList& sectionsList )
+Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& sectionsList )
 {
-  const uint32_t NO_MSG = 0;
+  const uint32_t NO_MSG         = 0;
   const uint32_t PATH_FOUND_MSG = 1;
 
-  const size_t BUFFER_SIZE = 3;
+  const size_t   BUFFER_SIZE    = 3;
 
   /* decide on globally last MPI node to start with */
-  GraphNode* currentNode = NULL;
-  GraphNode* lastNode = NULL;
-  GraphNode* sectionEndNode = NULL;
-  bool isMaster = false;
+  GraphNode*     currentNode    = NULL;
+  GraphNode*     lastNode       = NULL;
+  GraphNode*     sectionEndNode = NULL;
+  bool isMaster     = false;
 
   findLastMpiNode( &currentNode );
   if ( currentNode )
   {
-    isMaster = true;
+    isMaster       = true;
     sectionEndNode = currentNode;
   }
 
-  Graph* mpiGraph = analysis.getGraph( PARADIGM_MPI );
-  uint32_t cpCtrId = analysis.getCtrTable( ).getCtrId( CTR_CRITICALPATH );
+  Graph*   mpiGraph = analysis.getGraph( PARADIGM_MPI );
+  uint32_t cpCtrId  = analysis.getCtrTable( ).getCtrId( CTR_CRITICALPATH );
   uint64_t sendBfr[BUFFER_SIZE];
   uint64_t recvBfr[BUFFER_SIZE];
 
@@ -973,9 +972,9 @@ Runner::reverseReplayMPICriticalPath(
           if ( currentNode != sectionEndNode )
           {
             MPIAnalysis::CriticalPathSection section;
-            section.streamID = currentNode->getStreamId( );
+            section.streamID    = currentNode->getStreamId( );
             section.nodeStartID = currentNode->getId( );
-            section.nodeEndID = sectionEndNode->getId( );
+            section.nodeEndID   = sectionEndNode->getId( );
             sectionsList.push_back( section );
 
             currentNode->setCounter( cpCtrId, 1 );
@@ -990,7 +989,7 @@ Runner::reverseReplayMPICriticalPath(
           isMaster = false;
 
           /* commnicate with slaves to decide new master */
-          GraphNode* commMaster = currentNode->getGraphPair( ).second;
+          GraphNode* commMaster  = currentNode->getGraphPair( ).second;
           bool nodeHasRemoteInfo = false;
           analysis.getMPIAnalysis( ).getRemoteNodeInfo( commMaster,
                                                         &nodeHasRemoteInfo );
@@ -1045,7 +1044,7 @@ Runner::reverseReplayMPICriticalPath(
         else
         {
           currentNode->setCounter( cpCtrId, 1 );
-          lastNode = currentNode;
+          lastNode    = currentNode;
           currentNode = activityEdge->getStartNode( );
           /* continue main loop as master */
         }
@@ -1086,7 +1085,7 @@ Runner::reverseReplayMPICriticalPath(
           break;
         }
 
-        bool foundPredecessor = false;
+        bool foundPredecessor          = false;
         const Graph::EdgeList& inEdges = mpiGraph->getInEdges( currentNode );
         for ( Graph::EdgeList::const_iterator iter = inEdges.begin( );
               iter != inEdges.end( ); ++iter )
@@ -1095,8 +1094,8 @@ Runner::reverseReplayMPICriticalPath(
           if ( intraEdge->isIntraStreamEdge( ) )
           {
             currentNode->setCounter( cpCtrId, 1 );
-            lastNode = currentNode;
-            currentNode = intraEdge->getStartNode( );
+            lastNode         = currentNode;
+            currentNode      = intraEdge->getStartNode( );
             foundPredecessor = true;
             /* continue main loop as master */
             break;
@@ -1150,10 +1149,10 @@ Runner::reverseReplayMPICriticalPath(
           mpiEdge.localNode->getGraphPair( );
         /* we are the new master */
 
-        isMaster = true;
+        isMaster       = true;
         slaveActivity.second->setCounter( cpCtrId, 1 );
-        lastNode = slaveActivity.second;
-        currentNode = slaveActivity.first;
+        lastNode       = slaveActivity.second;
+        currentNode    = slaveActivity.first;
 
         sectionEndNode = lastNode;
 
@@ -1175,7 +1174,7 @@ Runner::reverseReplayMPICriticalPath(
 }
 
 void
-Runner::runAnalysis( Paradigm paradigm,
+Runner::runAnalysis( Paradigm                          paradigm,
                      EventStream::SortedGraphNodeList& allNodes )
 {
   analysis.removeRules( );
@@ -1234,7 +1233,7 @@ Runner::runAnalysis( Paradigm paradigm,
       return;
   }
 
-  size_t ctr = 0, last_ctr = 0;
+  size_t ctr       = 0, last_ctr = 0;
   size_t num_nodes = allNodes.size( );
 
   for ( EventStream::SortedGraphNodeList::const_iterator nIter = allNodes.begin( );
@@ -1304,7 +1303,7 @@ Runner::printAllActivities( )
     }
 
     const size_t max_ctr = 20;
-    size_t ctr = 0;
+    size_t ctr           = 0;
     for ( std::set< IParallelTraceWriter::ActivityGroup,
                     IParallelTraceWriter::ActivityGroupCompare >::
           const_iterator iter =

@@ -50,7 +50,7 @@ main( int argc, char** argv )
   }
   ProgramOptions& options = Parser::getInstance( ).getProgramOptions( );
 
-  Runner* runner = new Runner( mpiRank, mpiSize );
+  Runner* runner          = new Runner( mpiRank, mpiSize );
 
   runner->readOTF( );
 

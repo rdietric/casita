@@ -40,38 +40,38 @@ namespace casita
 
  enum Paradigm
  {
-   PARADIGM_CPU = ( 1 << 0 ),
-   PARADIGM_CUDA = ( 1 << 1 ),
-   PARADIGM_MPI = ( 1 << 2 ),
-   PARADIGM_OMP = ( 1 << 3 ),
-   PARADIGM_VT = ( 1 << 4 ),
+   PARADIGM_CPU           = ( 1 << 0 ),
+   PARADIGM_CUDA          = ( 1 << 1 ),
+   PARADIGM_MPI           = ( 1 << 2 ),
+   PARADIGM_OMP           = ( 1 << 3 ),
+   PARADIGM_VT            = ( 1 << 4 ),
 
    PARADIGM_COMPUTE_LOCAL = ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_OMP ),
-   PARADIGM_ALL =
+   PARADIGM_ALL           =
      ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_MPI | PARADIGM_OMP | PARADIGM_VT )
  };
 
- const size_t NODE_PARADIGM_COUNT = 5;
+ const size_t NODE_PARADIGM_COUNT   = 5;
  const size_t NODE_PARADIGM_INVALID = ( 1 << 5 );
 
  enum NodeTypeMisc
  {
    MISC_CPU = ( 1 << 1 ),
-   MISC_PROCESS = ( 1 << 2 )
+   MISC_PROCESS           = ( 1 << 2 )
  };
 
  enum NodeTypeCUDA
  {
    CUDA_SYNC = ( 1 << 1 ),
-   CUDA_COLLSYNC = ( 1 << 2 ),
-   CUDA_WAITSTATE = ( 1 << 3 ),
-   CUDA_KERNEL = ( 1 << 4 ),
-   CUDA_KERNEL_LAUNCH = ( 1 << 5 ),
-   CUDA_EV_SYNC = ( 1 << 6 ),
-   CUDA_EV_LAUNCH = ( 1 << 7 ),
-   CUDA_EV_QUERY = ( 1 << 8 ),
+   CUDA_COLLSYNC          = ( 1 << 2 ),
+   CUDA_WAITSTATE         = ( 1 << 3 ),
+   CUDA_KERNEL            = ( 1 << 4 ),
+   CUDA_KERNEL_LAUNCH     = ( 1 << 5 ),
+   CUDA_EV_SYNC           = ( 1 << 6 ),
+   CUDA_EV_LAUNCH         = ( 1 << 7 ),
+   CUDA_EV_QUERY          = ( 1 << 8 ),
    CUDA_QUERY = ( 1 << 9 ),
-   CUDA_STREAMWAIT = ( 1 << 10 )
+   CUDA_STREAMWAIT        = ( 1 << 10 )
  };
 
  enum NodeTypeMPI
@@ -80,22 +80,22 @@ namespace casita
    MPI_SEND = ( 1 << 2 ),
    MPI_WAIT = ( 1 << 3 ),
    MPI_COLL = ( 1 << 4 ),
-   MPI_SENDRECV = ( 1 << 5 ),
+   MPI_SENDRECV           = ( 1 << 5 ),
    MPI_MISC = ( 1 << 6 ),
    MPI_EXIT = ( 1 << 7 ),
-   MPI_WAITSTATE = ( 1 << 8 ),
-   MPI_ONETOALL = ( 1 << 9 ),
-   MPI_ALLTOONE = ( 1 << 10 )
+   MPI_WAITSTATE          = ( 1 << 8 ),
+   MPI_ONETOALL           = ( 1 << 9 ),
+   MPI_ALLTOONE           = ( 1 << 10 )
  };
 
  enum NodeTypeOMP
  {
    OMP_SYNC = ( 1 << 1 ),
-   OMP_PAR_REGION = ( 1 << 2 ),
-   OMP_COMPUTE = ( 1 << 3 ),
-   OMP_WAITSTATE = ( 1 << 4 ),
-   OMP_TARGET_OFFLOAD = ( 1 << 5 ),
-   OMP_TARGET_FLUSH = ( 1 << 6 )
+   OMP_PAR_REGION         = ( 1 << 2 ),
+   OMP_COMPUTE            = ( 1 << 3 ),
+   OMP_WAITSTATE          = ( 1 << 4 ),
+   OMP_TARGET_OFFLOAD     = ( 1 << 5 ),
+   OMP_TARGET_FLUSH       = ( 1 << 6 )
  };
 
  enum NodeTypeVT
@@ -106,7 +106,7 @@ namespace casita
  typedef struct
  {
    NodeTypeCUDA type;
-   const char* str;
+   const char*  str;
  } TypeStrEntryCUDA;
 
  typedef struct
@@ -123,7 +123,7 @@ namespace casita
 
  typedef struct
  {
-   NodeTypeVT type;
+   NodeTypeVT  type;
    const char* str;
  } TypeStrEntryVT;
 
@@ -167,15 +167,15 @@ namespace casita
    { OMP_TARGET_FLUSH, "omp_target_flush" }
  };
 
- static const size_t numTypeStrEntriesVT = 1;
+ static const size_t numTypeStrEntriesVT  = 1;
  static const TypeStrEntryVT typeStrTableVT[numTypeStrEntriesVT] =
  {
    { VT_FLUSH, "vt_flush" }
  };
 
- static const char NAME_WAITSTATE[] = "WaitState";
- static const char NAME_MPI_INIT[] = "MPI_Init";
- static const char NAME_MPI_FINALIZE[] = "MPI_Finalize";
+ static const char   NAME_WAITSTATE[]     = "WaitState";
+ static const char   NAME_MPI_INIT[]      = "MPI_Init";
+ static const char   NAME_MPI_FINALIZE[]  = "MPI_Finalize";
 
  class Node
  {
@@ -808,15 +808,15 @@ namespace casita
      }
 
    protected:
-     uint32_t id;
-     uint64_t time;
-     uint64_t streamId;
-     uint64_t functionId;
-     std::string name;
+     uint32_t       id;
+     uint64_t       time;
+     uint64_t       streamId;
+     uint64_t       functionId;
+     std::string    name;
 
      NodeRecordType recordType;
-     Paradigm paradigm;
-     int nodeType;
+     Paradigm       paradigm;
+     int   nodeType;
 
      Node* link;
      /**

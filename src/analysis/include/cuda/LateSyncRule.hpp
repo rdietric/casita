@@ -58,7 +58,7 @@ namespace casita
          }
 
          /* test that there is a pending kernel leave */
-         GraphNode* kernelLeave = deviceProcess->getPendingKernel( );
+         GraphNode* kernelLeave     = deviceProcess->getPendingKernel( );
 
          if ( kernelLeave && kernelLeave->getTime( ) <= sync.first->getTime( ) )
          {
@@ -67,7 +67,7 @@ namespace casita
              sync.second->getTime( ),
              deviceProcess->
              getId( ) );
-           GraphNode* waitEnter = NULL, * waitLeave = NULL;
+           GraphNode* waitEnter     = NULL, * waitLeave = NULL;
 
            if ( lastLeaveNode && lastLeaveNode->isWaitstate( ) )
            {

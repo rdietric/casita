@@ -14,11 +14,11 @@
 
 using namespace casita;
 
-EventStream::EventStream( uint64_t id,
-                          uint64_t parentId,
+EventStream::EventStream( uint64_t          id,
+                          uint64_t          parentId,
                           const std::string name,
-                          EventStreamType eventStreamType,
-                          bool remoteStream ) :
+                          EventStreamType   eventStreamType,
+                          bool              remoteStream ) :
   id( id ),
   parentId( parentId ),
   name( name ),
@@ -29,7 +29,7 @@ EventStream::EventStream( uint64_t id,
   for ( size_t i = 0; i < NODE_PARADIGM_COUNT; ++i )
   {
     graphData[i].firstNode = NULL;
-    graphData[i].lastNode = NULL;
+    graphData[i].lastNode  = NULL;
   }
 }
 
@@ -99,7 +99,7 @@ EventStream::getLastNode( ) const
 GraphNode*
 EventStream::getLastNode( Paradigm paradigm ) const
 {
-  size_t i = 0;
+  size_t     i           = 0;
   GraphNode* tmpLastNode = NULL;
 
   for ( i = 0; i < NODE_PARADIGM_COUNT; ++i )
@@ -155,7 +155,7 @@ EventStream::getLastEventTime( ) const
 }
 
 void
-EventStream::addGraphNode( GraphNode* node,
+EventStream::addGraphNode( GraphNode*                  node,
                            GraphNode::ParadigmNodeMap* predNodes )
 {
   GraphNode* oldNode[NODE_PARADIGM_COUNT];
@@ -168,8 +168,8 @@ EventStream::addGraphNode( GraphNode* node,
 
   for ( size_t o = 1; o < NODE_PARADIGM_INVALID; o *= 2 )
   {
-    Paradigm oparadigm = (Paradigm)o;
-    size_t paradigm_index = (size_t)log2( oparadigm );
+    Paradigm oparadigm      = (Paradigm)o;
+    size_t   paradigm_index = (size_t)log2( oparadigm );
 
     oldNode[paradigm_index] = getLastNode( oparadigm );
     if ( predNodes && ( oldNode[paradigm_index] ) )
@@ -220,7 +220,7 @@ EventStream::addGraphNode( GraphNode* node,
 }
 
 void
-EventStream::insertGraphNode( GraphNode* node,
+EventStream::insertGraphNode( GraphNode*                  node,
                               GraphNode::ParadigmNodeMap& predNodes,
                               GraphNode::ParadigmNodeMap& nextNodes )
 {
@@ -283,7 +283,7 @@ EventStream::insertGraphNode( GraphNode* node,
   {
     current = result;
     SortedGraphNodeList::iterator next = ++current;
-    size_t paradigm_index = (size_t)log2( paradigm );
+    size_t     paradigm_index          = (size_t)log2( paradigm );
     hasNextNode[paradigm_index] = false;
 
     GraphNode* nextNode = NULL;
@@ -366,14 +366,14 @@ EventStream::clearPendingKernels( )
 }
 
 void
-EventStream::setPendingMPIRecord( MPIType mpiType,
+EventStream::setPendingMPIRecord( MPIType  mpiType,
                                   uint64_t partnerId,
                                   uint64_t rootId )
 {
   MPICommRecord record;
-  record.mpiType = mpiType;
+  record.mpiType   = mpiType;
   record.partnerId = partnerId;
-  record.rootId = rootId;
+  record.rootId    = rootId;
 
   mpiCommRecords.push_back( record );
 }
@@ -402,9 +402,9 @@ EventStream::getTimeProfile( )
 }
 
 bool
-EventStream::walkBackward( GraphNode* node,
+EventStream::walkBackward( GraphNode*         node,
                            StreamWalkCallback callback,
-                           void* userData )
+                           void*              userData )
 {
   bool result = false;
 
@@ -429,9 +429,9 @@ EventStream::walkBackward( GraphNode* node,
 }
 
 bool
-EventStream::walkForward( GraphNode* node,
+EventStream::walkForward( GraphNode*         node,
                           StreamWalkCallback callback,
-                          void* userData )
+                          void*              userData )
 {
   bool result = false;
 

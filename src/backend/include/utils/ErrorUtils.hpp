@@ -34,7 +34,7 @@ namespace casita
      void
      throwError( const char* fmt, ... )
      {
-       va_list argp;
+       va_list      argp;
        const size_t MAX_LEN = 512;
        char msg[MAX_LEN];
 
@@ -55,7 +55,7 @@ namespace casita
      void
      throwFatalError( const char* fmt, ... )
      {
-       va_list argp;
+       va_list      argp;
        const size_t MAX_LEN = 512;
        char msg[MAX_LEN];
 
@@ -71,7 +71,7 @@ namespace casita
      {
        if ( verbose )
        {
-         va_list argp;
+         va_list      argp;
          const size_t MAX_LEN = 512;
          char msg[MAX_LEN];
 

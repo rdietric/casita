@@ -45,7 +45,7 @@ namespace casita
 
      typedef struct
      {
-       MPIType mpiType;
+       MPIType  mpiType;
        uint64_t rootId;         /* root process ID (or 0) */
        uint64_t partnerId;      /* process or process group */
      } MPICommRecord;
@@ -113,7 +113,7 @@ namespace casita
      addGraphNode( GraphNode* node, GraphNode::ParadigmNodeMap* predNodes );
 
      void
-     insertGraphNode( GraphNode* node,
+     insertGraphNode( GraphNode*                  node,
                       GraphNode::ParadigmNodeMap& predNodes,
                       GraphNode::ParadigmNodeMap& nextNodes );
 
@@ -151,21 +151,21 @@ namespace casita
      walkForward( GraphNode* node, StreamWalkCallback callback, void* userData );
 
    private:
-     uint64_t id;
-     uint64_t parentId;
-     const std::string name;
-     EventStreamType streamType;
-     bool remoteStream;
+     uint64_t              id;
+     uint64_t              parentId;
+     const std::string     name;
+     EventStreamType       streamType;
+     bool                  remoteStream;
 
      SortedGraphNodeList pendingKernels;    /* list of unsynchronized
                                              * kernels (leave records) */
 
-     GraphNode* lastNode;
-     GraphData graphData[NODE_PARADIGM_COUNT];
-     SortedGraphNodeList nodes;
-     SortedGraphNodeList unlinkedMPINodes;
+     GraphNode*            lastNode;
+     GraphData             graphData[NODE_PARADIGM_COUNT];
+     SortedGraphNodeList   nodes;
+     SortedGraphNodeList   unlinkedMPINodes;
 
-     MPICommRecordList mpiCommRecords;
+     MPICommRecordList     mpiCommRecords;
 
      Edge::TimeProfileMap* currentTimeProfile;
 

@@ -46,43 +46,43 @@ namespace casita
 
      static void
      handleDefFunction( io::ITraceReader* reader,
-                        uint64_t streamId,
-                        uint32_t functionId,
-                        const char* name,
-                        uint32_t functionGroupId );
+                        uint64_t          streamId,
+                        uint32_t          functionId,
+                        const char*       name,
+                        uint32_t          functionGroupId );
 
      static void
      handleEnter( io::ITraceReader* reader, uint64_t time, uint32_t functionId,
                   uint64_t streamId, io::IKeyValueList* list );
 
      static void
-     handleAdditionalEnter( io::ITraceReader* reader,
-                            uint64_t time,
-                            uint64_t functionId,
-                            uint64_t streamId,
+     handleAdditionalEnter( io::ITraceReader*  reader,
+                            uint64_t           time,
+                            uint64_t           functionId,
+                            uint64_t           streamId,
                             io::IKeyValueList* list );
 
      static void
-     handleLeave( io::ITraceReader* reader,
-                  uint64_t time,
-                  uint32_t functionId,
-                  uint64_t streamId,
+     handleLeave( io::ITraceReader*  reader,
+                  uint64_t           time,
+                  uint32_t           functionId,
+                  uint64_t           streamId,
                   io::IKeyValueList* list );
 
      static void
-     handleAdditionalLeave( io::ITraceReader* reader,
-                            uint64_t time,
-                            uint32_t functionId,
-                            uint64_t streamId,
+     handleAdditionalLeave( io::ITraceReader*  reader,
+                            uint64_t           time,
+                            uint32_t           functionId,
+                            uint64_t           streamId,
                             io::IKeyValueList* list );
 
      static void
      handleMPIComm( io::ITraceReader* reader,
-                    io::MPIType mpiType,
-                    uint64_t streamId,
-                    uint64_t partnerId,
-                    uint32_t root,
-                    uint32_t tag );
+                    io::MPIType       mpiType,
+                    uint64_t          streamId,
+                    uint64_t          partnerId,
+                    uint32_t          root,
+                    uint32_t          tag );
 
      static void
      handleMPICommGroup( io::ITraceReader* reader, uint32_t group,

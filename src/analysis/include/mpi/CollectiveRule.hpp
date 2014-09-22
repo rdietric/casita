@@ -43,7 +43,7 @@ namespace casita
 
         /* get the complete execution */
         GraphNode::GraphNodePair coll = node->getGraphPair( );
-        uint32_t mpiGroupId = node->getReferencedStreamId( );
+        uint32_t mpiGroupId           = node->getReferencedStreamId( );
         const MPIAnalysis::MPICommGroup& mpiCommGroup =
           analysis->getMPIAnalysis( ).getMPICommGroup( mpiGroupId );
         uint32_t myMpiRank = analysis->getMPIRank( );
@@ -53,14 +53,14 @@ namespace casita
           return false;
         }
 
-        const uint32_t BUFFER_SIZE = 7;
-        uint32_t recvBufferSize = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
+        const uint32_t BUFFER_SIZE    = 7;
+        uint32_t recvBufferSize       = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
         uint64_t sendBuffer[BUFFER_SIZE];
-        uint64_t* recvBuffer = new uint64_t[recvBufferSize];
+        uint64_t*      recvBuffer     = new uint64_t[recvBufferSize];
         memset( recvBuffer, 0, recvBufferSize * sizeof( uint64_t ) );
 
-        uint64_t collStartTime = coll.first->getTime( );
-        uint64_t collEndTime = coll.second->getTime( );
+        uint64_t collStartTime        = coll.first->getTime( );
+        uint64_t collEndTime          = coll.second->getTime( );
 
         /* memcpy(sendBuffer, &collStartTime, sizeof (uint64_t)); */
         /* memcpy(sendBuffer + 2, &collEndTime, sizeof (uint64_t)); */
@@ -76,8 +76,8 @@ namespace casita
                                   MPI_UNSIGNED_LONG_LONG, mpiCommGroup.comm ) );
 
         /* get last enter event for collective */
-        uint64_t lastEnterTime = 0, lastLeaveTime = 0;
-        uint64_t lastEnterProcessId = 0;
+        uint64_t lastEnterTime         = 0, lastLeaveTime = 0;
+        uint64_t lastEnterProcessId    = 0;
         /* uint64_t lastLeaveProcessId = 0; */
         uint64_t lastEnterRemoteNodeId = 0;
         /* uint64_t lastLeaveRemoteNodeId = 0; */
@@ -89,9 +89,9 @@ namespace casita
 
           if ( enterTime > lastEnterTime )
           {
-            lastEnterTime = enterTime;
+            lastEnterTime         = enterTime;
             lastEnterRemoteNodeId = recvBuffer[i + 2];
-            lastEnterProcessId = recvBuffer[i + 4];
+            lastEnterProcessId    = recvBuffer[i + 4];
           }
 
           if ( leaveTime > lastLeaveTime )
