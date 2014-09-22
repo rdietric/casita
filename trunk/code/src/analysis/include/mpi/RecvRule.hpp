@@ -12,10 +12,8 @@
 
 #pragma once
 
-#include <mpi.h>
-#include "AbstractRule.hpp"
-#include "MPIRulesCommon.hpp"
-#include "BlameDistribution.hpp"
+#include "IMPIRule.hpp"
+#include "AnalysisParadigmMPI.hpp"
 
 namespace casita
 {
@@ -23,24 +21,28 @@ namespace casita
  {
 
   class RecvRule :
-    public AbstractRule
+    public IMPIRule
   {
     public:
 
       RecvRule( int priority ) :
-        AbstractRule( "RecvRule", priority )
+        IMPIRule( "RecvRule", priority )
       {
 
       }
 
+    private:
+
       bool
-      apply( AnalysisEngine* analysis, GraphNode* node )
+      apply( AnalysisParadigmMPI* analysis, GraphNode* node )
       {
         /* applied at MPI_Recv leave */
         if ( !node->isMPIRecv( ) || !node->isLeave( ) )
         {
           return false;
         }
+
+        AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
         uint64_t   partnerProcessId    = node->getReferencedStreamId( );
         GraphNode::GraphNodePair& recv = node->getGraphPair( );
@@ -50,13 +52,14 @@ namespace casita
         /* uint64_t *bfr64 = (uint64_t*) buffer; */
 
         /* receive */
-        uint32_t   partnerMPIRank      = analysis->getMPIAnalysis( ).getMPIRank(
-          partnerProcessId );
+        uint32_t   partnerMPIRank      =
+          commonAnalysis->getMPIAnalysis( ).getMPIRank(
+            partnerProcessId );
         MPI_Status status;
         MPI_CHECK( MPI_Recv( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                              partnerMPIRank, 0,
                              MPI_COMM_WORLD, &status ) );
-        uint64_t   sendStartTime       = buffer[0]; /* bfr64[0]; */
+        uint64_t   sendStartTime       = buffer[0];          /* bfr64[0]; */
         /* uint64_t sendEndTime = bfr64[1]; */
         /* int partnerType = buffer[BUFFER_SIZE - 1]; */
 
@@ -66,9 +69,10 @@ namespace casita
         /* compute wait states and edges */
         if ( recvStartTime < sendStartTime )
         {
-          Edge* recvRecordEdge = analysis->getEdge( recv.first, recv.second );
+          Edge* recvRecordEdge = commonAnalysis->getEdge( recv.first,
+                                                          recv.second );
           recvRecordEdge->makeBlocking( );
-          recv.first->setCounter( analysis->getCtrTable( ).getCtrId(
+          recv.first->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                     CTR_WAITSTATE ), sendStartTime -
                                   recvStartTime );
 
@@ -81,13 +85,13 @@ namespace casita
 
         if ( recvStartTime > sendStartTime )
         {
-          distributeBlame( analysis,
+          distributeBlame( commonAnalysis,
                            recv.first,
                            recvStartTime - sendStartTime,
                            streamWalkCallback );
         }
 
-        analysis->getMPIAnalysis( ).addRemoteMPIEdge(
+        commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
           recv.second,
           (uint32_t)buffer[2],
           partnerProcessId,

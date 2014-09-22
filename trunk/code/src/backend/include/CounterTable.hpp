@@ -15,14 +15,19 @@
 #include <stdint.h>
 #include <map>
 #include <set>
-#include <open-trace-format/otf.h>
+#if ( ENABLE_OTF1 == 1 )
+# include <open-trace-format/otf.h>
+#else
+# define OTF_COUNTER_SCOPE_NEXT 0
+# define OTF_COUNTER_TYPE_ABS 0
+# define OTF_COUNTER_SCOPE_POINT 0
+#endif
 
 namespace casita
 {
  enum CounterType
  {
-   CTR_USER = 0,
-   CTR_BLAME,                    /* local blame for visualization */
+   CTR_BLAME = 0,                /* local blame for visualization */
    CTR_BLAME_LOG10,              /* local blame for visualization
                                   *(log10) */
    CTR_BLAME_STATISTICS,         /* accumulated blame for statistics
@@ -31,7 +36,11 @@ namespace casita
    CTR_WAITSTATE_LOG10,          /* local waiting time (log10) */
    CTR_CRITICALPATH,
    CTR_CRITICALPATH_TIME,
-   CTR_OMP_PARENT_REGION_ID
+   CTR_OMP_REGION_ID,
+   CTR_OMP_PARENT_REGION_ID,
+   CTR_OMP_IGNORE_BARRIER,
+
+   CTR_NUM_DEFAULT_CTRS = 10
  };
 
  typedef struct
@@ -46,8 +55,6 @@ namespace casita
 
  static const CtrTableEntry COUNTER_TABLE[] =
  {
-   { CTR_USER, "Unknown Counter", false, false, 0,
-     OTF_COUNTER_SCOPE_POINT | OTF_COUNTER_TYPE_ABS },
    { CTR_BLAME, "Exclusive Blame", true, false, 0,
      OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS },
    { CTR_BLAME_LOG10, "Exclusive Blame (log10)", true, false, 0,
@@ -62,7 +69,11 @@ namespace casita
      OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS },
    { CTR_CRITICALPATH_TIME, "Time on Critical Path", true, false, 0,
      OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS },
-   { CTR_OMP_PARENT_REGION_ID, "OpenMP 4.0 Parent Region ID", true, false, 0,
+   { CTR_OMP_REGION_ID, "OpenMP 4.0 Region ID", true, true, 0,
+     OTF_COUNTER_SCOPE_POINT | OTF_COUNTER_TYPE_ABS },
+   { CTR_OMP_PARENT_REGION_ID, "OpenMP 4.0 Parent Region ID", true, true, 0,
+     OTF_COUNTER_SCOPE_POINT | OTF_COUNTER_TYPE_ABS },
+   { CTR_OMP_IGNORE_BARRIER, "OpenMP 4.0 Collapsed Barrier", true, true, 0,
      OTF_COUNTER_SCOPE_POINT | OTF_COUNTER_TYPE_ABS }
  };
 

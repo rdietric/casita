@@ -209,7 +209,7 @@ OTF1TraceReader::readCommunication( )
 
   if ( OTF_Reader_readEvents( reader, handlers ) == OTF_READ_ERROR )
   {
-    throw RTException( "Failed to read OTF events" );
+    throw RTException( "Failed to read OTF communication events" );
   }
   OTF_HandlerArray_close( handlers );
 
@@ -735,7 +735,8 @@ OTF1TraceReader::otf1HandleDefProcessOrGroupAttributes( void*             userDa
 
   std::vector< OTF_ATTR_TYPE >& attrList = attrIter->second;
   ProcessGroup* pg = NULL;
-  ProcessGroupMap::iterator     pgIter   = tr->getProcGoupMap( ).find( proc_token );
+  ProcessGroupMap::iterator     pgIter   = tr->getProcGoupMap( ).find(
+    proc_token );
   if ( pgIter == tr->getProcGoupMap( ).end( ) )
   {
     pg           = new ProcessGroup( );

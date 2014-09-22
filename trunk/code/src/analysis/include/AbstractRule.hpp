@@ -12,13 +12,11 @@
 
 #pragma once
 
-#include "graph/Node.hpp"
-#include "AnalysisEngine.hpp"
-
 namespace casita
 {
 
  class AnalysisEngine;
+ class GraphNode;
 
  class AbstractRule
  {
@@ -50,7 +48,7 @@ namespace casita
      }
 
      virtual bool
-     apply( AnalysisEngine* analysis, GraphNode* n1 ) = 0;
+     applyRule( AnalysisEngine* analysis, GraphNode* node ) = 0;
 
    private:
      int priority;

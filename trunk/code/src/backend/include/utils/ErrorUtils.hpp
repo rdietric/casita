@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <cstdlib>
 #include <cstdarg>
+#include <cassert>
 #include "common.hpp"
 
 namespace casita
@@ -113,5 +114,10 @@ namespace casita
 
      }
  };
+
+#define UTILS_ASSERT( cond, fmt, ... ) \
+  if ( !( cond ) ) { \
+    ErrorUtils::getInstance( ).throwError( fmt, ## __VA_ARGS__ ); \
+  }
 
 }

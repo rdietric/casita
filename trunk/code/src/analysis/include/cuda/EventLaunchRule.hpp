@@ -12,96 +12,103 @@
 
 #pragma once
 
-#include "AbstractRule.hpp"
+#include "ICUDARule.hpp"
+#include "AnalysisParadigmCUDA.hpp"
 
 namespace casita
 {
-
- class EventLaunchRule :
-   public AbstractRule
+ namespace cuda
  {
-   public:
+  class EventLaunchRule :
+    public ICUDARule
+  {
+    public:
 
-     EventLaunchRule( int priority ) :
-       AbstractRule( "EventLaunchRule", priority )
-     {
+      EventLaunchRule( int priority ) :
+        ICUDARule( "EventLaunchRule", priority )
+      {
 
-     }
+      }
 
-     bool
-     apply( AnalysisEngine* analysis, GraphNode* node )
-     {
-       if ( !node->isCUDAEventLaunch( ) || !node->isLeave( ) )
-       {
-         return false;
-       }
+    private:
 
-       /* get the complete execution */
-       GraphNode::GraphNodePair& evLaunch = node->getGraphPair( );
-       EventStream* refProcess = analysis->getStream(
-         node->getReferencedStreamId( ) );
-       if ( !refProcess )
-       {
-         RTException(
-           "Event launch %s (%f) does not reference any stream (id = %u)",
-           node->getUniqueName( ).c_str( ),
-           analysis->getRealTime( node->getTime( ) ),
-           node->getReferencedStreamId( ) );
-       }
+      bool
+      apply( AnalysisParadigmCUDA* analysis, GraphNode* node )
+      {
+        if ( !node->isCUDAEventLaunch( ) || !node->isLeave( ) )
+        {
+          return false;
+        }
 
-       if ( refProcess->isHostStream( ) )
-       {
-         RTException(
-           "Process %s referenced by event launch %s is a host stream",
-           refProcess->getName( ), node->getUniqueName( ).c_str( ) );
-       }
+        AnalysisEngine* commonAnalysis     = analysis->getCommon( );
 
-       analysis->setEventProcessId( ( (EventNode*)evLaunch.second )->getEventId( ),
-                                    refProcess->getId( ) );
+        /* get the complete execution */
+        GraphNode::GraphNodePair& evLaunch = node->getGraphPair( );
+        EventStream*    refProcess         = commonAnalysis->getStream(
+          node->getReferencedStreamId( ) );
+        if ( !refProcess )
+        {
+          RTException(
+            "Event launch %s (%f) does not reference any stream (id = %u)",
+            node->getUniqueName( ).c_str( ),
+            commonAnalysis->getRealTime( node->getTime( ) ),
+            node->getReferencedStreamId( ) );
+        }
 
-       GraphNode* kernelLaunchLeave = NULL;
+        if ( refProcess->isHostStream( ) )
+        {
+          RTException(
+            "Process %s referenced by event launch %s is a host stream",
+            refProcess->getName( ), node->getUniqueName( ).c_str( ) );
+        }
 
-       /* if event is on NULL stream, test if any kernel launch can be
-        * found */
-       if ( refProcess->isDeviceNullStream( ) )
-       {
-         /*Allocation::ProcessList deviceProcs;
-         analysis->getAllDeviceStreams(deviceProcs);
+        analysis->setEventProcessId(
+          ( (EventNode*)evLaunch.second )->getEventId( ),
+          refProcess->getId( ) );
 
-         for (Allocation::ProcessList::const_iterator iter = deviceProcs.begin();
-                 iter != deviceProcs.end(); ++iter)
-         {
-             kernelLaunchLeave = analysis->getLastLaunchLeave(
-                     evLaunch.first->getTime(), (*iter)->getId());
+        GraphNode* kernelLaunchLeave = NULL;
 
-             if (kernelLaunchLeave)
-                 break;
-         }
+        /* if event is on NULL stream, test if any kernel launch can be
+         * found */
+        if ( refProcess->isDeviceNullStream( ) )
+        {
+          /*Allocation::ProcessList deviceProcs;
+          commonAnalysis->getAllDeviceStreams(deviceProcs);
 
-         if (kernelLaunchLeave)
-         {*/
-         analysis->setLastEventLaunch( (EventNode*)( evLaunch.second ) );
-         return true;
-         /* } */
-       }
-       else
-       {
-         /* otherwise, test on its stream only */
-         kernelLaunchLeave = analysis->getLastLaunchLeave(
-           evLaunch.first->getTime( ), refProcess->getId( ) );
+          for (Allocation::ProcessList::const_iterator iter = deviceProcs.begin();
+                  iter != deviceProcs.end(); ++iter)
+          {
+              kernelLaunchLeave = analysis->getLastLaunchLeave(
+                      evLaunch.first->getTime(), (*iter)->getId());
 
-         if ( kernelLaunchLeave )
-         {
-           evLaunch.second->setLink( (GraphNode*)kernelLaunchLeave );
-         }
+              if (kernelLaunchLeave)
+                  break;
+          }
 
-         analysis->setLastEventLaunch( (EventNode*)( evLaunch.second ) );
-         return true;
-         /* } */
-       }
+          if (kernelLaunchLeave)
+          {*/
+          analysis->setLastEventLaunch( (EventNode*)( evLaunch.second ) );
+          return true;
+          /* } */
+        }
+        else
+        {
+          /* otherwise, test on its stream only */
+          kernelLaunchLeave = analysis->getLastLaunchLeave(
+            evLaunch.first->getTime( ), refProcess->getId( ) );
 
-       return false;
-     }
- };
+          if ( kernelLaunchLeave )
+          {
+            evLaunch.second->setLink( (GraphNode*)kernelLaunchLeave );
+          }
 
+          analysis->setLastEventLaunch( (EventNode*)( evLaunch.second ) );
+          return true;
+          /* } */
+        }
+
+        return false;
+      }
+  };
+ }
 }

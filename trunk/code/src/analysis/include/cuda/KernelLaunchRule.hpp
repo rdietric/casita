@@ -12,59 +12,66 @@
 
 #pragma once
 
-#include "AbstractRule.hpp"
+#include "ICUDARule.hpp"
+#include "AnalysisParadigmCUDA.hpp"
 
 namespace casita
 {
-
- class KernelLaunchRule :
-   public AbstractRule
+ namespace cuda
  {
-   public:
+  class KernelLaunchRule :
+    public ICUDARule
+  {
+    public:
 
-     KernelLaunchRule( int priority ) :
-       AbstractRule( "KernelLaunchRule", priority )
-     {
+      KernelLaunchRule( int priority ) :
+        ICUDARule( "KernelLaunchRule", priority )
+      {
 
-     }
+      }
 
-     bool
-     apply( AnalysisEngine* analysis, GraphNode* node )
-     {
+    private:
 
-       /* applied at kernel leave */
-       if ( !node->isCUDAKernel( ) || !node->isLeave( ) )
-       {
-         return false;
-       }
+      bool
+      apply( AnalysisParadigmCUDA* analysis, GraphNode* node )
+      {
 
-       /* get the complete execution */
-       GraphNode::GraphNodePair kernel = node->getGraphPair( );
+        /* applied at kernel leave */
+        if ( !node->isCUDAKernel( ) || !node->isLeave( ) )
+        {
+          return false;
+        }
 
-       /* find the stream which launched this kernel and consume the
-        * launch event */
-       uint64_t   kernelProcessId      = node->getStreamId( );
+        AnalysisEngine* commonAnalysis  = analysis->getCommon( );
 
-       GraphNode* launchEnterEvent     = analysis->consumePendingKernelLaunch(
-         kernelProcessId );
+        /* get the complete execution */
+        GraphNode::GraphNodePair kernel = node->getGraphPair( );
 
-       if ( !launchEnterEvent )
-       {
-         throw RTException( "Found kernel %s without matching kernel launch",
-                            node->getUniqueName( ).c_str( ) );
-       }
+        /* find the stream which launched this kernel and consume the
+         * launch event */
+        uint64_t   kernelProcessId      = node->getStreamId( );
 
-       launchEnterEvent->setLink( kernel.first );
-       kernel.first->setLink( launchEnterEvent );
+        GraphNode* launchEnterEvent     = analysis->consumePendingKernelLaunch(
+          kernelProcessId );
 
-       /* add pending kernel */
-       analysis->getStream( kernelProcessId )->addPendingKernel( kernel.second );
+        if ( !launchEnterEvent )
+        {
+          throw RTException( "Found kernel %s without matching kernel launch",
+                             node->getUniqueName( ).c_str( ) );
+        }
 
-       /* add dependency */
-       analysis->newEdge( launchEnterEvent, kernel.first );
+        launchEnterEvent->setLink( kernel.first );
+        kernel.first->setLink( launchEnterEvent );
 
-       return true;
-     }
- };
+        /* add pending kernel */
+        commonAnalysis->getStream( kernelProcessId )->addPendingKernel(
+          kernel.second );
 
+        /* add dependency */
+        commonAnalysis->newEdge( launchEnterEvent, kernel.first );
+
+        return true;
+      }
+  };
+ }
 }

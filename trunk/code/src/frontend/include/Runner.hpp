@@ -76,12 +76,6 @@ namespace casita
 
      /* critical path */
      void
-     getLocalCriticalPath( EventStream::SortedGraphNodeList& criticalNodes,
-                           GraphNode*                        startNode,
-                           GraphNode*                        lastNode,
-                           Graph&                            subGraph );
-
-     void
      getCriticalPathIntern( GraphNode*                        start,
                             GraphNode*                        end,
                             EventStream::SortedGraphNodeList& cpNodes,

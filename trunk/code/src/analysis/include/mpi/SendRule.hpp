@@ -12,10 +12,8 @@
 
 #pragma once
 
-#include <mpi.h>
-#include "AbstractRule.hpp"
-#include "MPIRulesCommon.hpp"
-#include "BlameDistribution.hpp"
+#include "IMPIRule.hpp"
+#include "AnalysisParadigmMPI.hpp"
 
 namespace casita
 {
@@ -23,18 +21,20 @@ namespace casita
  {
 
   class SendRule :
-    public AbstractRule
+    public IMPIRule
   {
     public:
 
       SendRule( int priority ) :
-        AbstractRule( "SendRule", priority )
+        IMPIRule( "SendRule", priority )
       {
 
       }
 
+    private:
+
       bool
-      apply( AnalysisEngine* analysis, GraphNode* node )
+      apply( AnalysisParadigmMPI* analysis, GraphNode* node )
       {
         /* applied at MPI_Send leave */
         if ( !node->isMPISend( ) || !node->isLeave( ) )
@@ -42,21 +42,24 @@ namespace casita
           return false;
         }
 
-        /* get the complete execution */
-        GraphNode::GraphNodePair send = node->getGraphPair( );
-        uint64_t* data = (uint64_t*)( send.second->getData( ) );
-        uint64_t  partnerProcessId    = *data;
+        AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        const int BUFFER_SIZE         = 8;
+        /* get the complete execution */
+        GraphNode::GraphNodePair send  = node->getGraphPair( );
+        uint64_t* data = (uint64_t*)( send.second->getData( ) );
+        uint64_t  partnerProcessId     = *data;
+
+        const int BUFFER_SIZE          = 8;
         uint64_t  buffer[BUFFER_SIZE];
         /* uint64_t *bfr64 = (uint64_t*) buffer; */
 
         /* send */
-        uint64_t  sendStartTime       = send.first->getTime( );
-        uint64_t  sendEndTime         = send.second->getTime( );
+        uint64_t  sendStartTime        = send.first->getTime( );
+        uint64_t  sendEndTime          = send.second->getTime( );
 
-        uint32_t  partnerMPIRank      = analysis->getMPIAnalysis( ).getMPIRank(
-          partnerProcessId );
+        uint32_t  partnerMPIRank       =
+          commonAnalysis->getMPIAnalysis( ).getMPIRank(
+            partnerProcessId );
         /* memcpy(bfr64 + 0, &sendStartTime, sizeof (uint64_t)); */
         /* memcpy(bfr64 + 1, &sendEndTime, sizeof (uint64_t)); */
 
@@ -85,20 +88,21 @@ namespace casita
         {
           if ( sendStartTime < recvStartTime )
           {
-            Edge* sendRecordEdge = analysis->getEdge( send.first, send.second );
+            Edge* sendRecordEdge = commonAnalysis->getEdge( send.first,
+                                                            send.second );
             sendRecordEdge->makeBlocking( );
-            send.first->setCounter( analysis->getCtrTable( ).getCtrId(
+            send.first->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                       CTR_WAITSTATE ),
                                     recvStartTime - sendStartTime );
           }
         }
         else
         {
-          distributeBlame( analysis, send.first,
+          distributeBlame( commonAnalysis, send.first,
                            sendStartTime - recvStartTime, streamWalkCallback );
         }
 
-        analysis->getMPIAnalysis( ).addRemoteMPIEdge(
+        commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
           send.first,
           (uint32_t)buffer[3],
           partnerProcessId,

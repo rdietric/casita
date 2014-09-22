@@ -23,6 +23,14 @@ namespace casita
  class CallbackHandler
  {
    public:
+
+     typedef struct
+     {
+       uint64_t callTime;
+       uint64_t followingEventTime;
+       uint32_t regionRef;
+     } OTF2_Barrier_Event;
+
      CallbackHandler( ProgramOptions& options, AnalysisEngine& analysis );
 
      ProgramOptions&
@@ -92,6 +100,8 @@ namespace casita
      ProgramOptions& options;
      AnalysisEngine& analysis;
      int mpiRank;
+
+     std::map< uint64_t, OTF2_Barrier_Event > lastBarrierEvent;
 
      /* OTF misc */
      void

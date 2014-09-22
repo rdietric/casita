@@ -22,16 +22,22 @@ namespace casita
   class IKeyValueList
   {
     public:
-      virtual uint8_t
+      enum KeyValueResult
+      {
+        KV_SUCCESS = 0,
+        KV_ERROR   = 1
+      };
+
+      virtual KeyValueResult
       getUInt32( uint32_t key, uint32_t* value )      = 0;
 
-      virtual uint8_t
+      virtual KeyValueResult
       getUInt64( uint32_t key, uint64_t* value )      = 0;
 
-      virtual uint8_t
+      virtual KeyValueResult
       getInt32( uint32_t key, int32_t* value )        = 0;
 
-      virtual uint8_t
+      virtual KeyValueResult
       getLocationRef( uint32_t key, uint64_t* value ) = 0;
 
       virtual uint32_t

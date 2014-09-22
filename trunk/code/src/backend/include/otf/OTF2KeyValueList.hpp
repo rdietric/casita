@@ -43,28 +43,36 @@ namespace casita
         this->list = list;
       }
 
-      uint8_t
+      KeyValueResult
       getUInt32( uint32_t key, uint32_t* value )
       {
-        return OTF2_AttributeList_GetUint32( list, key, value );
+        return ( OTF2_AttributeList_GetUint32( list, key,
+                                               value ) == OTF2_SUCCESS ) ?
+               KV_SUCCESS : KV_ERROR;
       }
 
-      uint8_t
+      KeyValueResult
       getLocationRef( uint32_t key, uint64_t* value )
       {
-        return OTF2_AttributeList_GetLocationRef( list, key, value );
+        return ( OTF2_AttributeList_GetLocationRef( list, key,
+                                                    value ) == OTF2_SUCCESS ) ?
+               KV_SUCCESS : KV_ERROR;
       }
 
-      uint8_t
+      KeyValueResult
       getUInt64( uint32_t key, uint64_t* value )
       {
-        return OTF2_AttributeList_GetUint64( list, key, value );
+        return ( OTF2_AttributeList_GetUint64( list, key,
+                                               value ) == OTF2_SUCCESS ) ?
+               KV_SUCCESS : KV_ERROR;
       }
 
-      uint8_t
+      KeyValueResult
       getInt32( uint32_t key, int32_t* value )
       {
-        return OTF2_AttributeList_GetInt32( list, key, value );
+        return ( OTF2_AttributeList_GetInt32( list, key,
+                                              value ) == OTF2_SUCCESS ) ?
+               KV_SUCCESS : KV_ERROR;
       }
 
       uint32_t

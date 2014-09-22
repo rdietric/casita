@@ -78,14 +78,15 @@ main( int argc, char** argv )
     {
       printf( "[%u] Writing result to %s\n", mpiRank, options.outOtfFile.c_str( ) );
     }
-
-    runner->getAnalysis( ).saveParallelEventGroupToFile(
-      options.outOtfFile,
-      options.filename,
-      false,
-      options.verbose >=
-      VERBOSE_ANNOY );
   }
+
+  runner->getAnalysis( ).saveParallelEventGroupToFile(
+    options.outOtfFile,
+    options.filename,
+    false,
+    options.createOTF,
+    options.verbose >=
+    VERBOSE_ANNOY );
 
   if ( options.mergeActivities )
   {
@@ -96,9 +97,6 @@ main( int argc, char** argv )
     }
 
     runner->mergeActivityGroups( );
-
-    std::cout << "[" << mpiRank << "] after the merge. Now printing... " <<
-    std::endl;
 
     runner->printAllActivities( );
 

@@ -56,13 +56,16 @@ namespace casita
     public IParallelTraceWriter
   {
     public:
+      bool writeToFile;
+      std::map< uint64_t, uint64_t > lastEventTime;
+
       OTF2ParallelTraceWriter( const char*          streamRefKeyName,
                                const char*          eventRefKeyName,
                                const char*          funcResultKeyName,
                                uint32_t             mpiRank,
                                uint32_t             mpiSize,
-                               MPI_Comm             comm,
                                const char*          originalFilename,
+                               bool                 writeToFile,
                                std::set< uint32_t > ctrIdSet );
       virtual
       ~OTF2ParallelTraceWriter( );
@@ -132,7 +135,7 @@ namespace casita
 
       MPI_Comm commGroup;
 
-      std::set< uint32_t > ctrIdSet;        /* set of all counterIds
+      std::set< uint32_t > ctrIdSet;              /* set of all counterIds
                                              **/
 
       /* map counters to start with 0... 1=>0, 2=>1,... (in otf
@@ -143,6 +146,13 @@ namespace casita
 
       void
       copyGlobalDefinitions( );
+
+      void
+      writeNodeCounters( GraphNode*          node,
+                         const CounterTable& ctrTable,
+                         OTF2_EvtWriter*     evt_writer,
+                         bool                lastProcessNode,
+                         const GraphNode*    futureNode );
 
       bool
       processNextNode( OTF2Event event );
@@ -173,7 +183,7 @@ namespace casita
       std::map< uint64_t, GraphNode* > lastProcessedNodePerProcess;
       std::map< uint64_t, OTF2Event >  lastCPUEventPerProcess;
       std::map< uint64_t, uint64_t >   lastTimeOnCriticalPath;
-      std::list< uint32_t > currentlyRunningCPUFunctions;
+      std::map< uint64_t, std::list< uint32_t > > currentlyRunningCPUFunctions;
       Graph::EdgeList openEdges;
       uint32_t lastNodeCheckedForEdgesId;
 

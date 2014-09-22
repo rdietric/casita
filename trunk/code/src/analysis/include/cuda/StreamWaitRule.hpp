@@ -12,323 +12,338 @@
 
 #pragma once
 
-#include "AbstractRule.hpp"
+#include "ICUDARule.hpp"
+#include "AnalysisParadigmCUDA.hpp"
 
 namespace casita
 {
-
- class StreamWaitRule :
-   public AbstractRule
+ namespace cuda
  {
-   public:
+  class StreamWaitRule :
+    public ICUDARule
+  {
+    public:
 
-     StreamWaitRule( int priority ) :
-       AbstractRule( "StreamWaitRule", priority )
-     {
+      StreamWaitRule( int priority ) :
+        ICUDARule( "StreamWaitRule", priority )
+      {
 
-     }
+      }
 
-     bool
-     apply( AnalysisEngine* analysis, GraphNode* node )
-     {
-       if ( !node->isLeave( ) )
-       {
-         return false;
-       }
+    private:
 
-       /* applied at streamWaitEvent leave */
-       if ( node->isEventNode( ) && node->isCUDAStreamWaitEvent( ) )
-       {
-         uint64_t referencedDevWaitProc = node->getReferencedStreamId( );
-         if ( !referencedDevWaitProc )
-         {
-           throw RTException(
-                   "Stream wait %s does not reference any device stream",
-                   node->getUniqueName( ).c_str( ) );
-         }
+      bool
+      apply( AnalysisParadigmCUDA* analysis, GraphNode* node )
+      {
+        if ( !node->isLeave( ) )
+        {
+          return false;
+        }
 
-         EventNode* swEventNode         = (EventNode*)node;
-         swEventNode->setLink( analysis->getLastEventLaunchLeave( swEventNode->
-                                                                  getEventId( ) ) );
+        AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-         uint64_t   eventProcessId      = analysis->getEventProcessId(
-           swEventNode->getEventId( ) );
-         if ( !eventProcessId )
-         {
-           throw RTException(
-                   "Could not find device stream ID for event %u from %s",
-                   swEventNode->getEventId( ),
-                   swEventNode->getUniqueName( ).c_str( ) );
-         }
+        /* applied at streamWaitEvent leave */
+        if ( node->isEventNode( ) && node->isCUDAStreamWaitEvent( ) )
+        {
+          uint64_t referencedDevWaitProc = node->getReferencedStreamId( );
+          if ( !referencedDevWaitProc )
+          {
+            throw RTException(
+                    "Stream wait %s does not reference any device stream",
+                    node->getUniqueName( ).c_str( ) );
+          }
 
-         if ( swEventNode->getLink( ) &&
-              ( referencedDevWaitProc != eventProcessId ) )
-         {
-           analysis->addStreamWaitEvent( referencedDevWaitProc, swEventNode );
-         }
-         else
-         {
-           /* found unnecessary streamWaitEvent call */
-           /* we could blame this here */
-           /* printf(" * Ignoring unnecessary stream wait event node
-            * %s\n", */
-           /*      eNode->getUniqueName().c_str()); */
-         }
-         return true;
-       }
+          EventNode* swEventNode         = (EventNode*)node;
+          swEventNode->setLink( analysis->getLastEventLaunchLeave( swEventNode
+                                                                   ->
+                                                                   getEventId( ) ) );
 
-       /* ... and applied at kernel leave */
-       if ( node->isCUDAKernel( ) )
-       {
-         /* get the complete execution of this kernel */
-         GraphNode::GraphNodePair waitingKernel =
-           ( (GraphNode*)node )->getGraphPair( );
+          uint64_t   eventProcessId      = analysis->getEventProcessId(
+            swEventNode->getEventId( ) );
+          if ( !eventProcessId )
+          {
+            throw RTException(
+                    "Could not find device stream ID for event %u from %s",
+                    swEventNode->getEventId( ),
+                    swEventNode->getUniqueName( ).c_str( ) );
+          }
 
-         bool ruleMatched = false;
-         bool insertWaitState = false;
-         std::set< GraphNode* >   processedSyncKernelLeaves;
+          if ( swEventNode->getLink( ) &&
+               ( referencedDevWaitProc != eventProcessId ) )
+          {
+            analysis->addStreamWaitEvent( referencedDevWaitProc, swEventNode );
+          }
+          else
+          {
+            /* found unnecessary streamWaitEvent call */
+            /* we could blame this here */
+            /* printf(" * Ignoring unnecessary stream wait event node
+             * %s\n", */
+            /*      eNode->getUniqueName().c_str()); */
+          }
+          return true;
+        }
 
-         uint64_t   waitStateEnterTime          = std::numeric_limits< uint64_t >::max( );
-         GraphNode* lastSyncKernelLeave         = NULL;
+        /* ... and applied at kernel leave */
+        if ( node->isCUDAKernel( ) )
+        {
+          /* get the complete execution of this kernel */
+          GraphNode::GraphNodePair waitingKernel =
+            ( (GraphNode*)node )->getGraphPair( );
 
-         /* get launch for this (waiting) kernel */
-         GraphNode* waitingKernelLaunchEnter    =
-           (GraphNode*)waitingKernel.first->getLink( );
-         if ( !waitingKernelLaunchEnter )
-         {
-           throw RTException( "Kernel %s has no matching kernel launch",
-                              waitingKernel.first->getUniqueName( ).c_str( ) );
-         }
+          bool ruleMatched = false;
+          bool insertWaitState = false;
+          std::set< GraphNode* >   processedSyncKernelLeaves;
 
-         /* We have to manage all streamWaitEvents that may reference
-          * this kernel's */
-         /* device stream, processed in chronological order (oldest
-          * first). */
-         while ( true )
-         {
-           /* find the oldest streamWaitEvent that references this
-            * (waiting) device stream */
-           EventNode* streamWaitLeave  = analysis->getFirstStreamWaitEvent(
-             node->getStreamId( ) );
-           if ( !streamWaitLeave )
-           {
-             break;
-           }
+          uint64_t   waitStateEnterTime          =
+            std::numeric_limits< uint64_t >::max( );
+          GraphNode* lastSyncKernelLeave         = NULL;
 
-           /* if the streamWaitEvent is after this (waiting) kernel
-            * was launched, */
-           /* it's the wrong streamWaitEvent and we stop processing
-            * streamWaitEvents. */
-           GraphNode* streamWaitEnter  = streamWaitLeave->getGraphPair( ).first;
-           if ( streamWaitEnter->getTime( ) > waitingKernelLaunchEnter->getTime( ) )
-           {
-             break;
-           }
+          /* get launch for this (waiting) kernel */
+          GraphNode* waitingKernelLaunchEnter    =
+            (GraphNode*)waitingKernel.first->getLink( );
+          if ( !waitingKernelLaunchEnter )
+          {
+            throw RTException( "Kernel %s has no matching kernel launch",
+                               waitingKernel.first->getUniqueName( ).c_str( ) );
+          }
 
-           /* remove from queue */
-           analysis->consumeFirstStreamWaitEvent( node->getStreamId( ) );
+          /* We have to manage all streamWaitEvents that may reference
+           * this kernel's */
+          /* device stream, processed in chronological order (oldest
+           * first). */
+          while ( true )
+          {
+            /* find the oldest streamWaitEvent that references this
+             * (waiting) device stream */
+            EventNode* streamWaitLeave = analysis->getFirstStreamWaitEvent(
+              node->getStreamId( ) );
+            if ( !streamWaitLeave )
+            {
+              break;
+            }
 
-           /* find the eventLaunch for this event */
-           EventNode* eventLaunchLeave = (EventNode*)streamWaitLeave->getLink( );
-           if ( !eventLaunchLeave )
-           {
-             /* throw RTException("Found no event record for event
-              * %u", */
-             /*        streamWaitLeave->getEventId()); */
-             printf(
+            /* if the streamWaitEvent is after this (waiting) kernel
+             * was launched, */
+            /* it's the wrong streamWaitEvent and we stop processing
+             * streamWaitEvents. */
+            GraphNode* streamWaitEnter = streamWaitLeave->getGraphPair( ).first;
+            if ( streamWaitEnter->getTime( ) >
+                 waitingKernelLaunchEnter->getTime( ) )
+            {
+              break;
+            }
 
-               " * Ignoring stream wait event %s without matching event record for event %u\n",
-               streamWaitLeave->getUniqueName( ).c_str( ),
-               streamWaitLeave->getEventId( ) );
-             break;
-           }
+            /* remove from queue */
+            analysis->consumeFirstStreamWaitEvent( node->getStreamId( ) );
 
-           /* find the device stream where the event of
-            * streamWaitEvent is enqueued */
-           uint64_t swEventRefDevProc =
-             eventLaunchLeave->getReferencedStreamId( );
-           if ( !swEventRefDevProc )
-           {
-             break;
-           }
+            /* find the eventLaunch for this event */
+            EventNode* eventLaunchLeave = (EventNode*)streamWaitLeave->getLink( );
+            if ( !eventLaunchLeave )
+            {
+              /* throw RTException("Found no event record for event
+               * %u", */
+              /*        streamWaitLeave->getEventId()); */
+              printf(
 
-           /* find closest kernelLaunch leave before this eventLaunch
-            **/
-           GraphNode* launchLeave     = (GraphNode*)eventLaunchLeave->getLink( );
-           if ( !launchLeave )
-           {
-             break;
-           }
+                " * Ignoring stream wait event %s without matching event record for event %u\n",
+                streamWaitLeave->getUniqueName( ).c_str( ),
+                streamWaitLeave->getEventId( ) );
+              break;
+            }
 
-           GraphNode* syncKernelEnter =
-             (GraphNode*)launchLeave->getGraphPair( ).first->getLink( );
-           if ( !syncKernelEnter )
-           {
-             ErrorUtils::getInstance( ).throwError(
+            /* find the device stream where the event of
+             * streamWaitEvent is enqueued */
+            uint64_t swEventRefDevProc =
+              eventLaunchLeave->getReferencedStreamId( );
+            if ( !swEventRefDevProc )
+            {
+              break;
+            }
 
-               "Depending kernel %s (%f) started before kernel from %s (%f) started"
-               " (event id = %u, recorded at %f, streamWaitEvent %s)",
-               node->getUniqueName( ).
-               c_str( ),
-               analysis->getRealTime( node->getTime( ) ),
-               launchLeave->getUniqueName(
-                                         ).c_str( ),
-               analysis->getRealTime( launchLeave->getTime( ) ),
-               streamWaitLeave->getEventId( ),
-               analysis->getRealTime(
-                 eventLaunchLeave->getTime( ) ),
-               streamWaitLeave->
-               getUniqueName( ).c_str( ) );
-             return false;
-           }
+            /* find closest kernelLaunch leave before this eventLaunch
+             **/
+            GraphNode* launchLeave     = (GraphNode*)eventLaunchLeave->getLink( );
+            if ( !launchLeave )
+            {
+              break;
+            }
 
-           GraphNode* syncKernelLeave = syncKernelEnter->getGraphPair( ).second;
-           if ( !syncKernelLeave )
-           {
-             ErrorUtils::getInstance( ).throwError(
+            GraphNode* syncKernelEnter =
+              (GraphNode*)launchLeave->getGraphPair( ).first->getLink( );
+            if ( !syncKernelEnter )
+            {
+              ErrorUtils::getInstance( ).throwError(
 
-               "Depending kernel %s (%f) started before kernel from %s (%f) finished",
-               node->getUniqueName( ).
-               c_str( ),
-               analysis->getRealTime( node->getTime( ) ),
-               launchLeave->getUniqueName(
-                                         ).c_str( ),
-               analysis->getRealTime( launchLeave->getTime( ) ) );
-             return false;
-           }
+                "Depending kernel %s (%f) started before kernel from %s (%f) started"
+                " (event id = %u, recorded at %f, streamWaitEvent %s)",
+                node->getUniqueName( ).
+                c_str( ),
+                commonAnalysis->getRealTime( node->getTime( ) ),
+                launchLeave->getUniqueName(
+                                          ).c_str( ),
+                commonAnalysis->getRealTime( launchLeave->getTime( ) ),
+                streamWaitLeave->getEventId( ),
+                commonAnalysis->getRealTime(
+                  eventLaunchLeave->getTime( ) ),
+                streamWaitLeave->
+                getUniqueName( ).c_str( ) );
+              return false;
+            }
 
-           /* don't add multiple dependencies to the same (syncing)
-            * kernel */
-           if ( processedSyncKernelLeaves.find( syncKernelLeave ) !=
-                processedSyncKernelLeaves.end( ) )
-           {
-             break;
-           }
+            GraphNode* syncKernelLeave =
+              syncKernelEnter->getGraphPair( ).second;
+            if ( !syncKernelLeave )
+            {
+              ErrorUtils::getInstance( ).throwError(
 
-           processedSyncKernelLeaves.insert( syncKernelLeave );
+                "Depending kernel %s (%f) started before kernel from %s (%f) finished",
+                node->getUniqueName( ).
+                c_str( ),
+                commonAnalysis->getRealTime( node->getTime( ) ),
+                launchLeave->getUniqueName(
+                                          ).c_str( ),
+                commonAnalysis->getRealTime( launchLeave->getTime( ) ) );
+              return false;
+            }
 
-           /* add dependency */
-           analysis->newEdge( syncKernelLeave,
-                              waitingKernel.first,
-                              EDGE_CAUSES_WAITSTATE );
+            /* don't add multiple dependencies to the same (syncing)
+             * kernel */
+            if ( processedSyncKernelLeaves.find( syncKernelLeave ) !=
+                 processedSyncKernelLeaves.end( ) )
+            {
+              break;
+            }
 
-           /* insert wait state only if launch of next (waiting)
-            * kernel */
-           /* is before the blocking kernel finishes */
-           if ( waitingKernelLaunchEnter->getTime( ) < syncKernelLeave->getTime( ) )
-           {
-             /* set counters */
-             syncKernelEnter->incCounter( analysis->getCtrTable( ).getCtrId(
-                                            CTR_BLAME ),
-                                          syncKernelLeave->getTime( ) -
-                                          waitingKernelLaunchEnter->getTime( ) );
+            processedSyncKernelLeaves.insert( syncKernelLeave );
 
-             waitStateEnterTime = std::min( waitStateEnterTime,
-                                            waitingKernelLaunchEnter->getTime( ) );
-             if ( !lastSyncKernelLeave ||
-                  ( syncKernelLeave->getTime( ) > lastSyncKernelLeave->getTime( ) ) )
-             {
-               lastSyncKernelLeave = syncKernelLeave;
-             }
+            /* add dependency */
+            commonAnalysis->newEdge( syncKernelLeave,
+                                     waitingKernel.first,
+                                     EDGE_CAUSES_WAITSTATE );
 
-             insertWaitState    = true;
-           }
+            /* insert wait state only if launch of next (waiting)
+             * kernel */
+            /* is before the blocking kernel finishes */
+            if ( waitingKernelLaunchEnter->getTime( ) <
+                 syncKernelLeave->getTime( ) )
+            {
+              /* set counters */
+              syncKernelEnter->incCounter(
+                commonAnalysis->getCtrTable( ).getCtrId(
+                  CTR_BLAME ),
+                syncKernelLeave->getTime( ) -
+                waitingKernelLaunchEnter->getTime( ) );
 
-           ruleMatched = true;
-         }
+              waitStateEnterTime = std::min( waitStateEnterTime,
+                                             waitingKernelLaunchEnter->getTime( ) );
+              if ( !lastSyncKernelLeave ||
+                   ( syncKernelLeave->getTime( ) > lastSyncKernelLeave->getTime( ) ) )
+              {
+                lastSyncKernelLeave = syncKernelLeave;
+              }
 
-         if ( insertWaitState )
-         {
-           /* get last leave node on this device stream */
-           EventStream* waitingDevProc = analysis->getStream( node->getStreamId( ) );
-           EventStream::SortedGraphNodeList& nodes = waitingDevProc->getNodes( );
+              insertWaitState    = true;
+            }
 
-           GraphNode*   lastLeaveNode  = NULL;
-           for ( EventStream::SortedGraphNodeList::const_reverse_iterator rIter
-                   =
-                     nodes.rbegin( );
-                 rIter != nodes.rend( ); ++rIter )
-           {
-             GraphNode* n = ( *rIter );
-             if ( n->isMPI( ) )
-             {
-               continue;
-             }
+            ruleMatched = true;
+          }
 
-             if ( n->getTime( ) <= node->getTime( ) && n != node &&
-                  n->isLeave( ) && n->isCUDAKernel( ) )
-             {
-               uint64_t lastLeaveNodeTime = n->getTime( );
-               lastLeaveNode = n;
-               if ( lastLeaveNodeTime > waitStateEnterTime )
-               {
-                 waitStateEnterTime = lastLeaveNodeTime;
-               }
-               break;
-             }
-           }
+          if ( insertWaitState )
+          {
+            /* get last leave node on this device stream */
+            EventStream* waitingDevProc = commonAnalysis->getStream(
+              node->getStreamId( ) );
+            EventStream::SortedGraphNodeList& nodes = waitingDevProc->getNodes( );
 
-           /* add wait state if a preceeding leave node in this stream
-            * has been found */
-           /* which ends earlier than the current kernel started */
-           if ( lastLeaveNode &&
-                ( waitStateEnterTime < waitingKernel.first->getTime( ) ) )
-           {
-             Edge* kernelKernelEdge = analysis->getEdge(
-               lastLeaveNode, waitingKernel.first );
-             if ( !kernelKernelEdge )
-             {
-               ErrorUtils::getInstance( ).throwError(
-                 "Did not find expected edge [%s (p %u), %s (p %u)]",
-                 lastLeaveNode->
-                 getUniqueName( ).c_str( ),
-                 lastLeaveNode->
-                 getStreamId( ),
-                 waitingKernel.first->
-                 getUniqueName( ).c_str( ),
-                 waitingKernel.first->
-                 getStreamId( ) );
-               return false;
-             }
+            GraphNode*   lastLeaveNode  = NULL;
+            for ( EventStream::SortedGraphNodeList::const_reverse_iterator
+                  rIter
+                    =
+                      nodes.rbegin( );
+                  rIter != nodes.rend( ); ++rIter )
+            {
+              GraphNode* n = ( *rIter );
+              if ( n->isMPI( ) )
+              {
+                continue;
+              }
 
-             GraphNode* waitEnter = analysis->addNewGraphNode(
-               waitStateEnterTime,
-               waitingDevProc,
-               NAME_WAITSTATE,
-               PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE );
-             GraphNode* waitLeave = analysis->addNewGraphNode(
-               lastSyncKernelLeave->getTime( ),
-               waitingDevProc,
-               NAME_WAITSTATE,
-               PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE );
+              if ( n->getTime( ) <= node->getTime( ) && n != node &&
+                   n->isLeave( ) && n->isCUDAKernel( ) )
+              {
+                uint64_t lastLeaveNodeTime = n->getTime( );
+                lastLeaveNode = n;
+                if ( lastLeaveNodeTime > waitStateEnterTime )
+                {
+                  waitStateEnterTime = lastLeaveNodeTime;
+                }
+                break;
+              }
+            }
 
-             analysis->newEdge( lastLeaveNode, waitEnter );
-             analysis->newEdge( waitEnter, waitLeave, EDGE_IS_BLOCKING );
-             analysis->newEdge( waitLeave, waitingKernel.first );
+            /* add wait state if a preceeding leave node in this stream
+             * has been found */
+            /* which ends earlier than the current kernel started */
+            if ( lastLeaveNode &&
+                 ( waitStateEnterTime < waitingKernel.first->getTime( ) ) )
+            {
+              Edge* kernelKernelEdge = commonAnalysis->getEdge(
+                lastLeaveNode, waitingKernel.first );
+              if ( !kernelKernelEdge )
+              {
+                ErrorUtils::getInstance( ).throwError(
+                  "Did not find expected edge [%s (p %u), %s (p %u)]",
+                  lastLeaveNode->
+                  getUniqueName( ).c_str( ),
+                  lastLeaveNode->
+                  getStreamId( ),
+                  waitingKernel.first->
+                  getUniqueName( ).c_str( ),
+                  waitingKernel.first->
+                  getStreamId( ) );
+                return false;
+              }
 
-             /* set counters */
-             waitEnter->setCounter( analysis->getCtrTable( ).getCtrId(
-                                      CTR_WAITSTATE ),
-                                    1 );
+              GraphNode* waitEnter = commonAnalysis->addNewGraphNode(
+                waitStateEnterTime,
+                waitingDevProc,
+                NAME_WAITSTATE,
+                PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE );
+              GraphNode* waitLeave = commonAnalysis->addNewGraphNode(
+                lastSyncKernelLeave->getTime( ),
+                waitingDevProc,
+                NAME_WAITSTATE,
+                PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE );
 
-             /* add dependency to all sync kernel leave nodes */
-             /* (some dependencies can become reverse edges during
-              * optimization) */
-             for ( std::set< GraphNode* >::const_iterator gIter =
-                     processedSyncKernelLeaves.begin( );
-                   gIter != processedSyncKernelLeaves.end( ); ++gIter )
-             {
-               /* /\todo check if this should have
-                * EDGE_CAUSES_WAITSTATE property */
-               analysis->newEdge( *gIter, waitLeave );
-             }
-           }
-         }
+              commonAnalysis->newEdge( lastLeaveNode, waitEnter );
+              commonAnalysis->newEdge( waitEnter, waitLeave, EDGE_IS_BLOCKING );
+              commonAnalysis->newEdge( waitLeave, waitingKernel.first );
 
-         return ruleMatched;
-       }
+              /* set counters */
+              waitEnter->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
+                                       CTR_WAITSTATE ),
+                                     1 );
 
-       return false;
-     }
- };
+              /* add dependency to all sync kernel leave nodes */
+              /* (some dependencies can become reverse edges during
+               * optimization) */
+              for ( std::set< GraphNode* >::const_iterator gIter =
+                      processedSyncKernelLeaves.begin( );
+                    gIter != processedSyncKernelLeaves.end( ); ++gIter )
+              {
+                /* /\todo check if this should have
+                 * EDGE_CAUSES_WAITSTATE property */
+                commonAnalysis->newEdge( *gIter, waitLeave );
+              }
+            }
+          }
+
+          return ruleMatched;
+        }
+
+        return false;
+      }
+  };
+ }
 }

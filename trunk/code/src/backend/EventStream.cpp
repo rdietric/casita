@@ -11,6 +11,7 @@
  */
 
 #include "EventStream.hpp"
+#include "utils/ErrorUtils.hpp"
 
 using namespace casita;
 
@@ -414,7 +415,8 @@ EventStream::walkBackward( GraphNode*         node,
   }
 
   SortedGraphNodeList::const_reverse_iterator iter = findNode( node );
-  assert( *iter == node );
+  UTILS_ASSERT( *iter == node, "no %s in stream %lu",
+                node->getUniqueName( ).c_str( ), node->getStreamId( ) );
 
   for (; iter != nodes.rend( ); ++iter )
   {
@@ -474,6 +476,9 @@ EventStream::findNode( GraphNode* node ) const
   do
   {
     size_t index = indexMax - ( indexMax - indexMin ) / 2;
+
+    UTILS_ASSERT( index < nodes.size( ), "index %lu indexMax %lu indexMin %lu", index, indexMax, indexMin );
+
     if ( nodes[index] == node )
     {
       return nodes.rbegin( ) + ( nodes.size( ) - index - 1 );
@@ -493,6 +498,11 @@ EventStream::findNode( GraphNode* node ) const
     {
       /* right side */
       indexMin = index + 1;
+    }
+
+    if ( indexMin > indexMax )
+    {
+      break;
     }
 
   }

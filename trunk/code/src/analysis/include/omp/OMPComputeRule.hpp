@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "AbstractRule.hpp"
-#include "graph/GraphNode.hpp"
+#include "IOMPRule.hpp"
+#include "AnalysisParadigmOMP.hpp"
 
 namespace casita
 {
@@ -22,18 +22,20 @@ namespace casita
  {
 
   class OMPComputeRule :
-    public AbstractRule
+    public IOMPRule
   {
     public:
 
       OMPComputeRule( int priority ) :
-        AbstractRule( "OMPComputeRule", priority )
+        IOMPRule( "OMPComputeRule", priority )
       {
 
       }
 
+    private:
+
       bool
-      apply( AnalysisEngine* analysis, GraphNode* node )
+      apply( AnalysisParadigmOMP* analysis, GraphNode* node )
       {
         if ( !node->isOMPCompute( ) )
         {
@@ -52,7 +54,7 @@ namespace casita
             GraphNode::GraphNodePair& kernelPair = node->getGraphPair( );
 
             /* create Edges */
-            analysis->newEdge( ppr, kernelPair.first );
+            analysis->getCommon( )->newEdge( ppr, kernelPair.first );
 
             /* EventStream* p = analysis->getStream( node->getStreamId( ) );
               ErrorUtils::getInstance( ).outputMessage(

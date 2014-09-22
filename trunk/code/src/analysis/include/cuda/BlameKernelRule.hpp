@@ -12,108 +12,113 @@
 
 #pragma once
 
-#include "AbstractRule.hpp"
-#include "graph/GraphNode.hpp"
+#include "ICUDARule.hpp"
+#include "AnalysisParadigmCUDA.hpp"
 
 namespace casita
 {
-
- class BlameKernelRule :
-   public AbstractRule
+ namespace cuda
  {
-   public:
+  class BlameKernelRule :
+    public ICUDARule
+  {
+    public:
 
-     BlameKernelRule( int priority ) :
-       AbstractRule( "BlameKernelRule", priority )
-     {
+      BlameKernelRule( int priority ) :
+        ICUDARule( "BlameKernelRule", priority )
+      {
 
-     }
+      }
 
-     bool
-     apply( AnalysisEngine* analysis, GraphNode* node )
-     {
-       /* applied at sync */
-       if ( !node->isCUDASync( ) || !node->isLeave( ) )
-       {
-         return false;
-       }
+    private:
 
-       /* get the complete execution */
-       GraphNode::GraphNodePair& sync = node->getGraphPair( );
+      bool
+      apply( AnalysisParadigmCUDA* analysis, GraphNode* node )
+      {
+        /* applied at sync */
+        if ( !node->isCUDASync( ) || !node->isLeave( ) )
+        {
+          return false;
+        }
 
-       uint64_t syncDeltaTicks        = analysis->getDeltaTicks( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-       bool     ruleResult = false;
-       /* find all referenced (device) streams */
-       EventStreamGroup::EventStreamList deviceStreams;
-       analysis->getAllDeviceStreams( deviceStreams );
-       for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-               deviceStreams.begin( );
-             pIter != deviceStreams.end( ); ++pIter )
-       {
-         EventStream* deviceStream = *pIter;
+        /* get the complete execution */
+        GraphNode::GraphNodePair& sync = node->getGraphPair( );
 
-         if ( !sync.first->referencesStream( deviceStream->getId( ) ) )
-         {
-           continue;
-         }
+        uint64_t syncDeltaTicks        = commonAnalysis->getDeltaTicks( );
 
-         /* test that there is a pending kernel (leave) */
-         bool isFirstKernel        = true;
-         while ( true )
-         {
-           GraphNode* kernelLeave           = deviceStream->getPendingKernel( );
-           if ( !kernelLeave )
-           {
-             break;
-           }
+        bool     ruleResult = false;
+        /* find all referenced (device) streams */
+        EventStreamGroup::EventStreamList deviceStreams;
+        commonAnalysis->getAllDeviceStreams( deviceStreams );
+        for ( EventStreamGroup::EventStreamList::const_iterator pIter =
+                deviceStreams.begin( );
+              pIter != deviceStreams.end( ); ++pIter )
+        {
+          EventStream* deviceStream = *pIter;
 
-           GraphNode::GraphNodePair& kernel = kernelLeave->getGraphPair( );
+          if ( !sync.first->referencesStream( deviceStream->getId( ) ) )
+          {
+            continue;
+          }
 
-           if ( ( isFirstKernel &&
-                  ( sync.first->getTime( ) < kernel.second->getTime( ) ) &&
-                  ( sync.second->getTime( ) - kernel.second->getTime( ) <=
-                    syncDeltaTicks ) ) ||
-                ( !isFirstKernel &&
-                  ( sync.first->getTime( ) < kernel.second->getTime( ) ) ) )
-           {
-             if ( isFirstKernel )
-             {
-               analysis->newEdge( kernel.second,
-                                  sync.second,
-                                  EDGE_CAUSES_WAITSTATE );
-             }
+          /* test that there is a pending kernel (leave) */
+          bool isFirstKernel        = true;
+          while ( true )
+          {
+            GraphNode* kernelLeave           = deviceStream->getPendingKernel( );
+            if ( !kernelLeave )
+            {
+              break;
+            }
 
-             analysis->getEdge( sync.first, sync.second )->makeBlocking( );
+            GraphNode::GraphNodePair& kernel = kernelLeave->getGraphPair( );
 
-             /* set counters */
-             sync.first->incCounter( analysis->getCtrTable( ).getCtrId(
-                                       CTR_WAITSTATE ),
-                                     std::min( sync.second->getTime( ),
-                                               kernel.second->getTime( ) ) -
-                                     std::max( sync.first->getTime( ),
-                                               kernel.first->getTime( ) ) );
-             kernel.first->incCounter( analysis->getCtrTable( ).getCtrId(
-                                         CTR_BLAME ),
-                                       std::min( sync.second->getTime( ),
-                                                 kernel.second->getTime( ) ) -
-                                       std::max( sync.first->getTime( ),
-                                                 kernel.first->getTime( ) ) );
+            if ( ( isFirstKernel &&
+                   ( sync.first->getTime( ) < kernel.second->getTime( ) ) &&
+                   ( sync.second->getTime( ) - kernel.second->getTime( ) <=
+                     syncDeltaTicks ) ) ||
+                 ( !isFirstKernel &&
+                   ( sync.first->getTime( ) < kernel.second->getTime( ) ) ) )
+            {
+              if ( isFirstKernel )
+              {
+                commonAnalysis->newEdge( kernel.second,
+                                         sync.second,
+                                         EDGE_CAUSES_WAITSTATE );
+              }
 
-             ruleResult    = true;
-             isFirstKernel = false;
-             deviceStream->consumePendingKernel( );
-           }
-           else
-           {
-             deviceStream->clearPendingKernels( );
-             break;
-           }
-         }
-       }
+              commonAnalysis->getEdge( sync.first, sync.second )->makeBlocking( );
 
-       return ruleResult;
-     }
- };
+              /* set counters */
+              sync.first->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
+                                        CTR_WAITSTATE ),
+                                      std::min( sync.second->getTime( ),
+                                                kernel.second->getTime( ) ) -
+                                      std::max( sync.first->getTime( ),
+                                                kernel.first->getTime( ) ) );
+              kernel.first->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
+                                          CTR_BLAME ),
+                                        std::min( sync.second->getTime( ),
+                                                  kernel.second->getTime( ) ) -
+                                        std::max( sync.first->getTime( ),
+                                                  kernel.first->getTime( ) ) );
 
+              ruleResult    = true;
+              isFirstKernel = false;
+              deviceStream->consumePendingKernel( );
+            }
+            else
+            {
+              deviceStream->clearPendingKernels( );
+              break;
+            }
+          }
+        }
+
+        return ruleResult;
+      }
+  };
+ }
 }

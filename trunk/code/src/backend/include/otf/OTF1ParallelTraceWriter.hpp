@@ -47,12 +47,15 @@ namespace casita
     public IParallelTraceWriter
   {
     public:
+      bool writeToFile;
+
       OTF1ParallelTraceWriter( const char* streamRefKeyName,
                                const char* eventRefKeyName,
                                const char* funcResultKeyName,
                                uint32_t    mpiRank,
                                uint32_t    mpiSize,
-                               const char* originalFilename );
+                               const char* originalFilename,
+                               bool        writeToFile );
       virtual
       ~OTF1ParallelTraceWriter( );
 
