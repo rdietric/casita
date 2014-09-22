@@ -230,7 +230,7 @@ Runner::mergeActivityGroups( )
       MPI_Status status;
 
       /* /\todo: receive from any */
-      MPI_Recv( &numEntries, 1, MPI_INTEGER4, rank, 1, MPI_COMM_WORLD, &status );
+      MPI_Recv( &numEntries, 1, MPI_UNSIGNED, rank, 1, MPI_COMM_WORLD, &status );
 
       /* receive entries */
       if ( numEntries > 0 )
@@ -305,7 +305,7 @@ Runner::mergeActivityGroups( )
     uint32_t i          = 0;
     uint32_t numEntries = activityGroupMap->size( );
 
-    MPI_Send( &numEntries, 1, MPI_INTEGER4, 0, 1, MPI_COMM_WORLD );
+    MPI_Send( &numEntries, 1, MPI_UNSIGNED, 0, 1, MPI_COMM_WORLD );
 
     IParallelTraceWriter::ActivityGroup* buf =
       new IParallelTraceWriter::ActivityGroup[numEntries];
