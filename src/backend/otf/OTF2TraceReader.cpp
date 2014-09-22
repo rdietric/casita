@@ -156,7 +156,7 @@ OTF2TraceReader::readEvents( )
   for ( IdNameTokenMap::const_iterator iter = processNameTokenMap.begin( );
         iter != processNameTokenMap.end( ); ++iter )
   {
-    printf( "[%u] Read for process %lu \n", mpiRank, iter->first );
+    /* printf( "[%u] Read for process %lu \n", mpiRank, iter->first ); */
     OTF2_Reader_SelectLocation( reader, iter->first );
   }
 
@@ -175,8 +175,9 @@ OTF2TraceReader::readEvents( )
 
   OTF2_Reader_CloseDefFiles( reader );
 
-  OTF2_GlobalEvtReader* global_evt_reader        = OTF2_Reader_GetGlobalEvtReader(
-    reader );
+  OTF2_GlobalEvtReader* global_evt_reader        =
+    OTF2_Reader_GetGlobalEvtReader(
+      reader );
 
   OTF2_GlobalEvtReaderCallbacks* event_callbacks =
     OTF2_GlobalEvtReaderCallbacks_New( );
@@ -236,8 +237,9 @@ OTF2TraceReader::readEventsForProcess( uint64_t id )
 
   OTF2_Reader_GetEvtReader( reader, id );
 
-  OTF2_GlobalEvtReader* global_evt_reader        = OTF2_Reader_GetGlobalEvtReader(
-    reader );
+  OTF2_GlobalEvtReader* global_evt_reader        =
+    OTF2_Reader_GetGlobalEvtReader(
+      reader );
 
   OTF2_GlobalEvtReaderCallbacks* event_callbacks =
     OTF2_GlobalEvtReaderCallbacks_New( );
@@ -284,8 +286,9 @@ OTF2TraceReader::readEventsForProcess( uint64_t id )
 void
 OTF2TraceReader::readDefinitions( )
 {
-  OTF2_GlobalDefReader* global_def_reader = OTF2_Reader_GetGlobalDefReader(
-    reader );
+  OTF2_GlobalDefReader* global_def_reader =
+    OTF2_Reader_GetGlobalDefReader(
+      reader );
 
   OTF2_GlobalDefReaderCallbacks* global_def_callbacks =
     OTF2_GlobalDefReaderCallbacks_New( );
@@ -462,9 +465,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
-  uint64_t* myMembers;
-  myMembers                = new uint64_t[numberOfMembers];
-
+  uint64_t* myMembers = new uint64_t[numberOfMembers];
   for ( uint32_t i = 0; i < numberOfMembers; i++ )
   {
     myMembers[i] = members[i];
@@ -509,6 +510,8 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
     }
 
   }
+
+  delete[]myMembers;
 
   return OTF2_CALLBACK_SUCCESS;
 }

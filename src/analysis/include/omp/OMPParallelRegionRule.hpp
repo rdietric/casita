@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "AbstractRule.hpp"
-#include "graph/GraphNode.hpp"
+#include "IOMPRule.hpp"
+#include "AnalysisParadigmOMP.hpp"
 
 namespace casita
 {
@@ -21,18 +21,19 @@ namespace casita
  {
 
   class OMPParallelRegionRule :
-    public AbstractRule
+    public IOMPRule
   {
     public:
 
       OMPParallelRegionRule( int priority ) :
-        AbstractRule( "OMPParallelRegionRule", priority )
+        IOMPRule( "OMPParallelRegionRule", priority )
       {
 
       }
 
+    private:
       bool
-      apply( AnalysisEngine* analysis, GraphNode* node )
+      apply( AnalysisParadigmOMP* analysis, GraphNode* node )
       {
         if ( !node->isOMPParallelRegion( ) )
         {
@@ -71,11 +72,12 @@ namespace casita
          * parallel region */
         /* 1) get all OMP-streams */
         const EventStreamGroup::EventStreamList& streams =
-          analysis->getHostStreams( );
+          analysis->getCommon( )->getHostStreams( );
 
         /* 2) iterate over all omp streams and add dependency edge
          * to parallel region leave */
-        GraphNode* parallelRegionSecond = node->getGraphPair( ).second;
+        GraphNode* parallelRegionSecond =
+          node->getGraphPair( ).second;
 
         for ( EventStreamGroup::EventStreamList::const_iterator pIter =
                 streams.begin( );
@@ -86,7 +88,7 @@ namespace casita
           if ( ( kernel != NULL ) &&
                ( kernel->getStreamId( ) != parallelRegionSecond->getStreamId( ) ) )
           {
-            analysis->newEdge( kernel, parallelRegionSecond );
+            analysis->getCommon( )->newEdge( kernel, parallelRegionSecond );
           }
 
           analysis->setOmpCompute( NULL, p->getId( ) );

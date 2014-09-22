@@ -31,14 +31,10 @@ GraphEngine::GraphEngine( ) :
                                    RECORD_ATOMIC,
                                    MISC_PROCESS );
 
-  ctrTable.addDefaultCounter( ctrTable.getNewCtrId( ), CTR_BLAME );
-  ctrTable.addDefaultCounter( ctrTable.getNewCtrId( ), CTR_BLAME_LOG10 );
-  ctrTable.addDefaultCounter( ctrTable.getNewCtrId( ), CTR_BLAME_STATISTICS );
-  ctrTable.addDefaultCounter( ctrTable.getNewCtrId( ), CTR_WAITSTATE );
-  ctrTable.addDefaultCounter( ctrTable.getNewCtrId( ), CTR_WAITSTATE_LOG10 );
-  ctrTable.addDefaultCounter( ctrTable.getNewCtrId( ), CTR_CRITICALPATH );
-  ctrTable.addDefaultCounter( ctrTable.getNewCtrId( ), CTR_CRITICALPATH_TIME );
-  ctrTable.addDefaultCounter( ctrTable.getNewCtrId( ), CTR_OMP_PARENT_REGION_ID );
+  for ( size_t i = 0; i < CTR_NUM_DEFAULT_CTRS; ++i )
+  {
+    ctrTable.addDefaultCounter( ctrTable.getNewCtrId( ), (CounterType)i );
+  }
 }
 
 GraphEngine::~GraphEngine( )

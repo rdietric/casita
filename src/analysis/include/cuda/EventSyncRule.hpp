@@ -12,133 +12,144 @@
 
 #pragma once
 
-#include "AbstractRule.hpp"
+#include "ICUDARule.hpp"
+#include "AnalysisParadigmCUDA.hpp"
 
 namespace casita
 {
-
- class EventSyncRule :
-   public AbstractRule
+ namespace cuda
  {
-   public:
+  class EventSyncRule :
+    public ICUDARule
+  {
+    public:
 
-     EventSyncRule( int priority ) :
-       AbstractRule( "EventSyncRule", priority )
-     {
+      EventSyncRule( int priority ) :
+        ICUDARule( "EventSyncRule", priority )
+      {
 
-     }
+      }
 
-     bool
-     apply( AnalysisEngine* analysis, GraphNode* node )
-     {
+    private:
 
-       if ( !node->isCUDAEventSync( ) || !node->isLeave( ) )
-       {
-         return false;
-       }
+      bool
+      apply( AnalysisParadigmCUDA* analysis, GraphNode* node )
+      {
 
-       /* get the complete execution */
-       GraphNode::GraphNodePair& sync = node->getGraphPair( );
+        if ( !node->isCUDAEventSync( ) || !node->isLeave( ) )
+        {
+          return false;
+        }
 
-       EventNode* eventLaunchLeave    = analysis->getLastEventLaunchLeave(
-         ( (EventNode*)sync.second )->getEventId( ) );
+        AnalysisEngine* commonAnalysis   = analysis->getCommon( );
 
-       if ( !eventLaunchLeave )
-       {
-         printf( " * Ignoring event sync %s without matching event record\n",
-                 node->getUniqueName( ).c_str( ) );
-         return false;
-       }
+        /* get the complete execution */
+        GraphNode::GraphNodePair& sync   = node->getGraphPair( );
 
-       GraphNode*   eventLaunchEnter  = eventLaunchLeave->getGraphPair( ).first;
-       EventStream* refProcess        = analysis->getStream(
-         eventLaunchLeave->getReferencedStreamId( ) );
-       EventStreamGroup::EventStreamList deviceProcs;
+        EventNode*      eventLaunchLeave = analysis->getLastEventLaunchLeave(
+          ( (EventNode*)sync.second )->getEventId( ) );
 
-       if ( refProcess->isDeviceNullStream( ) )
-       {
-         analysis->getAllDeviceStreams( deviceProcs );
-       }
-       else
-       {
-         deviceProcs.push_back( refProcess );
-       }
+        if ( !eventLaunchLeave )
+        {
+          printf( " * Ignoring event sync %s without matching event record\n",
+                  node->getUniqueName( ).c_str( ) );
+          return false;
+        }
 
-       bool ruleResult = false;
-       for ( EventStreamGroup::EventStreamList::const_iterator iter =
-               deviceProcs.begin( );
-             iter != deviceProcs.end( ); ++iter )
-       {
-         /* last kernel launch before event record for this stream */
-         GraphNode* kernelLaunchLeave           = analysis->getLastLaunchLeave(
-           eventLaunchEnter->getTime( ), ( *iter )->getId( ) );
-         if ( !kernelLaunchLeave )
-         {
-           continue;
-         }
+        GraphNode*   eventLaunchEnter    = eventLaunchLeave->getGraphPair( ).first;
+        EventStream* refProcess          = commonAnalysis->getStream(
+          eventLaunchLeave->getReferencedStreamId( ) );
+        EventStreamGroup::EventStreamList deviceProcs;
 
-         GraphNode::GraphNodePair& kernelLaunch =
-           ( (GraphNode*)kernelLaunchLeave )->getGraphPair( );
+        if ( refProcess->isDeviceNullStream( ) )
+        {
+          commonAnalysis->getAllDeviceStreams( deviceProcs );
+        }
+        else
+        {
+          deviceProcs.push_back( refProcess );
+        }
 
-         GraphNode* kernelEnter = (GraphNode*)kernelLaunch.first->getLink( );
-         if ( !kernelEnter )
-         {
-           throw RTException(
+        bool ruleResult = false;
+        for ( EventStreamGroup::EventStreamList::const_iterator iter =
+                deviceProcs.begin( );
+              iter != deviceProcs.end( ); ++iter )
+        {
+          /* last kernel launch before event record for this stream */
+          GraphNode* kernelLaunchLeave           = analysis->getLastLaunchLeave(
+            eventLaunchEnter->getTime( ), ( *iter )->getId( ) );
+          if ( !kernelLaunchLeave )
+          {
+            continue;
+          }
 
-                   "Event sync %s (%f) returned but kernel from %s (%f) on stream [%u, %s] did not start/finish yet",
-                   node->getUniqueName( ).c_str( ),
-                   analysis->getRealTime( node->getTime( ) ),
-                   kernelLaunch.first->getUniqueName( ).c_str( ),
-                   analysis->getRealTime( kernelLaunch.first->
-                                          getTime( ) ),
-                   kernelLaunch.first->getReferencedStreamId( ),
-                   analysis->getStream( kernelLaunch.first->
-                                        getReferencedStreamId( ) )->getName( ) );
-         }
+          GraphNode::GraphNodePair& kernelLaunch =
+            ( (GraphNode*)kernelLaunchLeave )->getGraphPair( );
 
-         GraphNode* kernelLeave = kernelEnter->getGraphPair( ).second;
-         if ( !kernelLeave || kernelLeave->getTime( ) > sync.second->getTime( ) )
-         {
-           throw RTException(
+          GraphNode* kernelEnter =
+            (GraphNode*)kernelLaunch.first->getLink( );
+          if ( !kernelEnter )
+          {
+            throw RTException(
 
-                   "Event sync %s (%f) returned but kernel from %s (%f) on stream [%u, %s] did not finish yet",
-                   node->getUniqueName( ).c_str( ),
-                   analysis->getRealTime( node->getTime( ) ),
-                   kernelLaunch.first->getUniqueName( ).c_str( ),
-                   analysis->getRealTime( kernelLaunch.first->
-                                          getTime( ) ),
-                   kernelLaunch.first->getReferencedStreamId( ),
-                   analysis->getStream( kernelLaunch.first->
-                                        getReferencedStreamId( ) )->getName( ) );
-         }
+                    "Event sync %s (%f) returned but kernel from %s (%f) on stream [%u, %s] did not start/finish yet",
+                    node->getUniqueName( ).c_str( ),
+                    commonAnalysis->getRealTime( node->getTime( ) ),
+                    kernelLaunch.first->getUniqueName( ).c_str( ),
+                    commonAnalysis->getRealTime( kernelLaunch.first->
+                                                 getTime( ) ),
+                    kernelLaunch.first->getReferencedStreamId( ),
+                    commonAnalysis->getStream( kernelLaunch.first->
+                                               getReferencedStreamId( ) )->
+                    getName( ) );
+          }
 
-         uint64_t syncDeltaTicks = analysis->getDeltaTicks( );
+          GraphNode* kernelLeave = kernelEnter->getGraphPair( ).second;
+          if ( !kernelLeave || kernelLeave->getTime( ) > sync.second->getTime( ) )
+          {
+            throw RTException(
 
-         if ( ( sync.first->getTime( ) < kernelLeave->getTime( ) ) &&
-              ( sync.second->getTime( ) - kernelLeave->getTime( ) <=
-                syncDeltaTicks ) )
-         {
-           analysis->getEdge( sync.first, sync.second )->makeBlocking( );
+                    "Event sync %s (%f) returned but kernel from %s (%f) on stream [%u, %s] did not finish yet",
+                    node->getUniqueName( ).c_str( ),
+                    commonAnalysis->getRealTime( node->getTime( ) ),
+                    kernelLaunch.first->getUniqueName( ).c_str( ),
+                    commonAnalysis->getRealTime( kernelLaunch.first->
+                                                 getTime( ) ),
+                    kernelLaunch.first->getReferencedStreamId( ),
+                    commonAnalysis->getStream( kernelLaunch.first->
+                                               getReferencedStreamId( ) )->
+                    getName( ) );
+          }
 
-           /* set counters */
-           sync.first->incCounter( analysis->getCtrTable( ).getCtrId(
-                                     CTR_WAITSTATE ),
-                                   sync.second->getTime( ) -
-                                   std::max( sync.first->getTime( ),
-                                             kernelEnter->getTime( ) ) );
-           kernelEnter->incCounter( analysis->getCtrTable( ).getCtrId(
-                                      CTR_BLAME ),
+          uint64_t syncDeltaTicks = commonAnalysis->getDeltaTicks( );
+
+          if ( ( sync.first->getTime( ) < kernelLeave->getTime( ) ) &&
+               ( sync.second->getTime( ) - kernelLeave->getTime( ) <=
+                 syncDeltaTicks ) )
+          {
+            commonAnalysis->getEdge( sync.first, sync.second )->makeBlocking( );
+
+            /* set counters */
+            sync.first->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
+                                      CTR_WAITSTATE ),
                                     sync.second->getTime( ) -
                                     std::max( sync.first->getTime( ),
                                               kernelEnter->getTime( ) ) );
-         }
+            kernelEnter->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
+                                       CTR_BLAME ),
+                                     sync.second->getTime( ) -
+                                     std::max( sync.first->getTime( ),
+                                               kernelEnter->getTime( ) ) );
+          }
 
-         analysis->newEdge( kernelLeave, sync.second, EDGE_CAUSES_WAITSTATE );
-         ruleResult = true;
-       }
+          commonAnalysis->newEdge( kernelLeave,
+                                   sync.second,
+                                   EDGE_CAUSES_WAITSTATE );
+          ruleResult = true;
+        }
 
-       return ruleResult;
-     }
- };
-
+        return ruleResult;
+      }
+  };
+ }
 }

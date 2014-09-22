@@ -90,10 +90,10 @@ namespace casita
                     CounterTable*                     ctrTable,
                     Graph*                            graph ) = 0;
 
-      ActivityGroupMap&
+      ActivityGroupMap*
       getActivityGroupMap( )
       {
-        return activityGroupMap;
+        return &activityGroupMap;
       }
 
     protected:

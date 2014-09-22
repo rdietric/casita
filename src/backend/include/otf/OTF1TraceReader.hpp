@@ -430,9 +430,9 @@ namespace casita
 
       uint32_t         mpiRank;
       uint32_t         mpiProcessId;
-      TokenTokenMap    processRankMap;    /* maps (parent) process ID
+      TokenTokenMap    processRankMap;                                     /* maps (parent) process ID
                                            * to MPI rank */
-      TokenTokenMap    processFamilyMap;    /* tracks for each process
+      TokenTokenMap    processFamilyMap;                                     /* tracks for each process
                                              * its direct parent */
 
       OTF_FileManager* fileMgr;

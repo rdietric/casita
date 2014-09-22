@@ -12,9 +12,8 @@
 
 #pragma once
 
-#include "AbstractRule.hpp"
-#include "MPIRulesCommon.hpp"
-#include "BlameDistribution.hpp"
+#include "IMPIRule.hpp"
+#include "AnalysisParadigmMPI.hpp"
 
 namespace casita
 {
@@ -22,18 +21,20 @@ namespace casita
  {
 
   class OneToAllRule :
-    public AbstractRule
+    public IMPIRule
   {
     public:
 
       OneToAllRule( int priority ) :
-        AbstractRule( "OneToAllRule", priority )
+        IMPIRule( "OneToAllRule", priority )
       {
 
       }
 
+    private:
+
       bool
-      apply( AnalysisEngine* analysis, GraphNode* node )
+      apply( AnalysisParadigmMPI* analysis, GraphNode* node )
       {
         /* applied at MPI OneToAll leave */
         if ( !node->isMPIOneToAll( ) || !node->isLeave( ) )
@@ -41,10 +42,13 @@ namespace casita
           return false;
         }
 
+        AnalysisEngine* commonAnalysis    = analysis->getCommon( );
+
         /* get the complete execution */
         GraphNode::GraphNodePair oneToAll = node->getGraphPair( );
         uint32_t  mpiGroupId = node->getReferencedStreamId( );
-        uint64_t* root       = (uint64_t*)( oneToAll.second->getData( ) );
+        uint64_t* root       =
+          (uint64_t*)( oneToAll.second->getData( ) );
         if ( !root )
         {
           ErrorUtils::getInstance( ).throwFatalError(
@@ -52,7 +56,7 @@ namespace casita
         }
 
         const MPIAnalysis::MPICommGroup& mpiCommGroup =
-          analysis->getMPIAnalysis( ).getMPICommGroup( mpiGroupId );
+          commonAnalysis->getMPIAnalysis( ).getMPICommGroup( mpiGroupId );
 
         if ( mpiCommGroup.comm == MPI_COMM_SELF )
         {
@@ -61,8 +65,9 @@ namespace casita
 
         uint64_t rootId            = *root;
         uint32_t rootMPIRank;
-        rootMPIRank = analysis->getMPIAnalysis( ).getMPIRank( rootId,
-                                                              mpiCommGroup );
+        rootMPIRank = commonAnalysis->getMPIAnalysis( ).getMPIRank(
+          rootId,
+          mpiCommGroup );
 
         const uint32_t BUFFER_SIZE = 5;
         uint32_t recvBufferSize    = 0;
@@ -105,7 +110,7 @@ namespace casita
               total_blame += oneToAllStartTime - enterTime;
             }
 
-            analysis->getMPIAnalysis( ).addRemoteMPIEdge(
+            commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
               oneToAll.first,
               recvBuffer[i + 3],
               recvBuffer[i + 4],
@@ -113,7 +118,7 @@ namespace casita
               MPI_EDGE_LOCAL_REMOTE );
           }
 
-          distributeBlame( analysis,
+          distributeBlame( commonAnalysis,
                            oneToAll.first,
                            total_blame,
                            streamWalkCallback );
@@ -133,15 +138,15 @@ namespace casita
 
           if ( rootEnterTime > oneToAllStartTime )
           {
-            Edge* oneToAllRecordEdge = analysis->getEdge(
+            Edge* oneToAllRecordEdge = commonAnalysis->getEdge(
               oneToAll.first, oneToAll.second );
             oneToAllRecordEdge->makeBlocking( );
             oneToAll.first->setCounter(
-              analysis->getCtrTable( ).getCtrId( CTR_WAITSTATE ),
+              commonAnalysis->getCtrTable( ).getCtrId( CTR_WAITSTATE ),
               rootEnterTime - oneToAllStartTime );
           }
 
-          analysis->getMPIAnalysis( ).addRemoteMPIEdge(
+          commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
             oneToAll.second,
             recvBuffer[2],
             recvBuffer[4],

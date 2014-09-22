@@ -14,8 +14,11 @@
 
 #include "CallbackHandler.hpp"
 
+#include "omp/AnalysisParadigmOMP.hpp"
+
 using namespace casita;
 using namespace casita::io;
+using namespace casita::omp;
 
 CallbackHandler::CallbackHandler( ProgramOptions& options,
                                   AnalysisEngine& analysis ) :
@@ -86,110 +89,6 @@ CallbackHandler::printNode( GraphNode* node, EventStream* stream )
   }
 }
 
-void
-CallbackHandler::applyStreamRefsEnter( ITraceReader*  reader,
-                                       GraphNode*     node,
-                                       IKeyValueList* list,
-                                       Paradigm       paradigm )
-{
-  uint64_t refValue     = 0;
-  int32_t  streamRefKey = -1;
-
-  switch ( paradigm )
-  {
-    case PARADIGM_CUDA:
-      streamRefKey = reader->getFirstKey( VT_CUPTI_CUDA_STREAMREF_KEY );
-      /* give it another try, maybe it was scorep, not vt */
-      if ( streamRefKey < 0 )
-      {
-        streamRefKey = reader->getFirstKey( SCOREP_CUPTI_CUDA_STREAMREF_KEY );
-      }
-
-      if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
-           list->getLocationRef( (uint32_t)streamRefKey, &refValue ) == 0 )
-      {
-        node->setReferencedStreamId( refValue );
-      }
-      break;
-
-    case PARADIGM_OMP:
-      if ( this->analysis.getStream( node->getStreamId( ) )->getStreamType( )
-           == EventStream::ES_DEVICE )
-      {
-        uint64_t key_value = 0;
-        streamRefKey = reader->getFirstKey( SCOREP_POMP_TARGET_REGION_ID_KEY );
-        if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
-             list->getUInt64( (uint32_t)streamRefKey, &key_value ) == 0 )
-        {
-          this->analysis.findOmpTargetParentRegion( node, key_value );
-        }
-
-        streamRefKey = reader->getFirstKey(
-          SCOREP_POMP_TARGET_PARENT_REGION_ID_KEY );
-        if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
-             list->getUInt64( (uint32_t)streamRefKey, &key_value ) == 0 )
-        {
-          this->analysis.pushOmpTargetRegion( node, key_value );
-
-          if ( node->isOMPSync( ) )
-          {
-            uint32_t ompParentCtrId = this->analysis.getCtrTable( ).getCtrId(
-              CTR_OMP_PARENT_REGION_ID );
-            std::cout << node->getUniqueName( ) << " has parent id " <<
-            key_value << std::endl;
-            node->setCounter( ompParentCtrId, key_value );
-          }
-        }
-      }
-
-    default:
-      return;
-  }
-}
-
-void
-CallbackHandler::applyStreamRefsLeave( ITraceReader*  reader,
-                                       GraphNode*     node,
-                                       GraphNode*     oldNode,
-                                       IKeyValueList* list,
-                                       Paradigm       paradigm )
-{
-  uint64_t refValue     = 0;
-  int32_t  streamRefKey = -1;
-
-  switch ( paradigm )
-  {
-    case PARADIGM_CUDA:
-      streamRefKey = reader->getFirstKey( VT_CUPTI_CUDA_STREAMREF_KEY );
-      /* give it another try, maybe it was scorep, not vt */
-      if ( streamRefKey < 0 )
-      {
-        streamRefKey = reader->getFirstKey( SCOREP_CUPTI_CUDA_STREAMREF_KEY );
-      }
-
-      if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
-           list->getLocationRef( (uint32_t)streamRefKey, &refValue ) == 0 )
-      {
-        node->setReferencedStreamId( refValue );
-        oldNode->setReferencedStreamId( refValue );
-      }
-      break;
-
-    case PARADIGM_OMP:
-      streamRefKey = reader->getFirstKey( SCOREP_POMP_TARGET_LOCATIONREF_KEY );
-
-      if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
-           list->getLocationRef( (uint32_t)streamRefKey, &refValue ) == 0 )
-      {
-        node->setReferencedStreamId( refValue );
-      }
-      break;
-
-    default:
-      return;
-  }
-}
-
 uint32_t
 CallbackHandler::readKeyVal( ITraceReader*  reader,
                              const char*    keyName,
@@ -224,7 +123,8 @@ CallbackHandler::handleDefProcess( ITraceReader*  reader,
                                    bool           isCUDA,
                                    bool           isCUDANull )
 {
-  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
+  CallbackHandler* handler  =
+    (CallbackHandler*)( reader->getUserData( ) );
   AnalysisEngine&  analysis = handler->getAnalysis( );
 
   EventStream::EventStreamType streamType = EventStream::ES_HOST;
@@ -324,24 +224,8 @@ CallbackHandler::handleEnter( ITraceReader*  reader,
 
   enterNode->setFunctionId( functionId );
 
-  /* CUDA specific*/
-  if ( enterNode->isCUDAKernelLaunch( ) )
-  {
-    handler->applyStreamRefsEnter( reader,
-                                   enterNode,
-                                   list,
-                                   PARADIGM_CUDA );
-    analysis.addPendingKernelLaunch( enterNode );
-  }
-
-  /* OMP specific */
-  if ( enterNode->isOMP( ) )
-  {
-    handler->applyStreamRefsEnter( reader,
-                                   enterNode,
-                                   list,
-                                   PARADIGM_OMP );
-  }
+  analysis.handleKeyValuesEnter( reader, enterNode, list );
+  analysis.handlePostEnter( enterNode );
 
   handler->printNode( enterNode, stream );
   options.eventsProcessed++;
@@ -385,10 +269,14 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
   if ( Node::isCUDAEventType( functionType.paradigm, functionType.type ) )
   {
     /**\todo implement for Score-P keys */
-    uint32_t eventId  = readKeyVal( reader, VT_CUPTI_CUDA_EVENTREF_KEY, list );
-    CUresult cuResult = (CUresult)readKeyVal( reader,
-                                              VT_CUPTI_CUDA_CURESULT_KEY,
-                                              list );
+    uint32_t eventId  = readKeyVal(
+      reader,
+      VT_CUPTI_CUDA_EVENTREF_KEY,
+      list );
+    CUresult cuResult = (CUresult)readKeyVal(
+      reader,
+      VT_CUPTI_CUDA_CURESULT_KEY,
+      list );
     EventNode::FunctionResultType fResult = EventNode::FR_UNKNOWN;
     if ( cuResult == CUDA_SUCCESS )
     {
@@ -422,83 +310,8 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
 
   leaveNode->setFunctionId( functionId );
 
-  /* CallbackHandler::applyStreamRefsLeave( reader, leaveNode, */
-  /*                                     leaveNode->getGraphPair(
-   * ).first, list ); */
-
-  /* MPI specific */
-  if ( leaveNode->isMPI( ) )
-  {
-    EventStream::MPICommRecordList mpiCommRecords =
-      stream->getPendingMPIRecords( );
-    for ( EventStream::MPICommRecordList::const_iterator iter =
-            mpiCommRecords.begin( );
-          iter != mpiCommRecords.end( ); ++iter )
-    {
-      uint64_t* tmpId = NULL;
-
-      switch ( iter->mpiType )
-      {
-        case EventStream::MPI_RECV:
-          leaveNode->setReferencedStreamId( iter->partnerId );
-          break;
-
-        case EventStream::MPI_COLLECTIVE:
-          leaveNode->setReferencedStreamId( iter->partnerId );
-          break;
-
-        case EventStream::MPI_ONEANDALL:
-          leaveNode->setReferencedStreamId( iter->partnerId );
-          tmpId  = new uint64_t;
-          *tmpId = iter->rootId;
-          leaveNode->setData( tmpId );
-          break;
-
-        case EventStream::MPI_SEND:
-          tmpId  = new uint64_t;
-          *tmpId = iter->partnerId;
-          leaveNode->setData( tmpId );
-          break;
-
-        default:
-          throw RTException( "Not a valid MPICommRecord type here" );
-      }
-    }
-  }
-
-  /* CUDA specific */
-  if ( leaveNode->isCUDA( ) )
-  {
-    handler->applyStreamRefsLeave( reader,
-                                   leaveNode,
-                                   leaveNode->getGraphPair( ).first,
-                                   list,
-                                   PARADIGM_CUDA );
-
-    if ( leaveNode->isCUDAKernelLaunch( ) )
-    {
-      analysis.addPendingKernelLaunch( leaveNode );
-    }
-  }
-
-  /* OMP specific */
-  if ( leaveNode->isOMP( ) )
-  {
-    if ( leaveNode->isOMPTargetFlush( ) )
-    {
-      handler->applyStreamRefsLeave( reader,
-                                     leaveNode,
-                                     leaveNode->getGraphPair( ).first,
-                                     list,
-                                     PARADIGM_OMP );
-    }
-
-    if ( leaveNode->isOMPParallelRegion( ) && ( stream->getStreamType( ) ==
-                                                EventStream::ES_DEVICE ) )
-    {
-      analysis.popOmpTargetRegion( leaveNode );
-    }
-  }
+  analysis.handleKeyValuesLeave( reader, leaveNode, leaveNode->getGraphPair( ).first, list );
+  analysis.handlePostLeave( leaveNode );
 
   handler->printNode( leaveNode, stream );
   options.eventsProcessed++;

@@ -12,9 +12,8 @@
 
 #pragma once
 
-#include "AbstractRule.hpp"
-#include "MPIRulesCommon.hpp"
-#include "BlameDistribution.hpp"
+#include "IMPIRule.hpp"
+#include "AnalysisParadigmMPI.hpp"
 
 namespace casita
 {
@@ -22,18 +21,20 @@ namespace casita
  {
 
   class SendRecvRule :
-    public AbstractRule
+    public IMPIRule
   {
     public:
 
       SendRecvRule( int priority ) :
-        AbstractRule( "SendRecvRule", priority )
+        IMPIRule( "SendRecvRule", priority )
       {
 
       }
 
+    private:
+
       bool
-      apply( AnalysisEngine* analysis, GraphNode* node )
+      apply( AnalysisParadigmMPI* analysis, GraphNode* node )
       {
         /* applied at MPI send recv leave */
         if ( !node->isMPISendRecv( ) || !node->isLeave( ) )
@@ -41,10 +42,15 @@ namespace casita
           return false;
         }
 
+        AnalysisEngine* commonAnalysis    = analysis->getCommon( );
+
         /* get the complete execution */
         GraphNode::GraphNodePair sendRecv = node->getGraphPair( );
 
-        uint64_t* data = (uint64_t*)( sendRecv.second->getData( ) );
+        uint64_t* data =
+          (uint64_t*)( sendRecv.second->getData( ) );
+        UTILS_ASSERT( data, "No data found for %s",
+                      sendRecv.second->getUniqueName( ).c_str( ) );
 
         uint64_t  partnerProcessIdRecv    = node->getReferencedStreamId( );
         uint64_t  partnerProcessIdSend    = *data;
@@ -66,10 +72,12 @@ namespace casita
         sendBuffer[3] = sendRecv.second->getId( );
 
         /* send + recv */
-        uint32_t   partnerMPIRankRecv = analysis->getMPIAnalysis( ).getMPIRank(
-          partnerProcessIdRecv );
-        uint32_t   partnerMPIRankSend = analysis->getMPIAnalysis( ).getMPIRank(
-          partnerProcessIdSend );
+        uint32_t   partnerMPIRankRecv =
+          commonAnalysis->getMPIAnalysis( ).getMPIRank(
+            partnerProcessIdRecv );
+        uint32_t   partnerMPIRankSend =
+          commonAnalysis->getMPIAnalysis( ).getMPIRank(
+            partnerProcessIdSend );
         MPI_Status status;
 
         /* round 1: send same direction. myself == send */
@@ -92,20 +100,20 @@ namespace casita
         {
           if ( myStartTime < otherStartTime )
           {
-            Edge* sendRecordEdge = analysis->getEdge( sendRecv.first,
-                                                      sendRecv.second );
+            Edge* sendRecordEdge = commonAnalysis->getEdge( sendRecv.first,
+                                                            sendRecv.second );
             sendRecordEdge->makeBlocking( );
-            sendRecv.first->incCounter( analysis->getCtrTable( ).getCtrId(
+            sendRecv.first->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                           CTR_WAITSTATE ),
                                         otherStartTime - myStartTime );
           }
         }
         else
         {
-          distributeBlame( analysis, sendRecv.first,
+          distributeBlame( commonAnalysis, sendRecv.first,
                            myStartTime - otherStartTime, streamWalkCallback );
 
-          analysis->getMPIAnalysis( ).addRemoteMPIEdge(
+          commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
             sendRecv.first,
             otherLeaveId,
             partnerProcessIdRecv,
@@ -128,20 +136,20 @@ namespace casita
         /* compute wait states and edges */
         if ( myStartTime < otherStartTime )
         {
-          Edge* recvRecordEdge = analysis->getEdge( sendRecv.first,
-                                                    sendRecv.second );
+          Edge* recvRecordEdge = commonAnalysis->getEdge( sendRecv.first,
+                                                          sendRecv.second );
           recvRecordEdge->makeBlocking( );
-          sendRecv.first->incCounter( analysis->getCtrTable( ).getCtrId(
+          sendRecv.first->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                         CTR_WAITSTATE ),
                                       otherStartTime - myStartTime );
         }
 
         if ( myStartTime > otherStartTime )
         {
-          distributeBlame( analysis, sendRecv.first,
+          distributeBlame( commonAnalysis, sendRecv.first,
                            myStartTime - otherStartTime, streamWalkCallback );
 
-          analysis->getMPIAnalysis( ).addRemoteMPIEdge(
+          commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
             sendRecv.second,
             otherEnterId,
             partnerProcessIdSend,

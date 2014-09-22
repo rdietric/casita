@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "AbstractRule.hpp"
-#include "graph/GraphNode.hpp"
+#include "IOMPRule.hpp"
+#include "AnalysisParadigmOMP.hpp"
 
 namespace casita
 {
@@ -36,20 +36,24 @@ namespace casita
   }
 
   class OMPTargetRule :
-    public AbstractRule
+    public IOMPRule
   {
     public:
 
       OMPTargetRule( int priority ) :
-        AbstractRule( "OMPTargetRule", priority )
+        IOMPRule( "OMPTargetRule", priority )
       {
 
       }
 
+    private:
       bool
-      apply( AnalysisEngine* analysis, GraphNode* node )
+      apply( AnalysisParadigmOMP* analysis, GraphNode* node )
       {
-        EventStream* nodeStream = analysis->getStream( node->getStreamId( ) );
+        AnalysisEngine* commonAnalysis = analysis->getCommon( );
+
+        EventStream*    nodeStream     = commonAnalysis->getStream(
+          node->getStreamId( ) );
 
         if ( node->isEnter( ) )
         {
@@ -109,7 +113,7 @@ namespace casita
                                     targetHostWalkCallback,
                                     &waitsStateNodesList );
 
-          uint32_t ctrIdWaitState = analysis->getCtrTable( ).getCtrId(
+          uint32_t ctrIdWaitState = commonAnalysis->getCtrTable( ).getCtrId(
             CTR_WAITSTATE );
 
           for ( GraphNode::GraphNodeList::const_iterator iter =
@@ -121,11 +125,8 @@ namespace casita
 
             if ( next_iter != waitsStateNodesList.end( ) )
             {
-              std::cout << "blocking " <<
-              ( *current_iter )->getUniqueName( ).c_str( ) << ", " <<
-              ( *next_iter )->getUniqueName( ).c_str( ) << std::endl;
-
-              analysis->getEdge( *current_iter, *next_iter )->makeBlocking( );
+              commonAnalysis->getEdge( *current_iter,
+                                       *next_iter )->makeBlocking( );
 
               ( *current_iter )->setCounter( ctrIdWaitState,
                                              ( *next_iter )->getTime( ) -
@@ -134,13 +135,18 @@ namespace casita
           }
 
           /* add dependency edges */
-          analysis->newEdge( targetBegin,
-                             firstEventNode,
-                             EDGE_NONE );
+          commonAnalysis->newEdge( targetBegin,
+                                   firstEventNode,
+                                   EDGE_NONE )->getName( );
 
-          analysis->newEdge( lastEventNode,
-                             node,
-                             EDGE_CAUSES_WAITSTATE );
+          commonAnalysis->newEdge( lastEventNode,
+                                   node,
+                                   EDGE_CAUSES_WAITSTATE )->getName( );
+
+          distributeBlame( commonAnalysis,
+                           lastEventNode,
+                           node->getTime( ) - node->getPartner( )->getTime( ),
+                           deviceStreamWalkCallback );
 
           return true;
         }

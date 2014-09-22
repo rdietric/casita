@@ -124,7 +124,16 @@ namespace casita
          }
        }
 
-       name << ")]";
+       name << ") ";
+
+       if ( isInterProcessEdge( ) )
+       {
+         name << "(inter)]";
+       }
+       else
+       {
+         name << "(intra)]";
+       }
 
        return name.str( );
      }

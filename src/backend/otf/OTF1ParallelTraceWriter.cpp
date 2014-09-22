@@ -21,6 +21,7 @@
 #include "FunctionTable.hpp"
 #include "otf/ITraceReader.hpp"
 #include "EventStream.hpp"
+#include "utils/ErrorUtils.hpp"
 
 using namespace casita;
 using namespace casita::io;
@@ -44,10 +45,12 @@ OTF1ParallelTraceWriter::OTF1ParallelTraceWriter( const char* streamRefKeyName,
                                                   const char* funcResultKeyName,
                                                   uint32_t    mpiRank,
                                                   uint32_t    mpiSize,
-                                                  const char* originalFilename )
+                                                  const char* originalFilename,
+                                                  bool        writeToFile )
   :
     IParallelTraceWriter( streamRefKeyName, eventRefKeyName, funcResultKeyName,
                           mpiRank, mpiSize ),
+    writeToFile( writeToFile ),
     totalNumStreams( 0 ),
     fileMgr( NULL ),
     kvList( NULL ),
@@ -123,16 +126,22 @@ OTF1ParallelTraceWriter::close( )
   /* close global writer */
   if ( mpiRank == 0 )
   {
-    OTF_CHECK( OTF_Writer_close( globalWriter ) );
+    if ( writeToFile )
+    {
+      OTF_CHECK( OTF_Writer_close( globalWriter ) );
+    }
     copyMasterControl( );
   }
 
   /* close all local writers */
-  for ( std::map< uint32_t, OTF_WStream_ptr >::const_iterator iter =
-          processWStreamMap.begin( );
-        iter != processWStreamMap.end( ); ++iter )
+  if ( writeToFile )
   {
-    OTF_CHECK( OTF_WStream_close( iter->second ) );
+    for ( std::map< uint32_t, OTF_WStream_ptr >::const_iterator iter =
+            processWStreamMap.begin( );
+          iter != processWStreamMap.end( ); ++iter )
+    {
+      OTF_CHECK( OTF_WStream_close( iter->second ) );
+    }
   }
 
   OTF_KeyValueList_close( kvList );
@@ -146,14 +155,18 @@ void
 OTF1ParallelTraceWriter::copyGlobalDefinitions( )
 {
 
-  OTF_Reader* reader         = OTF_Reader_open( originalFilename.c_str( ), fileMgr );
+  OTF_Reader* reader         = OTF_Reader_open(
+    originalFilename.c_str( ), fileMgr );
 
   OTF_HandlerArray* handlers = OTF_HandlerArray_open( );
 
   if ( mpiRank == 0 )
   {
-    globalWriter = OTF_Writer_open(
-      outputFilename.c_str( ), totalNumStreams, fileMgr );
+    if ( writeToFile )
+    {
+      globalWriter = OTF_Writer_open(
+        outputFilename.c_str( ), totalNumStreams, fileMgr );
+    }
 
     OTF_HandlerArray_setHandler(
       handlers,
@@ -260,7 +273,7 @@ OTF1ParallelTraceWriter::copyGlobalDefinitions( )
 
   OTF_CHECK( OTF_Reader_close( reader ) );
 
-  if ( mpiRank == 0 )
+  if ( mpiRank == 0 && writeToFile )
   {
     OTF_CHECK( OTF_Writer_writeDefKeyValue( globalWriter, 0, streamRefKey,
                                             OTF_UINT32,
@@ -283,7 +296,11 @@ OTF1ParallelTraceWriter::copyMasterControl( )
   OTF_MasterControl* mc = OTF_MasterControl_new( fileMgr );
 
   OTF_CHECK( OTF_MasterControl_read( mc, originalFilename.c_str( ) ) );
-  OTF_CHECK( OTF_MasterControl_write( mc, outputFilename.c_str( ) ) );
+
+  if ( writeToFile )
+  {
+    OTF_CHECK( OTF_MasterControl_write( mc, outputFilename.c_str( ) ) );
+  }
 
   OTF_MasterControl_close( mc );
 }
@@ -296,8 +313,12 @@ void
 OTF1ParallelTraceWriter::writeDefProcess( uint64_t id, uint64_t parentId,
                                           const char* name, ProcessGroup pg )
 {
-
   uint32_t otf1_id        = (uint32_t)id;
+
+  if ( !writeToFile )
+  {
+    return;
+  }
 
   /* create local writer for process id */
   OTF_WStream_ptr wstream = OTF_WStream_open(
@@ -315,7 +336,7 @@ OTF1ParallelTraceWriter::writeDefCounter( uint32_t    id,
                                           const char* name,
                                           int         properties )
 {
-  if ( mpiRank == 0 )
+  if ( mpiRank == 0 && writeToFile )
   {
     OTF_CHECK( OTF_Writer_writeDefCounter( globalWriter, 0, id, name,
                                            properties, 0, 0 ) );
@@ -348,9 +369,9 @@ OTF1ParallelTraceWriter::writeProcess( uint64_t                          process
                                                           MISC_PROCESS );
 
   OTF1Event event;
-  event.location         = processId;
-  event.type             = OTF1_MISC;
-  event.time             = 0;
+  event.location = processId;
+  event.type     = OTF1_MISC;
+  event.time     = 0;
   lastCPUEventPerProcess[processId] = event;
 
   if ( verbose )
@@ -360,19 +381,23 @@ OTF1ParallelTraceWriter::writeProcess( uint64_t                          process
   }
 
   /* create writer for this process */
+  assert( nodes );
   processNodes           = nodes;
   this->enableWaitStates = enableWaitStates;
   iter = processNodes->begin( );
   /* skip first processNode for main processes, since it did not
    * appear in original trace */
-  if ( ( *iter )->getType( ) == MISC_PROCESS )
+  if ( iter != processNodes->end( ) )
   {
-    iter++;
+    if ( ( *iter )->getType( ) == MISC_PROCESS )
+    {
+      iter++;
+    }
   }
   lastGraphNode          = pLastGraphNode;
   this->verbose          = verbose;
-  this->graph            = graph;
-  cTable = ctrTable;
+  this->graph = graph;
+  cTable      = ctrTable;
 
   uint32_t otf1_id           = (uint32_t)processId;
 
@@ -481,23 +506,26 @@ OTF1ParallelTraceWriter::processCPUEvent( OTF1Event event )
     }
 
     /* Write buffered CPU-event */
-    if ( bufferedCPUEvent.type == OTF1_ENTER )
+    if ( writeToFile )
     {
-      OTF_CHECK( OTF_WStream_writeEnter( wstream, bufferedCPUEvent.time,
-                                         bufferedCPUEvent.regionRef,
-                                         bufferedCPUEvent.location, 0 ) );
-    }
-    if ( bufferedCPUEvent.type == OTF1_LEAVE )
-    {
-      OTF_CHECK( OTF_WStream_writeLeave( wstream, bufferedCPUEvent.time,
-                                         bufferedCPUEvent.regionRef,
-                                         bufferedCPUEvent.location, 0 ) );
-    }
+      if ( bufferedCPUEvent.type == OTF1_ENTER )
+      {
+        OTF_CHECK( OTF_WStream_writeEnter( wstream, bufferedCPUEvent.time,
+                                           bufferedCPUEvent.regionRef,
+                                           bufferedCPUEvent.location, 0 ) );
+      }
+      if ( bufferedCPUEvent.type == OTF1_LEAVE )
+      {
+        OTF_CHECK( OTF_WStream_writeLeave( wstream, bufferedCPUEvent.time,
+                                           bufferedCPUEvent.regionRef,
+                                           bufferedCPUEvent.location, 0 ) );
+      }
 
-    OTF_CHECK( OTF_WStream_writeCounter( wstream, bufferedCPUEvent.time,
-                                         bufferedCPUEvent.location,
-                                         cTable->getCtrId( CTR_CRITICALPATH ),
-                                         ctrVal ) );
+      OTF_CHECK( OTF_WStream_writeCounter( wstream, bufferedCPUEvent.time,
+                                           bufferedCPUEvent.location,
+                                           cTable->getCtrId( CTR_CRITICALPATH ),
+                                           ctrVal ) );
+    }
 
     if ( bufferedCPUEvent.type == OTF1_LEAVE &&
          ( bufferedCPUEvent.regionRef != event.regionRef ) )
@@ -510,15 +538,6 @@ OTF1ParallelTraceWriter::processCPUEvent( OTF1Event event )
           /* std::cout << "[" << mpiRank << "] time on CP " << */
           /*        ctrVal* (bufferedCPUEvent.time - */
           /*
-           *
-           *
-           *
-           *
-           *
-           *
-           *
-           *
-           *
            *   activityGroupMap[bufferedCPUEvent.regionRef].lastEnter) */
           /*        << "from LAST Enter" */
           /* << " to leave " <<
@@ -598,8 +617,6 @@ OTF1ParallelTraceWriter::processNextNode( OTF1Event event )
 
   if ( iter == processNodes->end( ) )
   {
-    std::cout << "[" << mpiRank << "] reached end of processNodes at " <<
-    event.time << std::endl;
     if ( event.type == OTF1_ENTER )
     {
       activityGroupMap[event.regionRef].lastEnter = event.time;
@@ -715,28 +732,30 @@ OTF1ParallelTraceWriter::processNextNode( OTF1Event event )
   }
 
   /* find next connected node on critical path */
-  GraphNode*      futureCPNode = NULL;
-  Graph::EdgeList outEdges;
+  GraphNode* futureCPNode = NULL;
+
   if ( graph->hasOutEdges( (GraphNode*)node ) )
   {
-    outEdges = graph->getOutEdges( (GraphNode*)node );
-  }
+    const Graph::EdgeList& outEdges          = graph->getOutEdges( (GraphNode*)node );
 
-  Graph::EdgeList::const_iterator edgeIter = outEdges.begin( );
-  uint64_t timeNextCPNode      = 0;
-  uint32_t cpCtrId = cTable->getCtrId( CTR_CRITICALPATH );
+    Graph::EdgeList::const_iterator edgeIter = outEdges.begin( );
+    uint64_t timeNextCPNode = 0;
+    uint32_t cpCtrId        = cTable->getCtrId( CTR_CRITICALPATH );
 
-  while ( edgeIter != outEdges.end( ) && !outEdges.empty( ) )
-  {
-    GraphNode* edgeEndNode = ( *edgeIter )->getEndNode( );
-
-    if ( ( edgeEndNode->getCounter( cpCtrId, NULL ) == 1 ) &&
-         ( ( timeNextCPNode > edgeEndNode->getTime( ) ) || timeNextCPNode == 0 ) )
+    while ( edgeIter != outEdges.end( ) && !outEdges.empty( ) )
     {
-      futureCPNode   = edgeEndNode;
-      timeNextCPNode = futureCPNode->getTime( );
+      GraphNode* edgeEndNode = ( *edgeIter )->getEndNode( );
+      UTILS_ASSERT( edgeEndNode, "Edge %s does not have an end node",
+                    ( *edgeIter )->getName( ).c_str( ) );
+
+      if ( ( edgeEndNode->getCounter( cpCtrId, NULL ) == 1 ) &&
+           ( ( timeNextCPNode > edgeEndNode->getTime( ) ) || timeNextCPNode == 0 ) )
+      {
+        futureCPNode   = edgeEndNode;
+        timeNextCPNode = futureCPNode->getTime( );
+      }
+      ++edgeIter;
     }
-    ++edgeIter;
   }
 
   if ( node->isEnter( ) || node->isLeave( ) )
@@ -809,14 +828,9 @@ OTF1ParallelTraceWriter::writeNode( GraphNode*       node,
                                     bool             lastProcessNode,
                                     const GraphNode* futureNode )
 {
-  uint32_t        processId         = (uint32_t)node->getStreamId( );
-  OTF_WStream_ptr wstream           = processWStreamMap[processId];
-  uint64_t        nodeTime          = node->getTime( );
-
-  /* Add Blame for area since last event */
-  OTF1Event       bufferedCPUEvent  = lastCPUEventPerProcess[node->getStreamId( )];
-  GraphNode*      lastProcessedNode =
-    lastProcessedNodePerProcess[node->getStreamId( )];
+  uint32_t processId      = (uint32_t)node->getStreamId( );
+  OTF_WStream_ptr wstream = processWStreamMap[processId];
+  uint64_t nodeTime       = node->getTime( );
 
   /* Add Blame for area since last event */
   if ( !( currentStackLevel > currentlyRunningCPUFunctions.size( ) ) &&
@@ -828,34 +842,37 @@ OTF1ParallelTraceWriter::writeNode( GraphNode*       node,
   if ( node->isEnter( ) || node->isLeave( ) )
   {
 
-    if ( (uint32_t)node->getReferencedStreamId( ) != 0 )
+    if ( writeToFile )
     {
-      OTF_KeyValueList_appendUint32( kvList, streamRefKey,
-                                     (uint32_t)node->getReferencedStreamId( ) );
-    }
-
-    if ( node->isEventNode( ) )
-    {
-      EventNode* eNode    = (EventNode*)node;
-      OTF_KeyValueList_appendUint32( kvList, eventRefKey, eNode->getEventId( ) );
-      CUresult   cuResult = CUDA_ERROR_NOT_READY;
-      if ( eNode->getFunctionResult( ) == EventNode::FR_SUCCESS )
+      if ( (uint32_t)node->getReferencedStreamId( ) != 0 )
       {
-        cuResult = CUDA_SUCCESS;
+        OTF_KeyValueList_appendUint32( kvList, streamRefKey,
+                                       (uint32_t)node->getReferencedStreamId( ) );
       }
-      OTF_KeyValueList_appendUint32( kvList, funcResultKey, cuResult );
-    }
 
-    if ( node->isEnter( ) )
-    {
-      OTF_CHECK( OTF_WStream_writeEnter( wstream, nodeTime,
-                                         (uint32_t)node->getFunctionId( ),
-                                         processId, 0 ) );
-    }
-    else
-    {
-      OTF_CHECK( OTF_WStream_writeLeave( wstream, nodeTime, 0,
-                                         processId, 0 ) );
+      if ( node->isEventNode( ) )
+      {
+        EventNode* eNode    = (EventNode*)node;
+        OTF_KeyValueList_appendUint32( kvList, eventRefKey, eNode->getEventId( ) );
+        CUresult   cuResult = CUDA_ERROR_NOT_READY;
+        if ( eNode->getFunctionResult( ) == EventNode::FR_SUCCESS )
+        {
+          cuResult = CUDA_SUCCESS;
+        }
+        OTF_KeyValueList_appendUint32( kvList, funcResultKey, cuResult );
+      }
+
+      if ( node->isEnter( ) )
+      {
+        OTF_CHECK( OTF_WStream_writeEnter( wstream, nodeTime,
+                                           (uint32_t)node->getFunctionId( ),
+                                           processId, 0 ) );
+      }
+      else
+      {
+        OTF_CHECK( OTF_WStream_writeLeave( wstream, nodeTime, 0,
+                                           processId, 0 ) );
+      }
     }
 
   }
@@ -895,11 +912,14 @@ OTF1ParallelTraceWriter::writeNode( GraphNode*       node,
           ctrValLog10 = std::log10( (double)ctrVal );
         }
 
-        OTF_CHECK( OTF_WStream_writeCounter( wstream, node->getTime( ),
-                                             processId,
-                                             ctrTable.getCtrId(
-                                               CTR_WAITSTATE_LOG10 ),
-                                             ctrValLog10 ) );
+        if ( writeToFile )
+        {
+          OTF_CHECK( OTF_WStream_writeCounter( wstream, node->getTime( ),
+                                               processId,
+                                               ctrTable.getCtrId(
+                                                 CTR_WAITSTATE_LOG10 ),
+                                               ctrValLog10 ) );
+        }
       }
 
       if ( ctrType == CTR_BLAME )
@@ -941,10 +961,13 @@ OTF1ParallelTraceWriter::writeNode( GraphNode*       node,
           ctrValLog10 = std::log10( (double)ctrVal );
         }
 
-        OTF_CHECK( OTF_WStream_writeCounter( wstream, node->getTime( ),
-                                             processId,
-                                             ctrTable.getCtrId( CTR_BLAME_LOG10 ),
-                                             ctrValLog10 ) );
+        if ( writeToFile )
+        {
+          OTF_CHECK( OTF_WStream_writeCounter( wstream, node->getTime( ),
+                                               processId,
+                                               ctrTable.getCtrId( CTR_BLAME_LOG10 ),
+                                               ctrValLog10 ) );
+        }
       }
 
       if ( ctrType == CTR_CRITICALPATH_TIME )
@@ -955,8 +978,11 @@ OTF1ParallelTraceWriter::writeNode( GraphNode*       node,
         continue;
       }
 
-      OTF_CHECK( OTF_WStream_writeCounter( wstream, node->getTime( ),
-                                           processId, ctrId, ctrVal ) );
+      if ( writeToFile )
+      {
+        OTF_CHECK( OTF_WStream_writeCounter( wstream, node->getTime( ),
+                                             processId, ctrId, ctrVal ) );
+      }
 
       if ( ( ctrType == CTR_CRITICALPATH ) && ( ctrVal == 1 ) )
       {
@@ -982,8 +1008,11 @@ OTF1ParallelTraceWriter::writeNode( GraphNode*       node,
 
         if ( lastProcessNode )
         {
-          OTF_CHECK( OTF_WStream_writeCounter( wstream, node->getTime( ),
-                                               processId, ctrId, 0 ) );
+          if ( writeToFile )
+          {
+            OTF_CHECK( OTF_WStream_writeCounter( wstream, node->getTime( ),
+                                                 processId, ctrId, 0 ) );
+          }
           lastTimeOnCriticalPath[node->getStreamId( )] = 0;
         }
 
@@ -993,8 +1022,11 @@ OTF1ParallelTraceWriter::writeNode( GraphNode*       node,
                                        ( futureNode->getStreamId( ) !=
                                          processId ) ) )
         {
-          OTF_CHECK( OTF_WStream_writeCounter( wstream, node->getTime( ),
-                                               processId, ctrId, 0 ) );
+          if ( writeToFile )
+          {
+            OTF_CHECK( OTF_WStream_writeCounter( wstream, node->getTime( ),
+                                                 processId, ctrId, 0 ) );
+          }
 
           lastTimeOnCriticalPath[node->getStreamId( )] = 0;
         }
@@ -1013,11 +1045,6 @@ OTF1ParallelTraceWriter::writeNode( GraphNode*       node,
                                                           - std::max(
               activityGroupMap[*fIter].lastEnter,
               lastTimeOnCriticalPath[node->getStreamId( )] );
-            /* std::cout << "[" << mpiRank << "] + Time on CP " <<
-             * node->getTime() */
-            /*        - std::max(activityGroupMap[*fIter].lastEnter,
-             * lastTimeOnCriticalPath[node->getStreamId()]) << " to " */
-            /*    << regionNameList[*fIter] << std::endl; */
           }
         }
 
@@ -1045,7 +1072,6 @@ OTF1ParallelTraceWriter::assignBlame( uint64_t currentTime,
     return;
   }
 
-  bool     valid;
   uint32_t fId            = currentlyRunningCPUFunctions.back( );
   uint64_t totalBlame     = 0;
   uint64_t edgeBlame      = 0;
@@ -1060,11 +1086,6 @@ OTF1ParallelTraceWriter::assignBlame( uint64_t currentTime,
     if ( edge->getEndNode( )->getTime( ) > lastProcessedNode->getTime( ) )
     {
       edgeBlame += edge->getCPUBlame( );
-      /* std::cout << "[" << mpiRank << "] Blame " <<
-       * edge->getCPUBlame() << " from " <<
-       * edge->getStartNode()->getUniqueName() */
-      /*        << " -> " << edge->getEndNode()->getUniqueName() <<
-       * std::endl; */
       if ( ( edge->getDuration( ) > 0 ) &&
            ( edge->getStartNode( )->getTime( ) < currentTime ) )
       {
@@ -1082,25 +1103,25 @@ OTF1ParallelTraceWriter::assignBlame( uint64_t currentTime,
 
   activityGroupMap[fId].totalBlame += totalBlame;
 
-  /* std::cout << "[" << mpiRank << "] write blame " << totalBlame <<
-   * " to " << blameAreaStart << " fid " << fId << " " */
-  /*        << idStringMap[regionNameIdList[fId]] << " on " <<
-   * bufferedCPUEvent.location << " timeDiff " << timeDiff <<
-   * std::endl; */
-
-  OTF_CHECK( OTF_WStream_writeCounter( wstream, blameAreaStart,
-                                       bufferedCPUEvent.location,
-                                       cTable->getCtrId(
-                                         CTR_BLAME ), totalBlame ) );
+  if ( writeToFile )
+  {
+    OTF_CHECK( OTF_WStream_writeCounter( wstream, blameAreaStart,
+                                         bufferedCPUEvent.location,
+                                         cTable->getCtrId(
+                                           CTR_BLAME ), totalBlame ) );
+  }
   if ( totalBlame > 0 )
   {
     totalBlame = std::log10( (double)totalBlame );
   }
 
-  OTF_CHECK( OTF_WStream_writeCounter( wstream, blameAreaStart,
-                                       bufferedCPUEvent.location,
-                                       cTable->getCtrId(
-                                         CTR_BLAME_LOG10 ), totalBlame ) );
+  if ( writeToFile )
+  {
+    OTF_CHECK( OTF_WStream_writeCounter( wstream, blameAreaStart,
+                                         bufferedCPUEvent.location,
+                                         cTable->getCtrId(
+                                           CTR_BLAME_LOG10 ), totalBlame ) );
+  }
 
 }
 
@@ -1116,10 +1137,14 @@ OTF1ParallelTraceWriter::otf1HandleDefProcess( void*                    userData
                                                uint32_t                 parent,
                                                OTF_KeyValueList_struct* list )
 {
+
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
 
-  OTF_CHECK( OTF_Writer_writeDefProcess( writer->globalWriter, stream,
-                                         processId, name, parent ) );
+  if ( writer->writeToFile )
+  {
+    OTF_CHECK( OTF_Writer_writeDefProcess( writer->globalWriter, stream,
+                                           processId, name, parent ) );
+  }
 
   return OTF_RETURN_OK;
 }
@@ -1133,6 +1158,7 @@ OTF1ParallelTraceWriter::otf1HandleDefProcessGroup( void*             userData,
                                                     const uint32_t*   procs,
                                                     OTF_KeyValueList* list )
 {
+
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
 
   for ( uint32_t i = 0; i < numberOfProcs; i++ )
@@ -1140,7 +1166,7 @@ OTF1ParallelTraceWriter::otf1HandleDefProcessGroup( void*             userData,
     writer->processGroupProcessListMap[procGroup].push_back( procs[i] );
   }
 
-  if ( writer->mpiRank == 0 )
+  if ( writer->mpiRank == 0 && writer->writeToFile )
   {
     OTF_CHECK( OTF_Writer_writeDefProcessGroupKV( writer->globalWriter,
                                                   stream, procGroup, name,
@@ -1191,7 +1217,7 @@ OTF1ParallelTraceWriter::otf1HandleDefProcessOrGroupAttributes( void*    userDat
     }
   }
 
-  if ( writer->mpiRank == 0 )
+  if ( writer->mpiRank == 0 && writer->writeToFile )
   {
     OTF_CHECK( OTF_Writer_writeDefProcessOrGroupAttributesKV( writer->
                                                               globalWriter,
@@ -1218,7 +1244,7 @@ OTF1ParallelTraceWriter::otf1HandleDefAttributeList( void*             userData,
     writer->attrListMap[attr_token].push_back( array[i] );
   }
 
-  if ( writer->mpiRank == 0 )
+  if ( writer->mpiRank == 0 && writer->writeToFile )
   {
     OTF_CHECK( OTF_Writer_writeDefAttributeListKV( writer->globalWriter,
                                                    stream, attr_token, num,
@@ -1242,7 +1268,7 @@ OTF1ParallelTraceWriter::otf1HandleDefFunction( void*             userData,
 
   writer->regionNameList[func] = name;
 
-  if ( writer->mpiRank == 0 )
+  if ( writer->mpiRank == 0 && writer->writeToFile )
   {
     OTF_CHECK( OTF_Writer_writeDefFunctionKV( writer->globalWriter, stream,
                                               func, name, funcGroup, source,
@@ -1261,8 +1287,11 @@ OTF1ParallelTraceWriter::otf1HandleDefFunctionGroup( void*             userData,
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
 
-  OTF_CHECK( OTF_Writer_writeDefFunctionGroupKV( writer->globalWriter,
-                                                 stream, funcGroup, name, list ) );
+  if ( writer->writeToFile )
+  {
+    OTF_CHECK( OTF_Writer_writeDefFunctionGroupKV( writer->globalWriter,
+                                                   stream, funcGroup, name, list ) );
+  }
 
   return OTF_RETURN_OK;
 }
@@ -1278,9 +1307,12 @@ OTF1ParallelTraceWriter::otf1HandleDefKeyValue( void*             userData,
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
 
-  OTF_CHECK( OTF_Writer_writeDefKeyValueKV( writer->globalWriter,
-                                            stream, key, type, name,
-                                            description, list ) );
+  if ( writer->writeToFile )
+  {
+    OTF_CHECK( OTF_Writer_writeDefKeyValueKV( writer->globalWriter,
+                                              stream, key, type, name,
+                                              description, list ) );
+  }
 
   return OTF_RETURN_OK;
 }
@@ -1295,7 +1327,7 @@ OTF1ParallelTraceWriter::otf1HandleDefTimerResolution( void*             userDat
 
   writer->timerResolution = ticksPerSecond;
 
-  if ( writer->mpiRank == 0 )
+  if ( writer->mpiRank == 0 && writer->writeToFile )
   {
     OTF_CHECK( OTF_Writer_writeDefTimerResolution( writer->globalWriter,
                                                    stream, ticksPerSecond ) );
@@ -1330,9 +1362,12 @@ OTF1ParallelTraceWriter::otf1HandleEnter( void*             userData,
 
   if ( !writer->processNextNode( event ) )
   {
-    OTF_CHECK( OTF_WStream_writeEnterKV( writer->processWStreamMap[processId],
-                                         time, functionId,
-                                         processId, source, list ) );
+    if ( writer->writeToFile )
+    {
+      OTF_CHECK( OTF_WStream_writeEnterKV( writer->processWStreamMap[processId],
+                                           time, functionId,
+                                           processId, source, list ) );
+    }
   }
 
   return OTF_RETURN_OK;
@@ -1358,9 +1393,12 @@ OTF1ParallelTraceWriter::otf1HandleLeave( void*             userData,
 
   if ( !writer->processNextNode( event ) )
   {
-    OTF_CHECK( OTF_WStream_writeLeaveKV( writer->processWStreamMap[processId],
-                                         time, functionId,
-                                         processId, source, list ) );
+    if ( writer->writeToFile )
+    {
+      OTF_CHECK( OTF_WStream_writeLeaveKV( writer->processWStreamMap[processId],
+                                           time, functionId,
+                                           processId, source, list ) );
+    }
   }
 
   return OTF_RETURN_OK;
@@ -1379,9 +1417,12 @@ OTF1ParallelTraceWriter::otf1HandleSendMsg( void*             userData,
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
 
-  OTF_CHECK( OTF_WStream_writeSendMsgKV( writer->processWStreamMap[sender],
-                                         time, sender, receiver,
-                                         group, type, length, source, list ) );
+  if ( writer->writeToFile )
+  {
+    OTF_CHECK( OTF_WStream_writeSendMsgKV( writer->processWStreamMap[sender],
+                                           time, sender, receiver,
+                                           group, type, length, source, list ) );
+  }
 
   return OTF_RETURN_OK;
 
@@ -1400,9 +1441,12 @@ OTF1ParallelTraceWriter::otf1HandleRecvMsg( void*             userData,
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
 
-  OTF_CHECK( OTF_WStream_writeRecvMsgKV( writer->processWStreamMap[receiver],
-                                         time, receiver, sender,
-                                         group, type, length, source, list ) );
+  if ( writer->writeToFile )
+  {
+    OTF_CHECK( OTF_WStream_writeRecvMsgKV( writer->processWStreamMap[receiver],
+                                           time, receiver, sender,
+                                           group, type, length, source, list ) );
+  }
 
   return OTF_RETURN_OK;
 }
@@ -1424,25 +1468,16 @@ OTF1ParallelTraceWriter::otf1HandleBeginCollectiveOperation( void*    userData,
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
 
-  int OTF_WStream_writeBeginCollectiveOperationKV( OTF_WStream * wstream,
-                                                   uint64_t time,
-                                                   uint32_t process,
-                                                   uint32_t collOp,
-                                                   uint64_t matchingId,
-                                                   uint32_t procGroup,
-                                                   uint32_t rootProc,
-                                                   uint64_t sent,
-                                                   uint64_t received,
-                                                   uint32_t scltoken,
-                                                   OTF_KeyValueList * list );
-
-  OTF_CHECK( OTF_WStream_writeBeginCollectiveOperation( writer->
-                                                        processWStreamMap[
-                                                          process], time,
-                                                        process, collOp,
-                                                        matchingId, procGroup,
-                                                        rootProc, sent,
-                                                        received, scltoken ) );
+  if ( writer->writeToFile )
+  {
+    OTF_CHECK( OTF_WStream_writeBeginCollectiveOperation( writer->
+                                                          processWStreamMap[
+                                                            process], time,
+                                                          process, collOp,
+                                                          matchingId, procGroup,
+                                                          rootProc, sent,
+                                                          received, scltoken ) );
+  }
 
   return OTF_RETURN_OK;
 }
@@ -1457,9 +1492,12 @@ OTF1ParallelTraceWriter::otf1HandleEndCollectiveOperation( void*    userData,
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
 
-  OTF_CHECK( OTF_WStream_writeEndCollectiveOperation( writer->processWStreamMap
-                                                      [process], time, process,
-                                                      matchingId ) );
+  if ( writer->writeToFile )
+  {
+    OTF_CHECK( OTF_WStream_writeEndCollectiveOperation( writer->processWStreamMap
+                                                        [process], time, process,
+                                                        matchingId ) );
+  }
 
   return OTF_RETURN_OK;
 }
@@ -1476,9 +1514,12 @@ OTF1ParallelTraceWriter::otf1HandleRMAEnd( void*             userData,
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
 
-  OTF_CHECK( OTF_WStream_writeRMAEndKV( writer->processWStreamMap[process],
-                                        time, process, remote,
-                                        communicator, tag, source, list ) );
+  if ( writer->writeToFile )
+  {
+    OTF_CHECK( OTF_WStream_writeRMAEndKV( writer->processWStreamMap[process],
+                                          time, process, remote,
+                                          communicator, tag, source, list ) );
+  }
 
   return OTF_RETURN_OK;
 }
@@ -1497,10 +1538,13 @@ OTF1ParallelTraceWriter::otf1HandleRMAGet( void*             userData,
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
 
-  OTF_CHECK( OTF_WStream_writeRMAGetKV( writer->processWStreamMap[process],
-                                        time, process, origin,
-                                        target, communicator, tag, bytes,
-                                        source, list ) );
+  if ( writer->writeToFile )
+  {
+    OTF_CHECK( OTF_WStream_writeRMAGetKV( writer->processWStreamMap[process],
+                                          time, process, origin,
+                                          target, communicator, tag, bytes,
+                                          source, list ) );
+  }
 
   return OTF_RETURN_OK;
 }
@@ -1519,10 +1563,13 @@ OTF1ParallelTraceWriter::otf1HandleRMAPut( void*             userData,
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
 
-  OTF_CHECK( OTF_WStream_writeRMAPutKV( writer->processWStreamMap[process],
-                                        time, process, origin,
-                                        target, communicator, tag, bytes,
-                                        source, list ) );
+  if ( writer->writeToFile )
+  {
+    OTF_CHECK( OTF_WStream_writeRMAPutKV( writer->processWStreamMap[process],
+                                          time, process, origin,
+                                          target, communicator, tag, bytes,
+                                          source, list ) );
+  }
 
   return OTF_RETURN_OK;
 }

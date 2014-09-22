@@ -175,7 +175,8 @@ namespace casita
 
  static const char   NAME_WAITSTATE[]     = "WaitState";
  static const char   NAME_MPI_INIT[]      = "MPI_Init";
- static const char   NAME_MPI_FINALIZE[]  = "MPI_Finalize";
+ static const char   NAME_MPI_FINALIZE[]  =
+   "MPI_Finalize";
 
  class Node
  {
@@ -529,16 +530,22 @@ namespace casita
                 ( ( n1->getFunctionId( ) == n2->getFunctionId( ) ) &&
                   strcmp( n1->getName( ), n2->getName( ) ) == 0 ) )
            {
+             /* Caution: this branch used to do the opposite
+              * we changed it to this case because we need to process
+              * omp barriers that might be right after each other
+              * In this case they would be identical and the first leave and
+              * second enter have the same timestamp
+              */
              if ( ( recordType1 == RECORD_LEAVE ) &&
                   ( recordType2 == RECORD_ENTER ) )
              {
-               return false;
+               return true;
              }
 
              if ( ( recordType1 == RECORD_ENTER ) &&
                   ( recordType2 == RECORD_LEAVE ) )
              {
-               return true;
+               return false;
              }
            }
            else
@@ -608,6 +615,7 @@ namespace casita
      virtual
      ~Node( )
      {
+       counters.clear( );
      }
 
      uint32_t

@@ -12,9 +12,9 @@
 
 #pragma once
 
-#include "AbstractRule.hpp"
-#include "OMPRulesCommon.hpp"
-#include "BlameDistribution.hpp"
+#include "IOMPRule.hpp"
+#include "AnalysisParadigmOMP.hpp"
+#include "utils/ErrorUtils.hpp"
 
 namespace casita
 {
@@ -22,26 +22,31 @@ namespace casita
  {
 
   class OMPBarrierRule :
-    public AbstractRule
+    public IOMPRule
   {
     public:
 
       OMPBarrierRule( int priority ) :
-        AbstractRule( "OMPBarrierRule", priority )
+        IOMPRule( "OMPBarrierRule", priority )
       {
 
       }
 
+    private:
+
       bool
-      apply( AnalysisEngine* analysis, GraphNode* node )
+      apply( AnalysisParadigmOMP* analysis, GraphNode* node )
       {
         if ( !node->isOMPSync( ) || !node->isLeave( ) )
         {
           return false;
         }
 
-        GraphNode*   enterEvent = node->getPartner( );
-        EventStream* nodeStream = analysis->getStream( node->getStreamId( ) );
+        AnalysisEngine* commonAnalysis = analysis->getCommon( );
+
+        GraphNode*      enterEvent     = node->getPartner( );
+        EventStream*    nodeStream     = commonAnalysis->getStream(
+          node->getStreamId( ) );
 
         if ( nodeStream->isDeviceStream( ) )
         {
@@ -52,12 +57,12 @@ namespace casita
         analysis->addBarrierEventToList( enterEvent, false );
 
         const EventStreamGroup::EventStreamList& streams =
-          analysis->getHostStreams( );
+          commonAnalysis->getHostStreams( );
         const GraphNode::GraphNodeList& barrierList      =
           analysis->getBarrierEventList( false );
 
         GraphNode::GraphNodeList::const_iterator iter    = barrierList.begin( );
-        GraphNode* maxEnterTimeNode = *iter;         /* keep enter
+        GraphNode* maxEnterTimeNode = *iter;                               /* keep enter
                                                       * event with max
                                                       * enter
                                                       * timestamp */
@@ -67,7 +72,7 @@ namespace casita
         /* check if all barriers were passed */
         if ( streams.size( ) == barrierList.size( ) )
         {
-          uint32_t ctrIdWaitState = analysis->getCtrTable( ).getCtrId(
+          uint32_t ctrIdWaitState = commonAnalysis->getCtrTable( ).getCtrId(
             CTR_WAITSTATE );
 
           /* find last barrierEnter */
@@ -86,8 +91,11 @@ namespace casita
             GraphNode::GraphNodePair& barrier = ( *iter )->getGraphPair( );
             if ( barrier.first != maxEnterTimeNode )
             {
-              Edge* barrierEdge = analysis->getEdge( barrier.first,
-                                                     barrier.second );
+              Edge* barrierEdge = commonAnalysis->getEdge( barrier.first,
+                                                           barrier.second );
+              UTILS_ASSERT( barrierEdge, "no edge %s, %s",
+                            barrier.first->getUniqueName( ).c_str( ),
+                            barrier.second->getUniqueName( ).c_str( ) );
 
               /* make this barrier a blocking waitstate */
               barrierEdge->makeBlocking( );
@@ -96,16 +104,16 @@ namespace casita
                                          barrier.first->getTime( ) );
 
               /* create edge from latest enter to other leaves */
-              analysis->newEdge( maxEnterTimeNode,
-                                 barrier.second,
-                                 EDGE_CAUSES_WAITSTATE );
+              commonAnalysis->newEdge( maxEnterTimeNode,
+                                       barrier.second,
+                                       EDGE_CAUSES_WAITSTATE );
 
               blame += maxEnterTimeNode->getTime( ) - barrier.first->getTime( );
             }
           }
 
           /* set blame */
-          distributeBlame( analysis,
+          distributeBlame( commonAnalysis,
                            maxEnterTimeNode,
                            blame,
                            streamWalkCallback );

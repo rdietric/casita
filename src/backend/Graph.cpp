@@ -27,7 +27,18 @@ Graph::Graph( )
 
 Graph::~Graph( )
 {
+  for ( NodeEdges::const_iterator iter = outEdges.begin( );
+        iter != outEdges.end( ); ++iter )
+  {
+    for ( EdgeList::const_iterator eIter = iter->second.begin( );
+          eIter != iter->second.end( ); ++eIter )
+    {
+      delete*eIter;
+    }
+  }
 
+  outEdges.clear( );
+  inEdges.clear( );
 }
 
 void

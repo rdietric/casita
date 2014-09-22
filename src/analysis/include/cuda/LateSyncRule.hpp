@@ -12,118 +12,127 @@
 
 #pragma once
 
-#include "AbstractRule.hpp"
-#include "graph/GraphNode.hpp"
+#include "ICUDARule.hpp"
+#include "AnalysisParadigmCUDA.hpp"
 
 namespace casita
 {
-
- class LateSyncRule :
-   public AbstractRule
+ namespace cuda
  {
-   public:
+  class LateSyncRule :
+    public ICUDARule
+  {
+    public:
 
-     LateSyncRule( int priority ) :
-       AbstractRule( "LateSyncRule", priority )
-     {
+      LateSyncRule( int priority ) :
+        ICUDARule( "LateSyncRule", priority )
+      {
 
-     }
+      }
 
-     bool
-     apply( AnalysisEngine* analysis, GraphNode* node )
-     {
-       if ( !node->isCUDASync( ) || !node->isLeave( ) )
-       {
-         return false;
-       }
+    private:
 
-       /* get the complete execution */
-       GraphNode::GraphNodePair& sync = node->getGraphPair( );
+      bool
+      apply( AnalysisParadigmCUDA* analysis, GraphNode* node )
+      {
+        if ( !node->isCUDASync( ) || !node->isLeave( ) )
+        {
+          return false;
+        }
 
-       bool ruleResult = false;
-       /* find all referenced (device) streams */
-       EventStreamGroup::EventStreamList deviceStreams;
-       analysis->getAllDeviceStreams( deviceStreams );
+        AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-       for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-               deviceStreams.begin( );
-             pIter != deviceStreams.end( );
-             ++pIter )
-       {
-         EventStream* deviceProcess = *pIter;
+        /* get the complete execution */
+        GraphNode::GraphNodePair& sync = node->getGraphPair( );
 
-         if ( !sync.first->referencesStream( deviceProcess->getId( ) ) )
-         {
-           continue;
-         }
+        bool ruleResult = false;
+        /* find all referenced (device) streams */
+        EventStreamGroup::EventStreamList deviceStreams;
+        commonAnalysis->getAllDeviceStreams( deviceStreams );
 
-         /* test that there is a pending kernel leave */
-         GraphNode* kernelLeave     = deviceProcess->getPendingKernel( );
+        for ( EventStreamGroup::EventStreamList::const_iterator pIter =
+                deviceStreams.begin( );
+              pIter != deviceStreams.end( );
+              ++pIter )
+        {
+          EventStream* deviceProcess = *pIter;
 
-         if ( kernelLeave && kernelLeave->getTime( ) <= sync.first->getTime( ) )
-         {
-           printf( "latesync %s\n", kernelLeave->getUniqueName( ).c_str( ) );
-           GraphNode* lastLeaveNode = analysis->getLastLeave(
-             sync.second->getTime( ),
-             deviceProcess->
-             getId( ) );
-           GraphNode* waitEnter     = NULL, * waitLeave = NULL;
+          if ( !sync.first->referencesStream( deviceProcess->getId( ) ) )
+          {
+            continue;
+          }
 
-           if ( lastLeaveNode && lastLeaveNode->isWaitstate( ) )
-           {
-             if ( lastLeaveNode->getTime( ) == sync.second->getTime( ) )
-             {
-               waitLeave = lastLeaveNode;
-             }
-             else
-             {
-               waitEnter = analysis->addNewGraphNode(
-                 std::max( lastLeaveNode->getTime( ),
-                           sync.first->getTime( ) ),
-                 deviceProcess, NAME_WAITSTATE,
-                 PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE );
-             }
+          /* test that there is a pending kernel leave */
+          GraphNode* kernelLeave     = deviceProcess->getPendingKernel( );
 
-           }
-           else
-           {
-             waitEnter = analysis->addNewGraphNode(
-               sync.first->getTime( ),
-               deviceProcess, NAME_WAITSTATE,
-               PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE );
-           }
+          if ( kernelLeave && kernelLeave->getTime( ) <= sync.first->getTime( ) )
+          {
+            printf( "latesync %s\n", kernelLeave->getUniqueName( ).c_str( ) );
+            GraphNode* lastLeaveNode = commonAnalysis->getLastLeave(
+              sync.second->getTime( ),
+              deviceProcess->
+              getId( ) );
+            GraphNode* waitEnter     = NULL, * waitLeave = NULL;
 
-           if ( !waitLeave )
-           {
-             waitLeave = analysis->addNewGraphNode(
-               sync.second->getTime( ),
-               deviceProcess, NAME_WAITSTATE,
-               PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE );
-           }
+            if ( lastLeaveNode && lastLeaveNode->isWaitstate( ) )
+            {
+              if ( lastLeaveNode->getTime( ) == sync.second->getTime( ) )
+              {
+                waitLeave = lastLeaveNode;
+              }
+              else
+              {
+                waitEnter = commonAnalysis->addNewGraphNode(
+                  std::max( lastLeaveNode->getTime( ),
+                            sync.first->getTime( ) ),
+                  deviceProcess, NAME_WAITSTATE,
+                  PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE );
+              }
 
-           analysis->newEdge( sync.first, waitEnter, EDGE_CAUSES_WAITSTATE );
-           analysis->newEdge( sync.second, waitLeave );
+            }
+            else
+            {
+              waitEnter = commonAnalysis->addNewGraphNode(
+                sync.first->getTime( ),
+                deviceProcess, NAME_WAITSTATE,
+                PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE );
+            }
 
-           if ( sync.first->isCUDAKernel( ) )
-           {
-             analysis->newEdge( kernelLeave, sync.first );
-           }
+            if ( !waitLeave )
+            {
+              waitLeave = commonAnalysis->addNewGraphNode(
+                sync.second->getTime( ),
+                deviceProcess, NAME_WAITSTATE,
+                PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE );
+            }
 
-           /* set counters */
-           sync.first->incCounter( analysis->getCtrTable( ).getCtrId( CTR_BLAME ),
+            commonAnalysis->newEdge( sync.first,
+                                     waitEnter,
+                                     EDGE_CAUSES_WAITSTATE );
+            commonAnalysis->newEdge( sync.second, waitLeave );
+
+            if ( sync.first->isCUDAKernel( ) )
+            {
+              commonAnalysis->newEdge( kernelLeave, sync.first );
+            }
+
+            /* set counters */
+            sync.first->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
+                                      CTR_BLAME ),
+                                    sync.second->getTime( ) -
+                                    sync.first->getTime( ) );
+            waitEnter->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
+                                     CTR_WAITSTATE ),
                                    sync.second->getTime( ) -
                                    sync.first->getTime( ) );
-           waitEnter->setCounter( analysis->getCtrTable( ).getCtrId(
-                                    CTR_WAITSTATE ),
-                                  sync.second->getTime( ) - sync.first->getTime( ) );
 
-           deviceProcess->clearPendingKernels( );
-           ruleResult = true;
-         }
-       }
+            deviceProcess->clearPendingKernels( );
+            ruleResult = true;
+          }
+        }
 
-       return ruleResult;
-     }
- };
-
+        return ruleResult;
+      }
+  };
+ }
 }

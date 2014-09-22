@@ -12,9 +12,8 @@
 
 #pragma once
 
-#include "AbstractRule.hpp"
-#include "MPIRulesCommon.hpp"
-#include "BlameDistribution.hpp"
+#include "IMPIRule.hpp"
+#include "AnalysisParadigmMPI.hpp"
 
 namespace casita
 {
@@ -22,18 +21,20 @@ namespace casita
  {
 
   class CollectiveRule :
-    public AbstractRule
+    public IMPIRule
   {
     public:
 
       CollectiveRule( int priority ) :
-        AbstractRule( "CollectiveRule", priority )
+        IMPIRule( "CollectiveRule", priority )
       {
 
       }
 
+    private:
+
       bool
-      apply( AnalysisEngine* analysis, GraphNode* node )
+      apply( AnalysisParadigmMPI* analysis, GraphNode* node )
       {
         /* applied at MPI collective leave */
         if ( !node->isMPICollective( ) || !node->isLeave( ) )
@@ -41,26 +42,30 @@ namespace casita
           return false;
         }
 
+        AnalysisEngine* commonAnalysis = analysis->getCommon( );
+
         /* get the complete execution */
-        GraphNode::GraphNodePair coll = node->getGraphPair( );
-        uint32_t mpiGroupId           = node->getReferencedStreamId( );
+        GraphNode::GraphNodePair coll  = node->getGraphPair( );
+        uint32_t mpiGroupId        =
+          node->getReferencedStreamId( );
         const MPIAnalysis::MPICommGroup& mpiCommGroup =
-          analysis->getMPIAnalysis( ).getMPICommGroup( mpiGroupId );
-        uint32_t myMpiRank = analysis->getMPIRank( );
+          commonAnalysis->getMPIAnalysis( ).getMPICommGroup( mpiGroupId );
+        uint32_t myMpiRank         =
+          commonAnalysis->getMPIRank( );
 
         if ( mpiCommGroup.comm == MPI_COMM_SELF )
         {
           return false;
         }
 
-        const uint32_t BUFFER_SIZE    = 7;
-        uint32_t recvBufferSize       = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
+        const uint32_t BUFFER_SIZE = 7;
+        uint32_t recvBufferSize    = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
         uint64_t sendBuffer[BUFFER_SIZE];
-        uint64_t*      recvBuffer     = new uint64_t[recvBufferSize];
+        uint64_t*      recvBuffer  = new uint64_t[recvBufferSize];
         memset( recvBuffer, 0, recvBufferSize * sizeof( uint64_t ) );
 
-        uint64_t collStartTime        = coll.first->getTime( );
-        uint64_t collEndTime          = coll.second->getTime( );
+        uint64_t collStartTime     = coll.first->getTime( );
+        uint64_t collEndTime       = coll.second->getTime( );
 
         /* memcpy(sendBuffer, &collStartTime, sizeof (uint64_t)); */
         /* memcpy(sendBuffer + 2, &collEndTime, sizeof (uint64_t)); */
@@ -115,13 +120,14 @@ namespace casita
            *
            * analysis->newEdge(remoteNode, coll.second);
            **/
-          Edge* collRecordEdge = analysis->getEdge( coll.first, coll.second );
+          Edge* collRecordEdge = commonAnalysis->getEdge( coll.first,
+                                                          coll.second );
           collRecordEdge->makeBlocking( );
-          coll.first->setCounter( analysis->getCtrTable( ).getCtrId(
+          coll.first->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                     CTR_WAITSTATE ),
                                   lastEnterTime - collStartTime );
 
-          analysis->getMPIAnalysis( ).addRemoteMPIEdge(
+          commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
             coll.second,
             lastEnterRemoteNodeId,
             lastEnterProcessId,
@@ -139,7 +145,7 @@ namespace casita
 
             if ( i != myMpiRank )
             {
-              analysis->getMPIAnalysis( ).addRemoteMPIEdge(
+              commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
                 coll.first,
                 recvBuffer[i + 3],
                 recvBuffer[i + 4],
@@ -161,7 +167,7 @@ namespace casita
 
           }
 
-          distributeBlame( analysis,
+          distributeBlame( commonAnalysis,
                            coll.first,
                            total_blame,
                            streamWalkCallback );

@@ -12,9 +12,8 @@
 
 #pragma once
 
-#include "AbstractRule.hpp"
-#include "OMPRulesCommon.hpp"
-#include "BlameDistribution.hpp"
+#include "IOMPRule.hpp"
+#include "AnalysisParadigmOMP.hpp"
 
 namespace casita
 {
@@ -22,25 +21,29 @@ namespace casita
  {
 
   class OMPTargetBarrierRule :
-    public AbstractRule
+    public IOMPRule
   {
     public:
 
       OMPTargetBarrierRule( int priority ) :
-        AbstractRule( "OMPTargetBarrierRule", priority )
+        IOMPRule( "OMPTargetBarrierRule", priority )
       {
 
       }
 
+    private:
       bool
-      apply( AnalysisEngine* analysis, GraphNode* node )
+      apply( AnalysisParadigmOMP* analysis, GraphNode* node )
       {
         if ( !node->isOMPSync( ) )
         {
           return false;
         }
 
-        EventStream* nodeStream = analysis->getStream( node->getStreamId( ) );
+        AnalysisEngine* commonAnalysis = analysis->getCommon( );
+        EventStream*    nodeStream     = commonAnalysis->getStream(
+          node->getStreamId( ) );
+
         if ( !nodeStream->isDeviceStream( ) )
         {
           return false;
@@ -49,10 +52,11 @@ namespace casita
         if ( node->isEnter( ) )
         {
           /* enter */
-          const uint32_t ompParentCtrId = analysis->getCtrTable( ).getCtrId(
-            CTR_OMP_PARENT_REGION_ID );
+          const uint32_t ompRegionCtrId =
+            commonAnalysis->getCtrTable( ).getCtrId( CTR_OMP_REGION_ID );
+
           bool     valid = false;
-          uint64_t matchingId           = node->getCounter( ompParentCtrId, &valid );
+          uint64_t matchingId           = node->getCounter( ompRegionCtrId, &valid );
           if ( !valid )
           {
             ErrorUtils::getInstance( ).throwError(
@@ -70,10 +74,10 @@ namespace casita
         {
           /* leave */
           GraphNode*     enterEvent     = node->getPartner( );
-          const uint32_t ompParentCtrId = analysis->getCtrTable( ).getCtrId(
-            CTR_OMP_PARENT_REGION_ID );
+          const uint32_t ompRegionCtrId =
+            commonAnalysis->getCtrTable( ).getCtrId( CTR_OMP_REGION_ID );
           bool     valid = false;
-          uint64_t matchingId           = enterEvent->getCounter( ompParentCtrId, &valid );
+          uint64_t matchingId           = enterEvent->getCounter( ompRegionCtrId, &valid );
           if ( !valid )
           {
             ErrorUtils::getInstance( ).throwError(
@@ -86,7 +90,7 @@ namespace casita
           analysis->addBarrierEventToList( node, true, matchingId );
 
           const GraphNode::GraphNodeList& barrierList =
-            analysis->getBarrierEventList( true, matchingId );
+            analysis->getBarrierEventList( true, NULL, matchingId );
 
           size_t numLeaveNodesInList = 0;
           for ( GraphNode::GraphNodeList::const_reverse_iterator rIter =
@@ -114,7 +118,12 @@ namespace casita
           /* no wait states for single-stream barriers */
           if ( numLeaveNodesInList == 1 )
           {
-            analysis->clearBarrierEventList( true, matchingId );
+            /* ignore this non-blocking barrier for blame distribution */
+            uint64_t ignoreCtrId = commonAnalysis->getCtrTable( ).getCtrId( CTR_OMP_IGNORE_BARRIER );
+            tmpBarrierList.front( )->setCounter( ignoreCtrId, 1 );
+            tmpBarrierList.back( )->setCounter( ignoreCtrId, 1 );
+
+            analysis->clearBarrierEventList( true, NULL, matchingId );
             return false;
           }
 
@@ -129,8 +138,7 @@ namespace casita
           GraphNode* maxEnterTimeNode = *iter;
           uint64_t   blame = 0;
 
-          uint32_t   ctrIdWaitState   = analysis->getCtrTable( ).getCtrId(
-            CTR_WAITSTATE );
+          uint32_t   ctrIdWaitState   = commonAnalysis->getCtrTable( ).getCtrId( CTR_WAITSTATE );
 
           /* find last barrierEnter */
           for (; iter != tmpBarrierList.end( ); ++iter )
@@ -150,9 +158,8 @@ namespace casita
             GraphNode::GraphNodePair& barrier = ( *iter )->getGraphPair( );
             if ( barrier.first != maxEnterTimeNode )
             {
-              Edge* barrierEdge = analysis->getEdge( barrier.first,
-                                                     barrier.second );
-
+              Edge* barrierEdge = commonAnalysis->getEdge( barrier.first,
+                                                           barrier.second );
               /* make this barrier a blocking waitstate */
               barrierEdge->makeBlocking( );
               barrier.first->setCounter( ctrIdWaitState,
@@ -160,22 +167,21 @@ namespace casita
                                          barrier.first->getTime( ) );
 
               /* create edge from latest enter to other leaves */
-              analysis->newEdge( maxEnterTimeNode,
-                                 barrier.second,
-                                 EDGE_CAUSES_WAITSTATE );
+              commonAnalysis->newEdge( maxEnterTimeNode,
+                                       barrier.second,
+                                       EDGE_CAUSES_WAITSTATE );
 
               blame += maxEnterTimeNode->getTime( ) - barrier.first->getTime( );
             }
           }
 
-          /***\todo set blame */
-          /*distributeBlame( analysis,
+          distributeBlame( commonAnalysis,
                            maxEnterTimeNode,
                            blame,
-                           streamWalkCallback );*/
+                           streamWalkCallback );
 
           /* clear list of buffered barriers */
-          analysis->clearBarrierEventList( true, matchingId );
+          analysis->clearBarrierEventList( true, NULL, matchingId );
 
           return true;
         }
