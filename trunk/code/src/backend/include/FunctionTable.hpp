@@ -29,7 +29,7 @@ namespace casita
 
  typedef struct
  {
-   int type;
+   int          type;
    const size_t numEntries;
    ConstCharPtr table;
  } FTableEntry;
@@ -37,10 +37,10 @@ namespace casita
  typedef struct
  {
    Paradigm paradigm;
-   int type;
+   int      type;
  } FunctionDescriptor;
 
- static const char* FTABLE_CUDA_COLL_SYNC[] =
+ static const char*       FTABLE_CUDA_COLL_SYNC[] =
  {
    "cuCtxSynchronize",
 
@@ -66,17 +66,17 @@ namespace casita
    "cudaSynchronize"
  };
 
- static const char* FTABLE_CUDA_SYNC[] =
+ static const char*       FTABLE_CUDA_SYNC[]         =
  {
    "cuStreamSynchronize",
  };
 
- static const char* FTABLE_CUDA_QUERY[] =
+ static const char*       FTABLE_CUDA_QUERY[]        =
  {
    "cuStreamQuery"
  };
 
- static const char* FTABLE_CUDA_LAUNCH[] =
+ static const char*       FTABLE_CUDA_LAUNCH[]       =
  {
    "cuLaunch",
    "cuLaunchGrid",
@@ -86,53 +86,53 @@ namespace casita
    "cudaLaunch"
  };
 
- static const char* FTABLE_CUDA_EVENT_QUERY[] =
+ static const char*       FTABLE_CUDA_EVENT_QUERY[]  =
  {
    "cuEventQuery"
  };
 
- static const char* FTABLE_CUDA_EVENT_SYNC[] =
+ static const char*       FTABLE_CUDA_EVENT_SYNC[]   =
  {
    "cuEventSynchronize"
  };
 
- static const char* FTABLE_CUDA_EVENT_LAUNCH[] =
+ static const char*       FTABLE_CUDA_EVENT_LAUNCH[] =
  {
    "cuEventRecord"
  };
 
- static const char* FTABLE_CUDA_STREAM_WAIT[] =
+ static const char*       FTABLE_CUDA_STREAM_WAIT[]  =
  {
    "cuStreamWaitEvent"
  };
 
- static const char* FTABLE_CUDA_WAITSTATE[] =
+ static const char*       FTABLE_CUDA_WAITSTATE[]    =
  {
    "__WaitState__"
  };
 
- static const char* FTABLE_MPI_RECV[] =
+ static const char*       FTABLE_MPI_RECV[]          =
  {
    "MPI_Recv"
  };
 
- static const char* FTABLE_MPI_SEND[] =
+ static const char*       FTABLE_MPI_SEND[]          =
  {
    "MPI_Send"
  };
 
- static const char* FTABLE_MPI_WAIT[] =
+ static const char*       FTABLE_MPI_WAIT[]          =
  {
    "MPI_Wait"
  };
 
- static const char* FTABLE_MPI_ASYNC[] =
+ static const char*       FTABLE_MPI_ASYNC[]         =
  {
    "MPI_Isend",
    "MPI_Irecv"
  };
 
- static const char* FTABLE_MPI_COLL[] =
+ static const char*       FTABLE_MPI_COLL[]          =
  {
    "MPI_Barrier",
    "MPI_Allreduce",
@@ -141,35 +141,35 @@ namespace casita
    "MPI_Init"
  };
 
- static const char* FTABLE_MPI_ONETOALL[] =
+ static const char*       FTABLE_MPI_ONETOALL[]      =
  {
    "MPI_Scatter",
    "MPI_Bcast"
  };
 
- static const char* FTABLE_MPI_ALLTOONE[] =
+ static const char*       FTABLE_MPI_ALLTOONE[]      =
  {
    "MPI_Gather",
    "MPI_Reduce",
  };
 
- static const char* FTABLE_MPI_SENDRECV[] =
+ static const char*       FTABLE_MPI_SENDRECV[]      =
  {
    "MPI_Sendrecv"
  };
 
- static const char* FTABLE_MPI_MISC[] =
+ static const char*       FTABLE_MPI_MISC[]          =
  {
 
  };
 
- static const char* FTABLE_VT_FLUSH[] =
+ static const char*       FTABLE_VT_FLUSH[] =
  {
    "flushActivities",
    "sync time"
  };
 
- static const size_t fTableEntriesCUDA = 9;
+ static const size_t      fTableEntriesCUDA = 9;
  static const FTableEntry fTableCUDA[fTableEntriesCUDA] =
  {
    { CUDA_COLLSYNC, 7, FTABLE_CUDA_COLL_SYNC },
@@ -183,7 +183,7 @@ namespace casita
    { CUDA_WAITSTATE, 1, FTABLE_CUDA_WAITSTATE }
  };
 
- static const size_t fTableEntriesMPI = 9;
+ static const size_t      fTableEntriesMPI = 9;
  static const FTableEntry fTableMPI[fTableEntriesMPI] =
  {
    { MPI_RECV, 1, FTABLE_MPI_RECV },
@@ -197,13 +197,13 @@ namespace casita
    { MPI_WAITSTATE, 1, FTABLE_CUDA_WAITSTATE }
  };
 
- static const size_t fTableEntriesMPIAsync = 1;
+ static const size_t      fTableEntriesMPIAsync     = 1;
  static const FTableEntry fTableMPIAsync[fTableEntriesMPIAsync] =
  {
    { MPI_MISC, 2, FTABLE_MPI_ASYNC }
  };
 
- static const size_t fTableEntriesVT = 1;
+ static const size_t      fTableEntriesVT           = 1;
  static const FTableEntry fTableVT[fTableEntriesVT] =
  {
    { VT_FLUSH, 2, FTABLE_VT_FLUSH }
@@ -240,7 +240,7 @@ namespace casita
                          bool deviceStream, bool deviceNullStream )
      {
        descr->paradigm = PARADIGM_CPU;
-       descr->type = 0;
+       descr->type     = 0;
 
        bool set = false;
 
@@ -265,7 +265,7 @@ namespace casita
            if ( strcmp( entry.table[j], name ) == 0 )
            {
              descr->paradigm = PARADIGM_CUDA;
-             descr->type = entry.type;
+             descr->type     = entry.type;
              set = true;
              /* return true; */
            }
@@ -280,7 +280,7 @@ namespace casita
            if ( strcmp( entry.table[j], name ) == 0 )
            {
              descr->paradigm = PARADIGM_MPI;
-             descr->type = entry.type;
+             descr->type     = entry.type;
              set = true;
              /* return true; */
            }
@@ -295,7 +295,7 @@ namespace casita
            if ( strcmp( entry.table[j], name ) == 0 )
            {
              descr->paradigm = PARADIGM_VT;
-             descr->type = entry.type;
+             descr->type     = entry.type;
              set = true;
              /* return true; */
            }
@@ -381,7 +381,7 @@ namespace casita
        if ( strstr( name, "parallel region" ) )
        {
          descr->paradigm = PARADIGM_OMP;
-         descr->type = OMP_PAR_REGION;
+         descr->type     = OMP_PAR_REGION;
          return true;
        }
 
@@ -395,21 +395,21 @@ namespace casita
        /* kernel ? */
        if ( deviceNullStream )
        {
-         descr->type = ( CUDA_KERNEL | CUDA_SYNC | CUDA_COLLSYNC );
+         descr->type     = ( CUDA_KERNEL | CUDA_SYNC | CUDA_COLLSYNC );
          descr->paradigm = PARADIGM_CUDA;
          return true;
        }
 
        if ( deviceStream )
        {
-         descr->type = CUDA_KERNEL;
+         descr->type     = CUDA_KERNEL;
          descr->paradigm = PARADIGM_CUDA;
          return true;
        }
 
        /* anything else */
        descr->paradigm = PARADIGM_CPU;
-       descr->type = MISC_CPU;
+       descr->type     = MISC_CPU;
        return false;
      }
 

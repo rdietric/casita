@@ -28,7 +28,7 @@
 
 using namespace casita::io;
 
-OTF2TraceReader::OTF2TraceReader( void* userData,
+OTF2TraceReader::OTF2TraceReader( void*    userData,
                                   uint32_t mpiRank,
                                   uint32_t mpiSize ) :
   ITraceReader( userData ),
@@ -167,7 +167,7 @@ OTF2TraceReader::readEvents( )
         iter != processNameTokenMap.end( ); ++iter )
   {
     OTF2_DefReader* def_reader = OTF2_Reader_GetDefReader( reader, iter->first );
-    uint64_t def_reads = 0;
+    uint64_t def_reads         = 0;
     OTF2_Reader_ReadAllLocalDefinitions( reader, def_reader, &def_reads );
     OTF2_Reader_CloseDefReader( reader, def_reader );
     OTF2_Reader_GetEvtReader( reader, iter->first );
@@ -175,7 +175,7 @@ OTF2TraceReader::readEvents( )
 
   OTF2_Reader_CloseDefFiles( reader );
 
-  OTF2_GlobalEvtReader* global_evt_reader = OTF2_Reader_GetGlobalEvtReader(
+  OTF2_GlobalEvtReader* global_evt_reader        = OTF2_Reader_GetGlobalEvtReader(
     reader );
 
   OTF2_GlobalEvtReaderCallbacks* event_callbacks =
@@ -230,13 +230,13 @@ OTF2TraceReader::readEventsForProcess( uint64_t id )
   OTF2_Reader_OpenEvtFiles( reader );
 
   OTF2_DefReader* def_reader = OTF2_Reader_GetDefReader( reader, id );
-  uint64_t def_reads = 0;
+  uint64_t def_reads         = 0;
   OTF2_Reader_ReadAllLocalDefinitions( reader, def_reader, &def_reads );
   OTF2_Reader_CloseDefReader( reader, def_reader );
 
   OTF2_Reader_GetEvtReader( reader, id );
 
-  OTF2_GlobalEvtReader* global_evt_reader = OTF2_Reader_GetGlobalEvtReader(
+  OTF2_GlobalEvtReader* global_evt_reader        = OTF2_Reader_GetGlobalEvtReader(
     reader );
 
   OTF2_GlobalEvtReaderCallbacks* event_callbacks =
@@ -342,9 +342,9 @@ OTF2TraceReader::readDefinitions( )
 
   open( baseFilename.c_str( ), 10 );
 
-  processingPhase = 2;
+  processingPhase      = 2;
   /* read definitions (part 2) */
-  global_def_reader = OTF2_Reader_GetGlobalDefReader( reader );
+  global_def_reader    = OTF2_Reader_GetGlobalDefReader( reader );
 
   global_def_callbacks = OTF2_GlobalDefReaderCallbacks_New( );
 
@@ -374,7 +374,7 @@ OTF2TraceReader::readDefinitions( )
   /* add "parallel Region" - region to support internal OMP-fork/join
    * model */
   uint32_t stringSize = definitionTokenStringMap.size( );
-  definitionTokenStringMap[stringSize] = "parallel region";
+  definitionTokenStringMap[stringSize]       = "parallel region";
   ompParallelRegionRef = functionNameTokenMap.size( );
   functionNameTokenMap[ompParallelRegionRef] = stringSize;
 }
@@ -398,17 +398,17 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_ClockProperties( void* userData,
 }
 
 OTF2_CallbackCode
-OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location( void* userData,
+OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location( void*            userData,
                                                         OTF2_LocationRef self,
-                                                        OTF2_StringRef name,
+                                                        OTF2_StringRef   name,
                                                         OTF2_LocationType
                                                         locationType,
-                                                        uint64_t numberOfEvents,
+                                                        uint64_t         numberOfEvents,
                                                         OTF2_LocationGroupRef
                                                         locationGroup )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
-  int phase = tr->getProcessingPhase( );
+  int phase           = tr->getProcessingPhase( );
 
   if ( phase == 1 )
   {
@@ -451,19 +451,19 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location( void* userData,
 }
 
 OTF2_CallbackCode
-OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void* userData,
-                                                     OTF2_GroupRef self,
-                                                     OTF2_StringRef name,
-                                                     OTF2_GroupType groupType,
-                                                     OTF2_Paradigm paradigm,
-                                                     OTF2_GroupFlag groupFlags,
-                                                     uint32_t numberOfMembers,
+OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
+                                                     OTF2_GroupRef   self,
+                                                     OTF2_StringRef  name,
+                                                     OTF2_GroupType  groupType,
+                                                     OTF2_Paradigm   paradigm,
+                                                     OTF2_GroupFlag  groupFlags,
+                                                     uint32_t        numberOfMembers,
                                                      const uint64_t* members )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
   uint64_t* myMembers;
-  myMembers = new uint64_t[numberOfMembers];
+  myMembers                = new uint64_t[numberOfMembers];
 
   for ( uint32_t i = 0; i < numberOfMembers; i++ )
   {
@@ -471,20 +471,20 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void* userData,
   }
 
   OTF2Group myGroup;
-  myGroup.groupId = self;
-  myGroup.members = myMembers;
-  myGroup.numberOfMembers = numberOfMembers;
-  myGroup.paradigm = paradigm;
-  myGroup.stringRef = name;
-  myGroup.groupType = groupType;
-  myGroup.groupFlag = groupFlags;
+  myGroup.groupId          = self;
+  myGroup.members          = myMembers;
+  myGroup.numberOfMembers  = numberOfMembers;
+  myGroup.paradigm         = paradigm;
+  myGroup.stringRef        = name;
+  myGroup.groupType        = groupType;
+  myGroup.groupFlag        = groupFlags;
 
   tr->getGroupMap( )[self] = myGroup;
 
   if ( ( groupType == OTF2_GROUP_TYPE_COMM_LOCATIONS ) &&
        ( paradigm == OTF2_PARADIGM_MPI ) )
   {
-    uint32_t mpiRank = tr->getMPIRank( );
+    uint32_t mpiRank           = tr->getMPIRank( );
 
     if ( numberOfMembers <= tr->getMPIRank( ) )
     {
@@ -514,16 +514,16 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void* userData,
 }
 
 OTF2_CallbackCode
-OTF2TraceReader::OTF2_GlobalDefReaderCallback_Comm( void* userData,
-                                                    OTF2_CommRef self,
+OTF2TraceReader::OTF2_GlobalDefReaderCallback_Comm( void*          userData,
+                                                    OTF2_CommRef   self,
                                                     OTF2_StringRef name,
-                                                    OTF2_GroupRef group,
-                                                    OTF2_CommRef parent )
+                                                    OTF2_GroupRef  group,
+                                                    OTF2_CommRef   parent )
 {
 
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
-  OTF2Group myGroup = tr->getGroupMap( )[group];
+  OTF2Group myGroup   = tr->getGroupMap( )[group];
 
   if ( myGroup.paradigm == OTF2_PARADIGM_MPI )
   {
@@ -540,21 +540,21 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Comm( void* userData,
 }
 
 OTF2_CallbackCode
-OTF2TraceReader::OTF2_GlobalDefReaderCallback_String( void* userData,
+OTF2TraceReader::OTF2_GlobalDefReaderCallback_String( void*          userData,
                                                       OTF2_StringRef self,
-                                                      const char* string )
+                                                      const char*    string )
 {
 
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
   uint32_t max_length = 1000;
-  std::string str( string, strnlen( string, max_length ) );
+  std::string      str( string, strnlen( string, max_length ) );
   tr->getDefinitionTokenStringMap( )[self] = str;
 
   return OTF2_CALLBACK_SUCCESS;
 }
 
 OTF2_CallbackCode
-OTF2TraceReader::OTF2_GlobalDefReaderCallback_Region( void* userData,
+OTF2TraceReader::OTF2_GlobalDefReaderCallback_Region( void*          userData,
                                                       OTF2_RegionRef self,
                                                       OTF2_StringRef name,
                                                       OTF2_StringRef
@@ -563,12 +563,12 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Region( void* userData,
                                                       description,
                                                       OTF2_RegionRole
                                                       regionRole,
-                                                      OTF2_Paradigm paradigm,
+                                                      OTF2_Paradigm  paradigm,
                                                       OTF2_RegionFlag
                                                       regionFlags,
                                                       OTF2_StringRef sourceFile,
-                                                      uint32_t beginLineNumber,
-                                                      uint32_t endLineNumber )
+                                                      uint32_t       beginLineNumber,
+                                                      uint32_t       endLineNumber )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
   /* Locations are processes */
@@ -584,15 +584,15 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Region( void* userData,
 }
 
 OTF2_CallbackCode
-OTF2TraceReader::OTF2_GlobalDefReaderCallback_Attribute( void* userData,
+OTF2TraceReader::OTF2_GlobalDefReaderCallback_Attribute( void*             userData,
                                                          OTF2_AttributeRef self,
-                                                         OTF2_StringRef name,
+                                                         OTF2_StringRef    name,
                                                          OTF2_StringRef
                                                          description,
-                                                         OTF2_Type type )
+                                                         OTF2_Type         type )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
-  std::string s = tr->getKeyName( name );
+  std::string      s  = tr->getKeyName( name );
   tr->getNameKeysMap( ).insert( std::make_pair( s, self ) );
   tr->getKeyNameMap( ).insert( std::make_pair( self, s ) );
 
@@ -606,11 +606,11 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Attribute( void* userData,
 }
 
 OTF2_CallbackCode
-OTF2TraceReader::otf2CallbackEnter( OTF2_LocationRef location,
-                                    OTF2_TimeStamp time,
-                                    void* userData,
+OTF2TraceReader::otf2CallbackEnter( OTF2_LocationRef    location,
+                                    OTF2_TimeStamp      time,
+                                    void*               userData,
                                     OTF2_AttributeList* attributes,
-                                    OTF2_RegionRef region )
+                                    OTF2_RegionRef      region )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
@@ -627,11 +627,11 @@ OTF2TraceReader::otf2CallbackEnter( OTF2_LocationRef location,
 }
 
 OTF2_CallbackCode
-OTF2TraceReader::otf2CallbackLeave( OTF2_LocationRef location,
-                                    OTF2_TimeStamp time,
-                                    void* userData,
+OTF2TraceReader::otf2CallbackLeave( OTF2_LocationRef    location,
+                                    OTF2_TimeStamp      time,
+                                    void*               userData,
                                     OTF2_AttributeList* attributes,
-                                    OTF2_RegionRef region )
+                                    OTF2_RegionRef      region )
 {
 
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
@@ -649,16 +649,16 @@ OTF2TraceReader::otf2CallbackLeave( OTF2_LocationRef location,
 }
 
 OTF2_CallbackCode
-OTF2TraceReader::otf2Callback_MpiCollectiveEnd( OTF2_LocationRef locationID,
-                                                OTF2_TimeStamp time,
-                                                void* userData,
+OTF2TraceReader::otf2Callback_MpiCollectiveEnd( OTF2_LocationRef  locationID,
+                                                OTF2_TimeStamp    time,
+                                                void*             userData,
                                                 OTF2_AttributeList*
                                                 attributeList,
                                                 OTF2_CollectiveOp collectiveOp,
-                                                OTF2_CommRef communicator,
-                                                uint32_t root,
-                                                uint64_t sizeSent,
-                                                uint64_t sizeReceived )
+                                                OTF2_CommRef      communicator,
+                                                uint32_t          root,
+                                                uint64_t          sizeSent,
+                                                uint64_t          sizeReceived )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
@@ -684,14 +684,14 @@ OTF2TraceReader::otf2Callback_MpiCollectiveEnd( OTF2_LocationRef locationID,
 }
 
 OTF2_CallbackCode
-OTF2TraceReader::otf2Callback_MpiRecv( OTF2_LocationRef locationID,
-                                       OTF2_TimeStamp time,
-                                       void* userData,
+OTF2TraceReader::otf2Callback_MpiRecv( OTF2_LocationRef    locationID,
+                                       OTF2_TimeStamp      time,
+                                       void*               userData,
                                        OTF2_AttributeList* attributeList,
-                                       uint32_t sender,
-                                       OTF2_CommRef communicator,
-                                       uint32_t msgTag,
-                                       uint64_t msgLength )
+                                       uint32_t            sender,
+                                       OTF2_CommRef        communicator,
+                                       uint32_t            msgTag,
+                                       uint64_t            msgLength )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
@@ -704,14 +704,14 @@ OTF2TraceReader::otf2Callback_MpiRecv( OTF2_LocationRef locationID,
 }
 
 OTF2_CallbackCode
-OTF2TraceReader::otf2Callback_MpiSend( OTF2_LocationRef locationID,
-                                       OTF2_TimeStamp time,
-                                       void* userData,
+OTF2TraceReader::otf2Callback_MpiSend( OTF2_LocationRef    locationID,
+                                       OTF2_TimeStamp      time,
+                                       void*               userData,
                                        OTF2_AttributeList* attributeList,
-                                       uint32_t receiver,
-                                       OTF2_CommRef communicator,
-                                       uint32_t msgTag,
-                                       uint64_t msgLength )
+                                       uint32_t            receiver,
+                                       OTF2_CommRef        communicator,
+                                       uint32_t            msgTag,
+                                       uint64_t            msgLength )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
@@ -724,16 +724,15 @@ OTF2TraceReader::otf2Callback_MpiSend( OTF2_LocationRef locationID,
 }
 
 OTF2_CallbackCode
-OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadFork(
-  OTF2_LocationRef locationID,
-  OTF2_TimeStamp time,
-  void* userData,
-  OTF2_AttributeList*
-  attributeList,
-  OTF2_Paradigm
-  paradigm,
-  uint32_t
-  numberOfRequestedThreads )
+OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadFork( OTF2_LocationRef locationID,
+                                                          OTF2_TimeStamp   time,
+                                                          void*            userData,
+                                                          OTF2_AttributeList*
+                                                          attributeList,
+                                                          OTF2_Paradigm
+                                                          paradigm,
+                                                          uint32_t
+                                                          numberOfRequestedThreads )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
@@ -743,14 +742,13 @@ OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadFork(
 }
 
 OTF2_CallbackCode
-OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadJoin(
-  OTF2_LocationRef locationID,
-  OTF2_TimeStamp time,
-  void* userData,
-  OTF2_AttributeList*
-  attributeList,
-  OTF2_Paradigm
-  paradigm )
+OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadJoin( OTF2_LocationRef locationID,
+                                                          OTF2_TimeStamp   time,
+                                                          void*            userData,
+                                                          OTF2_AttributeList*
+                                                          attributeList,
+                                                          OTF2_Paradigm
+                                                          paradigm )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 

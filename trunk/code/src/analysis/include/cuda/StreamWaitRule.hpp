@@ -47,11 +47,11 @@ namespace casita
                    node->getUniqueName( ).c_str( ) );
          }
 
-         EventNode* swEventNode = (EventNode*)node;
+         EventNode* swEventNode         = (EventNode*)node;
          swEventNode->setLink( analysis->getLastEventLaunchLeave( swEventNode->
                                                                   getEventId( ) ) );
 
-         uint64_t eventProcessId = analysis->getEventProcessId(
+         uint64_t   eventProcessId      = analysis->getEventProcessId(
            swEventNode->getEventId( ) );
          if ( !eventProcessId )
          {
@@ -86,13 +86,13 @@ namespace casita
 
          bool ruleMatched = false;
          bool insertWaitState = false;
-         std::set< GraphNode* > processedSyncKernelLeaves;
+         std::set< GraphNode* >   processedSyncKernelLeaves;
 
-         uint64_t waitStateEnterTime = std::numeric_limits< uint64_t >::max( );
-         GraphNode* lastSyncKernelLeave = NULL;
+         uint64_t   waitStateEnterTime          = std::numeric_limits< uint64_t >::max( );
+         GraphNode* lastSyncKernelLeave         = NULL;
 
          /* get launch for this (waiting) kernel */
-         GraphNode* waitingKernelLaunchEnter =
+         GraphNode* waitingKernelLaunchEnter    =
            (GraphNode*)waitingKernel.first->getLink( );
          if ( !waitingKernelLaunchEnter )
          {
@@ -108,7 +108,7 @@ namespace casita
          {
            /* find the oldest streamWaitEvent that references this
             * (waiting) device stream */
-           EventNode* streamWaitLeave = analysis->getFirstStreamWaitEvent(
+           EventNode* streamWaitLeave  = analysis->getFirstStreamWaitEvent(
              node->getStreamId( ) );
            if ( !streamWaitLeave )
            {
@@ -119,7 +119,7 @@ namespace casita
             * was launched, */
            /* it's the wrong streamWaitEvent and we stop processing
             * streamWaitEvents. */
-           GraphNode* streamWaitEnter = streamWaitLeave->getGraphPair( ).first;
+           GraphNode* streamWaitEnter  = streamWaitLeave->getGraphPair( ).first;
            if ( streamWaitEnter->getTime( ) > waitingKernelLaunchEnter->getTime( ) )
            {
              break;
@@ -154,7 +154,7 @@ namespace casita
 
            /* find closest kernelLaunch leave before this eventLaunch
             **/
-           GraphNode* launchLeave = (GraphNode*)eventLaunchLeave->getLink( );
+           GraphNode* launchLeave     = (GraphNode*)eventLaunchLeave->getLink( );
            if ( !launchLeave )
            {
              break;
@@ -231,7 +231,7 @@ namespace casita
                lastSyncKernelLeave = syncKernelLeave;
              }
 
-             insertWaitState = true;
+             insertWaitState    = true;
            }
 
            ruleMatched = true;
@@ -243,7 +243,7 @@ namespace casita
            EventStream* waitingDevProc = analysis->getStream( node->getStreamId( ) );
            EventStream::SortedGraphNodeList& nodes = waitingDevProc->getNodes( );
 
-           GraphNode* lastLeaveNode = NULL;
+           GraphNode*   lastLeaveNode  = NULL;
            for ( EventStream::SortedGraphNodeList::const_reverse_iterator rIter
                    =
                      nodes.rbegin( );

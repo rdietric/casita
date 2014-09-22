@@ -26,13 +26,13 @@ namespace casita
 
  typedef struct
  {
-   bool createOTF;
-   bool printCriticalPath;
-   bool mergeActivities;
-   bool noErrors;
-   int verbose;
-   int eventsProcessed;
-   int memLimit;
+   bool        createOTF;
+   bool        printCriticalPath;
+   bool        mergeActivities;
+   bool        noErrors;
+   int         verbose;
+   int         eventsProcessed;
+   int         memLimit;
    std::string outOtfFile;
    std::string filename;
  } ProgramOptions;

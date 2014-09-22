@@ -43,8 +43,8 @@ namespace casita
 
         /* get the complete execution */
         GraphNode::GraphNodePair oneToAll = node->getGraphPair( );
-        uint32_t mpiGroupId = node->getReferencedStreamId( );
-        uint64_t* root = (uint64_t*)( oneToAll.second->getData( ) );
+        uint32_t  mpiGroupId = node->getReferencedStreamId( );
+        uint64_t* root       = (uint64_t*)( oneToAll.second->getData( ) );
         if ( !root )
         {
           ErrorUtils::getInstance( ).throwFatalError(
@@ -59,13 +59,13 @@ namespace casita
           return false;
         }
 
-        uint64_t rootId = *root;
+        uint64_t rootId            = *root;
         uint32_t rootMPIRank;
         rootMPIRank = analysis->getMPIAnalysis( ).getMPIRank( rootId,
                                                               mpiCommGroup );
 
         const uint32_t BUFFER_SIZE = 5;
-        uint32_t recvBufferSize = 0;
+        uint32_t recvBufferSize    = 0;
         if ( node->getStreamId( ) == rootId )
         {
           recvBufferSize = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
@@ -75,12 +75,12 @@ namespace casita
           recvBufferSize = BUFFER_SIZE;
         }
 
-        uint64_t sendBuffer[BUFFER_SIZE];
-        uint64_t* recvBuffer = new uint64_t[recvBufferSize];
+        uint64_t  sendBuffer[BUFFER_SIZE];
+        uint64_t* recvBuffer        = new uint64_t[recvBufferSize];
         memset( recvBuffer, 0, recvBufferSize * sizeof( uint64_t ) );
 
-        uint64_t oneToAllStartTime = oneToAll.first->getTime( );
-        uint64_t oneToAllEndTime = oneToAll.second->getTime( );
+        uint64_t  oneToAllStartTime = oneToAll.first->getTime( );
+        uint64_t  oneToAllEndTime   = oneToAll.second->getTime( );
 
         sendBuffer[0] = oneToAllStartTime;
         sendBuffer[1] = oneToAllEndTime;

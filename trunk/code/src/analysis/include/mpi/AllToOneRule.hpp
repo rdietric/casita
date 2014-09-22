@@ -44,8 +44,8 @@ namespace casita
         /* get the complete execution */
         GraphNode::GraphNodePair allToOne = node->getGraphPair( );
         /* \todo CHECK THIS!!! */
-        uint32_t mpiGroupId = (uint32_t)node->getReferencedStreamId( );
-        uint64_t* root = (uint64_t*)( allToOne.second->getData( ) );
+        uint32_t  mpiGroupId       = (uint32_t)node->getReferencedStreamId( );
+        uint64_t* root             = (uint64_t*)( allToOne.second->getData( ) );
         if ( !root )
         {
           ErrorUtils::getInstance( ).throwFatalError(
@@ -55,13 +55,13 @@ namespace casita
         const MPIAnalysis::MPICommGroup& mpiCommGroup =
           analysis->getMPIAnalysis( ).getMPICommGroup( mpiGroupId );
 
-        uint64_t rootId = *root;
-        uint32_t rootMPIRank = analysis->getMPIAnalysis( ).getMPIRank(
+        uint64_t rootId            = *root;
+        uint32_t rootMPIRank       = analysis->getMPIAnalysis( ).getMPIRank(
           rootId,
           mpiCommGroup );
 
         const uint32_t BUFFER_SIZE = 7;
-        uint32_t recvBufferSize = 0;
+        uint32_t recvBufferSize    = 0;
         if ( node->getStreamId( ) == rootId )
         {
           recvBufferSize = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
@@ -71,12 +71,12 @@ namespace casita
           recvBufferSize = BUFFER_SIZE;
         }
 
-        uint64_t sendBuffer[BUFFER_SIZE];
-        uint64_t* recvBuffer = new uint64_t[recvBufferSize];
+        uint64_t  sendBuffer[BUFFER_SIZE];
+        uint64_t* recvBuffer        = new uint64_t[recvBufferSize];
         memset( recvBuffer, 0, recvBufferSize * sizeof( uint64_t ) );
 
-        uint64_t allToOneStartTime = allToOne.first->getTime( );
-        uint64_t allToOneEndTime = allToOne.second->getTime( );
+        uint64_t  allToOneStartTime = allToOne.first->getTime( );
+        uint64_t  allToOneEndTime   = allToOne.second->getTime( );
 
         /* memcpy(sendBuffer, &allToOneStartTime, sizeof (uint64_t));
          **/

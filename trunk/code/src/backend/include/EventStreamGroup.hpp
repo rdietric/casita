@@ -26,10 +26,10 @@ namespace casita
      typedef std::vector< EventStream* > EventStreamList;
 
      EventStreamGroup( );
-     EventStreamGroup( uint64_t start,
+     EventStreamGroup( uint64_t               start,
                        const EventStreamList& hostStreams,
                        const EventStreamList& deviceProcs,
-                       EventStream* nullStream );
+                       EventStream*           nullStream );
      virtual
      ~EventStreamGroup( );
 
@@ -76,10 +76,10 @@ namespace casita
      getStartTime( ) const;
 
    private:
-     uint64_t startTime;
+     uint64_t        startTime;
      EventStreamList hostStreams;
      EventStreamList deviceStreams;
-     EventStream* nullStream;
+     EventStream*    nullStream;
  };
 
 }

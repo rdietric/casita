@@ -78,14 +78,14 @@ namespace casita
  {
    bool noSummary = false;
 
-   options.createOTF = false;
-   options.eventsProcessed = 0;
-   options.filename = "";
-   options.mergeActivities = true;
-   options.noErrors = false;
-   options.outOtfFile = "";
+   options.createOTF         = false;
+   options.eventsProcessed   = 0;
+   options.filename          = "";
+   options.mergeActivities   = true;
+   options.noErrors          = false;
+   options.outOtfFile        = "";
    options.printCriticalPath = false;
-   options.verbose = 0;
+   options.verbose           = 0;
 
    try
    {

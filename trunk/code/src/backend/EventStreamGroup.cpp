@@ -23,12 +23,12 @@ EventStreamGroup::EventStreamGroup( ) :
 
 }
 
-EventStreamGroup::EventStreamGroup( uint64_t start,
+EventStreamGroup::EventStreamGroup( uint64_t               start,
                                     const EventStreamList& hostStreams,
                                     const EventStreamList& deviceStreams,
-                                    EventStream* nullStream )
+                                    EventStream*           nullStream )
 {
-  this->startTime = start;
+  this->startTime  = start;
   this->hostStreams.assign( hostStreams.begin( ), hostStreams.end( ) );
   this->deviceStreams.assign( deviceStreams.begin( ), deviceStreams.end( ) );
   this->nullStream = nullStream;
@@ -86,7 +86,7 @@ EventStreamGroup::getAllStreams( EventStreamList& streams ) const
 
 void
 EventStreamGroup::getAllStreams( EventStreamList& streams,
-                                 Paradigm paradigm ) const
+                                 Paradigm         paradigm ) const
 {
   streams.clear( );
   streams.assign( hostStreams.begin( ), hostStreams.end( ) );
@@ -102,7 +102,7 @@ EventStreamGroup::getAllStreams( EventStreamList& streams,
     iter++;
 
     EventStream* p = *current;
-    GraphNode* lastGNode = p->getLastNode( paradigm );
+    GraphNode*   lastGNode = p->getLastNode( paradigm );
     if ( !lastGNode || ( lastGNode->isProcess( ) ) )
     {
       streams.erase( current );
@@ -123,8 +123,7 @@ EventStreamGroup::getHostStreams( ) const
 }
 
 void
-EventStreamGroup::getAllDeviceStreams(
-  EventStreamGroup::EventStreamList& newDeviceStreams ) const
+EventStreamGroup::getAllDeviceStreams( EventStreamGroup::EventStreamList& newDeviceStreams ) const
 {
   newDeviceStreams.clear( );
   if ( nullStream )

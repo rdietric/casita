@@ -51,12 +51,12 @@ GraphEngine::~GraphEngine( )
 }
 
 EventStream*
-GraphEngine::newEventStream( uint64_t id,
-                             uint64_t parentId,
-                             const std::string name,
+GraphEngine::newEventStream( uint64_t                     id,
+                             uint64_t                     parentId,
+                             const std::string            name,
                              EventStream::EventStreamType streamType,
-                             Paradigm paradigm,
-                             bool remoteStream )
+                             Paradigm                     paradigm,
+                             bool                         remoteStream )
 {
   EventStream* p = new EventStream( id,
                                     parentId,
@@ -146,7 +146,7 @@ const
 
 void
 GraphEngine::getStreams( EventStreamGroup::EventStreamList& streams,
-                         Paradigm paradigm ) const
+                         Paradigm                           paradigm ) const
 {
   streamGroup.getAllStreams( streams, paradigm );
 }
@@ -164,8 +164,7 @@ GraphEngine::getDeviceStreams( ) const
 }
 
 void
-GraphEngine::getAllDeviceStreams(
-  EventStreamGroup::EventStreamList& deviceStreams ) const
+GraphEngine::getAllDeviceStreams( EventStreamGroup::EventStreamList& deviceStreams ) const
 {
   streamGroup.getAllDeviceStreams( deviceStreams );
 }
@@ -209,12 +208,12 @@ GraphEngine::getOutEdges( GraphNode* n ) const
 }
 
 GraphNode*
-GraphEngine::newGraphNode( uint64_t time,
-                           uint64_t streamId,
+GraphEngine::newGraphNode( uint64_t          time,
+                           uint64_t          streamId,
                            const std::string name,
-                           Paradigm paradigm,
-                           NodeRecordType recordType,
-                           int nodeType )
+                           Paradigm          paradigm,
+                           NodeRecordType    recordType,
+                           int               nodeType )
 {
   GraphNode* n = new GraphNode( time,
                                 streamId,
@@ -227,14 +226,14 @@ GraphEngine::newGraphNode( uint64_t time,
 }
 
 EventNode*
-GraphEngine::newEventNode( uint64_t time,
-                           uint64_t streamId,
-                           uint32_t eventId,
+GraphEngine::newEventNode( uint64_t                      time,
+                           uint64_t                      streamId,
+                           uint32_t                      eventId,
                            EventNode::FunctionResultType fResult,
-                           const std::string name,
-                           Paradigm paradigm,
-                           NodeRecordType recordType,
-                           int nodeType )
+                           const std::string             name,
+                           Paradigm                      paradigm,
+                           NodeRecordType                recordType,
+                           int                           nodeType )
 {
   EventNode* n = new EventNode( time,
                                 streamId,
@@ -349,7 +348,7 @@ GraphEngine::getFirstTimedGraphNode( Paradigm paradigm ) const
   {
     EventStream* p = *iter;
     EventStream::SortedGraphNodeList& nodes = p->getNodes( );
-    GraphNode* firstStreamGNode = NULL;
+    GraphNode*   firstStreamGNode           = NULL;
 
     for ( EventStream::SortedGraphNodeList::const_iterator nIter = nodes.begin( );
           nIter != nodes.end( ); ++nIter )
@@ -395,7 +394,7 @@ GraphEngine::getLastGraphNode( Paradigm paradigm ) const
         iter != streams.end( ); ++iter )
   {
     EventStream* p = *iter;
-    GraphNode* lastStreamGNode = p->getLastNode( paradigm );
+    GraphNode*   lastStreamGNode = p->getLastNode( paradigm );
 
     if ( lastStreamGNode )
     {
@@ -695,7 +694,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
   /* get direct predecessor and successor */
   GraphNode* directPredecessor = NULL;
-  GraphNode* directSuccessor = NULL;
+  GraphNode* directSuccessor   = NULL;
   for ( size_t p_index = 0; p_index < NODE_PARADIGM_COUNT; ++p_index )
   {
     Paradigm paradigm = (Paradigm)( 1 << p_index );
@@ -741,7 +740,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
       if ( predPnmIter != predNodeMap.end( ) )
       {
         GraphNode* pred = predPnmIter->second;
-        int edgeProp = EDGE_NONE;
+        int edgeProp    = EDGE_NONE;
 
         if ( pred->isEnter( ) && node->isLeave( ) )
         {
@@ -769,9 +768,9 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
             nextNodeMap.find( paradigm );
           if ( nextPnmIter != nextNodeMap.end( ) )
           {
-            GraphNode* succ = nextPnmIter->second;
+            GraphNode* succ    = nextPnmIter->second;
 
-            Edge* oldEdge = getEdge( pred, succ );
+            Edge*      oldEdge = getEdge( pred, succ );
             if ( !oldEdge )
             {
               throw RTException( "No edge between %s (p %u) and %s (p %u)",
@@ -840,12 +839,12 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 }
 
 GraphNode*
-GraphEngine::addNewGraphNode( uint64_t time,
-                              EventStream* stream,
-                              const char* name,
-                              Paradigm paradigm,
+GraphEngine::addNewGraphNode( uint64_t       time,
+                              EventStream*   stream,
+                              const char*    name,
+                              Paradigm       paradigm,
                               NodeRecordType recordType,
-                              int nodeType )
+                              int            nodeType )
 {
   GraphNode* node = newGraphNode( time, stream->getId( ), name,
                                   paradigm, recordType, nodeType );
@@ -855,14 +854,14 @@ GraphEngine::addNewGraphNode( uint64_t time,
 }
 
 EventNode*
-GraphEngine::addNewEventNode( uint64_t time,
-                              uint32_t eventId,
+GraphEngine::addNewEventNode( uint64_t                      time,
+                              uint32_t                      eventId,
                               EventNode::FunctionResultType fResult,
-                              EventStream* stream,
-                              const char* name,
-                              Paradigm paradigm,
-                              NodeRecordType recordType,
-                              int nodeType )
+                              EventStream*                  stream,
+                              const char*                   name,
+                              Paradigm                      paradigm,
+                              NodeRecordType                recordType,
+                              int                           nodeType )
 {
   EventNode* node = newEventNode( time, stream->getId( ), eventId,
                                   fResult, name, paradigm, recordType, nodeType );

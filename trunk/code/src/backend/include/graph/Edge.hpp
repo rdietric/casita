@@ -23,8 +23,8 @@ namespace casita
 
  enum EdgeProperties
  {
-   EDGE_NONE = 0,
-   EDGE_IS_BLOCKING = ( 1 << 0 ),
+   EDGE_NONE             = 0,
+   EDGE_IS_BLOCKING      = ( 1 << 0 ),
    EDGE_CAUSES_WAITSTATE = ( 1 << 1 )
  };
 
@@ -43,24 +43,24 @@ namespace casita
            int properties, Paradigm edgeParadigm ) :
        properties( EDGE_NONE )
      {
-       pair = std::make_pair( start, end );
+       pair                  = std::make_pair( start, end );
        if ( isReverseEdge( ) )
        {
          properties |= EDGE_IS_BLOCKING;
-         duration = 0;
+         duration    = 0;
        }
 
-       cpuNodes = 0;
-       cpuBlame = 0;
+       cpuNodes              = 0;
+       cpuBlame              = 0;
        cpuStartEnd.startTime = end->getTime( );
-       cpuStartEnd.endTime = end->getTime( );
+       cpuStartEnd.endTime   = end->getTime( );
 
-       this->properties = properties;
-       this->edgeDuration = duration;
+       this->properties      = properties;
+       this->edgeDuration    = duration;
        this->initialDuration = duration;
-       this->edgeWeight = computeWeight( duration, isBlocking( ) );
-       this->edgeParadigm = edgeParadigm;
-       this->timeProfile = NULL;
+       this->edgeWeight      = computeWeight( duration, isBlocking( ) );
+       this->edgeParadigm    = edgeParadigm;
+       this->timeProfile     = NULL;
      }
 
      bool
@@ -133,7 +133,7 @@ namespace casita
      setDuration( uint64_t duration )
      {
        edgeDuration = duration;
-       edgeWeight = computeWeight( edgeDuration, isBlocking( ) );
+       edgeWeight   = computeWeight( edgeDuration, isBlocking( ) );
      }
 
      bool
@@ -145,7 +145,7 @@ namespace casita
      void
      makeBlocking( )
      {
-       edgeWeight = std::numeric_limits< uint64_t >::max( );
+       edgeWeight  = std::numeric_limits< uint64_t >::max( );
        properties |= EDGE_IS_BLOCKING;
      }
 
@@ -239,7 +239,7 @@ namespace casita
      }
 
    private:
-     int properties;
+     int      properties;
      uint64_t edgeDuration;
      uint64_t initialDuration;
      uint64_t edgeWeight;

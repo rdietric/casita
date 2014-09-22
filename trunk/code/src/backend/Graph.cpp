@@ -46,11 +46,11 @@ Graph::addEdge( Edge* edge )
 void
 Graph::removeEdge( Edge* edge )
 {
-  GraphNode* start = edge->getStartNode( );
-  GraphNode* end = edge->getEndNode( );
+  GraphNode* start     = edge->getStartNode( );
+  GraphNode* end       = edge->getEndNode( );
 
-  EdgeList& out_edges = outEdges[start];
-  EdgeList& in_edges = inEdges[end];
+  EdgeList&  out_edges = outEdges[start];
+  EdgeList&  in_edges  = inEdges[end];
 
   for ( EdgeList::iterator iter = out_edges.begin( );
         iter != out_edges.end( ); ++iter )
@@ -239,13 +239,13 @@ void
 Graph::getLongestPath( GraphNode* start, GraphNode* end,
                        GraphNode::GraphNodeList& path ) const
 {
-  const uint64_t infinite = std::numeric_limits< uint64_t >::max( );
+  const uint64_t infinite  = std::numeric_limits< uint64_t >::max( );
   std::map< GraphNode*, GraphNode* > preds;
   std::map< GraphNode*, uint64_t > distance;
   std::list< GraphNode* > pendingNodes;
 
   const uint64_t startTime = start->getTime( );
-  const uint64_t endTime = end->getTime( );
+  const uint64_t endTime   = end->getTime( );
 
   for ( Graph::NodeList::const_iterator iter = nodes.begin( );
         iter != nodes.end( ); ++iter )
@@ -256,9 +256,9 @@ Graph::getLongestPath( GraphNode* start, GraphNode* end,
       continue;
     }
 
-    GraphNode* gn = *iter;
+    GraphNode* gn     = *iter;
     distance[gn] = infinite;
-    preds[gn] = gn;
+    preds[gn]    = gn;
 
     if ( gn != start )
     {
@@ -273,8 +273,8 @@ Graph::getLongestPath( GraphNode* start, GraphNode* end,
 
   while ( !pendingNodes.empty( ) )
   {
-    GraphNode* current_node = pendingNodes.front( );
-    uint64_t current_node_dist = distance[current_node];
+    GraphNode* current_node      = pendingNodes.front( );
+    uint64_t   current_node_dist = distance[current_node];
     if ( current_node_dist == infinite )
     {
       break;
@@ -290,7 +290,7 @@ Graph::getLongestPath( GraphNode* start, GraphNode* end,
       for ( Graph::EdgeList::const_iterator iter = outEdges.begin( );
             iter != outEdges.end( ); ++iter )
       {
-        Edge* edge = *iter;
+        Edge*      edge      = *iter;
         GraphNode* neighbour = edge->getEndNode( );
         if ( ( ( neighbour == end ) || ( neighbour->getTime( ) < endTime ) )
              && ( distance.find( neighbour ) != distance.end( ) )
@@ -303,7 +303,7 @@ Graph::getLongestPath( GraphNode* start, GraphNode* end,
             distance[neighbour] = alt_distance;
 
             sortedInsert( neighbour, pendingNodes, distance );
-            preds[neighbour] = current_node;
+            preds[neighbour]    = current_node;
           }
         }
       }
@@ -330,7 +330,7 @@ Graph::getLongestPath( GraphNode* start, GraphNode* end,
 
           /* if the targetNode is on a critical path, add it to the */
           /* possible target nodes */
-          GraphNode* pred = preds[inNode];
+          GraphNode* pred   = preds[inNode];
           if ( pred == start || pred != inNode )
           {
             possibleInNodes.push_back( inNode );

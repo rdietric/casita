@@ -20,13 +20,13 @@ namespace casita
  typedef struct
  {
    GraphNode::GraphNodeList list;
-   uint64_t waitStateTime;
+   uint64_t                 waitStateTime;
  } StreamWalkInfo;
 
  static void
- distributeBlame( AnalysisEngine* analysis,
-                  GraphNode* node,
-                  uint64_t totalBlame,
+ distributeBlame( AnalysisEngine*                 analysis,
+                  GraphNode*                      node,
+                  uint64_t                        totalBlame,
                   EventStream::StreamWalkCallback callback )
  {
    if ( totalBlame == 0 )
@@ -41,7 +41,7 @@ namespace casita
      node, callback, &walkListAndWaitTime );
 
    GraphNode::GraphNodeList walkList = walkListAndWaitTime.list;
-   uint32_t waitTime = walkListAndWaitTime.waitStateTime;
+   uint32_t waitTime         = walkListAndWaitTime.waitStateTime;
 
    if ( walkList.size( ) < 2 )
    {
@@ -49,8 +49,8 @@ namespace casita
                                             node->getUniqueName( ).c_str( ) );
    }
 
-   GraphNode* start = walkList.front( );
-   GraphNode* end = walkList.back( );
+   GraphNode* start          = walkList.front( );
+   GraphNode* end            = walkList.back( );
    if ( false )
    {
      std::cout << "[" << analysis->getMPIRank( ) << "]Walking: " <<
@@ -59,35 +59,35 @@ namespace casita
      totalBlame << std::endl;
    }
 
-   uint64_t totalWalkTime = walkList.front( )->getTime( ) -
-                            walkList.back( )->getTime( );
-   GraphNode* lastWalkNode = walkList.front( );
+   uint64_t   totalWalkTime  = walkList.front( )->getTime( ) -
+                               walkList.back( )->getTime( );
+   GraphNode* lastWalkNode   = walkList.front( );
 
-   uint32_t waitCtrId = analysis->getCtrTable( ).getCtrId( CTR_WAITSTATE );
-   uint32_t blameCtrId = analysis->getCtrTable( ).getCtrId( CTR_BLAME );
-   uint32_t statBlameCtrId = analysis->getCtrTable( ).getCtrId(
+   uint32_t   waitCtrId      = analysis->getCtrTable( ).getCtrId( CTR_WAITSTATE );
+   uint32_t   blameCtrId     = analysis->getCtrTable( ).getCtrId( CTR_BLAME );
+   uint32_t   statBlameCtrId = analysis->getCtrTable( ).getCtrId(
      CTR_BLAME_STATISTICS );
 
    for ( GraphNode::GraphNodeList::const_iterator iter = ( ++walkList.begin( ) );
          iter != walkList.end( ); ++iter )
    {
      GraphNode* currentWalkNode = *iter;
-     Edge* edge = analysis->getEdge( currentWalkNode, lastWalkNode );
-     uint64_t cpuTimeDiff = lastWalkNode->getTime( ) -
-                            edge->getCPUNodesStartTime( );
-     uint64_t timeDiff = lastWalkNode->getTime( ) - currentWalkNode->getTime( )
-                         - cpuTimeDiff;
-     uint64_t ratioBlame = (double)totalBlame *
-                           (double)( timeDiff -
-                                     currentWalkNode->getCounter( waitCtrId,
-                                                                  NULL ) ) /
-                           (double)( totalWalkTime - waitTime );
+     Edge*      edge = analysis->getEdge( currentWalkNode, lastWalkNode );
+     uint64_t   cpuTimeDiff     = lastWalkNode->getTime( ) -
+                                  edge->getCPUNodesStartTime( );
+     uint64_t   timeDiff        = lastWalkNode->getTime( ) - currentWalkNode->getTime( )
+                                  - cpuTimeDiff;
+     uint64_t   ratioBlame      = (double)totalBlame *
+                                  (double)( timeDiff -
+                                            currentWalkNode->getCounter( waitCtrId,
+                                                                         NULL ) ) /
+                                  (double)( totalWalkTime - waitTime );
 
-     uint64_t cpuBlame = cpuTimeDiff == 0 ? 0 : (double)totalBlame *
-                         (double)( cpuTimeDiff -
-                                   currentWalkNode->getCounter( waitCtrId,
-                                                                NULL ) ) /
-                         (double)( totalWalkTime - waitTime );
+     uint64_t cpuBlame          = cpuTimeDiff == 0 ? 0 : (double)totalBlame *
+                                  (double)( cpuTimeDiff -
+                                            currentWalkNode->getCounter( waitCtrId,
+                                                                         NULL ) ) /
+                                  (double)( totalWalkTime - waitTime );
 
      edge->addCPUBlame( cpuBlame );
      if ( cpuBlame > 0 && false )

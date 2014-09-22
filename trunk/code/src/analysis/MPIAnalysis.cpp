@@ -64,7 +64,7 @@ MPIAnalysis::getMPIRank( uint64_t streamId ) const
 }
 
 uint32_t
-MPIAnalysis::getMPIRank( uint64_t streamId,
+MPIAnalysis::getMPIRank( uint64_t            streamId,
                          const MPICommGroup& commGroup ) const
 {
   uint32_t ctr = 0;
@@ -111,7 +111,7 @@ MPIAnalysis::createMPICommunicatorsFromMap( )
   {
     MPICommGroup& group = iter->second;
 
-    int ranks[group.procs.size( )];
+    int    ranks[group.procs.size( )];
     size_t i = 0;
     for ( std::set< uint64_t >::const_iterator iter = group.procs.begin( );
           iter != group.procs.end( ); ++iter )
@@ -150,21 +150,21 @@ MPIAnalysis::getMPICommGroup( uint32_t group ) const
 }
 
 void
-MPIAnalysis::addRemoteMPIEdge( GraphNode* localNode,
-                               uint32_t remoteNodeID,
-                               uint64_t remoteStreamID,
+MPIAnalysis::addRemoteMPIEdge( GraphNode*       localNode,
+                               uint32_t         remoteNodeID,
+                               uint64_t         remoteStreamID,
                                MPIEdgeDirection direction )
 {
   MPIEdge edge;
-  edge.direction = direction;
-  edge.localNode = localNode;
-  edge.remoteNodeID = remoteNodeID;
+  edge.direction      = direction;
+  edge.localNode      = localNode;
+  edge.remoteNodeID   = remoteNodeID;
   edge.remoteStreamID = remoteStreamID;
   remoteMpiEdgeMap[remoteStreamID][remoteNodeID] = edge;
 
   ProcessNodePair pair;
-  pair.nodeID = remoteNodeID;
-  pair.streamID = remoteStreamID;
+  pair.nodeID         = remoteNodeID;
+  pair.streamID       = remoteStreamID;
 
   reverseRemoteNodeMap[localNode] = pair;
 }

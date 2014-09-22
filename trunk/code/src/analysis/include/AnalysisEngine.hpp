@@ -48,7 +48,7 @@ namespace casita
 
      typedef struct
      {
-       EventNode* node;
+       EventNode*           node;
        std::set< uint32_t > tags;
      } StreamWaitTagged;
 
@@ -71,9 +71,9 @@ namespace casita
      ~AnalysisEngine( );
 
      static bool
-     getFunctionType( uint32_t id,
-                      const char* name,
-                      EventStream* stream,
+     getFunctionType( uint32_t            id,
+                      const char*         name,
+                      EventStream*        stream,
                       FunctionDescriptor* descr );
 
      MPIAnalysis&
@@ -100,12 +100,12 @@ namespace casita
                    NodeRecordType recordType, int nodeType );
 
      GraphNode*
-     addNewGraphNode( uint64_t time,
-                      EventStream* stream,
-                      const char* name,
-                      Paradigm paradigm,
+     addNewGraphNode( uint64_t       time,
+                      EventStream*   stream,
+                      const char*    name,
+                      Paradigm       paradigm,
                       NodeRecordType recordType,
-                      int nodeType );
+                      int            nodeType );
 
      void
      addRule( AbstractRule* rule );
@@ -167,8 +167,8 @@ namespace casita
      void
      saveParallelEventGroupToFile( std::string filename,
                                    std::string origFilename,
-                                   bool enableWaitStates,
-                                   bool verbose );
+                                   bool        enableWaitStates,
+                                   bool        verbose );
 
      io::IParallelTraceWriter::ActivityGroupMap&
      getActivityGroupMap( )
@@ -229,25 +229,25 @@ namespace casita
 
    private:
 
-     io::IParallelTraceWriter* writer;
+     io::IParallelTraceWriter*    writer;
 
      MPIAnalysis mpiAnalysis;
 
      std::vector< AbstractRule* > rules;
      /* maps event ID to (cuEventRecord) leave node */
-     IdEventNodeMap eventLaunchMap;
+     IdEventNodeMap     eventLaunchMap;
 
      /* maps event ID to (cuEventQuery) leave node */
-     IdEventNodeMap eventQueryMap;
+     IdEventNodeMap     eventQueryMap;
 
      /* maps (device) stream ID to list of (cuStreamWaitEvent)
       * leave nodes */
-     IdEventsListMap streamWaitMap;
+     IdEventsListMap    streamWaitMap;
 
      /* maps event ID to (device) stream ID */
      IdIdMap eventProcessMap;
      NullStreamWaitList nullStreamWaits;
-     IdNodeListMap pendingKernelLaunchMap;
+     IdNodeListMap      pendingKernelLaunchMap;
 
      /* log the OMP enter events, needed to resolve
       * nested function calls */
@@ -255,35 +255,35 @@ namespace casita
 
      /* remember last omp event per stream -> needed to resolve
       * nested function calls */
-     OmpEventMap lastOmpEventMap;
+     OmpEventMap   lastOmpEventMap;
 
      /* remember opened parallel region TODO: implement
       * that as stack for nested parallelism */
-     GraphNode* pendingParallelRegion;
+     GraphNode*    pendingParallelRegion;
 
      /* keep track of omp kernels between parallel regions */
-     OmpEventMap ompComputeTrackMap;
+     OmpEventMap   ompComputeTrackMap;
 
      /* collect barriers from different streams */
      GraphNode::GraphNodeList ompBarrierListHost;
      IdNodeListMap ompBarrierListDevice;
 
      /* keep track of last OMP Target Begin on each event stream */
-     OmpEventMap ompTargetRegionBeginMap;
+     OmpEventMap   ompTargetRegionBeginMap;
 
      /* keep track of the first event on each device stream after an
       *OMP target begin */
-     OmpEventMap ompTargetDeviceFirstEventMap;
+     OmpEventMap   ompTargetDeviceFirstEventMap;
 
      /* keep track of the last event on each device stream before an
       *OMP target end */
-     OmpEventMap ompTargetDeviceLastEventMap;
+     OmpEventMap   ompTargetDeviceLastEventMap;
 
      OmpStreamRegionsMap ompTargetStreamRegionsMap;
 
      std::map< uint32_t, std::string > functionMap;
-     uint32_t maxFunctionId;
-     uint32_t waitStateFuncId;
+     uint32_t      maxFunctionId;
+     uint32_t      waitStateFuncId;
 
      static bool
      rulePriorityCompare( AbstractRule* r1, AbstractRule* r2 );

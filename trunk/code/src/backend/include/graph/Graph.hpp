@@ -73,7 +73,7 @@ namespace casita
                      GraphNode::GraphNodeList& path ) const;
 
    protected:
-     NodeList nodes;
+     NodeList  nodes;
      NodeEdges inEdges, outEdges;
 
      typedef std::map< GraphNode*, uint64_t > DistanceMap;

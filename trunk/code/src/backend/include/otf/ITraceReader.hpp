@@ -41,8 +41,8 @@ namespace casita
                                       IKeyValueList* list, bool isCUDA,
                                       bool isCUDANull );
   typedef void ( *HandleProcessMPIMapping )( ITraceReader* reader,
-                                             uint64_t processId,
-                                             uint32_t mpiRank );
+                                             uint64_t      processId,
+                                             uint32_t      mpiRank );
   typedef void ( *HandleDefFunction )( ITraceReader* reader, uint64_t streamId,
                                        uint32_t functionId, const char* name,
                                        uint32_t functionGroupId );
@@ -82,28 +82,28 @@ namespace casita
       open( const std::string otfFilename, uint32_t maxFiles ) = 0;
 
       virtual void
-      close( ) = 0;
+      close( )                                 = 0;
 
       virtual void
-      readEvents( ) = 0;
+      readEvents( )                            = 0;
 
       virtual void
-      readEventsForProcess( uint64_t id ) = 0;
+      readEventsForProcess( uint64_t id )      = 0;
 
       virtual void
-      readDefinitions( ) = 0;
+      readDefinitions( )                       = 0;
 
       virtual void
-      readCommunication( ) = 0;
+      readCommunication( )                     = 0;
 
       virtual std::string
-      getKeyName( uint32_t id ) = 0;
+      getKeyName( uint32_t id )                = 0;
 
       virtual std::string
-      getFunctionName( uint32_t id ) = 0;
+      getFunctionName( uint32_t id )           = 0;
 
       virtual std::string
-      getProcessName( uint64_t id ) = 0;
+      getProcessName( uint64_t id )            = 0;
 
       virtual std::vector< uint32_t >
       getKeys( const std::string keyName ) = 0;
@@ -112,7 +112,7 @@ namespace casita
       getFirstKey( const std::string keyName ) = 0;
 
       virtual uint64_t
-      getTimerResolution( ) = 0;
+      getTimerResolution( )                    = 0;
 
       void*
       getUserData( )
@@ -120,14 +120,14 @@ namespace casita
         return userData;
       }
 
-      HandleEnter handleEnter;
-      HandleLeave handleLeave;
-      HandleDefProcess handleDefProcess;
-      HandleDefFunction handleDefFunction;
-      HandleDefKeyValue handleDefKeyValue;
+      HandleEnter             handleEnter;
+      HandleLeave             handleLeave;
+      HandleDefProcess        handleDefProcess;
+      HandleDefFunction       handleDefFunction;
+      HandleDefKeyValue       handleDefKeyValue;
       HandleProcessMPIMapping handleProcessMPIMapping;
-      HandleMPIComm handleMPIComm;
-      HandleMPICommGroup handleMPICommGroup;
+      HandleMPIComm           handleMPIComm;
+      HandleMPICommGroup      handleMPICommGroup;
 
     private:
       void* userData;

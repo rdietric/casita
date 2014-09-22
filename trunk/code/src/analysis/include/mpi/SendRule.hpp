@@ -45,17 +45,17 @@ namespace casita
         /* get the complete execution */
         GraphNode::GraphNodePair send = node->getGraphPair( );
         uint64_t* data = (uint64_t*)( send.second->getData( ) );
-        uint64_t partnerProcessId = *data;
+        uint64_t  partnerProcessId    = *data;
 
-        const int BUFFER_SIZE = 8;
-        uint64_t buffer[BUFFER_SIZE];
+        const int BUFFER_SIZE         = 8;
+        uint64_t  buffer[BUFFER_SIZE];
         /* uint64_t *bfr64 = (uint64_t*) buffer; */
 
         /* send */
-        uint64_t sendStartTime = send.first->getTime( );
-        uint64_t sendEndTime = send.second->getTime( );
+        uint64_t  sendStartTime       = send.first->getTime( );
+        uint64_t  sendEndTime         = send.second->getTime( );
 
-        uint32_t partnerMPIRank = analysis->getMPIAnalysis( ).getMPIRank(
+        uint32_t  partnerMPIRank      = analysis->getMPIAnalysis( ).getMPIRank(
           partnerProcessId );
         /* memcpy(bfr64 + 0, &sendStartTime, sizeof (uint64_t)); */
         /* memcpy(bfr64 + 1, &sendEndTime, sizeof (uint64_t)); */
@@ -71,7 +71,7 @@ namespace casita
 
         /* receive */
         MPI_Status status;
-        uint64_t recvStartTime = 0;
+        uint64_t   recvStartTime = 0;
         /* uint64_t recvEndTime = 0; */
         MPI_CHECK( MPI_Recv( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                              partnerMPIRank,

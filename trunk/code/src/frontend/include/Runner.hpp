@@ -67,8 +67,8 @@ namespace casita
      mergeActivityGroups( );
 
    private:
-     int mpiRank;
-     int mpiSize;
+     int      mpiRank;
+     int      mpiSize;
      AnalysisEngine analysis;
      ProgramOptions& options;
      CallbackHandler callbacks;
@@ -77,19 +77,19 @@ namespace casita
      /* critical path */
      void
      getLocalCriticalPath( EventStream::SortedGraphNodeList& criticalNodes,
-                           GraphNode* startNode,
-                           GraphNode* lastNode,
-                           Graph& subGraph );
+                           GraphNode*                        startNode,
+                           GraphNode*                        lastNode,
+                           Graph&                            subGraph );
 
      void
-     getCriticalPathIntern( GraphNode* start,
-                            GraphNode* end,
+     getCriticalPathIntern( GraphNode*                        start,
+                            GraphNode*                        end,
                             EventStream::SortedGraphNodeList& cpNodes,
-                            Graph& subGraph );
+                            Graph&                            subGraph );
 
      void
      getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
-                               uint32_t numSections,
+                               uint32_t                          numSections,
                                EventStream::SortedGraphNodeList& gpuNodes,
                                MPIAnalysis::CriticalSectionsMap& sectionsMap );
 
@@ -97,8 +97,7 @@ namespace casita
      findLastMpiNode( GraphNode** node );
 
      void
-     reverseReplayMPICriticalPath(
-       MPIAnalysis::CriticalSectionsList& sectionsList );
+     reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& sectionsList );
 
  };
 

@@ -91,7 +91,7 @@ namespace casita
 
      void
      getStreams( EventStreamGroup::EventStreamList& streams,
-                 Paradigm paradigm ) const;
+                 Paradigm                           paradigm ) const;
 
      const EventStreamGroup::EventStreamList&
      getHostStreams( ) const;
@@ -105,52 +105,52 @@ namespace casita
 
      /* allocators */
      EventStream*
-     newEventStream( uint64_t id,
-                     uint64_t parentId,
-                     const std::string name,
+     newEventStream( uint64_t                     id,
+                     uint64_t                     parentId,
+                     const std::string            name,
                      EventStream::EventStreamType streamType,
-                     Paradigm paradigm,
-                     bool remoteStream = false );
+                     Paradigm                     paradigm,
+                     bool                         remoteStream = false );
 
      Edge*
      newEdge( GraphNode* n1, GraphNode* n2, int properties = EDGE_NONE,
               Paradigm* edgeType = NULL );
 
      GraphNode*
-     newGraphNode( uint64_t time,
-                   uint64_t streamId,
+     newGraphNode( uint64_t          time,
+                   uint64_t          streamId,
                    const std::string name,
-                   Paradigm paradigm,
-                   NodeRecordType recordType,
-                   int nodeType );
+                   Paradigm          paradigm,
+                   NodeRecordType    recordType,
+                   int               nodeType );
 
      EventNode*
-     newEventNode( uint64_t time,
-                   uint64_t streamId,
-                   uint32_t eventId,
+     newEventNode( uint64_t                      time,
+                   uint64_t                      streamId,
+                   uint32_t                      eventId,
                    EventNode::FunctionResultType fResult,
-                   const std::string name,
-                   Paradigm paradigm,
-                   NodeRecordType recordType,
-                   int nodeType );
+                   const std::string             name,
+                   Paradigm                      paradigm,
+                   NodeRecordType                recordType,
+                   int                           nodeType );
 
      GraphNode*
-     addNewGraphNode( uint64_t time,
-                      EventStream* stream,
-                      const char* name,
-                      Paradigm paradigm,
+     addNewGraphNode( uint64_t       time,
+                      EventStream*   stream,
+                      const char*    name,
+                      Paradigm       paradigm,
                       NodeRecordType recordType,
-                      int nodeType );
+                      int            nodeType );
 
      EventNode*
-     addNewEventNode( uint64_t time,
-                      uint32_t eventId,
+     addNewEventNode( uint64_t                      time,
+                      uint32_t                      eventId,
                       EventNode::FunctionResultType fResult,
-                      EventStream* stream,
-                      const char* name,
-                      Paradigm paradigm,
-                      NodeRecordType recordType,
-                      int nodeType );
+                      EventStream*                  stream,
+                      const char*                   name,
+                      Paradigm                      paradigm,
+                      NodeRecordType                recordType,
+                      int                           nodeType );
 
      void
      addCPUEvent( uint64_t time, uint64_t stream );
@@ -194,16 +194,16 @@ namespace casita
      runSanityCheck( uint32_t mpiRank );
 
    protected:
-     EventStreamGroup streamGroup;
+     EventStreamGroup  streamGroup;
      uint64_t ticksPerSecond;
 
      Graph graph;
      GraphNode* globalSourceNode;
      GraphNodeStackMap pendingGraphNodeStackMap;
 
-     EventStreamMap streamsMap;
+     EventStreamMap    streamsMap;
 
-     CounterTable ctrTable;
+     CounterTable      ctrTable;
 
      /* query graph objects */
      bool

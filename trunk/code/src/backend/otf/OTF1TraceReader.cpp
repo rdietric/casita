@@ -218,12 +218,12 @@ OTF1TraceReader::readCommunication( )
 void
 OTF1TraceReader::readEventsForProcess( uint64_t id )
 {
-  uint32_t otf1_id = (uint32_t)id;
+  uint32_t          otf1_id  = (uint32_t)id;
 
   OTF_HandlerArray* handlers = OTF_HandlerArray_open( );
   setEventHandlers( handlers );
 
-  OTF_RStream* rStream = OTF_Reader_getStream( reader, otf1_id );
+  OTF_RStream*      rStream  = OTF_Reader_getStream( reader, otf1_id );
   OTF_RStream_setRecordLimit( rStream, OTF_READ_MAXRECORDS );
   OTF_RStream_readEvents( rStream, handlers );
 
@@ -255,8 +255,8 @@ OTF1TraceReader::readDefinitions( )
   processingPhase = 1;
 
   /* read definitions (part 1) */
-  reader = OTF_Reader_open( baseFilename.c_str( ), fileMgr );
-  handlers = OTF_HandlerArray_open( );
+  reader          = OTF_Reader_open( baseFilename.c_str( ), fileMgr );
+  handlers        = OTF_HandlerArray_open( );
   OTF_HandlerArray_setHandler( handlers,
                                (OTF_FunctionPointer*)otf1HandleDefAttributeList,
                                OTF_DEFATTRLIST_RECORD );
@@ -298,8 +298,8 @@ OTF1TraceReader::readDefinitions( )
   processingPhase = 2;
 
   /* read definitions (part 2) */
-  reader = OTF_Reader_open( baseFilename.c_str( ), fileMgr );
-  handlers = OTF_HandlerArray_open( );
+  reader          = OTF_Reader_open( baseFilename.c_str( ), fileMgr );
+  handlers        = OTF_HandlerArray_open( );
   OTF_HandlerArray_setHandler( handlers,
                                (OTF_FunctionPointer*)otf1HandleDefProcess,
                                OTF_DEFPROCESS_RECORD );
@@ -410,8 +410,8 @@ OTF1TraceReader::getFuncStack( )
 std::string
 OTF1TraceReader::getProcessName( uint64_t id )
 {
-  uint32_t otf1_id = (uint32_t)id;
-  TokenNameMap& nm = getProcNameMap( );
+  uint32_t      otf1_id       = (uint32_t)id;
+  TokenNameMap& nm            = getProcNameMap( );
   TokenNameMap::iterator iter = nm.find( otf1_id );
   if ( iter != nm.end( ) )
   {
@@ -497,11 +497,11 @@ OTF1TraceReader::isChildOf( uint32_t child, uint32_t parent )
 }
 
 int
-OTF1TraceReader::otf1HandleEnter( void* userData,
-                                  uint64_t time,
-                                  uint32_t functionId,
-                                  uint32_t processId,
-                                  uint32_t source,
+OTF1TraceReader::otf1HandleEnter( void*                    userData,
+                                  uint64_t                 time,
+                                  uint32_t                 functionId,
+                                  uint32_t                 processId,
+                                  uint32_t                 source,
                                   OTF_KeyValueList_struct* list )
 {
   OTF1TraceReader* tr = (OTF1TraceReader*)userData;
@@ -518,11 +518,11 @@ OTF1TraceReader::otf1HandleEnter( void* userData,
 }
 
 int
-OTF1TraceReader::otf1HandleLeave( void* userData,
-                                  uint64_t time,
-                                  uint32_t functionId,
-                                  uint32_t processId,
-                                  uint32_t source,
+OTF1TraceReader::otf1HandleLeave( void*                    userData,
+                                  uint64_t                 time,
+                                  uint32_t                 functionId,
+                                  uint32_t                 processId,
+                                  uint32_t                 source,
                                   OTF_KeyValueList_struct* list )
 {
   OTF1TraceReader* tr = (OTF1TraceReader*)userData;
@@ -532,7 +532,7 @@ OTF1TraceReader::otf1HandleLeave( void* userData,
     functionId = funcStack[processId].top( );
     funcStack[processId].pop( );
 
-    OTF1KeyValueList& kvList = tr->getKVList( );
+    OTF1KeyValueList& kvList    = tr->getKVList( );
     kvList.setList( list );
     tr->handleLeave( tr, time, functionId, processId, (IKeyValueList*)&kvList );
   }
@@ -540,15 +540,15 @@ OTF1TraceReader::otf1HandleLeave( void* userData,
 }
 
 int
-OTF1TraceReader::otf1HandleDefProcess( void* userData,
-                                       uint32_t stream,
-                                       uint32_t processId,
-                                       const char* name,
-                                       uint32_t parent,
+OTF1TraceReader::otf1HandleDefProcess( void*                    userData,
+                                       uint32_t                 stream,
+                                       uint32_t                 processId,
+                                       const char*              name,
+                                       uint32_t                 parent,
                                        OTF_KeyValueList_struct* list )
 {
   OTF1TraceReader* tr = (OTF1TraceReader*)userData;
-  int phase = tr->getProcessingPhase( );
+  int phase           = tr->getProcessingPhase( );
 
   if ( phase == 1 )
   {
@@ -583,7 +583,7 @@ OTF1TraceReader::otf1HandleDefProcess( void* userData,
 
     if ( tr->handleDefProcess )
     {
-      bool isCUDA = false;
+      bool isCUDA       = false;
       bool isCUDAMaster = false;
       for ( ProcessGroupMap::iterator iter = tr->getProcGoupMap( ).begin( );
             iter != tr->getProcGoupMap( ).end( ); ++iter )
@@ -613,12 +613,12 @@ OTF1TraceReader::otf1HandleDefProcess( void* userData,
 }
 
 int
-OTF1TraceReader::otf1HandleDefProcessGroupMPI( void* userData,
-                                               uint32_t stream,
-                                               uint32_t procGroup,
-                                               const char* name,
-                                               uint32_t numberOfProcs,
-                                               const uint32_t* procs,
+OTF1TraceReader::otf1HandleDefProcessGroupMPI( void*             userData,
+                                               uint32_t          stream,
+                                               uint32_t          procGroup,
+                                               const char*       name,
+                                               uint32_t          numberOfProcs,
+                                               const uint32_t*   procs,
                                                OTF_KeyValueList* list )
 {
 
@@ -669,22 +669,22 @@ OTF1TraceReader::otf1HandleDefProcessGroupMPI( void* userData,
 }
 
 int
-OTF1TraceReader::otf1HandleDefProcessGroup( void* userData,
-                                            uint32_t stream,
-                                            uint32_t procGroup,
-                                            const char* name,
-                                            uint32_t numberOfProcs,
-                                            const uint32_t* procs,
+OTF1TraceReader::otf1HandleDefProcessGroup( void*             userData,
+                                            uint32_t          stream,
+                                            uint32_t          procGroup,
+                                            const char*       name,
+                                            uint32_t          numberOfProcs,
+                                            const uint32_t*   procs,
                                             OTF_KeyValueList* list )
 {
   OTF1TraceReader* tr = (OTF1TraceReader*)userData;
 
-  ProcessGroup* pg = NULL;
+  ProcessGroup*    pg = NULL;
   ProcessGroupMap::iterator pgIter = tr->getProcGoupMap( ).find( procGroup );
   if ( pgIter == tr->getProcGoupMap( ).end( ) )
   {
-    pg = new ProcessGroup( );
-    pg->isCUDA = false;
+    pg               = new ProcessGroup( );
+    pg->isCUDA       = false;
     pg->isCUDAMaster = false;
     tr->getProcGoupMap( )[procGroup] = pg;
   }
@@ -693,7 +693,7 @@ OTF1TraceReader::otf1HandleDefProcessGroup( void* userData,
     pg = pgIter->second;
   }
 
-  pg->name = new char[strlen( name ) + 1];
+  pg->name     = new char[strlen( name ) + 1];
   strcpy( pg->name, name );
 
   pg->numProcs = numberOfProcs;
@@ -720,14 +720,14 @@ OTF1TraceReader::otf1HandleDefProcessGroup( void* userData,
 }
 
 int
-OTF1TraceReader::otf1HandleDefProcessOrGroupAttributes( void* userData,
-                                                        uint32_t stream,
-                                                        uint32_t proc_token,
-                                                        uint32_t attr_token,
+OTF1TraceReader::otf1HandleDefProcessOrGroupAttributes( void*             userData,
+                                                        uint32_t          stream,
+                                                        uint32_t          proc_token,
+                                                        uint32_t          attr_token,
                                                         OTF_KeyValueList* list )
 {
-  OTF1TraceReader* tr = (OTF1TraceReader*)userData;
-  AttrListMap::iterator attrIter = tr->getAttrListMap( ).find( attr_token );
+  OTF1TraceReader*      tr               = (OTF1TraceReader*)userData;
+  AttrListMap::iterator attrIter         = tr->getAttrListMap( ).find( attr_token );
   if ( attrIter == tr->getAttrListMap( ).end( ) )
   {
     throw std::runtime_error( "Attribute list not found" );
@@ -735,11 +735,11 @@ OTF1TraceReader::otf1HandleDefProcessOrGroupAttributes( void* userData,
 
   std::vector< OTF_ATTR_TYPE >& attrList = attrIter->second;
   ProcessGroup* pg = NULL;
-  ProcessGroupMap::iterator pgIter = tr->getProcGoupMap( ).find( proc_token );
+  ProcessGroupMap::iterator     pgIter   = tr->getProcGoupMap( ).find( proc_token );
   if ( pgIter == tr->getProcGoupMap( ).end( ) )
   {
-    pg = new ProcessGroup( );
-    pg->name = NULL;
+    pg           = new ProcessGroup( );
+    pg->name     = NULL;
     pg->numProcs = 0;
     tr->getProcGoupMap( )[proc_token] = pg;
   }
@@ -748,7 +748,7 @@ OTF1TraceReader::otf1HandleDefProcessOrGroupAttributes( void* userData,
     pg = pgIter->second;
   }
 
-  bool isCUDA = false;
+  bool isCUDA       = false;
   bool isCUDAMaster = false;
   for ( std::vector< OTF_ATTR_TYPE >::iterator iter = attrList.begin( );
         iter != attrList.end( ); ++iter )
@@ -768,18 +768,18 @@ OTF1TraceReader::otf1HandleDefProcessOrGroupAttributes( void* userData,
     throw std::runtime_error( "Wrong attribute combination" );
   }
 
-  pg->isCUDA = isCUDA;
+  pg->isCUDA       = isCUDA;
   pg->isCUDAMaster = isCUDAMaster;
 
   return OTF_RETURN_OK;
 }
 
 int
-OTF1TraceReader::otf1HandleDefAttributeList( void* userData,
-                                             uint32_t stream,
-                                             uint32_t attr_token,
-                                             uint32_t num,
-                                             OTF_ATTR_TYPE* array,
+OTF1TraceReader::otf1HandleDefAttributeList( void*             userData,
+                                             uint32_t          stream,
+                                             uint32_t          attr_token,
+                                             uint32_t          num,
+                                             OTF_ATTR_TYPE*    array,
                                              OTF_KeyValueList* list )
 {
   OTF1TraceReader* tr = (OTF1TraceReader*)userData;
@@ -793,12 +793,12 @@ OTF1TraceReader::otf1HandleDefAttributeList( void* userData,
 }
 
 int
-OTF1TraceReader::otf1HandleDefFunction( void* userData,
-                                        uint32_t stream,
-                                        uint32_t func,
+OTF1TraceReader::otf1HandleDefFunction( void*       userData,
+                                        uint32_t    stream,
+                                        uint32_t    func,
                                         const char* name,
-                                        uint32_t funcGroup,
-                                        uint32_t source )
+                                        uint32_t    funcGroup,
+                                        uint32_t    source )
 {
   OTF1TraceReader* tr = (OTF1TraceReader*)userData;
   tr->getFuncNameMap( )[func] = name;
@@ -812,12 +812,12 @@ OTF1TraceReader::otf1HandleDefFunction( void* userData,
 }
 
 int
-OTF1TraceReader::otf1HandleDefKeyValue( void* userData,
-                                        uint32_t stream,
-                                        uint32_t key,
-                                        OTF_Type type,
-                                        const char* name,
-                                        const char* description,
+OTF1TraceReader::otf1HandleDefKeyValue( void*                    userData,
+                                        uint32_t                 stream,
+                                        uint32_t                 key,
+                                        OTF_Type                 type,
+                                        const char*              name,
+                                        const char*              description,
                                         OTF_KeyValueList_struct* list )
 {
   OTF1TraceReader* tr = (OTF1TraceReader*)userData;
@@ -833,9 +833,9 @@ OTF1TraceReader::otf1HandleDefKeyValue( void* userData,
 }
 
 int
-OTF1TraceReader::otf1HandleDefTimerResolution( void* userData,
-                                               uint32_t stream,
-                                               uint64_t ticksPerSecond,
+OTF1TraceReader::otf1HandleDefTimerResolution( void*             userData,
+                                               uint32_t          stream,
+                                               uint64_t          ticksPerSecond,
                                                OTF_KeyValueList* list )
 {
   OTF1TraceReader* tr = (OTF1TraceReader*)userData;
@@ -851,33 +851,33 @@ OTF1TraceReader::otf1HandleDefTimerResolution( void* userData,
 }
 
 int
-OTF1TraceReader::otf1HandleSendMsg( void* userData,
-                                    uint64_t time,
-                                    uint32_t sender,
-                                    uint32_t receiver,
-                                    uint32_t group,
-                                    uint32_t type,
-                                    uint32_t length,
-                                    uint32_t source,
+OTF1TraceReader::otf1HandleSendMsg( void*             userData,
+                                    uint64_t          time,
+                                    uint32_t          sender,
+                                    uint32_t          receiver,
+                                    uint32_t          group,
+                                    uint32_t          type,
+                                    uint32_t          length,
+                                    uint32_t          source,
                                     OTF_KeyValueList* list )
 {
   OTF1TraceReader* tr = (OTF1TraceReader*)userData;
 
-  OTF1CommEvent commEvent;
-  commEvent.type = OTF1_SEND_MSG;
-  commEvent.time = time;
+  OTF1CommEvent    commEvent;
+  commEvent.type     = OTF1_SEND_MSG;
+  commEvent.time     = time;
   commEvent.idInList = tr->getSendMsgList( sender ).size( );
   tr->getCommEventList( sender ).push_back( commEvent );
 
   OTF1SendMsg msg;
-  msg.time = time;
-  msg.sender = sender;
-  msg.receiver = receiver;
-  msg.group = group;
-  msg.type = type;
-  msg.length = length;
-  msg.source = source;
-  msg.list = list;
+  msg.time           = time;
+  msg.sender         = sender;
+  msg.receiver       = receiver;
+  msg.group          = group;
+  msg.type           = type;
+  msg.length         = length;
+  msg.source         = source;
+  msg.list           = list;
 
   tr->getSendMsgList( sender ).push_back( msg );
 
@@ -890,33 +890,33 @@ OTF1TraceReader::otf1HandleSendMsg( void* userData,
 }
 
 int
-OTF1TraceReader::otf1HandleRecvMsg( void* userData,
-                                    uint64_t time,
-                                    uint32_t receiver,
-                                    uint32_t sender,
-                                    uint32_t group,
-                                    uint32_t type,
-                                    uint32_t length,
-                                    uint32_t source,
+OTF1TraceReader::otf1HandleRecvMsg( void*             userData,
+                                    uint64_t          time,
+                                    uint32_t          receiver,
+                                    uint32_t          sender,
+                                    uint32_t          group,
+                                    uint32_t          type,
+                                    uint32_t          length,
+                                    uint32_t          source,
                                     OTF_KeyValueList* list )
 {
   OTF1TraceReader* tr = (OTF1TraceReader*)userData;
 
-  OTF1CommEvent commEvent;
-  commEvent.type = OTF1_RECV_MSG;
-  commEvent.time = time;
+  OTF1CommEvent    commEvent;
+  commEvent.type     = OTF1_RECV_MSG;
+  commEvent.time     = time;
   commEvent.idInList = tr->getRecvMsgList( receiver ).size( );
   tr->getCommEventList( receiver ).push_back( commEvent );
 
   OTF1RecvMsg msg;
-  msg.time = time;
-  msg.sender = sender;
-  msg.receiver = receiver;
-  msg.group = group;
-  msg.type = type;
-  msg.length = length;
-  msg.source = source;
-  msg.list = list;
+  msg.time           = time;
+  msg.sender         = sender;
+  msg.receiver       = receiver;
+  msg.group          = group;
+  msg.type           = type;
+  msg.length         = length;
+  msg.source         = source;
+  msg.list           = list;
 
   tr->getRecvMsgList( receiver ).push_back( msg );
 
@@ -929,37 +929,37 @@ OTF1TraceReader::otf1HandleRecvMsg( void* userData,
 }
 
 int
-OTF1TraceReader::otf1HandleBeginCollectiveOperation( void* userData,
-                                                     uint64_t time,
-                                                     uint32_t process,
-                                                     uint32_t collOp,
-                                                     uint64_t matchingId,
-                                                     uint32_t procGroup,
-                                                     uint32_t rootProc,
-                                                     uint64_t sent,
-                                                     uint64_t received,
-                                                     uint32_t scltoken,
+OTF1TraceReader::otf1HandleBeginCollectiveOperation( void*             userData,
+                                                     uint64_t          time,
+                                                     uint32_t          process,
+                                                     uint32_t          collOp,
+                                                     uint64_t          matchingId,
+                                                     uint32_t          procGroup,
+                                                     uint32_t          rootProc,
+                                                     uint64_t          sent,
+                                                     uint64_t          received,
+                                                     uint32_t          scltoken,
                                                      OTF_KeyValueList* list )
 {
   OTF1TraceReader* tr = (OTF1TraceReader*)userData;
 
-  OTF1CommEvent commEvent;
-  commEvent.type = OTF1_COLL_BEGIN;
-  commEvent.time = time;
+  OTF1CommEvent    commEvent;
+  commEvent.type     = OTF1_COLL_BEGIN;
+  commEvent.time     = time;
   commEvent.idInList = tr->getCollBeginList( process ).size( );
   tr->getCommEventList( process ).push_back( commEvent );
 
   OTF1CollBeginOp coll;
-  coll.collOp = collOp;
-  coll.time = time;
-  coll.process = process;
-  coll.matchingId = matchingId;
-  coll.procGroup = procGroup;
-  coll.sent = sent;
-  coll.rootProc = rootProc;
-  coll.received = received;
-  coll.scltoken = scltoken;
-  coll.list = list;
+  coll.collOp        = collOp;
+  coll.time          = time;
+  coll.process       = process;
+  coll.matchingId    = matchingId;
+  coll.procGroup     = procGroup;
+  coll.sent          = sent;
+  coll.rootProc      = rootProc;
+  coll.received      = received;
+  coll.scltoken      = scltoken;
+  coll.list          = list;
 
   tr->getCollBeginList( process ).push_back( coll );
 
@@ -978,25 +978,25 @@ OTF1TraceReader::otf1HandleBeginCollectiveOperation( void* userData,
 }
 
 int
-OTF1TraceReader::otf1HandleEndCollectiveOperation( void* userData,
-                                                   uint64_t time,
-                                                   uint32_t process,
-                                                   uint64_t matchingId,
+OTF1TraceReader::otf1HandleEndCollectiveOperation( void*             userData,
+                                                   uint64_t          time,
+                                                   uint32_t          process,
+                                                   uint64_t          matchingId,
                                                    OTF_KeyValueList* list )
 {
   OTF1TraceReader* tr = (OTF1TraceReader*)userData;
 
-  OTF1CommEvent commEvent;
-  commEvent.type = OTF1_COLL_END;
-  commEvent.time = time;
+  OTF1CommEvent    commEvent;
+  commEvent.type     = OTF1_COLL_END;
+  commEvent.time     = time;
   commEvent.idInList = tr->getCollEndList( process ).size( );
   tr->getCommEventList( process ).push_back( commEvent );
 
   OTF1CollEndOp coll;
-  coll.time = time;
-  coll.process = process;
-  coll.matchingId = matchingId;
-  coll.list = list;
+  coll.time          = time;
+  coll.process       = process;
+  coll.matchingId    = matchingId;
+  coll.list          = list;
 
   tr->getCollEndList( process ).push_back( coll );
 
@@ -1005,31 +1005,31 @@ OTF1TraceReader::otf1HandleEndCollectiveOperation( void* userData,
 }
 
 int
-OTF1TraceReader::otf1HandleRMAEnd( void* userData,
-                                   uint64_t time,
-                                   uint32_t process,
-                                   uint32_t remote,
-                                   uint32_t communicator,
-                                   uint32_t tag,
-                                   uint32_t source,
+OTF1TraceReader::otf1HandleRMAEnd( void*             userData,
+                                   uint64_t          time,
+                                   uint32_t          process,
+                                   uint32_t          remote,
+                                   uint32_t          communicator,
+                                   uint32_t          tag,
+                                   uint32_t          source,
                                    OTF_KeyValueList* list )
 {
   OTF1TraceReader* tr = (OTF1TraceReader*)userData;
 
-  OTF1CommEvent commEvent;
-  commEvent.type = OTF1_RMA_END;
-  commEvent.time = time;
+  OTF1CommEvent    commEvent;
+  commEvent.type     = OTF1_RMA_END;
+  commEvent.time     = time;
   commEvent.idInList = tr->getRmaEndList( process ).size( );
   tr->getCommEventList( process ).push_back( commEvent );
 
   OTF1RMAEnd rma;
-  rma.time = time;
-  rma.process = process;
-  rma.remote = remote;
-  rma.communicator = communicator;
+  rma.time           = time;
+  rma.process        = process;
+  rma.remote         = remote;
+  rma.communicator   = communicator;
   rma.tag = tag;
-  rma.source = source;
-  rma.list = list;
+  rma.source         = source;
+  rma.list           = list;
 
   tr->getRmaEndList( process ).push_back( rma );
 
@@ -1038,35 +1038,35 @@ OTF1TraceReader::otf1HandleRMAEnd( void* userData,
 }
 
 int
-OTF1TraceReader::otf1HandleRMAGet( void* userData,
-                                   uint64_t time,
-                                   uint32_t process,
-                                   uint32_t origin,
-                                   uint32_t target,
-                                   uint32_t communicator,
-                                   uint32_t tag,
-                                   uint64_t bytes,
-                                   uint32_t source,
+OTF1TraceReader::otf1HandleRMAGet( void*             userData,
+                                   uint64_t          time,
+                                   uint32_t          process,
+                                   uint32_t          origin,
+                                   uint32_t          target,
+                                   uint32_t          communicator,
+                                   uint32_t          tag,
+                                   uint64_t          bytes,
+                                   uint32_t          source,
                                    OTF_KeyValueList* list )
 {
   OTF1TraceReader* tr = (OTF1TraceReader*)userData;
 
-  OTF1CommEvent commEvent;
-  commEvent.type = OTF1_RMA_GET;
-  commEvent.time = time;
+  OTF1CommEvent    commEvent;
+  commEvent.type     = OTF1_RMA_GET;
+  commEvent.time     = time;
   commEvent.idInList = tr->getRmaGetList( process ).size( );
   tr->getCommEventList( process ).push_back( commEvent );
 
   OTF1RMAGet rma;
-  rma.time = time;
-  rma.process = process;
-  rma.origin = origin;
-  rma.target = target;
-  rma.communicator = communicator;
+  rma.time           = time;
+  rma.process        = process;
+  rma.origin         = origin;
+  rma.target         = target;
+  rma.communicator   = communicator;
   rma.tag = tag;
-  rma.bytes = bytes;
-  rma.source = source;
-  rma.list = list;
+  rma.bytes          = bytes;
+  rma.source         = source;
+  rma.list           = list;
 
   tr->getRmaGetList( process ).push_back( rma );
 
@@ -1075,35 +1075,35 @@ OTF1TraceReader::otf1HandleRMAGet( void* userData,
 }
 
 int
-OTF1TraceReader::otf1HandleRMAPut( void* userData,
-                                   uint64_t time,
-                                   uint32_t process,
-                                   uint32_t origin,
-                                   uint32_t target,
-                                   uint32_t communicator,
-                                   uint32_t tag,
-                                   uint64_t bytes,
-                                   uint32_t source,
+OTF1TraceReader::otf1HandleRMAPut( void*             userData,
+                                   uint64_t          time,
+                                   uint32_t          process,
+                                   uint32_t          origin,
+                                   uint32_t          target,
+                                   uint32_t          communicator,
+                                   uint32_t          tag,
+                                   uint64_t          bytes,
+                                   uint32_t          source,
                                    OTF_KeyValueList* list )
 {
   OTF1TraceReader* tr = (OTF1TraceReader*)userData;
 
-  OTF1CommEvent commEvent;
-  commEvent.type = OTF1_RMA_PUT;
-  commEvent.time = time;
+  OTF1CommEvent    commEvent;
+  commEvent.type     = OTF1_RMA_PUT;
+  commEvent.time     = time;
   commEvent.idInList = tr->getRmaPutList( process ).size( );
   tr->getCommEventList( process ).push_back( commEvent );
 
   OTF1RMAPut rma;
-  rma.time = time;
-  rma.process = process;
-  rma.origin = origin;
-  rma.target = target;
-  rma.communicator = communicator;
+  rma.time           = time;
+  rma.process        = process;
+  rma.origin         = origin;
+  rma.target         = target;
+  rma.communicator   = communicator;
   rma.tag = tag;
-  rma.bytes = bytes;
-  rma.source = source;
-  rma.list = list;
+  rma.bytes          = bytes;
+  rma.source         = source;
+  rma.list           = list;
 
   tr->getRmaPutList( process ).push_back( rma );
 

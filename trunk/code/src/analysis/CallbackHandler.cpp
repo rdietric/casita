@@ -87,13 +87,13 @@ CallbackHandler::printNode( GraphNode* node, EventStream* stream )
 }
 
 void
-CallbackHandler::applyStreamRefsEnter( ITraceReader* reader,
-                                       GraphNode* node,
+CallbackHandler::applyStreamRefsEnter( ITraceReader*  reader,
+                                       GraphNode*     node,
                                        IKeyValueList* list,
-                                       Paradigm paradigm )
+                                       Paradigm       paradigm )
 {
-  uint64_t refValue = 0;
-  int32_t streamRefKey = -1;
+  uint64_t refValue     = 0;
+  int32_t  streamRefKey = -1;
 
   switch ( paradigm )
   {
@@ -148,14 +148,14 @@ CallbackHandler::applyStreamRefsEnter( ITraceReader* reader,
 }
 
 void
-CallbackHandler::applyStreamRefsLeave( ITraceReader* reader,
-                                       GraphNode* node,
-                                       GraphNode* oldNode,
+CallbackHandler::applyStreamRefsLeave( ITraceReader*  reader,
+                                       GraphNode*     node,
+                                       GraphNode*     oldNode,
                                        IKeyValueList* list,
-                                       Paradigm paradigm )
+                                       Paradigm       paradigm )
 {
-  uint64_t refValue = 0;
-  int32_t streamRefKey = -1;
+  uint64_t refValue     = 0;
+  int32_t  streamRefKey = -1;
 
   switch ( paradigm )
   {
@@ -191,12 +191,12 @@ CallbackHandler::applyStreamRefsLeave( ITraceReader* reader,
 }
 
 uint32_t
-CallbackHandler::readKeyVal( ITraceReader* reader,
-                             const char* keyName,
+CallbackHandler::readKeyVal( ITraceReader*  reader,
+                             const char*    keyName,
                              IKeyValueList* list )
 {
   uint32_t keyVal = 0;
-  int32_t key = reader->getFirstKey( keyName );
+  int32_t  key    = reader->getFirstKey( keyName );
   if ( key > -1 && list )
   {
     list->getUInt32( (uint32_t)key, &keyVal );
@@ -207,25 +207,25 @@ CallbackHandler::readKeyVal( ITraceReader* reader,
 
 void
 CallbackHandler::handleProcessMPIMapping( ITraceReader* reader,
-                                          uint64_t streamId,
-                                          uint32_t mpiRank )
+                                          uint64_t      streamId,
+                                          uint32_t      mpiRank )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
   handler->getAnalysis( ).getMPIAnalysis( ).setMPIRank( streamId, mpiRank );
 }
 
 void
-CallbackHandler::handleDefProcess( ITraceReader* reader,
-                                   uint32_t stream,
-                                   uint64_t streamId,
-                                   uint64_t parentId,
-                                   const char* name,
+CallbackHandler::handleDefProcess( ITraceReader*  reader,
+                                   uint32_t       stream,
+                                   uint64_t       streamId,
+                                   uint64_t       parentId,
+                                   const char*    name,
                                    IKeyValueList* list,
-                                   bool isCUDA,
-                                   bool isCUDANull )
+                                   bool           isCUDA,
+                                   bool           isCUDANull )
 {
-  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
-  AnalysisEngine& analysis = handler->getAnalysis( );
+  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
+  AnalysisEngine&  analysis = handler->getAnalysis( );
 
   EventStream::EventStreamType streamType = EventStream::ES_HOST;
 
@@ -257,33 +257,33 @@ CallbackHandler::handleDefProcess( ITraceReader* reader,
 
 void
 CallbackHandler::handleDefFunction( ITraceReader* reader,
-                                    uint64_t streamId,
-                                    uint32_t functionId,
-                                    const char* name,
-                                    uint32_t functionGroupId )
+                                    uint64_t      streamId,
+                                    uint32_t      functionId,
+                                    const char*   name,
+                                    uint32_t      functionGroupId )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
   handler->getAnalysis( ).addFunction( functionId, name );
 }
 
 void
-CallbackHandler::handleEnter( ITraceReader* reader,
-                              uint64_t time,
-                              uint32_t functionId,
-                              uint64_t streamId,
+CallbackHandler::handleEnter( ITraceReader*  reader,
+                              uint64_t       time,
+                              uint32_t       functionId,
+                              uint64_t       streamId,
                               IKeyValueList* list )
 {
-  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
-  AnalysisEngine& analysis = handler->getAnalysis( );
-  ProgramOptions& options = handler->getOptions( );
+  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
+  AnalysisEngine&  analysis = handler->getAnalysis( );
+  ProgramOptions&  options  = handler->getOptions( );
 
-  EventStream* stream = analysis.getStream( streamId );
+  EventStream*     stream   = analysis.getStream( streamId );
   if ( !stream )
   {
     throw RTException( "Process %lu not found.", streamId );
   }
 
-  const char* funcName = reader->getFunctionName( functionId ).c_str( );
+  const char* funcName      = reader->getFunctionName( functionId ).c_str( );
 
   FunctionDescriptor functionType;
   AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType );
@@ -348,23 +348,23 @@ CallbackHandler::handleEnter( ITraceReader* reader,
 }
 
 void
-CallbackHandler::handleLeave( ITraceReader* reader,
-                              uint64_t time,
-                              uint32_t functionId,
-                              uint64_t streamId,
+CallbackHandler::handleLeave( ITraceReader*  reader,
+                              uint64_t       time,
+                              uint32_t       functionId,
+                              uint64_t       streamId,
                               IKeyValueList* list )
 {
-  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
-  AnalysisEngine& analysis = handler->getAnalysis( );
-  ProgramOptions& options = handler->getOptions( );
+  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
+  AnalysisEngine&  analysis = handler->getAnalysis( );
+  ProgramOptions&  options  = handler->getOptions( );
 
-  EventStream* stream = handler->getAnalysis( ).getStream( streamId );
+  EventStream*     stream   = handler->getAnalysis( ).getStream( streamId );
   if ( !stream )
   {
     throw RTException( "Process %lu not found", streamId );
   }
 
-  const char* funcName = reader->getFunctionName( functionId ).c_str( );
+  const char* funcName      = reader->getFunctionName( functionId ).c_str( );
 
   FunctionDescriptor functionType;
   AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType );
@@ -385,7 +385,7 @@ CallbackHandler::handleLeave( ITraceReader* reader,
   if ( Node::isCUDAEventType( functionType.paradigm, functionType.type ) )
   {
     /**\todo implement for Score-P keys */
-    uint32_t eventId = readKeyVal( reader, VT_CUPTI_CUDA_EVENTREF_KEY, list );
+    uint32_t eventId  = readKeyVal( reader, VT_CUPTI_CUDA_EVENTREF_KEY, list );
     CUresult cuResult = (CUresult)readKeyVal( reader,
                                               VT_CUPTI_CUDA_CURESULT_KEY,
                                               list );
@@ -449,13 +449,13 @@ CallbackHandler::handleLeave( ITraceReader* reader,
 
         case EventStream::MPI_ONEANDALL:
           leaveNode->setReferencedStreamId( iter->partnerId );
-          tmpId = new uint64_t;
+          tmpId  = new uint64_t;
           *tmpId = iter->rootId;
           leaveNode->setData( tmpId );
           break;
 
         case EventStream::MPI_SEND:
-          tmpId = new uint64_t;
+          tmpId  = new uint64_t;
           *tmpId = iter->partnerId;
           leaveNode->setData( tmpId );
           break;
@@ -506,16 +506,16 @@ CallbackHandler::handleLeave( ITraceReader* reader,
 
 void
 CallbackHandler::handleMPIComm( ITraceReader* reader,
-                                MPIType mpiType,
-                                uint64_t streamId,
-                                uint64_t partnerId,
-                                uint32_t root,
-                                uint32_t tag )
+                                MPIType       mpiType,
+                                uint64_t      streamId,
+                                uint64_t      partnerId,
+                                uint32_t      root,
+                                uint32_t      tag )
 {
-  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
-  AnalysisEngine& analysis = handler->getAnalysis( );
+  CallbackHandler*     handler  = (CallbackHandler*)( reader->getUserData( ) );
+  AnalysisEngine&      analysis = handler->getAnalysis( );
 
-  EventStream* stream = analysis.getStream( streamId );
+  EventStream*         stream   = analysis.getStream( streamId );
 
   EventStream::MPIType pMPIType;
 

@@ -40,7 +40,7 @@ namespace casita
           return false;
         }
 
-        GraphNode* enterEvent = node->getPartner( );
+        GraphNode*   enterEvent = node->getPartner( );
         EventStream* nodeStream = analysis->getStream( node->getStreamId( ) );
 
         if ( nodeStream->isDeviceStream( ) )
@@ -53,16 +53,16 @@ namespace casita
 
         const EventStreamGroup::EventStreamList& streams =
           analysis->getHostStreams( );
-        const GraphNode::GraphNodeList& barrierList =
+        const GraphNode::GraphNodeList& barrierList      =
           analysis->getBarrierEventList( false );
 
-        GraphNode::GraphNodeList::const_iterator iter = barrierList.begin( );
+        GraphNode::GraphNodeList::const_iterator iter    = barrierList.begin( );
         GraphNode* maxEnterTimeNode = *iter;         /* keep enter
                                                       * event with max
                                                       * enter
                                                       * timestamp */
 
-        uint64_t blame = 0;
+        uint64_t   blame = 0;
 
         /* check if all barriers were passed */
         if ( streams.size( ) == barrierList.size( ) )

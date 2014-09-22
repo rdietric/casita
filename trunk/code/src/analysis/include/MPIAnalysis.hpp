@@ -51,7 +51,7 @@ namespace casita
 
      typedef struct
      {
-       MPI_Comm comm;
+       MPI_Comm             comm;
        std::set< uint64_t > procs;
      } MPICommGroup;
 
@@ -64,9 +64,9 @@ namespace casita
      typedef struct
      {
        MPIEdgeDirection direction;
-       GraphNode* localNode;
-       uint64_t remoteNodeID;      /* remote node ID */
-       uint64_t remoteStreamID;      /* remote stream ID */
+       GraphNode*       localNode;
+       uint64_t         remoteNodeID; /* remote node ID */
+       uint64_t         remoteStreamID; /* remote stream ID */
      } MPIEdge;
 
      typedef struct
@@ -105,8 +105,8 @@ namespace casita
      setMPIRank( uint64_t streamId, uint32_t rank );
 
      void
-     setMPICommGroupMap( uint32_t group,
-                         uint32_t numProcs,
+     setMPICommGroupMap( uint32_t        group,
+                         uint32_t        numProcs,
                          const uint64_t* procs );
 
      void
@@ -133,11 +133,11 @@ namespace casita
      reset( );
 
    private:
-     uint32_t mpiRank;
-     uint32_t mpiSize;
-     TokenTokenMap processRankMap;
-     MPICommGroupMap mpiCommGroupMap;
-     MPIRemoteEdgeMap remoteMpiEdgeMap;
+     uint32_t             mpiRank;
+     uint32_t             mpiSize;
+     TokenTokenMap        processRankMap;
+     MPICommGroupMap      mpiCommGroupMap;
+     MPIRemoteEdgeMap     remoteMpiEdgeMap;
      ReverseRemoteNodeMap reverseRemoteNodeMap;
  };
 }

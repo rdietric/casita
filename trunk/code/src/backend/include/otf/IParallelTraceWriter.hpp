@@ -36,8 +36,8 @@ namespace casita
         uint64_t totalDuration;
         uint64_t totalDurationOnCP;
         uint64_t totalBlame;
-        double fractionCP;
-        double fractionBlame;
+        double   fractionCP;
+        double   fractionBlame;
         uint64_t lastEnter;
       } ActivityGroup;
 
@@ -67,8 +67,8 @@ namespace casita
       IParallelTraceWriter( const char* streamRefKeyName,
                             const char* eventRefKeyName,
                             const char* funcResultKeyName,
-                            uint32_t mpiRank,
-                            uint32_t mpiSize ) :
+                            uint32_t    mpiRank,
+                            uint32_t    mpiSize ) :
         ITraceWriter( streamRefKeyName, eventRefKeyName, funcResultKeyName ),
         mpiRank( mpiRank ),
         mpiSize( mpiSize )
@@ -82,13 +82,13 @@ namespace casita
       }
 
       virtual void
-      writeProcess( uint64_t streamId,
+      writeProcess( uint64_t                          streamId,
                     EventStream::SortedGraphNodeList* nodes,
-                    bool enableWaitStates,
-                    GraphNode* pLastGraphNode,
-                    bool verbose,
-                    CounterTable* ctrTable,
-                    Graph* graph ) = 0;
+                    bool                              enableWaitStates,
+                    GraphNode*                        pLastGraphNode,
+                    bool                              verbose,
+                    CounterTable*                     ctrTable,
+                    Graph*                            graph ) = 0;
 
       ActivityGroupMap&
       getActivityGroupMap( )

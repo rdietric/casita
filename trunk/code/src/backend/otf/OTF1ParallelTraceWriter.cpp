@@ -42,8 +42,8 @@ using namespace casita::io;
 OTF1ParallelTraceWriter::OTF1ParallelTraceWriter( const char* streamRefKeyName,
                                                   const char* eventRefKeyName,
                                                   const char* funcResultKeyName,
-                                                  uint32_t mpiRank,
-                                                  uint32_t mpiSize,
+                                                  uint32_t    mpiRank,
+                                                  uint32_t    mpiSize,
                                                   const char* originalFilename )
   :
     IParallelTraceWriter( streamRefKeyName, eventRefKeyName, funcResultKeyName,
@@ -146,7 +146,7 @@ void
 OTF1ParallelTraceWriter::copyGlobalDefinitions( )
 {
 
-  OTF_Reader* reader = OTF_Reader_open( originalFilename.c_str( ), fileMgr );
+  OTF_Reader* reader         = OTF_Reader_open( originalFilename.c_str( ), fileMgr );
 
   OTF_HandlerArray* handlers = OTF_HandlerArray_open( );
 
@@ -297,7 +297,7 @@ OTF1ParallelTraceWriter::writeDefProcess( uint64_t id, uint64_t parentId,
                                           const char* name, ProcessGroup pg )
 {
 
-  uint32_t otf1_id = (uint32_t)id;
+  uint32_t otf1_id        = (uint32_t)id;
 
   /* create local writer for process id */
   OTF_WStream_ptr wstream = OTF_WStream_open(
@@ -311,9 +311,9 @@ OTF1ParallelTraceWriter::writeDefProcess( uint64_t id, uint64_t parentId,
  * Write self-defined metrics/counter to new trace file
  */
 void
-OTF1ParallelTraceWriter::writeDefCounter( uint32_t id,
+OTF1ParallelTraceWriter::writeDefCounter( uint32_t    id,
                                           const char* name,
-                                          int properties )
+                                          int         properties )
 {
   if ( mpiRank == 0 )
   {
@@ -328,18 +328,18 @@ OTF1ParallelTraceWriter::writeDefCounter( uint32_t id,
  * events and counter values from analysis
  */
 void
-OTF1ParallelTraceWriter::writeProcess( uint64_t processId,
+OTF1ParallelTraceWriter::writeProcess( uint64_t                          processId,
                                        EventStream::SortedGraphNodeList* nodes,
-                                       bool enableWaitStates,
-                                       GraphNode* pLastGraphNode,
-                                       bool verbose,
-                                       CounterTable* ctrTable,
-                                       Graph* graph )
+                                       bool                              enableWaitStates,
+                                       GraphNode*                        pLastGraphNode,
+                                       bool                              verbose,
+                                       CounterTable*                     ctrTable,
+                                       Graph*                            graph )
 {
-  cpuNodes = 0;
+  cpuNodes          = 0;
   currentStackLevel = 0;
   currentlyRunningCPUFunctions.clear( );
-  lastTimeOnCriticalPath[processId] = 0;
+  lastTimeOnCriticalPath[processId]      = 0;
   lastProcessedNodePerProcess[processId] = new GraphNode( 0,
                                                           processId,
                                                           "START",
@@ -348,9 +348,9 @@ OTF1ParallelTraceWriter::writeProcess( uint64_t processId,
                                                           MISC_PROCESS );
 
   OTF1Event event;
-  event.location = processId;
-  event.type = OTF1_MISC;
-  event.time = 0;
+  event.location         = processId;
+  event.type             = OTF1_MISC;
+  event.time             = 0;
   lastCPUEventPerProcess[processId] = event;
 
   if ( verbose )
@@ -360,7 +360,7 @@ OTF1ParallelTraceWriter::writeProcess( uint64_t processId,
   }
 
   /* create writer for this process */
-  processNodes = nodes;
+  processNodes           = nodes;
   this->enableWaitStates = enableWaitStates;
   iter = processNodes->begin( );
   /* skip first processNode for main processes, since it did not
@@ -369,12 +369,12 @@ OTF1ParallelTraceWriter::writeProcess( uint64_t processId,
   {
     iter++;
   }
-  lastGraphNode = pLastGraphNode;
-  this->verbose = verbose;
-  this->graph = graph;
+  lastGraphNode          = pLastGraphNode;
+  this->verbose          = verbose;
+  this->graph            = graph;
   cTable = ctrTable;
 
-  uint32_t otf1_id = (uint32_t)processId;
+  uint32_t otf1_id           = (uint32_t)processId;
 
   OTF_HandlerArray* handlers = OTF_HandlerArray_open( );
 
@@ -428,13 +428,13 @@ OTF1ParallelTraceWriter::writeProcess( uint64_t processId,
 bool
 OTF1ParallelTraceWriter::processCPUEvent( OTF1Event event )
 {
-  OTF_WStream_ptr wstream = processWStreamMap[event.location];
-  GraphNode* node;
+  OTF_WStream_ptr wstream           = processWStreamMap[event.location];
+  GraphNode*      node;
 
   node = *iter;
 
-  OTF1Event bufferedCPUEvent = lastCPUEventPerProcess[event.location];
-  GraphNode* lastProcessedNode =
+  OTF1Event bufferedCPUEvent        = lastCPUEventPerProcess[event.location];
+  GraphNode*      lastProcessedNode =
     lastProcessedNodePerProcess[node->getStreamId( )];
   /* Any buffered CPU-Events? */
   if ( lastProcessedNode &&
@@ -450,7 +450,7 @@ OTF1ParallelTraceWriter::processCPUEvent( OTF1Event event )
     /* write counter for critical path for all pending cpu events */
 
     uint64_t ctrVal = 0;
-    bool valid;
+    bool     valid;
     if ( lastProcessedNode &&
          ( lastProcessedNode->getCounter( cTable->getCtrId( CTR_CRITICALPATH ),
                                           &valid ) == 1 ) &&
@@ -578,7 +578,7 @@ OTF1ParallelTraceWriter::processNextNode( OTF1Event event )
 
   if ( activityGroupMap.find( event.regionRef ) == activityGroupMap.end( ) )
   {
-    activityGroupMap[event.regionRef].functionId = event.regionRef;
+    activityGroupMap[event.regionRef].functionId   = event.regionRef;
     activityGroupMap[event.regionRef].numInstances = 0;
   }
 
@@ -627,7 +627,7 @@ OTF1ParallelTraceWriter::processNextNode( OTF1Event event )
     * CPU events are not in nodes, hence they have to be written and countervalues have to be calculated first.
     * Since we need the time between a node and its successor we buffer one cpu event at each time.
     */
-  OTF1Event bufferedCPUEvent = lastCPUEventPerProcess[event.location];
+  OTF1Event  bufferedCPUEvent  = lastCPUEventPerProcess[event.location];
   GraphNode* lastProcessedNode =
     lastProcessedNodePerProcess[node->getStreamId( )];
 
@@ -715,7 +715,7 @@ OTF1ParallelTraceWriter::processNextNode( OTF1Event event )
   }
 
   /* find next connected node on critical path */
-  GraphNode* futureCPNode = NULL;
+  GraphNode*      futureCPNode = NULL;
   Graph::EdgeList outEdges;
   if ( graph->hasOutEdges( (GraphNode*)node ) )
   {
@@ -723,7 +723,7 @@ OTF1ParallelTraceWriter::processNextNode( OTF1Event event )
   }
 
   Graph::EdgeList::const_iterator edgeIter = outEdges.begin( );
-  uint64_t timeNextCPNode = 0;
+  uint64_t timeNextCPNode      = 0;
   uint32_t cpCtrId = cTable->getCtrId( CTR_CRITICALPATH );
 
   while ( edgeIter != outEdges.end( ) && !outEdges.empty( ) )
@@ -733,7 +733,7 @@ OTF1ParallelTraceWriter::processNextNode( OTF1Event event )
     if ( ( edgeEndNode->getCounter( cpCtrId, NULL ) == 1 ) &&
          ( ( timeNextCPNode > edgeEndNode->getTime( ) ) || timeNextCPNode == 0 ) )
     {
-      futureCPNode = edgeEndNode;
+      futureCPNode   = edgeEndNode;
       timeNextCPNode = futureCPNode->getTime( );
     }
     ++edgeIter;
@@ -804,18 +804,18 @@ OTF1ParallelTraceWriter::processNextNode( OTF1Event event )
  * write corresponding counter values of computed metrics for each node
  */
 void
-OTF1ParallelTraceWriter::writeNode( GraphNode* node,
-                                    CounterTable& ctrTable,
-                                    bool lastProcessNode,
+OTF1ParallelTraceWriter::writeNode( GraphNode*       node,
+                                    CounterTable&    ctrTable,
+                                    bool             lastProcessNode,
                                     const GraphNode* futureNode )
 {
-  uint32_t processId = (uint32_t)node->getStreamId( );
-  OTF_WStream_ptr wstream = processWStreamMap[processId];
-  uint64_t nodeTime = node->getTime( );
+  uint32_t        processId         = (uint32_t)node->getStreamId( );
+  OTF_WStream_ptr wstream           = processWStreamMap[processId];
+  uint64_t        nodeTime          = node->getTime( );
 
   /* Add Blame for area since last event */
-  OTF1Event bufferedCPUEvent = lastCPUEventPerProcess[node->getStreamId( )];
-  GraphNode* lastProcessedNode =
+  OTF1Event       bufferedCPUEvent  = lastCPUEventPerProcess[node->getStreamId( )];
+  GraphNode*      lastProcessedNode =
     lastProcessedNodePerProcess[node->getStreamId( )];
 
   /* Add Blame for area since last event */
@@ -836,9 +836,9 @@ OTF1ParallelTraceWriter::writeNode( GraphNode* node,
 
     if ( node->isEventNode( ) )
     {
-      EventNode* eNode = (EventNode*)node;
+      EventNode* eNode    = (EventNode*)node;
       OTF_KeyValueList_appendUint32( kvList, eventRefKey, eNode->getEventId( ) );
-      CUresult cuResult = CUDA_ERROR_NOT_READY;
+      CUresult   cuResult = CUDA_ERROR_NOT_READY;
       if ( eNode->getFunctionResult( ) == EventNode::FR_SUCCESS )
       {
         cuResult = CUDA_SUCCESS;
@@ -864,21 +864,21 @@ OTF1ParallelTraceWriter::writeNode( GraphNode* node,
   for ( CounterTable::CtrIdSet::const_iterator cIter = ctrIdSet.begin( );
         cIter != ctrIdSet.end( ); ++cIter )
   {
-    bool valid = false;
-    uint32_t ctrId = *cIter;
+    bool     valid         = false;
+    uint32_t ctrId         = *cIter;
     CtrTableEntry* counter = ctrTable.getCounter( ctrId );
     if ( counter->isInternal )
     {
       continue;
     }
 
-    CounterType ctrType = counter->type;
+    CounterType ctrType    = counter->type;
     if ( ctrType == CTR_WAITSTATE_LOG10 || ctrType == CTR_BLAME_LOG10 )
     {
       continue;
     }
 
-    uint64_t ctrVal = node->getCounter( ctrId, &valid );
+    uint64_t ctrVal        = node->getCounter( ctrId, &valid );
 
     if ( valid || counter->hasDefault )
     {
@@ -910,7 +910,7 @@ OTF1ParallelTraceWriter::writeNode( GraphNode* node,
           {
 
             const Graph::EdgeList& edges = graph->getOutEdges( node );
-            GraphNode* closestNode = edges.front( )->getEndNode( );
+            GraphNode* closestNode       = edges.front( )->getEndNode( );
             /* get closest Node */
             for ( Graph::EdgeList::const_iterator edgeIter = edges.begin( );
                   edgeIter != edges.end( ); edgeIter++ )
@@ -1035,9 +1035,9 @@ OTF1ParallelTraceWriter::assignBlame( uint64_t currentTime,
                                       uint64_t currentStream )
 {
   /* Add Blame for area since last event */
-  OTF1Event bufferedCPUEvent = lastCPUEventPerProcess[currentStream];
-  GraphNode* lastProcessedNode = lastProcessedNodePerProcess[currentStream];
-  OTF_WStream_ptr wstream = processWStreamMap[currentStream];
+  OTF1Event       bufferedCPUEvent  = lastCPUEventPerProcess[currentStream];
+  GraphNode*      lastProcessedNode = lastProcessedNodePerProcess[currentStream];
+  OTF_WStream_ptr wstream           = processWStreamMap[currentStream];
 
   if ( !( bufferedCPUEvent.type == OTF1_ENTER ) &&
        !( bufferedCPUEvent.type == OTF1_LEAVE ) )
@@ -1045,13 +1045,13 @@ OTF1ParallelTraceWriter::assignBlame( uint64_t currentTime,
     return;
   }
 
-  bool valid;
-  uint32_t fId = currentlyRunningCPUFunctions.back( );
-  uint64_t totalBlame = 0;
-  uint64_t edgeBlame = 0;
+  bool     valid;
+  uint32_t fId            = currentlyRunningCPUFunctions.back( );
+  uint64_t totalBlame     = 0;
+  uint64_t edgeBlame      = 0;
   uint64_t blameAreaStart = std::max( bufferedCPUEvent.time,
                                       lastProcessedNode->getTime( ) );
-  uint64_t timeDiff = currentTime - blameAreaStart;
+  uint64_t timeDiff       = currentTime - blameAreaStart;
   for ( Graph::EdgeList::iterator edgeIter = openEdges.begin( );
         edgeIter != openEdges.end( ); )
   {
@@ -1109,11 +1109,11 @@ OTF1ParallelTraceWriter::assignBlame( uint64_t currentTime,
  * Every callbacks has the writer object within @var{userData} and writes record immediately after reading
  */
 int
-OTF1ParallelTraceWriter::otf1HandleDefProcess( void* userData,
-                                               uint32_t stream,
-                                               uint32_t processId,
-                                               const char* name,
-                                               uint32_t parent,
+OTF1ParallelTraceWriter::otf1HandleDefProcess( void*                    userData,
+                                               uint32_t                 stream,
+                                               uint32_t                 processId,
+                                               const char*              name,
+                                               uint32_t                 parent,
                                                OTF_KeyValueList_struct* list )
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
@@ -1125,12 +1125,12 @@ OTF1ParallelTraceWriter::otf1HandleDefProcess( void* userData,
 }
 
 int
-OTF1ParallelTraceWriter::otf1HandleDefProcessGroup( void* userData,
-                                                    uint32_t stream,
-                                                    uint32_t procGroup,
-                                                    const char* name,
-                                                    uint32_t numberOfProcs,
-                                                    const uint32_t* procs,
+OTF1ParallelTraceWriter::otf1HandleDefProcessGroup( void*             userData,
+                                                    uint32_t          stream,
+                                                    uint32_t          procGroup,
+                                                    const char*       name,
+                                                    uint32_t          numberOfProcs,
+                                                    const uint32_t*   procs,
                                                     OTF_KeyValueList* list )
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
@@ -1151,20 +1151,19 @@ OTF1ParallelTraceWriter::otf1HandleDefProcessGroup( void* userData,
 }
 
 int
-OTF1ParallelTraceWriter::otf1HandleDefProcessOrGroupAttributes(
-  void* userData,
-  uint32_t stream,
-  uint32_t
-  proc_token,
-  uint32_t
-  attr_token,
-  OTF_KeyValueList
-  * list )
+OTF1ParallelTraceWriter::otf1HandleDefProcessOrGroupAttributes( void*    userData,
+                                                                uint32_t stream,
+                                                                uint32_t
+                                                                proc_token,
+                                                                uint32_t
+                                                                attr_token,
+                                                                OTF_KeyValueList
+                                                                *        list )
 {
 
-  OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
+  OTF1ParallelTraceWriter* writer        = (OTF1ParallelTraceWriter*)userData;
 
-  AttrListMap::iterator attrIter = writer->attrListMap.find( attr_token );
+  AttrListMap::iterator    attrIter      = writer->attrListMap.find( attr_token );
   if ( attrIter == writer->attrListMap.end( ) )
   {
     throw std::runtime_error( "Attribute list not found" );
@@ -1205,11 +1204,11 @@ OTF1ParallelTraceWriter::otf1HandleDefProcessOrGroupAttributes(
 }
 
 int
-OTF1ParallelTraceWriter::otf1HandleDefAttributeList( void* userData,
-                                                     uint32_t stream,
-                                                     uint32_t attr_token,
-                                                     uint32_t num,
-                                                     OTF_ATTR_TYPE* array,
+OTF1ParallelTraceWriter::otf1HandleDefAttributeList( void*             userData,
+                                                     uint32_t          stream,
+                                                     uint32_t          attr_token,
+                                                     uint32_t          num,
+                                                     OTF_ATTR_TYPE*    array,
                                                      OTF_KeyValueList* list )
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
@@ -1231,12 +1230,12 @@ OTF1ParallelTraceWriter::otf1HandleDefAttributeList( void* userData,
 }
 
 int
-OTF1ParallelTraceWriter::otf1HandleDefFunction( void* userData,
-                                                uint32_t stream,
-                                                uint32_t func,
-                                                const char* name,
-                                                uint32_t funcGroup,
-                                                uint32_t source,
+OTF1ParallelTraceWriter::otf1HandleDefFunction( void*             userData,
+                                                uint32_t          stream,
+                                                uint32_t          func,
+                                                const char*       name,
+                                                uint32_t          funcGroup,
+                                                uint32_t          source,
                                                 OTF_KeyValueList* list )
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
@@ -1254,10 +1253,10 @@ OTF1ParallelTraceWriter::otf1HandleDefFunction( void* userData,
 }
 
 int
-OTF1ParallelTraceWriter::otf1HandleDefFunctionGroup( void* userData,
-                                                     uint32_t stream,
-                                                     uint32_t funcGroup,
-                                                     const char* name,
+OTF1ParallelTraceWriter::otf1HandleDefFunctionGroup( void*             userData,
+                                                     uint32_t          stream,
+                                                     uint32_t          funcGroup,
+                                                     const char*       name,
                                                      OTF_KeyValueList* list )
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
@@ -1269,12 +1268,12 @@ OTF1ParallelTraceWriter::otf1HandleDefFunctionGroup( void* userData,
 }
 
 int
-OTF1ParallelTraceWriter::otf1HandleDefKeyValue( void* userData,
-                                                uint32_t stream,
-                                                uint32_t key,
-                                                OTF_Type type,
-                                                const char* name,
-                                                const char* description,
+OTF1ParallelTraceWriter::otf1HandleDefKeyValue( void*             userData,
+                                                uint32_t          stream,
+                                                uint32_t          key,
+                                                OTF_Type          type,
+                                                const char*       name,
+                                                const char*       description,
                                                 OTF_KeyValueList* list )
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
@@ -1287,9 +1286,9 @@ OTF1ParallelTraceWriter::otf1HandleDefKeyValue( void* userData,
 }
 
 int
-OTF1ParallelTraceWriter::otf1HandleDefTimerResolution( void* userData,
-                                                       uint32_t stream,
-                                                       uint64_t ticksPerSecond,
+OTF1ParallelTraceWriter::otf1HandleDefTimerResolution( void*             userData,
+                                                       uint32_t          stream,
+                                                       uint64_t          ticksPerSecond,
                                                        OTF_KeyValueList* list )
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
@@ -1311,21 +1310,21 @@ OTF1ParallelTraceWriter::otf1HandleDefTimerResolution( void* userData,
  * Enter and leave callbacks call "processNextNode()" to write node with metrics
  */
 int
-OTF1ParallelTraceWriter::otf1HandleEnter( void* userData,
-                                          uint64_t time,
-                                          uint32_t functionId,
-                                          uint32_t processId,
-                                          uint32_t source,
+OTF1ParallelTraceWriter::otf1HandleEnter( void*             userData,
+                                          uint64_t          time,
+                                          uint32_t          functionId,
+                                          uint32_t          processId,
+                                          uint32_t          source,
                                           OTF_KeyValueList* list )
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
 
   /* write next node in List */
   OTF1Event event;
-  event.location = processId;
+  event.location  = processId;
   event.regionRef = functionId;
-  event.time = time;
-  event.type = OTF1_ENTER;
+  event.time      = time;
+  event.type      = OTF1_ENTER;
 
   writer->eventStack.push( functionId );
 
@@ -1341,21 +1340,21 @@ OTF1ParallelTraceWriter::otf1HandleEnter( void* userData,
 }
 
 int
-OTF1ParallelTraceWriter::otf1HandleLeave( void* userData,
-                                          uint64_t time,
-                                          uint32_t functionId,
-                                          uint32_t processId,
-                                          uint32_t source,
+OTF1ParallelTraceWriter::otf1HandleLeave( void*             userData,
+                                          uint64_t          time,
+                                          uint32_t          functionId,
+                                          uint32_t          processId,
+                                          uint32_t          source,
                                           OTF_KeyValueList* list )
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
 
   /* write next node in List */
   OTF1Event event;
-  event.location = processId;
+  event.location  = processId;
   event.regionRef = functionId;
-  event.time = time;
-  event.type = OTF1_LEAVE;
+  event.time      = time;
+  event.type      = OTF1_LEAVE;
 
   if ( !writer->processNextNode( event ) )
   {
@@ -1368,14 +1367,14 @@ OTF1ParallelTraceWriter::otf1HandleLeave( void* userData,
 }
 
 int
-OTF1ParallelTraceWriter::otf1HandleSendMsg( void* userData,
-                                            uint64_t time,
-                                            uint32_t sender,
-                                            uint32_t receiver,
-                                            uint32_t group,
-                                            uint32_t type,
-                                            uint32_t length,
-                                            uint32_t source,
+OTF1ParallelTraceWriter::otf1HandleSendMsg( void*             userData,
+                                            uint64_t          time,
+                                            uint32_t          sender,
+                                            uint32_t          receiver,
+                                            uint32_t          group,
+                                            uint32_t          type,
+                                            uint32_t          length,
+                                            uint32_t          source,
                                             OTF_KeyValueList* list )
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
@@ -1389,14 +1388,14 @@ OTF1ParallelTraceWriter::otf1HandleSendMsg( void* userData,
 }
 
 int
-OTF1ParallelTraceWriter::otf1HandleRecvMsg( void* userData,
-                                            uint64_t time,
-                                            uint32_t receiver,
-                                            uint32_t sender,
-                                            uint32_t group,
-                                            uint32_t type,
-                                            uint32_t length,
-                                            uint32_t source,
+OTF1ParallelTraceWriter::otf1HandleRecvMsg( void*             userData,
+                                            uint64_t          time,
+                                            uint32_t          receiver,
+                                            uint32_t          sender,
+                                            uint32_t          group,
+                                            uint32_t          type,
+                                            uint32_t          length,
+                                            uint32_t          source,
                                             OTF_KeyValueList* list )
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
@@ -1409,7 +1408,7 @@ OTF1ParallelTraceWriter::otf1HandleRecvMsg( void* userData,
 }
 
 int
-OTF1ParallelTraceWriter::otf1HandleBeginCollectiveOperation( void* userData,
+OTF1ParallelTraceWriter::otf1HandleBeginCollectiveOperation( void*    userData,
                                                              uint64_t time,
                                                              uint32_t process,
                                                              uint32_t collOp,
@@ -1449,7 +1448,7 @@ OTF1ParallelTraceWriter::otf1HandleBeginCollectiveOperation( void* userData,
 }
 
 int
-OTF1ParallelTraceWriter::otf1HandleEndCollectiveOperation( void* userData,
+OTF1ParallelTraceWriter::otf1HandleEndCollectiveOperation( void*    userData,
                                                            uint64_t time,
                                                            uint32_t process,
                                                            uint64_t matchingId,
@@ -1466,13 +1465,13 @@ OTF1ParallelTraceWriter::otf1HandleEndCollectiveOperation( void* userData,
 }
 
 int
-OTF1ParallelTraceWriter::otf1HandleRMAEnd( void* userData,
-                                           uint64_t time,
-                                           uint32_t process,
-                                           uint32_t remote,
-                                           uint32_t communicator,
-                                           uint32_t tag,
-                                           uint32_t source,
+OTF1ParallelTraceWriter::otf1HandleRMAEnd( void*             userData,
+                                           uint64_t          time,
+                                           uint32_t          process,
+                                           uint32_t          remote,
+                                           uint32_t          communicator,
+                                           uint32_t          tag,
+                                           uint32_t          source,
                                            OTF_KeyValueList* list )
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
@@ -1485,15 +1484,15 @@ OTF1ParallelTraceWriter::otf1HandleRMAEnd( void* userData,
 }
 
 int
-OTF1ParallelTraceWriter::otf1HandleRMAGet( void* userData,
-                                           uint64_t time,
-                                           uint32_t process,
-                                           uint32_t origin,
-                                           uint32_t target,
-                                           uint32_t communicator,
-                                           uint32_t tag,
-                                           uint64_t bytes,
-                                           uint32_t source,
+OTF1ParallelTraceWriter::otf1HandleRMAGet( void*             userData,
+                                           uint64_t          time,
+                                           uint32_t          process,
+                                           uint32_t          origin,
+                                           uint32_t          target,
+                                           uint32_t          communicator,
+                                           uint32_t          tag,
+                                           uint64_t          bytes,
+                                           uint32_t          source,
                                            OTF_KeyValueList* list )
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;
@@ -1507,15 +1506,15 @@ OTF1ParallelTraceWriter::otf1HandleRMAGet( void* userData,
 }
 
 int
-OTF1ParallelTraceWriter::otf1HandleRMAPut( void* userData,
-                                           uint64_t time,
-                                           uint32_t process,
-                                           uint32_t origin,
-                                           uint32_t target,
-                                           uint32_t communicator,
-                                           uint32_t tag,
-                                           uint64_t bytes,
-                                           uint32_t source,
+OTF1ParallelTraceWriter::otf1HandleRMAPut( void*             userData,
+                                           uint64_t          time,
+                                           uint32_t          process,
+                                           uint32_t          origin,
+                                           uint32_t          target,
+                                           uint32_t          communicator,
+                                           uint32_t          tag,
+                                           uint64_t          bytes,
+                                           uint32_t          source,
                                            OTF_KeyValueList* list )
 {
   OTF1ParallelTraceWriter* writer = (OTF1ParallelTraceWriter*)userData;

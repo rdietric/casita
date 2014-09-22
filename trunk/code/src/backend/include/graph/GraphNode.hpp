@@ -38,7 +38,7 @@ namespace casita
        caller( NULL ),
        data( NULL )
      {
-       pair.first = ( this );
+       pair.first  = ( this );
        pair.second = ( NULL );
      }
 
@@ -59,12 +59,12 @@ namespace casita
      {
        if ( partner == NULL || ( this->time < partner->time ) )
        {
-         pair.first = ( this );
+         pair.first  = ( this );
          pair.second = ( partner );
        }
        else
        {
-         pair.first = ( partner );
+         pair.first  = ( partner );
          pair.second = ( this );
        }
      }
@@ -150,8 +150,8 @@ namespace casita
 
    protected:
      GraphNodePair pair;
-     GraphNode* linkLeft, * linkRight;
-     GraphNode* caller;
+     GraphNode*    linkLeft, * linkRight;
+     GraphNode*    caller;
      void* data;
  };
 
