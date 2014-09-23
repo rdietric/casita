@@ -23,13 +23,7 @@
 #include "mpi/AnalysisParadigmMPI.hpp"
 #include "omp/AnalysisParadigmOMP.hpp"
 
-#if ( ENABLE_OTF1 == 1 )
-# include "otf/OTF1ParallelTraceWriter.hpp"
-#endif
-
-#if ( ENABLE_OTF2 == 1 )
-# include "otf/OTF2ParallelTraceWriter.hpp"
-#endif
+#include "otf/OTF2ParallelTraceWriter.hpp"
 
 using namespace casita;
 using namespace casita::io;
@@ -349,27 +343,8 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
   std::sort( allStreams.begin( ), allStreams.end( ), streamSort );
 
   writer = NULL;
-  if ( strstr( origFilename.c_str( ), ".otf2" ) == NULL )
+  if ( strstr( origFilename.c_str( ), ".otf2" ) != NULL )
   {
-#if ( ENABLE_OTF1 == 1 )
-    writer = new OTF1ParallelTraceWriter(
-      VT_CUPTI_CUDA_STREAMREF_KEY,
-      VT_CUPTI_CUDA_EVENTREF_KEY,
-      VT_CUPTI_CUDA_CURESULT_KEY,
-      mpiAnalysis.getMPIRank( ),
-      mpiAnalysis.getMPISize( ),
-      origFilename.c_str( ),
-      writeToFile );
-
-    if ( !writeToFile )
-    {
-      filename = "none.otf";
-    }
-#endif
-  }
-  else
-  {
-#if ( ENABLE_OTF2 == 1 )
     writer = new OTF2ParallelTraceWriter(
       VT_CUPTI_CUDA_STREAMREF_KEY,
       VT_CUPTI_CUDA_EVENTREF_KEY,
@@ -384,7 +359,6 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
     {
       filename = "none.otf2";
     }
-#endif
   }
 
   if ( !writer )

@@ -15,13 +15,9 @@
 #include <stdint.h>
 #include <map>
 #include <set>
-#if ( ENABLE_OTF1 == 1 )
-# include <open-trace-format/otf.h>
-#else
-# define OTF_COUNTER_SCOPE_NEXT 0
-# define OTF_COUNTER_TYPE_ABS 0
-# define OTF_COUNTER_SCOPE_POINT 0
-#endif
+#define OTF_COUNTER_SCOPE_NEXT 0
+#define OTF_COUNTER_TYPE_ABS 0
+#define OTF_COUNTER_SCOPE_POINT 0
 
 namespace casita
 {
@@ -164,7 +160,8 @@ namespace casita
      uint32_t
      getNewCtrId( )
      {
-       return maxCtrId + 1;
+       /* starting with 0 (Ids in OTF2 need to start with 0) */
+       return maxCtrId++;
      }
 
      const CtrIdSet&

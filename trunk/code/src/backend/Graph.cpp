@@ -22,11 +22,21 @@ using namespace casita;
 
 Graph::Graph( )
 {
+  isSubGraph = false;
+}
 
+Graph::Graph( bool subGraph )
+{
+  isSubGraph = subGraph;
 }
 
 Graph::~Graph( )
 {
+  if ( isSubGraph )
+  {
+    return;
+  }
+
   for ( NodeEdges::const_iterator iter = outEdges.begin( );
         iter != outEdges.end( ); ++iter )
   {
@@ -50,6 +60,8 @@ Graph::addNode( GraphNode* node )
 void
 Graph::addEdge( Edge* edge )
 {
+  /* std::cout << "Added Edge " << edge->getStartNode()->getUniqueName() << " to " */
+  /*      << edge->getEndNode()->getUniqueName() << std::endl; */
   inEdges[edge->getEndNode( )].push_back( edge );
   outEdges[edge->getStartNode( )].push_back( edge );
 }
@@ -171,7 +183,7 @@ Graph::getNodes( ) const
 Graph*
 Graph::getSubGraph( Paradigm paradigm )
 {
-  Graph* subGraph = new Graph( );
+  Graph* subGraph = new Graph( true );
 
   for ( NodeList::const_iterator iter = nodes.begin( );
         iter != nodes.end( ); ++iter )

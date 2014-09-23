@@ -18,6 +18,7 @@
 #include <algorithm>
 #include "common.hpp"
 #include "otf/OTF2TraceReader.hpp"
+#include "utils/ErrorUtils.hpp"
 
 #define OTF2_CHECK( cmd ) \
   { \
@@ -47,6 +48,7 @@ OTF2TraceReader::OTF2TraceReader( void*    userData,
 
 OTF2TraceReader::~OTF2TraceReader( )
 {
+  /* delete process groups */
   for ( ProcessGroupMap::iterator iter = processGroupMap.begin( );
         iter != processGroupMap.end( ); ++iter )
   {
@@ -60,6 +62,13 @@ OTF2TraceReader::~OTF2TraceReader( )
       delete[]pg->procs;
     }
     delete pg;
+  }
+
+  /* delete members of mpi-groups */
+  for ( GroupIdGroupMap::iterator iter = groupMap.begin( );
+        iter != groupMap.end( ); iter++ )
+  {
+    delete[]iter->second.members;
   }
 }
 
@@ -511,8 +520,6 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
 
   }
 
-  delete[]myMembers;
-
   return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -526,7 +533,9 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Comm( void*          userData,
 
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
-  OTF2Group myGroup   = tr->getGroupMap( )[group];
+  GroupIdGroupMap::const_iterator iter = tr->getGroupMap( ).find( group );
+  UTILS_ASSERT( iter != tr->getGroupMap( ).end( ), "Group not found" );
+  OTF2Group myGroup   = iter->second;
 
   if ( myGroup.paradigm == OTF2_PARADIGM_MPI )
   {

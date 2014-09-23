@@ -32,6 +32,7 @@ namespace casita
      typedef std::map< GraphNode*, EdgeList > NodeEdges;
 
      Graph( );
+     Graph( bool isSubGraph );
      virtual
      ~Graph( );
 
@@ -75,6 +76,7 @@ namespace casita
    protected:
      NodeList  nodes;
      NodeEdges inEdges, outEdges;
+     bool      isSubGraph;
 
      typedef std::map< GraphNode*, uint64_t > DistanceMap;
 

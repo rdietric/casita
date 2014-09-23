@@ -152,11 +152,6 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( const char*          streamRef
 
   commGroup      = MPI_COMM_WORLD;
 
-  for ( CounterTable::CtrIdSet::const_iterator ctrIter = ctrIdSet.begin( );
-        ctrIter != ctrIdSet.end( ); ++ctrIter )
-  {
-    otf2CounterMapping[*ctrIter] = *ctrIter - 1;
-  }
 }
 
 OTF2ParallelTraceWriter::~OTF2ParallelTraceWriter( )
@@ -373,8 +368,7 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions( )
 }
 
 /*
- * OTF2: just create event writer for this process
- * OTF1: create event stream writer and write "begin process" event
+ * OTF2: create event writer for this process
  */
 void
 OTF2ParallelTraceWriter::writeDefProcess( uint64_t id, uint64_t parentId,
@@ -403,8 +397,7 @@ OTF2ParallelTraceWriter::writeDefCounter( uint32_t    otfId,
 {
   if ( mpiRank == 0 && writeToFile )
   {
-    /* map to otf2 (otf2 starts with 0 instead of 1) */
-    uint32_t id = otf2CounterMapping[otfId];
+    uint32_t id = otfId;
 
     /* 1) write String definition */
     OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( global_def_writer,
@@ -609,8 +602,7 @@ OTF2ParallelTraceWriter::processCPUEvent( OTF2Event event )
 
       OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writerMap[bufferedCPUEvent.location],
                                          NULL, bufferedCPUEvent.time,
-                                         otf2CounterMapping[cTable->getCtrId(
-                                                              CTR_CRITICALPATH )],
+                                         cTable->getCtrId( CTR_CRITICALPATH ),
                                          1, types, values ) );
     }
 
@@ -930,10 +922,9 @@ OTF2ParallelTraceWriter::writeNodeCounters( GraphNode*          node,
         iter != ctrIdSet.end( ); ++iter )
   {
     bool valid = false;
-    const uint32_t       ctrId     = *iter;
-    const uint32_t       otf2CtrId = otf2CounterMapping[ctrId];
-    const CtrTableEntry* counter   = ctrTable.getCounter( ctrId );
-    const CounterType    ctrType   = counter->type;
+    const uint32_t       ctrId   = *iter;
+    const CtrTableEntry* counter = ctrTable.getCounter( ctrId );
+    const CounterType    ctrType = counter->type;
 
     if ( counter->isInternal ||
          ctrType == CTR_WAITSTATE_LOG10 ||
@@ -965,8 +956,7 @@ OTF2ParallelTraceWriter::writeNodeCounters( GraphNode*          node,
           values[0].unsigned_int = ctrValLog10;
 
           OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, nodeTime,
-                                             otf2CounterMapping[
-                                               ctrTable.getCtrId( CTR_WAITSTATE_LOG10 )],
+                                             ctrTable.getCtrId( CTR_WAITSTATE_LOG10 ),
                                              1, types, values ) );
         }
       }
@@ -1023,9 +1013,7 @@ OTF2ParallelTraceWriter::writeNodeCounters( GraphNode*          node,
           values[0].unsigned_int = ctrValLog10;
 
           OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, nodeTime,
-                                             otf2CounterMapping[ctrTable.getCtrId(
-                                                                  CTR_BLAME_LOG10 )
-                                             ],
+                                             ctrTable.getCtrId( CTR_BLAME_LOG10 ),
                                              1, types, values ) );
         }
       }
@@ -1046,7 +1034,7 @@ OTF2ParallelTraceWriter::writeNodeCounters( GraphNode*          node,
         values[0].unsigned_int = ctrVal;
 
         OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, nodeTime,
-                                           otf2CtrId, 1, types, values ) );
+                                           ctrId, 1, types, values ) );
       }
 
       /* critical path processing */
@@ -1082,7 +1070,7 @@ OTF2ParallelTraceWriter::writeNodeCounters( GraphNode*          node,
             if ( writeToFile )
             {
               OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, nodeTime,
-                                                 otf2CtrId, 1, types, values ) );
+                                                 ctrId, 1, types, values ) );
             }
 
             lastTimeOnCriticalPath[node->getStreamId( )] = 0;
@@ -1100,7 +1088,7 @@ OTF2ParallelTraceWriter::writeNodeCounters( GraphNode*          node,
             if ( writeToFile )
             {
               OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, nodeTime,
-                                                 otf2CtrId, 1, types, values ) );
+                                                 ctrId, 1, types, values ) );
             }
 
             lastTimeOnCriticalPath[node->getStreamId( )] = 0;
@@ -1189,10 +1177,14 @@ OTF2ParallelTraceWriter::assignBlame( uint64_t currentTime,
   OTF2Event  bufferedCPUEvent  = lastCPUEventPerProcess[currentStream];
   GraphNode* lastProcessedNode = lastProcessedNodePerProcess[currentStream];
 
-  /* if ( !( bufferedCPUEvent.type == ENTER ) && !( bufferedCPUEvent.type == LEAVE ) ) */
-  /* { */
-  /*  return; */
-  /* } */
+  /* when first CPU-event is processed the size of currently
+   * running functions is zero
+   * This case is handled here.
+   */
+  if ( currentlyRunningCPUFunctions[currentStream].size( ) == 0 )
+  {
+    return;
+  }
 
   OTF2_Type types[1]           = { OTF2_TYPE_UINT64 };
   OTF2_MetricValue values[1];
@@ -1234,9 +1226,7 @@ OTF2ParallelTraceWriter::assignBlame( uint64_t currentTime,
   {
     OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writerMap[bufferedCPUEvent.location],
                                        NULL, blameAreaStart,
-                                       otf2CounterMapping[cTable->getCtrId(
-                                                            CTR_BLAME )
-                                       ],
+                                       cTable->getCtrId( CTR_BLAME ),
                                        1, types, values ) );
   }
 
@@ -1250,9 +1240,7 @@ OTF2ParallelTraceWriter::assignBlame( uint64_t currentTime,
   {
     OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writerMap[bufferedCPUEvent.location],
                                        NULL, blameAreaStart,
-                                       otf2CounterMapping[cTable->getCtrId(
-                                                            CTR_BLAME_LOG10 )
-                                       ],
+                                       cTable->getCtrId( CTR_BLAME_LOG10 ),
                                        1, types, values ) );
   }
 

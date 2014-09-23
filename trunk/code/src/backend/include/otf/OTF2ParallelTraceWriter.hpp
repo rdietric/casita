@@ -138,10 +138,6 @@ namespace casita
       std::set< uint32_t > ctrIdSet;              /* set of all counterIds
                                              **/
 
-      /* map counters to start with 0... 1=>0, 2=>1,... (in otf
-       * it starts with 1, otf2 with 0...) */
-      std::map< uint32_t, uint32_t >    otf2CounterMapping;
-
       std::map< uint32_t, const char* > idStringMap;
 
       void

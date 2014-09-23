@@ -20,13 +20,7 @@
 #include "otf/IKeyValueList.hpp"
 #include "otf/ITraceReader.hpp"
 
-#if ( ENABLE_OTF1 == 1 )
-# include "otf/OTF1TraceReader.hpp"
-#endif
-
-#if ( ENABLE_OTF2 == 1 )
-# include "otf/OTF2TraceReader.hpp"
-#endif
+#include "otf/OTF2TraceReader.hpp"
 
 using namespace casita;
 using namespace casita::io;
@@ -110,27 +104,15 @@ Runner::readOTF( )
   {
     printf( "[%u] Reading OTF %s\n", mpiRank, options.filename.c_str( ) );
   }
-  /* OTF1MODE */
-  if ( strstr( options.filename.c_str( ), ".otf2" ) == NULL )
+
+  if ( strstr( options.filename.c_str( ), ".otf2" ) != NULL )
   {
-#if ( ENABLE_OTF1 == 1 )
-    if ( mpiRank == 0 )
-    {
-      printf( "Operating in OTF1-Mode.\n" );
-    }
-    traceReader = new OTF1TraceReader( &callbacks, mpiRank );
-#endif
-  }
-  else
-  {
-#if ( ENABLE_OTF2 == 1 )
     uint32_t mpiSize = analysis.getMPISize( );
     if ( mpiRank == 0 )
     {
       printf( "Operating in OTF2-Mode.\n" );
     }
     traceReader = new OTF2TraceReader( &callbacks, mpiRank, mpiSize );
-#endif
   }
 
   if ( !traceReader )
@@ -174,7 +156,7 @@ Runner::readOTF( )
     {
       printf( " [%u] Reading events\n", mpiRank );
     }
-    /**\todo this does not work for OTF1: comm events missing !!*/
+
     traceReader->readEvents( );
   }
   catch( RTException e )
