@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8.5)
 PROJECT(casita)
 
 # SET helper pathes to find libraries and packages
-SET(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/" "$ENV{MPI_ROOT}" "$ENV{CUDA_ROOT}" "$ENV{BOOST_ROOT}" "$ENV{OTF_ROOT}" "$ENV{OTF2_ROOT}")
+SET(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/" "$ENV{MPI_ROOT}" "$ENV{CUDA_ROOT}" "$ENV{BOOST_ROOT}" "$ENV{OTF2_ROOT}")
 
 # install prefix
 IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -38,26 +38,6 @@ SET(LIBS ${LIBS} ${MPI_C_LIBRARIES} ${MPI_CXX_LIBRARIES})
 # include CUDA
 FIND_PACKAGE(CUDA REQUIRED)
 INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
-
-# include OTF1 support if found
-FIND_PATH(PROJ_OTF1_DIR
-  NAMES include/open-trace-format/otf.h lib/libopen-trace-format.so
-  PATHS ENV OTF_ROOT
-  DOC "OTF1 ROOT location"
-)
-
-IF(PROJ_OTF1_DIR)
-    MESSAGE(STATUS "Found OTF1: "${PROJ_OTF1_DIR})
-    INCLUDE_DIRECTORIES(SYSTEM ${PROJ_OTF1_DIR}/include)
-    LINK_DIRECTORIES(${PROJ_OTF1_DIR}/lib)
-    SET(LIBS ${LIBS} open-trace-format)
-    ADD_DEFINITIONS(-DENABLE_OTF1=1)
-    SET(OTF_FOUND YES)
-    FILE(GLOB SRCFILES_BACKEND_OTF1 "src/backend/otf/OTF1*.cpp")
-ELSE(PROJ_OTF1_DIR)
-    MESSAGE(STATUS "Could NOT find OTF1")
-ENDIF(PROJ_OTF1_DIR)
-
 
 # include OTF2 support if found
 FIND_PATH(PROJ_OTF2_DIR

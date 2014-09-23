@@ -262,6 +262,8 @@ GraphEngine::newEdge( GraphNode* n1, GraphNode* n2, int properties,
 
   Edge* e = new Edge( n1, n2,
                       n2->getTime( ) - n1->getTime( ), properties, paradigm );
+  /* std::cout << "Add Edge " << n1->getUniqueName() << " to " */
+  /*        << n2->getUniqueName() << std::endl; */
   graph.addEdge( e );
 
   return e;
