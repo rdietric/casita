@@ -188,11 +188,6 @@ CallbackHandler::handleEnter( ITraceReader*  reader,
   FunctionDescriptor functionType;
   AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType );
 
-  if ( functionType.paradigm == PARADIGM_VT )
-  {
-    return;
-  }
-
   if ( functionType.paradigm == PARADIGM_CPU )
   {
     /* std::cout << " skipping " << funcName << std::endl; */
@@ -253,11 +248,6 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
   FunctionDescriptor functionType;
   AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType );
 
-  if ( functionType.paradigm == PARADIGM_VT )
-  {
-    return;
-  }
-
   if ( functionType.paradigm == PARADIGM_CPU )
   {
     /* std::cout << " skipping " << funcName << std::endl; */
@@ -271,11 +261,11 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
     /**\todo implement for Score-P keys */
     uint32_t eventId  = readKeyVal(
       reader,
-      VT_CUPTI_CUDA_EVENTREF_KEY,
+      SCOREP_CUPTI_CUDA_EVENTREF_KEY,
       list );
     CUresult cuResult = (CUresult)readKeyVal(
       reader,
-      VT_CUPTI_CUDA_CURESULT_KEY,
+      SCOREP_CUPTI_CUDA_CURESULT_KEY,
       list );
     EventNode::FunctionResultType fResult = EventNode::FR_UNKNOWN;
     if ( cuResult == CUDA_SUCCESS )

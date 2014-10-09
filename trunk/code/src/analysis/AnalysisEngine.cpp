@@ -346,9 +346,6 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
   if ( strstr( origFilename.c_str( ), ".otf2" ) != NULL )
   {
     writer = new OTF2ParallelTraceWriter(
-      VT_CUPTI_CUDA_STREAMREF_KEY,
-      VT_CUPTI_CUDA_EVENTREF_KEY,
-      VT_CUPTI_CUDA_CURESULT_KEY,
       mpiAnalysis.getMPIRank( ),
       mpiAnalysis.getMPISize( ),
       origFilename.c_str( ),

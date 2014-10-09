@@ -64,12 +64,8 @@ namespace casita
 
       } ActivityGroupCompare;
 
-      IParallelTraceWriter( const char* streamRefKeyName,
-                            const char* eventRefKeyName,
-                            const char* funcResultKeyName,
-                            uint32_t    mpiRank,
+      IParallelTraceWriter( uint32_t    mpiRank,
                             uint32_t    mpiSize ) :
-        ITraceWriter( streamRefKeyName, eventRefKeyName, funcResultKeyName ),
         mpiRank( mpiRank ),
         mpiSize( mpiSize )
       {

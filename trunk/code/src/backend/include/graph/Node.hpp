@@ -44,11 +44,10 @@ namespace casita
    PARADIGM_CUDA          = ( 1 << 1 ),
    PARADIGM_MPI           = ( 1 << 2 ),
    PARADIGM_OMP           = ( 1 << 3 ),
-   PARADIGM_VT            = ( 1 << 4 ),
 
    PARADIGM_COMPUTE_LOCAL = ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_OMP ),
    PARADIGM_ALL           =
-     ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_MPI | PARADIGM_OMP | PARADIGM_VT )
+     ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_MPI | PARADIGM_OMP )
  };
 
  const size_t NODE_PARADIGM_COUNT   = 5;
@@ -98,11 +97,6 @@ namespace casita
    OMP_TARGET_FLUSH       = ( 1 << 6 )
  };
 
- enum NodeTypeVT
- {
-   VT_FLUSH = ( 1 << 1 )
- };
-
  typedef struct
  {
    NodeTypeCUDA type;
@@ -120,12 +114,6 @@ namespace casita
    NodeTypeOMP type;
    const char* str;
  } TypeStrEntryOMP;
-
- typedef struct
- {
-   NodeTypeVT  type;
-   const char* str;
- } TypeStrEntryVT;
 
  static const size_t numTypeStrEntriesCUDA = 11;
  static const TypeStrEntryCUDA typeStrTableCUDA[numTypeStrEntriesCUDA] =
@@ -165,12 +153,6 @@ namespace casita
    { OMP_COMPUTE, "omp_compute" },
    { OMP_TARGET_OFFLOAD, "omp_target_offload" },
    { OMP_TARGET_FLUSH, "omp_target_flush" }
- };
-
- static const size_t numTypeStrEntriesVT  = 1;
- static const TypeStrEntryVT typeStrTableVT[numTypeStrEntriesVT] =
- {
-   { VT_FLUSH, "vt_flush" }
  };
 
  static const char   NAME_WAITSTATE[]     = "WaitState";
@@ -222,12 +204,6 @@ namespace casita
      isOMP( ) const
      {
        return paradigm & PARADIGM_OMP;
-     }
-
-     bool
-     isVT( ) const
-     {
-       return paradigm & PARADIGM_VT;
      }
 
      bool
@@ -455,16 +431,6 @@ namespace casita
              if ( typeStrTableOMP[i].type & type )
              {
                stream << typeStrTableOMP[i].str << ",";
-             }
-           }
-           break;
-
-         case PARADIGM_VT:
-           for ( i = 0; i < numTypeStrEntriesVT; ++i )
-           {
-             if ( typeStrTableVT[i].type & type )
-             {
-               stream << typeStrTableVT[i].str << ",";
              }
            }
            break;

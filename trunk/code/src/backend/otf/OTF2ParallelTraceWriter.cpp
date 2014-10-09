@@ -118,17 +118,13 @@ otf2_to_mpi_type( OTF2_Type type )
 
 }
 
-OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( const char*          streamRefKeyName,
-                                                  const char*          eventRefKeyName,
-                                                  const char*          funcResultKeyName,
-                                                  uint32_t             mpiRank,
+OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t             mpiRank,
                                                   uint32_t             mpiSize,
                                                   const char*          originalFilename,
                                                   bool                 writeToFile,
                                                   std::set< uint32_t > ctrIdSet )
   :
-    IParallelTraceWriter( streamRefKeyName, eventRefKeyName, funcResultKeyName,
-                          mpiRank, mpiSize ),
+    IParallelTraceWriter( mpiRank, mpiSize ),
     writeToFile( writeToFile ),
     global_def_writer( NULL ),
     processNodes( NULL ),

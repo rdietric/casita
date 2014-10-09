@@ -163,12 +163,6 @@ namespace casita
 
  };
 
- static const char*       FTABLE_VT_FLUSH[] =
- {
-   "flushActivities",
-   "sync time"
- };
-
  static const size_t      fTableEntriesCUDA = 9;
  static const FTableEntry fTableCUDA[fTableEntriesCUDA] =
  {
@@ -201,12 +195,6 @@ namespace casita
  static const FTableEntry fTableMPIAsync[fTableEntriesMPIAsync] =
  {
    { MPI_MISC, 2, FTABLE_MPI_ASYNC }
- };
-
- static const size_t      fTableEntriesVT           = 1;
- static const FTableEntry fTableVT[fTableEntriesVT] =
- {
-   { VT_FLUSH, 2, FTABLE_VT_FLUSH }
  };
 
  class FunctionTable
@@ -287,21 +275,6 @@ namespace casita
          }
        }
 
-       for ( size_t i = 0; i < fTableEntriesVT; ++i )
-       {
-         FTableEntry entry = fTableVT[i];
-         for ( size_t j = 0; j < entry.numEntries; ++j )
-         {
-           if ( strcmp( entry.table[j], name ) == 0 )
-           {
-             descr->paradigm = PARADIGM_VT;
-             descr->type     = entry.type;
-             set = true;
-             /* return true; */
-           }
-         }
-       }
-
        if ( set )
        {
          switch ( descr->paradigm )
@@ -334,13 +307,6 @@ namespace casita
                case MPI_RECV:
                case MPI_SEND:
                case MPI_MISC:
-                 return true;
-             }
-
-           case PARADIGM_VT:
-             switch ( descr->type )
-             {
-               case VT_FLUSH:
                  return true;
              }
 
