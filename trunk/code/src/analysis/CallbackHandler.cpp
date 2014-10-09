@@ -10,11 +10,11 @@
  *
  */
 
-#include <cuda.h>
-
 #include "CallbackHandler.hpp"
 
 #include "omp/AnalysisParadigmOMP.hpp"
+
+#define CUDA_SUCCESS 0
 
 using namespace casita;
 using namespace casita::io;
@@ -258,12 +258,11 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
   GraphNode* leaveNode = NULL;
   if ( Node::isCUDAEventType( functionType.paradigm, functionType.type ) )
   {
-    /**\todo implement for Score-P keys */
     uint32_t eventId  = readKeyVal(
       reader,
       SCOREP_CUPTI_CUDA_EVENTREF_KEY,
       list );
-    CUresult cuResult = (CUresult)readKeyVal(
+    uint32_t cuResult = readKeyVal(
       reader,
       SCOREP_CUPTI_CUDA_CURESULT_KEY,
       list );
