@@ -59,10 +59,7 @@ namespace casita
       bool writeToFile;
       std::map< uint64_t, uint64_t > lastEventTime;
 
-      OTF2ParallelTraceWriter( const char*          streamRefKeyName,
-                               const char*          eventRefKeyName,
-                               const char*          funcResultKeyName,
-                               uint32_t             mpiRank,
+      OTF2ParallelTraceWriter( uint32_t             mpiRank,
                                uint32_t             mpiSize,
                                const char*          originalFilename,
                                bool                 writeToFile,

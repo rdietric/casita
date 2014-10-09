@@ -43,11 +43,7 @@ namespace casita
         MG_Marker      = 1
       };
 
-      ITraceWriter( const char* streamRefKeyName, const char* eventRefKeyName,
-                    const char* funcResultKeyName ) :
-        streamRefKeyName( streamRefKeyName ),
-        eventRefKeyName( eventRefKeyName ),
-        funcResultKeyName( funcResultKeyName )
+      ITraceWriter( )
       {
 
       }
@@ -81,11 +77,6 @@ namespace casita
                  CounterTable&    ctrTable,
                  bool             lastProcessNode,
                  const GraphNode* futureNode ) = 0;
-
-    protected:
-      const char* streamRefKeyName;
-      const char* eventRefKeyName;
-      const char* funcResultKeyName;
   };
  }
 }
