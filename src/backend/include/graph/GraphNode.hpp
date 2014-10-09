@@ -113,15 +113,15 @@ namespace casita
      }
 
      void
-     setLinkLeft( GraphNode* cudaLinkLeft )
+     setLinkLeft( GraphNode* linkLeft )
      {
-       this->linkLeft = cudaLinkLeft;
+       this->linkLeft = linkLeft;
      }
 
      void
-     setLinkRight( GraphNode* cudaLinkRight )
+     setLinkRight( GraphNode* linkRight )
      {
-       this->linkRight = cudaLinkRight;
+       this->linkRight = linkRight;
      }
 
      GraphNode*

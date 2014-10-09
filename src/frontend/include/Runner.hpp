@@ -15,7 +15,6 @@
 #include <string>
 #include <stdio.h>
 #include <stdint.h>
-#include <cuda.h>
 #include <mpi.h>
 #include <map>
 

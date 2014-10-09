@@ -20,7 +20,6 @@
 #define OTF2_MPI_UINT64_T MPI_UNSIGNED_LONG
 #define OTF2_MPI_INT64_T MPI_LONG
 
-#include <cuda.h>
 #include <otf2/OTF2_MPI_Collectives.h>
 #include <boost/filesystem.hpp>
 
