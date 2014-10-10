@@ -1,0 +1,7 @@
+Infos for testing
+=================
+
+ - execute ./run_all.sh to start testing
+ - traces used for testing are in traces/ directory
+ - each trace must be in its own subdirectory named {nprocs}_{name}
+
