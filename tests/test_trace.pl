@@ -28,27 +28,86 @@ sub test_trace
     }
 
     my $nprocs = $1;
+
+    if ($nprocs == 2)
+    {
+        return 0;
+    }
+
     my $trace_name = $2;
     print "Executing 'mpirun -n $nprocs casita ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2'\n";
     my @output = qx(mpirun -n $nprocs casita ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2);
     my $status = $? >> 8;
 
-    # test that reading OTF2 trace succeeded
-    my @running_analysis= grep (/\[(\d+)\] Running analysis/, @output);
-    if (not ($#running_analysis + 1 >= 1))
+    if (not ($status == 0))
     {
-        print "CASITA did not run analysis\n";
+        print "CASITA returned error ${status}\n";
         print "@output \n\n";
         return $status;
     }
 
+    # test that reading OTF2 trace succeeded
+    my @running_analysis = grep (/\[(\d+)\] Running analysis/, @output);
+    if (not ($#running_analysis + 1 >= 1))
+    {
+        print "CASITA did not run analysis\n";
+        print "@output \n\n";
+        return 1;
+    }
+
     # test that the critical path is computed
-    my @critical_path= grep (/\[(\d+)\] Critical path length/, @output);
+    my @critical_path = grep (/\[(\d+)\] Critical path length/, @output);
     if (not ($#critical_path + 1 == 1))
     {
         print "CASITA did not compute the critical path\n";
         print "@output \n\n";
-        return $status;
+        return 1;
+    }
+
+    # check that a optimization report is found
+    my @profile = grep (/(\w+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)%\s+(\d+\.\d+)%\s+(\d+\.\d+)/, @output);
+    if (not ($#profile + 1 > 0))
+    {
+        print "Could not find optimization guidance report\n";
+        print "@output \n\n";
+        return 1;
+    }
+
+    # check each line of the optimization report for problems
+    foreach (@output)
+    {
+        my $oline = $_;
+        if ($oline =~ /(\w+)\s+(\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)%\s+(\d+\.\d+)%\s+(\d+\.\d+)/)
+        {
+            my $fname  = $1;
+            my $occ    = $2;
+            my $time   = $3;
+            my $tcp    = $4;
+            my $fcp    = $5;
+            my $fgb    = $6;
+            my $rating = $7;
+
+            if ($time < $tcp)
+            {
+                print "Invalid profile: time ($time) < time on cp ($tcp)\n";
+                print "@output \n\n";
+                return 1;
+            }
+
+            if ($fcp > 100.0)
+            {
+                print "Invalid profile: fraction cp > 100% ($fcp)\n";
+                print "@output \n\n";
+                return 1;
+            }
+
+            if ($fgb > 100.0)
+            {
+                print "Invalid profile: fraction blame > 100% ($fgb)\n";
+                print "@output \n\n";
+                return 1;
+            }
+        }
     }
 
     return $status;
@@ -63,7 +122,11 @@ sub main
         exit 1;
     }
 
-    return test_trace();
+    my $result = test_trace();
+    if (not ($result == 0))
+    {
+        exit $result;
+    }
 }
 
 main();
