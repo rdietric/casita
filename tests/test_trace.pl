@@ -28,12 +28,6 @@ sub test_trace
     }
 
     my $nprocs = $1;
-
-    if ($nprocs == 2)
-    {
-        return 0;
-    }
-
     my $trace_name = $2;
     print "Executing 'mpirun -n $nprocs casita ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2'\n";
     my @output = qx(mpirun -n $nprocs casita ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2);
