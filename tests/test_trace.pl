@@ -23,7 +23,7 @@ sub test_trace
 
     if (not ($full_trace_dir =~ /traces\/(\d+)_(\w+)\//))
     {
-        print "Could not match trace directory name";
+        print "Error: Could not match trace directory name";
         return 1;
     }
 
@@ -35,7 +35,7 @@ sub test_trace
 
     if (not ($status == 0))
     {
-        print "CASITA returned error ${status}\n";
+        print "Error: CASITA returned error ${status}\n";
         print "@output \n\n";
         return $status;
     }
@@ -44,7 +44,7 @@ sub test_trace
     my @running_analysis = grep (/\[(\d+)\] Running analysis/, @output);
     if (not ($#running_analysis + 1 >= 1))
     {
-        print "CASITA did not run analysis\n";
+        print "Error: CASITA did not run analysis\n";
         print "@output \n\n";
         return 1;
     }
@@ -53,7 +53,7 @@ sub test_trace
     my @critical_path = grep (/\[(\d+)\] Critical path length/, @output);
     if (not ($#critical_path + 1 == 1))
     {
-        print "CASITA did not compute the critical path\n";
+        print "Error: CASITA did not compute the critical path\n";
         print "@output \n\n";
         return 1;
     }
@@ -62,7 +62,7 @@ sub test_trace
     my @profile = grep (/(\w+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)%\s+(\d+\.\d+)%\s+(\d+\.\d+)/, @output);
     if (not ($#profile + 1 > 0))
     {
-        print "Could not find optimization guidance report\n";
+        print "Error: Could not find optimization guidance report\n";
         print "@output \n\n";
         return 1;
     }
@@ -83,21 +83,28 @@ sub test_trace
 
             if ($time < $tcp)
             {
-                print "Invalid profile: time ($time) < time on cp ($tcp)\n";
+                print "Error: Invalid profile: time ($time) < time on cp ($tcp)\n";
                 print "@output \n\n";
                 return 1;
             }
 
             if ($fcp > 100.0)
             {
-                print "Invalid profile: fraction cp > 100% ($fcp)\n";
+                print "Error: Invalid profile: fraction cp > 100% ($fcp)\n";
                 print "@output \n\n";
                 return 1;
             }
 
             if ($fgb > 100.0)
             {
-                print "Invalid profile: fraction blame > 100% ($fgb)\n";
+                print "Error: Invalid profile: fraction blame > 100% ($fgb)\n";
+                print "@output \n\n";
+                return 1;
+            }
+
+            if ($rating > 2.0)
+            {
+                print "Error: Invalid profile: rating > 2.0 ($rating)\n";
                 print "@output \n\n";
                 return 1;
             }
@@ -111,7 +118,7 @@ sub main
 {
     if ($num_args != 2)
     {
-        print "Invalid number of arguments.\n";
+        print "Error: Invalid number of arguments.\n";
         print "Usage: test_trace.pl trace-dir tmp-dir\n";
         exit 1;
     }
