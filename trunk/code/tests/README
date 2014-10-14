@@ -1,7 +1,14 @@
 Infos for testing
 =================
 
+ - always run the complete test suite before committing changes !
+
  - execute ./run_all.sh to start testing
  - traces used for testing are in traces/ directory
  - each trace must be in its own subdirectory named {nprocs}_{name}
+ - the test run will report the number of successful and total tests
+   and exits with SUCCESS or FAILED
+
+ - generators/ directory contains small programs useful for creating
+   new test traces
 
