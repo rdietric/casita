@@ -88,7 +88,7 @@ echo "Created temporary dir '$TRACE_OUTPUT_DIR' for tests" >&2
 # run tests
 
 run_tests
-echo "Tests: $NUM_TESTS_SUCCESS/$NUM_TOTAL_TESTS" >&2
+echo "Successful tests: $NUM_TESTS_SUCCESS/$NUM_TOTAL_TESTS" >&2
 if [ $NUM_TESTS_SUCCESS -ne $NUM_TOTAL_TESTS ]; then
     echo "FAILED" >&2
 else
