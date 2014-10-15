@@ -415,32 +415,31 @@ namespace casita
       void
       setEventCallbacks( OTF2_GlobalEvtReaderCallbacks* evtReaderCallbacks );
 
-      uint32_t              mpiRank;
-      uint32_t              mpiSize;
-      uint64_t              mpiProcessId;
-      IdTokenMap            processRankMap; /* maps (parent) process ID to
+      uint32_t         mpiRank;
+      uint32_t         mpiSize;
+      uint64_t         mpiProcessId;
+      IdTokenMap       processRankMap;      /* maps (parent) process ID to
                                         * MPI rank */
-      TokenTokenMap64       processFamilyMap; /* tracks for each
+      TokenTokenMap64  processFamilyMap;      /* tracks for each
                                                * process its direct
                                                * parent */
 
-      OTF2_Reader*          reader;
-      OTF2_GlobalDefReader* gobal_def_reader;
-      OTF2KeyValueList      kvList;
+      OTF2_Reader*     reader;
+      OTF2KeyValueList kvList;
 
-      std::string           baseFilename;
-      NameTokenMap          nameKeysMap;
-      TokenNameMap          kNameMap;
-      IdNameTokenMap        processNameTokenMap;
-      TokenTokenMap         functionNameTokenMap;
-      TokenNameMap          definitionTokenStringMap;
-      GroupIdGroupMap       groupMap;
+      std::string      baseFilename;
+      NameTokenMap     nameKeysMap;
+      TokenNameMap     kNameMap;
+      IdNameTokenMap   processNameTokenMap;
+      TokenTokenMap    functionNameTokenMap;
+      TokenNameMap     definitionTokenStringMap;
+      GroupIdGroupMap  groupMap;
 
-      ProcessGroupMap       processGroupMap;
-      uint64_t              ticksPerSecond;
-      uint64_t              timerOffset;
-      uint64_t              traceLength;
-      uint32_t              ompParallelRegionRef;
+      ProcessGroupMap  processGroupMap;
+      uint64_t         ticksPerSecond;
+      uint64_t         timerOffset;
+      uint64_t         traceLength;
+      uint32_t         ompParallelRegionRef;
 
       int processingPhase;
   };

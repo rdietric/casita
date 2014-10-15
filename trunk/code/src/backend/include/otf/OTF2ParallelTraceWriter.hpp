@@ -27,14 +27,14 @@ namespace casita
 
   typedef std::map< uint32_t, uint32_t > CtrInstanceMap;
 
-  enum OTF2EVENT_TYPE { ENTER, LEAVE, MISC };
+  enum OTF2EventType { OTF2_EVT_ENTER, OTF2_EVT_LEAVE, OTF2_EVT_MISC };
 
   typedef struct
   {
-    uint64_t       time;
-    uint32_t       regionRef;
-    uint64_t       location;
-    OTF2EVENT_TYPE type;
+    uint64_t      time;
+    uint32_t      regionRef;
+    uint64_t      location;
+    OTF2EventType type;
   } OTF2Event;
 
   typedef struct
@@ -107,12 +107,11 @@ namespace casita
 
       std::string   outputFilename, originalFilename, pathToFile;
 
-      OTF2_Archive* archive;
       /* maps each process to corresponding evtWriter */
       std::map< uint64_t, OTF2_EvtWriter* > evt_writerMap;
       OTF2_GlobalDefWriter* global_def_writer;
+      OTF2_Archive* archive;
       OTF2_Reader*  reader;
-      OTF2_GlobalDefReader*  gobal_def_reader;
 
       std::stack< uint64_t > cpTimeCtrStack;
       /* maps a counter to its corresponding String-Id */
@@ -136,9 +135,6 @@ namespace casita
                          const GraphNode*    futureNode );
 
       void
-      computeFunctionDurations( OTF2Event event );
-
-      void
       bufferCPUEvent( OTF2Event event );
 
       void
@@ -157,15 +153,16 @@ namespace casita
       assignBlame( uint64_t currentTime, uint64_t currentStream );
 
       EventStream::SortedGraphNodeList* processNodes;
-      bool       enableWaitStates;
       EventStream::SortedGraphNodeList::iterator iter;
-      GraphNode* lastGraphNode;
+
+      bool          enableWaitStates;
+      bool          verbose;
+      bool          isFirstProcess;
+      Graph*        graph;
+      GraphNode*    lastGraphNode;
       CounterTable* cTable;
-      Graph*     graph;
-      bool       verbose;
-      bool       isFirstProcess;
-      uint32_t   cpuNodes;
-      uint32_t   currentStackLevel;
+      uint32_t      cpuNodes;
+      uint32_t      currentStackLevel;
 
       std::map< uint64_t, std::list< OTF2Event > >           currentCPUNodes;
       std::map< uint64_t, std::list< OTF2ThreadTeamBegin > > pendingThreadTeamBegin;
@@ -446,7 +443,7 @@ namespace casita
                          OTF2_RegionRef      region );
 
       /* tell OTF2 what to do after bufferFlush */
-      OTF2_FlushCallbacks flush_callbacks;
+      OTF2_FlushCallbacks      flush_callbacks;
       /* callbacks to support parallel writing */
       OTF2_CollectiveCallbacks coll_callbacks;
   };
