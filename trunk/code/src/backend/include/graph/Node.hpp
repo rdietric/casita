@@ -64,7 +64,7 @@ namespace casita
    CUDA_SYNC = ( 1 << 1 ),
    CUDA_COLLSYNC          = ( 1 << 2 ),
    CUDA_WAITSTATE         = ( 1 << 3 ),
-   CUDA_KERNEL            = ( 1 << 4 ),
+   CUDA_KERNEL = ( 1 << 4 ),
    CUDA_KERNEL_LAUNCH     = ( 1 << 5 ),
    CUDA_EV_SYNC           = ( 1 << 6 ),
    CUDA_EV_LAUNCH         = ( 1 << 7 ),
@@ -91,7 +91,7 @@ namespace casita
  {
    OMP_SYNC = ( 1 << 1 ),
    OMP_PAR_REGION         = ( 1 << 2 ),
-   OMP_COMPUTE            = ( 1 << 3 ),
+   OMP_COMPUTE = ( 1 << 3 ),
    OMP_WAITSTATE          = ( 1 << 4 ),
    OMP_TARGET_OFFLOAD     = ( 1 << 5 ),
    OMP_TARGET_FLUSH       = ( 1 << 6 )

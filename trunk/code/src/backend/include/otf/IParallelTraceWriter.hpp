@@ -38,7 +38,7 @@ namespace casita
         uint64_t totalBlame;
         double   fractionCP;
         double   fractionBlame;
-        uint64_t lastEnter;
+        uint64_t lastEnterTime;
       } ActivityGroup;
 
       typedef std::map< uint32_t, ActivityGroup > ActivityGroupMap;
@@ -64,8 +64,8 @@ namespace casita
 
       } ActivityGroupCompare;
 
-      IParallelTraceWriter( uint32_t    mpiRank,
-                            uint32_t    mpiSize ) :
+      IParallelTraceWriter( uint32_t mpiRank,
+                            uint32_t mpiSize ) :
         mpiRank( mpiRank ),
         mpiSize( mpiSize )
       {

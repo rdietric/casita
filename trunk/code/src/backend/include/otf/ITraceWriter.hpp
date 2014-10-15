@@ -77,6 +77,7 @@ namespace casita
                  CounterTable&    ctrTable,
                  bool             lastProcessNode,
                  const GraphNode* futureNode ) = 0;
+
   };
  }
 }

@@ -191,7 +191,7 @@ namespace casita
    { MPI_WAITSTATE, 1, FTABLE_CUDA_WAITSTATE }
  };
 
- static const size_t      fTableEntriesMPIAsync     = 1;
+ static const size_t      fTableEntriesMPIAsync = 1;
  static const FTableEntry fTableMPIAsync[fTableEntriesMPIAsync] =
  {
    { MPI_MISC, 2, FTABLE_MPI_ASYNC }

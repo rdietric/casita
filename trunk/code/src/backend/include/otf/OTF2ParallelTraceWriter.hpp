@@ -57,6 +57,7 @@ namespace casita
   {
     public:
       bool writeToFile;
+      /* maps from Location to time */
       std::map< uint64_t, uint64_t > lastEventTime;
 
       OTF2ParallelTraceWriter( uint32_t             mpiRank,
@@ -97,43 +98,30 @@ namespace casita
                     Graph*                            graph );
 
     private:
-      uint64_t timerResolution;
-      uint64_t timerOffset;
-      uint64_t counterForStringDefinitions;                 /* counter
-                                                             * to
-                                                             * assign
-                                                             * ids to
-                                                             * stringdefinitions */
-      uint64_t counterForMetricInstanceId;                  /* counter
-                                                             * to
-                                                             * assign
-                                                             * ids to
-                                                             * MetricInstances */
+      uint64_t      timerResolution;
+      uint64_t      timerOffset;
+      /* counter to assign ids to stringdefinitions */
+      uint64_t      counterForStringDefinitions;
+      /* counter to assign ids to MetricInstances */
+      uint64_t      counterForMetricInstanceId;
 
       std::string   outputFilename, originalFilename, pathToFile;
 
       OTF2_Archive* archive;
-      std::map< uint64_t, OTF2_EvtWriter* > evt_writerMap;      /*
-                                                                 * maps
-                                                                 * each
-                                                                 * process
-                                                                 * to
-                                                                 * corresponding
-                                                                 * evtWriter */
-      OTF2_GlobalDefWriter*  global_def_writer;
-      OTF2_Reader* reader;
+      /* maps each process to corresponding evtWriter */
+      std::map< uint64_t, OTF2_EvtWriter* > evt_writerMap;
+      OTF2_GlobalDefWriter* global_def_writer;
+      OTF2_Reader*  reader;
       OTF2_GlobalDefReader*  gobal_def_reader;
 
       std::stack< uint64_t > cpTimeCtrStack;
-      std::map< uint32_t, uint32_t > ctrStrIdMap;    /* maps a counter
-                                                      * to its
-                                                      * corresponding
-                                                      * String-Id */
+      /* maps a counter to its corresponding String-Id */
+      std::map< uint32_t, uint32_t > ctrStrIdMap;
 
       MPI_Comm commGroup;
 
-      std::set< uint32_t > ctrIdSet;              /* set of all counterIds
-                                             **/
+      /* set of all counterIds */
+      std::set< uint32_t > ctrIdSet;
 
       std::map< uint32_t, const char* > idStringMap;
 
@@ -147,10 +135,22 @@ namespace casita
                          bool                lastProcessNode,
                          const GraphNode*    futureNode );
 
+      void
+      computeFunctionDurations( OTF2Event event );
+
+      void
+      bufferCPUEvent( OTF2Event event );
+
+      void
+      replaceWithOriginalEvent( OTF2Event event, GraphNode* node );
+
+      GraphNode*
+      findNextCriticalPathNode( GraphNode* node );
+
       bool
       processNextNode( OTF2Event event );
 
-      bool
+      void
       processCPUEvent( OTF2Event event );
 
       void
@@ -167,18 +167,18 @@ namespace casita
       uint32_t   cpuNodes;
       uint32_t   currentStackLevel;
 
-      std::map< uint64_t, std::list< OTF2Event > >      currentCPUNodes;
+      std::map< uint64_t, std::list< OTF2Event > >           currentCPUNodes;
+      std::map< uint64_t, std::list< OTF2ThreadTeamBegin > > pendingThreadTeamBegin;
+      std::map< uint64_t, std::list< OTF2ThreadFork > >      pendingThreadFork;
+      std::map< uint64_t, std::list< uint32_t > > currentCPUEvents;
+      std::map< uint64_t, bool >           deviceStreamMap;
+      std::map< uint64_t, GraphNode* >     lastProcessedNodePerProcess;
+      std::map< uint64_t, OTF2Event >      lastCPUEventPerProcess;
+      std::map< uint64_t, uint64_t > lastTimeOnCriticalPath;
       std::map< uint32_t, OTF2_StringRef > regionNameIdList;
-      std::map< uint64_t, bool > deviceStreamMap;
-      std::map< uint64_t,
-                std::list< OTF2ThreadTeamBegin > >      pendingThreadTeamBegin;
-      std::map< uint64_t, std::list< OTF2ThreadFork > > pendingThreadFork;
-      std::map< uint64_t, GraphNode* > lastProcessedNodePerProcess;
-      std::map< uint64_t, OTF2Event >  lastCPUEventPerProcess;
-      std::map< uint64_t, uint64_t >   lastTimeOnCriticalPath;
-      std::map< uint64_t, std::list< uint32_t > > currentlyRunningCPUFunctions;
+
       Graph::EdgeList openEdges;
-      uint32_t lastNodeCheckedForEdgesId;
+      GraphNode*      lastNodeCheckedForEdges;
 
       /* Definition callbacks */
       static OTF2_CallbackCode
@@ -445,18 +445,10 @@ namespace casita
                          OTF2_AttributeList* attributes,
                          OTF2_RegionRef      region );
 
-      OTF2_FlushCallbacks flush_callbacks;                  /* tell
-                                                             * OTF2
-                                                             * what to
-                                                             * do
-                                                             * after
-                                                             * bufferFlush */
-      OTF2_CollectiveCallbacks coll_callbacks;              /*
-                                                             * callbacks
-                                                             * to
-                                                             * support
-                                                             * parallel
-                                                             * writing */
+      /* tell OTF2 what to do after bufferFlush */
+      OTF2_FlushCallbacks flush_callbacks;
+      /* callbacks to support parallel writing */
+      OTF2_CollectiveCallbacks coll_callbacks;
   };
 
  }
