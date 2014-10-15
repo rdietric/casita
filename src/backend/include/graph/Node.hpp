@@ -26,10 +26,8 @@
 
 namespace casita
 {
- static uint32_t globalNodeId = 0;
-
- typedef uint32_t LocalID;
- typedef uint64_t GlobalID;
+ typedef uint32_t NodeId;
+ static NodeId globalNodeId = 0;
 
  enum NodeRecordType
  {
@@ -782,7 +780,7 @@ namespace casita
      }
 
    protected:
-     uint32_t       id;
+     NodeId         id;
      uint64_t       time;
      uint64_t       streamId;
      uint64_t       functionId;
