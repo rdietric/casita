@@ -92,13 +92,13 @@ namespace casita
               commonAnalysis->getEdge( sync.first, sync.second )->makeBlocking( );
 
               /* set counters */
-              sync.first->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
+              sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                         CTR_WAITSTATE ),
                                       std::min( sync.second->getTime( ),
                                                 kernel.second->getTime( ) ) -
                                       std::max( sync.first->getTime( ),
                                                 kernel.first->getTime( ) ) );
-              kernel.first->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
+              kernel.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                           CTR_BLAME ),
                                         std::min( sync.second->getTime( ),
                                                   kernel.second->getTime( ) ) -

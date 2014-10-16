@@ -99,7 +99,7 @@ namespace casita
 
               /* make this barrier a blocking waitstate */
               barrierEdge->makeBlocking( );
-              barrier.first->setCounter( ctrIdWaitState,
+              barrier.second->setCounter( ctrIdWaitState,
                                          maxEnterTimeNode->getTime( ) -
                                          barrier.first->getTime( ) );
 

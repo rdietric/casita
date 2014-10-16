@@ -116,11 +116,11 @@ namespace casita
             }
 
             /* set counters */
-            sync.first->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
+            sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                       CTR_BLAME ),
                                     sync.second->getTime( ) -
                                     sync.first->getTime( ) );
-            waitEnter->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
+            waitLeave->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                      CTR_WAITSTATE ),
                                    sync.second->getTime( ) -
                                    sync.first->getTime( ) );

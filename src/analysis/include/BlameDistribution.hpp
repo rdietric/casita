@@ -86,7 +86,7 @@ namespace casita
                                          - cpuTimeDiff;
 
      const uint64_t currentWaitingTime =
-       currentWalkNode->getCounter( waitCtrId, NULL );
+       lastWalkNode->getCounter( waitCtrId, NULL );
 
      uint64_t       ratioBlame         = (double)totalBlame *
                                          (double)( timeDiff -
@@ -94,26 +94,28 @@ namespace casita
                                          (double)( totalWalkTime - waitTime );
 
      uint64_t       cpuBlame           = ( cpuTimeDiff == 0 ) ? 0 : (double)totalBlame *
-                                         (double)( cpuTimeDiff -
-                                                   currentWaitingTime ) /
+                                         (double)( cpuTimeDiff ) /
                                          (double)( totalWalkTime - waitTime );
 
      edge->addCPUBlame( cpuBlame );
-     if ( cpuBlame > 0 && true )
+     if ( cpuBlame > 0 && false )
      {
        std::cout << "Write cpuBlame " << cpuBlame << " (of " << totalBlame
                  << " and " << ratioBlame << " cpuTimeDiff: " << cpuTimeDiff
-                 << " timediff: " << timeDiff << ") between "
+                 << " timediff: " << timeDiff << " current waiting time: "
+                 << currentWaitingTime << " total walk time: "
+                 << totalWalkTime << " waitTime: "
+                 << waitTime << ") between "
                  << currentWalkNode->getUniqueName( ) << " and "
                  << lastWalkNode->getUniqueName( )
                  << " " << edge->getNumberOfCPUNodes( ) << " Nodes ("
                  << edge->getCPUNodesStartTime( ) << " - "
-                 << edge->getCPUNodesEndTime( ) << std::endl;
+                 << edge->getCPUNodesEndTime( ) << ")" << std::endl;
      }
 
      if ( ratioBlame > 0 )
      {
-       currentWalkNode->incCounter( blameCtrId, ratioBlame );
+       lastWalkNode->incCounter( blameCtrId, ratioBlame );
      }
 
      lastWalkNode = currentWalkNode;

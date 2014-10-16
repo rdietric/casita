@@ -228,7 +228,7 @@ namespace casita
                  syncKernelLeave->getTime( ) )
             {
               /* set counters */
-              syncKernelEnter->incCounter(
+              syncKernelLeave->incCounter(
                 commonAnalysis->getCtrTable( ).getCtrId(
                   CTR_BLAME ),
                 syncKernelLeave->getTime( ) -
@@ -320,7 +320,7 @@ namespace casita
               commonAnalysis->newEdge( waitLeave, waitingKernel.first );
 
               /* set counters */
-              waitEnter->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
+              waitLeave->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                        CTR_WAITSTATE ),
                                      1 );
 

@@ -386,7 +386,7 @@ OTF2ParallelTraceWriter::writeDefProcess( uint64_t id, uint64_t parentId,
 void
 OTF2ParallelTraceWriter::writeDefCounter( uint32_t    otfId,
                                           const char* name,
-                                          int         properties )
+                                          OTF2_MetricMode metricMode )
 {
   if ( mpiRank == 0 && writeToFile )
   {
@@ -402,7 +402,7 @@ OTF2ParallelTraceWriter::writeDefCounter( uint32_t    otfId,
                                                         counterForStringDefinitions,
                                                         counterForStringDefinitions,
                                                         OTF2_METRIC_TYPE_USER,
-                                                        OTF2_METRIC_ABSOLUTE_POINT,
+                                                        metricMode,
                                                         OTF2_TYPE_UINT64,
                                                         OTF2_BASE_DECIMAL, 0, 0 ) );
 
@@ -522,6 +522,7 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& co
   }
 
   ActivityStackMap::const_iterator activityIter = activityStack.find( event.location );
+  uint64_t cpValue = counters[cTable->getCtrId( CTR_CRITICALPATH )];
 
   /* add time to current function on stack */
   if ( activityIter != activityStack.end( ) && activityIter->second.size( ) > 0 )
@@ -531,16 +532,16 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& co
 
     activityGroupMap[currentActivity].totalDuration     += timeDiff;
 
-    uint64_t cpValue         = counters[cTable->getCtrId( CTR_CRITICALPATH )];
-
     activityGroupMap[currentActivity].totalDurationOnCP +=
       ( processOnCriticalPath[event.location] && ( cpValue != 0 ) ) ? timeDiff : 0;
 
-    /* log if this process is currently on the critical path */
-    processOnCriticalPath[event.location] = cpValue;
+    
 
     activityGroupMap[currentActivity].totalBlame        += counters[cTable->getCtrId( CTR_BLAME )];
   }
+  
+  /* log if this process is currently on the critical path */
+  processOnCriticalPath[event.location] = cpValue;
 }
 
 uint64_t
@@ -594,16 +595,41 @@ OTF2ParallelTraceWriter::writeEvent( OTF2Event event, CounterMap& counters )
     OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writer, NULL, event.time, event.regionRef ) );
   }
 
+  const uint32_t ctrIdCritPath = cTable->getCtrId(CTR_CRITICALPATH);
+  
   for ( CounterMap::const_iterator iter = counters.begin( );
         iter != counters.end( ); ++iter )
   {
     const uint32_t   ctrId = iter->first;
     OTF2_Type        type  = OTF2_TYPE_UINT64;
     OTF2_MetricValue value;
-    value.unsigned_int = iter->second;
-
-    OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
-                                       ctrId, 1, &type, &value ) );
+    bool firstValueWritten = false;
+    
+    /* reset counter if this enter is the first event on the activity stack */
+    if ( (event.type == OTF2_EVT_ENTER && activityStack[event.location].size() == 0) ||
+         (ctrId == ctrIdCritPath && processOnCriticalPath[event.location] == false) )
+    {
+      value.unsigned_int = 0;
+      OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
+                                         ctrId, 1, &type, &value ) );
+      firstValueWritten = true;
+    }
+    
+    if (!firstValueWritten || (iter->second != 0))
+    {
+      value.unsigned_int = iter->second;
+      OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
+                                         ctrId, 1, &type, &value ) );
+    }
+    
+    /* reset counter if this leave is the last event on the activity stack */
+    if (event.type == OTF2_EVT_LEAVE && activityStack[event.location].size() == 1 &&
+            value.unsigned_int != 0)
+    {
+      value.unsigned_int = 0;
+      OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
+                                         ctrId, 1, &type, &value ) );
+    }
   }
 }
 

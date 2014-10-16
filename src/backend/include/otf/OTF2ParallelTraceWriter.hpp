@@ -79,7 +79,7 @@ namespace casita
                        const char* name, ProcessGroup pg );
 
       void
-      writeDefCounter( uint32_t id, const char* name, int properties );
+      writeDefCounter( uint32_t id, const char* name, OTF2_MetricMode metricMode );
 
       void
       writeProcess( uint64_t                          processId,

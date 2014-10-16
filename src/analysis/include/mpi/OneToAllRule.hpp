@@ -141,7 +141,7 @@ namespace casita
             Edge* oneToAllRecordEdge = commonAnalysis->getEdge(
               oneToAll.first, oneToAll.second );
             oneToAllRecordEdge->makeBlocking( );
-            oneToAll.first->setCounter(
+            oneToAll.second->setCounter(
               commonAnalysis->getCtrTable( ).getCtrId( CTR_WAITSTATE ),
               rootEnterTime - oneToAllStartTime );
           }

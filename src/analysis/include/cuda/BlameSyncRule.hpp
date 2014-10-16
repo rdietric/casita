@@ -117,11 +117,11 @@ namespace casita
                                      EDGE_CAUSES_WAITSTATE );
 
             /* set counters */
-            sync.first->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
+            sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                       CTR_BLAME ),
                                     sync.second->getTime( ) -
                                     kernel.second->getTime( ) );
-            waitEnter->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
+            waitLeave->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                      CTR_WAITSTATE ),
                                    sync.second->getTime( ) -
                                    kernel.second->getTime( ) );

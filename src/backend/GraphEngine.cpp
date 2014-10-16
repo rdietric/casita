@@ -750,6 +750,11 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
         /* link to this predecessor */
         Edge* temp = newEdge( pred, node, edgeProp, &paradigm );
+
+        UTILS_ASSERT( ! (cpuData.numberOfEvents && (cpuData.startTime > cpuData.endTime)),
+                "Violation of time order for CPU events at '%s' (%",
+                temp->getName().c_str() );
+
         temp->addCPUData( cpuData.numberOfEvents,
                           cpuData.startTime,
                           cpuData.endTime );
@@ -807,10 +812,14 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
       /* link to direct predecessor */
       Edge* temp = newEdge( directPredecessor, node, edgeProp, &predParadigm );
+      
+      UTILS_ASSERT( ! (cpuData.numberOfEvents && (cpuData.startTime > cpuData.endTime)),
+                "Violation of time order for CPU events at '%s'",
+                temp->getName().c_str() );
+      
       temp->addCPUData( cpuData.numberOfEvents,
                         cpuData.startTime,
                         cpuData.endTime );
-
     }
 
     if ( directSuccessor )
