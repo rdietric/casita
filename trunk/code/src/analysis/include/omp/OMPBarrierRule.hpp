@@ -100,8 +100,8 @@ namespace casita
               /* make this barrier a blocking waitstate */
               barrierEdge->makeBlocking( );
               barrier.second->setCounter( ctrIdWaitState,
-                                         maxEnterTimeNode->getTime( ) -
-                                         barrier.first->getTime( ) );
+                                          maxEnterTimeNode->getTime( ) -
+                                          barrier.first->getTime( ) );
 
               /* create edge from latest enter to other leaves */
               commonAnalysis->newEdge( maxEnterTimeNode,

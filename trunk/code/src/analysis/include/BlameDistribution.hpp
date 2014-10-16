@@ -57,7 +57,8 @@ namespace casita
    {
      std::cout << "[" << analysis->getMPIRank( ) << "]Walking: " <<
      start->getUniqueName( )
-               << " to " << end->getUniqueName( ) << " Blame: " <<
+               << " to " << end->getUniqueName( ) << " node " <<
+     node->getUniqueName( ) << " Blame: " <<
      totalBlame << std::endl;
    }
 

@@ -92,8 +92,8 @@ namespace casita
                                                             send.second );
             sendRecordEdge->makeBlocking( );
             send.second->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                      CTR_WAITSTATE ),
-                                    recvStartTime - sendStartTime );
+                                       CTR_WAITSTATE ),
+                                     recvStartTime - sendStartTime );
           }
         }
         else

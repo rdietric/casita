@@ -78,7 +78,7 @@ namespace casita
           {
             GraphNode* lastLeaveNode = commonAnalysis->getLastLeave(
               sync.second->getTime( ), deviceProcess->getId( ) );
-            GraphNode* waitLeave = NULL;
+            GraphNode* waitLeave     = NULL;
 
             if ( lastLeaveNode && lastLeaveNode->isWaitstate( ) )
             {
@@ -118,9 +118,9 @@ namespace casita
 
             /* set counters */
             sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                      CTR_BLAME ),
-                                    sync.second->getTime( ) -
-                                    kernel.second->getTime( ) );
+                                       CTR_BLAME ),
+                                     sync.second->getTime( ) -
+                                     kernel.second->getTime( ) );
             waitLeave->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                      CTR_WAITSTATE ),
                                    sync.second->getTime( ) -

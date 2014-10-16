@@ -127,7 +127,7 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t             mpiRank,
     writeToFile( writeToFile ),
     global_def_writer( NULL ),
     processNodes( NULL ),
-    iter( NULL ),
+    currentNodeIter( NULL ),
     enableWaitStates( false ),
     verbose( false ),
     isFirstProcess( true ),
@@ -384,8 +384,8 @@ OTF2ParallelTraceWriter::writeDefProcess( uint64_t id, uint64_t parentId,
  * Write self-defined metrics/counter to new trace file
  */
 void
-OTF2ParallelTraceWriter::writeDefCounter( uint32_t    otfId,
-                                          const char* name,
+OTF2ParallelTraceWriter::writeDefCounter( uint32_t        otfId,
+                                          const char*     name,
                                           OTF2_MetricMode metricMode )
 {
   if ( mpiRank == 0 && writeToFile )
@@ -432,7 +432,7 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
 
   processNodes     = nodes;
   enableWaitStates = waitStates;
-  iter = processNodes->begin( );
+  currentNodeIter  = processNodes->begin( );
   this->verbose    = verbose;
   this->graph      = graph;
   cTable           = ctrTable;
@@ -535,11 +535,9 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& co
     activityGroupMap[currentActivity].totalDurationOnCP +=
       ( processOnCriticalPath[event.location] && ( cpValue != 0 ) ) ? timeDiff : 0;
 
-    
-
     activityGroupMap[currentActivity].totalBlame        += counters[cTable->getCtrId( CTR_BLAME )];
   }
-  
+
   /* log if this process is currently on the critical path */
   processOnCriticalPath[event.location] = cpValue;
 }
@@ -595,8 +593,8 @@ OTF2ParallelTraceWriter::writeEvent( OTF2Event event, CounterMap& counters )
     OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writer, NULL, event.time, event.regionRef ) );
   }
 
-  const uint32_t ctrIdCritPath = cTable->getCtrId(CTR_CRITICALPATH);
-  
+  const uint32_t ctrIdCritPath = cTable->getCtrId( CTR_CRITICALPATH );
+
   for ( CounterMap::const_iterator iter = counters.begin( );
         iter != counters.end( ); ++iter )
   {
@@ -604,27 +602,27 @@ OTF2ParallelTraceWriter::writeEvent( OTF2Event event, CounterMap& counters )
     OTF2_Type        type  = OTF2_TYPE_UINT64;
     OTF2_MetricValue value;
     bool firstValueWritten = false;
-    
+
     /* reset counter if this enter is the first event on the activity stack */
-    if ( (event.type == OTF2_EVT_ENTER && activityStack[event.location].size() == 0) ||
-         (ctrId == ctrIdCritPath && processOnCriticalPath[event.location] == false) )
+    if ( ( event.type == OTF2_EVT_ENTER && activityStack[event.location].size( ) == 0 ) ||
+         ( ctrId == ctrIdCritPath && processOnCriticalPath[event.location] == false ) )
     {
       value.unsigned_int = 0;
       OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
                                          ctrId, 1, &type, &value ) );
-      firstValueWritten = true;
+      firstValueWritten  = true;
     }
-    
-    if (!firstValueWritten)
+
+    if ( !firstValueWritten )
     {
       value.unsigned_int = iter->second;
       OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
                                          ctrId, 1, &type, &value ) );
     }
-    
+
     /* reset counter if this leave is the last event on the activity stack */
-    if (event.type == OTF2_EVT_LEAVE && activityStack[event.location].size() == 1 &&
-            value.unsigned_int != 0)
+    if ( event.type == OTF2_EVT_LEAVE && activityStack[event.location].size( ) == 1 &&
+         value.unsigned_int != 0 )
     {
       value.unsigned_int = 0;
       OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
@@ -639,10 +637,11 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event )
   /* Skip threadFork/Join (also skips first inserted processNode that
    * is not in original trace)
    */
-  while ( ( iter != processNodes->end( ) ) && ( *iter )->isOMPParallelRegion( ) )
+  while ( ( currentNodeIter != processNodes->end( ) ) && ( *currentNodeIter )->isOMPParallelRegion( ) )
   {
-    UTILS_DBG_MSG( verbose, "[%u] Skipping %s", mpiRank, ( *iter )->getUniqueName( ).c_str( ) );
-    iter++;
+    UTILS_DBG_MSG( verbose, "[%u] Skipping %s", mpiRank,
+                   ( *currentNodeIter )->getUniqueName( ).c_str( ) );
+    currentNodeIter++;
   }
 
   /* test if this is an internal node or a CPU event */
@@ -656,7 +655,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event )
 
   if ( mapsInternalNode )
   {
-    GraphNode* currentNode = *iter;
+    GraphNode* currentNode = *currentNodeIter;
 
     /* preprocess current internal node */
     if ( graph->hasOutEdges( currentNode ) )
@@ -687,12 +686,12 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event )
       }
     }
 
-    ++iter;
+    ++currentNodeIter;
   }
   else
   {
     /* compute counters for that event */
-    if ( iter != processNodes->end( ) )
+    if ( currentNodeIter != processNodes->end( ) )
     {
       const uint32_t ctrIdBlame     = cTable->getCtrId( CTR_BLAME );
       const uint32_t ctrIdWaitState = cTable->getCtrId( CTR_WAITSTATE );
@@ -700,7 +699,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event )
 
       /* compute critical path ctr */
       /* event is on critical path if next internal node is, too */
-      tmpCounters[ctrIdCritPath]  = ( *iter )->getCounter( ctrIdCritPath, NULL );
+      tmpCounters[ctrIdCritPath]  = ( *currentNodeIter )->getCounter( ctrIdCritPath, NULL );
 
       /* compute blame ctr */
       tmpCounters[ctrIdBlame]     = computeCPUEventBlame( event );

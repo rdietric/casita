@@ -129,8 +129,8 @@ namespace casita
                                        *next_iter )->makeBlocking( );
 
               ( *next_iter )->setCounter( ctrIdWaitState,
-                                             ( *next_iter )->getTime( ) -
-                                             ( *current_iter )->getTime( ) );
+                                          ( *next_iter )->getTime( ) -
+                                          ( *current_iter )->getTime( ) );
             }
           }
 

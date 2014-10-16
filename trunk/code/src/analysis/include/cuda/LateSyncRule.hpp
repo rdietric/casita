@@ -117,9 +117,9 @@ namespace casita
 
             /* set counters */
             sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                      CTR_BLAME ),
-                                    sync.second->getTime( ) -
-                                    sync.first->getTime( ) );
+                                       CTR_BLAME ),
+                                     sync.second->getTime( ) -
+                                     sync.first->getTime( ) );
             waitLeave->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                      CTR_WAITSTATE ),
                                    sync.second->getTime( ) -
