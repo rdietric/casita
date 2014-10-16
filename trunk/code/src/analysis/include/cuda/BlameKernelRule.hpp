@@ -46,7 +46,8 @@ namespace casita
         /* get the complete execution */
         GraphNode::GraphNodePair& sync = node->getGraphPair( );
 
-        uint64_t syncDeltaTicks        = commonAnalysis->getDeltaTicks( );
+        /* ignore delta ticks for now until we have a better heuristic */
+        /* uint64_t syncDeltaTicks        = commonAnalysis->getDeltaTicks( ); */
 
         bool     ruleResult = false;
         /* find all referenced (device) streams */
@@ -76,9 +77,7 @@ namespace casita
             GraphNode::GraphNodePair& kernel = kernelLeave->getGraphPair( );
 
             if ( ( isFirstKernel &&
-                   ( sync.first->getTime( ) < kernel.second->getTime( ) ) &&
-                   ( sync.second->getTime( ) - kernel.second->getTime( ) <=
-                     syncDeltaTicks ) ) ||
+                   ( sync.first->getTime( ) < kernel.second->getTime( ) ) ) ||
                  ( !isFirstKernel &&
                    ( sync.first->getTime( ) < kernel.second->getTime( ) ) ) )
             {
