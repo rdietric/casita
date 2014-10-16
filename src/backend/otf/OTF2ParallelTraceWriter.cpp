@@ -615,7 +615,7 @@ OTF2ParallelTraceWriter::writeEvent( OTF2Event event, CounterMap& counters )
       firstValueWritten = true;
     }
     
-    if (!firstValueWritten || (iter->second != 0))
+    if (!firstValueWritten)
     {
       value.unsigned_int = iter->second;
       OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
