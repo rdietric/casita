@@ -70,13 +70,7 @@ namespace casita
       writeDefFunction( uint64_t id, const char* name, FunctionGroup fg ) = 0;
 
       virtual void
-      writeDefCounter( uint32_t id, const char* name, int properties )    = 0;
-
-      virtual void
-      writeNode( GraphNode*       node,
-                 CounterTable&    ctrTable,
-                 bool             lastProcessNode,
-                 const GraphNode* futureNode ) = 0;
+      writeDefCounter( uint32_t id, const char* name, int properties ) = 0;
 
   };
  }

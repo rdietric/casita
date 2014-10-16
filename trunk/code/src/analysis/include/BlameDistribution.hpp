@@ -43,7 +43,7 @@ namespace casita
      node, callback, &walkListAndWaitTime );
 
    const GraphNode::GraphNodeList& walkList = walkListAndWaitTime.list;
-   const uint32_t waitTime       = walkListAndWaitTime.waitStateTime;
+   const uint32_t waitTime      = walkListAndWaitTime.waitStateTime;
 
    if ( walkList.size( ) < 2 )
    {
@@ -51,8 +51,8 @@ namespace casita
                                             node->getUniqueName( ).c_str( ) );
    }
 
-   GraphNode* start              = walkList.front( );
-   GraphNode* end                = walkList.back( );
+   GraphNode* start             = walkList.front( );
+   GraphNode* end               = walkList.back( );
    if ( false )
    {
      std::cout << "[" << analysis->getMPIRank( ) << "]Walking: " <<
@@ -61,13 +61,12 @@ namespace casita
      totalBlame << std::endl;
    }
 
-   uint64_t       totalWalkTime  = walkList.front( )->getTime( ) -
-                                   walkList.back( )->getTime( );
-   GraphNode*     lastWalkNode   = walkList.front( );
+   uint64_t       totalWalkTime = walkList.front( )->getTime( ) -
+                                  walkList.back( )->getTime( );
+   GraphNode*     lastWalkNode  = walkList.front( );
 
-   const uint32_t waitCtrId      = analysis->getCtrTable( ).getCtrId( CTR_WAITSTATE );
-   const uint32_t blameCtrId     = analysis->getCtrTable( ).getCtrId( CTR_BLAME );
-   const uint32_t statBlameCtrId = analysis->getCtrTable( ).getCtrId( CTR_BLAME_STATISTICS );
+   const uint32_t waitCtrId     = analysis->getCtrTable( ).getCtrId( CTR_WAITSTATE );
+   const uint32_t blameCtrId    = analysis->getCtrTable( ).getCtrId( CTR_BLAME );
 
    if ( start->getCaller( ) == NULL )
    {
@@ -115,13 +114,6 @@ namespace casita
      if ( ratioBlame > 0 )
      {
        currentWalkNode->incCounter( blameCtrId, ratioBlame );
-     }
-
-     /* caller is always enter node */
-     if ( currentWalkNode->isLeave( ) && currentWalkNode->getCaller( ) &&
-          ratioBlame > 0 )
-     {
-       currentWalkNode->getCaller( )->incCounter( statBlameCtrId, ratioBlame );
      }
 
      lastWalkNode = currentWalkNode;

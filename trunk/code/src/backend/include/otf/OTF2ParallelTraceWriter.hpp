@@ -16,6 +16,7 @@
 #include <vector>
 #include <map>
 #include <stack>
+#include <list>
 #include "CounterTable.hpp"
 #include "otf/IParallelTraceWriter.hpp"
 #include "OTF2TraceReader.hpp"
@@ -27,7 +28,7 @@ namespace casita
 
   typedef std::map< uint32_t, uint32_t > CtrInstanceMap;
 
-  enum OTF2EventType { OTF2_EVT_ENTER, OTF2_EVT_LEAVE, OTF2_EVT_MISC };
+  enum OTF2EventType { OTF2_EVT_ENTER, OTF2_EVT_LEAVE };
 
   typedef struct
   {
@@ -57,8 +58,6 @@ namespace casita
   {
     public:
       bool writeToFile;
-      /* maps from Location to time */
-      std::map< uint64_t, uint64_t > lastEventTime;
 
       OTF2ParallelTraceWriter( uint32_t             mpiRank,
                                uint32_t             mpiSize,
@@ -81,12 +80,6 @@ namespace casita
 
       void
       writeDefCounter( uint32_t id, const char* name, int properties );
-
-      void
-      writeNode( GraphNode*       node,
-                 CounterTable&    ctrTable,
-                 bool             lastProcessNode,
-                 const GraphNode* futureNode );
 
       void
       writeProcess( uint64_t                          processId,
@@ -124,58 +117,41 @@ namespace casita
 
       std::map< uint32_t, const char* > idStringMap;
 
+      typedef std::map< uint32_t, uint64_t > CounterMap;
+      typedef std::map< uint64_t, std::stack< uint32_t > > ActivityStackMap;
+      typedef std::map< uint64_t, uint64_t > TimeMap;
+      typedef std::list< Edge* > OpenEdgesList;
+
       void
       copyGlobalDefinitions( );
 
       void
-      writeNodeCounters( GraphNode*          node,
-                         const CounterTable& ctrTable,
-                         OTF2_EvtWriter*     evt_writer,
-                         bool                lastProcessNode,
-                         const GraphNode*    futureNode );
+      updateActivityGroupMap( OTF2Event event, CounterMap counters );
+
+      uint64_t
+      computeCPUEventBlame( OTF2Event event );
 
       void
-      bufferCPUEvent( OTF2Event event );
+      writeEvent( OTF2Event event, CounterMap counters );
 
       void
-      replaceWithOriginalEvent( OTF2Event event, GraphNode* node );
-
-      GraphNode*
-      findNextCriticalPathNode( GraphNode* node );
-
-      bool
-      processNextNode( OTF2Event event );
-
-      void
-      processCPUEvent( OTF2Event event );
-
-      void
-      assignBlame( uint64_t currentTime, uint64_t currentStream );
+      processNextEvent( OTF2Event event );
 
       EventStream::SortedGraphNodeList* processNodes;
       EventStream::SortedGraphNodeList::iterator iter;
 
-      bool          enableWaitStates;
-      bool          verbose;
-      bool          isFirstProcess;
-      Graph*        graph;
-      GraphNode*    lastGraphNode;
+      bool    enableWaitStates;
+      bool    verbose;
+      bool    isFirstProcess;
+      Graph*  graph;
       CounterTable* cTable;
-      uint32_t      cpuNodes;
-      uint32_t      currentStackLevel;
 
-      std::map< uint64_t, std::list< OTF2Event > >           currentCPUNodes;
-      std::map< uint64_t, std::list< OTF2ThreadTeamBegin > > pendingThreadTeamBegin;
-      std::map< uint64_t, std::list< OTF2ThreadFork > >      pendingThreadFork;
-      std::map< uint64_t, std::list< uint32_t > > currentCPUEvents;
-      std::map< uint64_t, bool >           deviceStreamMap;
-      std::map< uint64_t, GraphNode* >     lastProcessedNodePerProcess;
-      std::map< uint64_t, OTF2Event >      lastCPUEventPerProcess;
-      std::map< uint64_t, uint64_t > lastTimeOnCriticalPath;
+      ActivityStackMap activityStack;
+      TimeMap lastEventTime;
+      OpenEdgesList openEdges;
+
+      std::map< uint64_t, bool > deviceStreamMap;
       std::map< uint32_t, OTF2_StringRef > regionNameIdList;
-
-      Graph::EdgeList openEdges;
-      GraphNode*      lastNodeCheckedForEdges;
 
       /* Definition callbacks */
       static OTF2_CallbackCode

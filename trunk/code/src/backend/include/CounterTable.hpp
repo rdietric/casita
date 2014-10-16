@@ -15,62 +15,46 @@
 #include <stdint.h>
 #include <map>
 #include <set>
-#define OTF_COUNTER_SCOPE_NEXT 0
-#define OTF_COUNTER_TYPE_ABS 0
-#define OTF_COUNTER_SCOPE_POINT 0
+#include <otf2/otf2.h>
 
 namespace casita
 {
  enum CounterType
  {
    CTR_BLAME = 0,                /* local blame for visualization */
-   CTR_BLAME_LOG10,              /* local blame for visualization
-                                  *(log10) */
-   CTR_BLAME_STATISTICS,         /* accumulated blame for statistics
-                                  **/
    CTR_WAITSTATE,                /* local waiting time */
-   CTR_WAITSTATE_LOG10,          /* local waiting time (log10) */
    CTR_CRITICALPATH,
-   CTR_CRITICALPATH_TIME,
    CTR_OMP_REGION_ID,
    CTR_OMP_PARENT_REGION_ID,
    CTR_OMP_IGNORE_BARRIER,
 
-   CTR_NUM_DEFAULT_CTRS = 10
+   CTR_NUM_DEFAULT_CTRS = 6
  };
 
  typedef struct
  {
-   CounterType type;
-   const char* name;
-   bool        hasDefault;
-   bool        isInternal;
-   uint64_t    defaultValue;
-   uint32_t    otfMode;
+   CounterType     type;
+   const char*     name;
+   bool            hasDefault;
+   bool            isInternal;
+   uint64_t        defaultValue;
+   OTF2_MetricMode otfMode;
  } CtrTableEntry;
 
  static const CtrTableEntry COUNTER_TABLE[] =
  {
-   { CTR_BLAME, "Exclusive Blame", true, false, 0,
-     OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS },
-   { CTR_BLAME_LOG10, "Exclusive Blame (log10)", true, false, 0,
-     OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS },
-   { CTR_BLAME_STATISTICS, "Blame Statistics", true, true, 0,
-     OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS },
+   { CTR_BLAME, "Blame", true, false, 0,
+     OTF2_METRIC_ABSOLUTE_LAST },
    { CTR_WAITSTATE, "Waiting Time", true, false, 0,
-     OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS },
-   { CTR_WAITSTATE, "Waiting Time (log10)", true, false, 0,
-     OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS },
+     OTF2_METRIC_ABSOLUTE_LAST },
    { CTR_CRITICALPATH, "Critical Path", true, false, 0,
-     OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS },
-   { CTR_CRITICALPATH_TIME, "Time on Critical Path", true, false, 0,
-     OTF_COUNTER_SCOPE_NEXT | OTF_COUNTER_TYPE_ABS },
+     OTF2_METRIC_ABSOLUTE_LAST },
    { CTR_OMP_REGION_ID, "OpenMP 4.0 Region ID", true, true, 0,
-     OTF_COUNTER_SCOPE_POINT | OTF_COUNTER_TYPE_ABS },
+     OTF2_METRIC_ABSOLUTE_POINT },
    { CTR_OMP_PARENT_REGION_ID, "OpenMP 4.0 Parent Region ID", true, true, 0,
-     OTF_COUNTER_SCOPE_POINT | OTF_COUNTER_TYPE_ABS },
+     OTF2_METRIC_ABSOLUTE_POINT },
    { CTR_OMP_IGNORE_BARRIER, "OpenMP 4.0 Collapsed Barrier", true, true, 0,
-     OTF_COUNTER_SCOPE_POINT | OTF_COUNTER_TYPE_ABS }
+     OTF2_METRIC_ABSOLUTE_POINT }
  };
 
  class CounterTable
