@@ -351,13 +351,6 @@ namespace casita
          return true;
        }
 
-       /* not recognized MPI_function */
-       if ( !strncmp( "MPI_", name, 4 ) )
-       {
-         descr->paradigm = PARADIGM_MPI;
-         return true;
-       }
-
        /* kernel ? */
        if ( deviceNullStream )
        {
