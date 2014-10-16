@@ -167,21 +167,26 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
 
   if ( writeToFile )
   {
-    /* remove trace dir */
-    if ( boost::filesystem::exists( pathToFile + std::string( "/" ) +
-                                    outputFilename ) )
+    if (mpiRank == 0)
     {
-      boost::filesystem::remove_all( pathToFile + std::string(
-                                       "/" ) + outputFilename );
-    }
+      /* remove trace dir */
+      if ( boost::filesystem::exists( pathToFile + std::string( "/" ) +
+                                      outputFilename ) )
+      {
+        boost::filesystem::remove_all( pathToFile + std::string(
+                                         "/" ) + outputFilename );
+      }
 
-    /* remove trace files */
-    if ( boost::filesystem::exists( otfFilename ) )
-    {
-      boost::filesystem::remove( otfFilename );
-      boost::filesystem::remove(
-        boost::filesystem::change_extension( otfFilename, "def" ) );
+      /* remove trace files */
+      if ( boost::filesystem::exists( otfFilename ) )
+      {
+        boost::filesystem::remove( otfFilename );
+        boost::filesystem::remove(
+          boost::filesystem::change_extension( otfFilename, "def" ) );
+      }
     }
+    
+    MPI_Barrier(MPI_COMM_WORLD);
 
     /* open new otf2 file */
     archive = OTF2_Archive_Open( pathToFile.c_str( ),
