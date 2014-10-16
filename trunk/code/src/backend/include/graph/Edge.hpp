@@ -17,6 +17,7 @@
 #include <map>
 
 #include "GraphNode.hpp"
+#include "utils/ErrorUtils.hpp"
 
 namespace casita
 {
@@ -52,6 +53,7 @@ namespace casita
 
        cpuNodes              = 0;
        cpuBlame              = 0;
+       /* set both to end->getTime() for initial CPU time to be 0 */
        cpuStartEnd.startTime = end->getTime( );
        cpuStartEnd.endTime   = end->getTime( );
 
@@ -209,6 +211,8 @@ namespace casita
      void
      addCPUData( uint32_t nodes, uint64_t startTime, uint64_t endTime )
      {
+       UTILS_ASSERT( cpuNodes == 0, "Can not set CPU data multiple times" );
+
        if ( nodes > 0 )
        {
          cpuNodes = nodes;

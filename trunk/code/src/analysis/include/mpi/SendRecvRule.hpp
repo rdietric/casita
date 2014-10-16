@@ -103,7 +103,7 @@ namespace casita
             Edge* sendRecordEdge = commonAnalysis->getEdge( sendRecv.first,
                                                             sendRecv.second );
             sendRecordEdge->makeBlocking( );
-            sendRecv.first->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
+            sendRecv.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                           CTR_WAITSTATE ),
                                         otherStartTime - myStartTime );
           }
@@ -139,7 +139,7 @@ namespace casita
           Edge* recvRecordEdge = commonAnalysis->getEdge( sendRecv.first,
                                                           sendRecv.second );
           recvRecordEdge->makeBlocking( );
-          sendRecv.first->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
+          sendRecv.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                         CTR_WAITSTATE ),
                                       otherStartTime - myStartTime );
         }

@@ -72,7 +72,7 @@ namespace casita
           Edge* recvRecordEdge = commonAnalysis->getEdge( recv.first,
                                                           recv.second );
           recvRecordEdge->makeBlocking( );
-          recv.first->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
+          recv.second->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                     CTR_WAITSTATE ), sendStartTime -
                                   recvStartTime );
 

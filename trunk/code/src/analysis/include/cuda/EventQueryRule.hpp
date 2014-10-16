@@ -135,10 +135,10 @@ namespace casita
                 prevQuery.first, prevQuery.second )->makeBlocking( );
 
               /* set counters */
-              prevQuery.first->incCounter(
+              prevQuery.second->incCounter(
                 commonAnalysis->getCtrTable( ).getCtrId( CTR_WAITSTATE ),
                 prevQuery.second->getTime( ) - prevQuery.first->getTime( ) );
-              kernel.first->incCounter(
+              kernel.second->incCounter(
                 commonAnalysis->getCtrTable( ).getCtrId( CTR_BLAME ),
                 prevQuery.second->getTime( ) - prevQuery.first->getTime( ) );
 

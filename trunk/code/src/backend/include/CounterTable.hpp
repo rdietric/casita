@@ -96,7 +96,7 @@ namespace casita
      void
      addCounter( uint32_t ctrId, CounterType ctrType,
                  const char* name, bool hasDefault, bool isInternal,
-                 uint64_t defaultValue, uint32_t otfMode )
+                 uint64_t defaultValue, OTF2_MetricMode otfMode )
      {
        CtrTableEntry* entry = new CtrTableEntry( );
        entry->type         = ctrType;

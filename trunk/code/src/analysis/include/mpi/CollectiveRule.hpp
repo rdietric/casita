@@ -123,9 +123,9 @@ namespace casita
           Edge* collRecordEdge = commonAnalysis->getEdge( coll.first,
                                                           coll.second );
           collRecordEdge->makeBlocking( );
-          coll.first->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                    CTR_WAITSTATE ),
-                                  lastEnterTime - collStartTime );
+          coll.second->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
+                                   CTR_WAITSTATE ),
+                                   lastEnterTime - collStartTime );
 
           commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
             coll.second,

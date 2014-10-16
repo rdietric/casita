@@ -125,7 +125,7 @@ namespace casita
             Edge* allToOneRecordEdge = commonAnalysis->getEdge(
               allToOne.first, allToOne.second );
             allToOneRecordEdge->makeBlocking( );
-            allToOne.first->setCounter(
+            allToOne.second->setCounter(
               commonAnalysis->getCtrTable( ).getCtrId( CTR_WAITSTATE ),
               total_waiting_time );
           }

@@ -91,7 +91,7 @@ namespace casita
             Edge* sendRecordEdge = commonAnalysis->getEdge( send.first,
                                                             send.second );
             sendRecordEdge->makeBlocking( );
-            send.first->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
+            send.second->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                       CTR_WAITSTATE ),
                                     recvStartTime - sendStartTime );
           }
