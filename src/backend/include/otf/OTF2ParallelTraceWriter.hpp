@@ -121,18 +121,19 @@ namespace casita
       typedef std::map< uint64_t, std::stack< uint32_t > > ActivityStackMap;
       typedef std::map< uint64_t, uint64_t > TimeMap;
       typedef std::list< Edge* > OpenEdgesList;
+      typedef std::map< uint64_t, bool > BooleanMap;
 
       void
       copyGlobalDefinitions( );
 
       void
-      updateActivityGroupMap( OTF2Event event, CounterMap counters );
+      updateActivityGroupMap( OTF2Event event, CounterMap& counters );
 
       uint64_t
       computeCPUEventBlame( OTF2Event event );
 
       void
-      writeEvent( OTF2Event event, CounterMap counters );
+      writeEvent( OTF2Event event, CounterMap& counters );
 
       void
       processNextEvent( OTF2Event event );
@@ -140,15 +141,16 @@ namespace casita
       EventStream::SortedGraphNodeList* processNodes;
       EventStream::SortedGraphNodeList::iterator iter;
 
-      bool    enableWaitStates;
-      bool    verbose;
-      bool    isFirstProcess;
-      Graph*  graph;
-      CounterTable* cTable;
+      bool             enableWaitStates;
+      bool             verbose;
+      bool             isFirstProcess;
+      Graph*           graph;
+      CounterTable*    cTable;
 
       ActivityStackMap activityStack;
-      TimeMap lastEventTime;
-      OpenEdgesList openEdges;
+      TimeMap          lastEventTime;
+      OpenEdgesList    openEdges;
+      BooleanMap       processOnCriticalPath;
 
       std::map< uint64_t, bool > deviceStreamMap;
       std::map< uint32_t, OTF2_StringRef > regionNameIdList;

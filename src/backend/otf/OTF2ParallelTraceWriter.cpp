@@ -436,6 +436,7 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
   this->verbose    = verbose;
   this->graph      = graph;
   cTable           = ctrTable;
+  processOnCriticalPath[processId] = false;
 
   UTILS_DBG_MSG( verbose, "[%u] Start writing for process %lu", mpiRank, processId );
 
@@ -505,7 +506,7 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
 }
 
 void
-OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap counters )
+OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& counters )
 {
   /* add function to list if not present yet */
   if ( activityGroupMap.find( event.regionRef ) == activityGroupMap.end( ) )
@@ -523,15 +524,20 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap cou
   ActivityStackMap::const_iterator activityIter = activityStack.find( event.location );
 
   /* add time to current function on stack */
-  if ( activityIter != activityStack.end( ) )
+  if ( activityIter != activityStack.end( ) && activityIter->second.size( ) > 0 )
   {
     uint32_t currentActivity = activityIter->second.top( );
     uint64_t timeDiff        = event.time - lastEventTime[event.location];
 
     activityGroupMap[currentActivity].totalDuration     += timeDiff;
 
+    uint64_t cpValue         = counters[cTable->getCtrId( CTR_CRITICALPATH )];
+
     activityGroupMap[currentActivity].totalDurationOnCP +=
-      ( counters[cTable->getCtrId( CTR_CRITICALPATH )] != 0 ) ? timeDiff : 0;
+      ( processOnCriticalPath[event.location] && ( cpValue != 0 ) ) ? timeDiff : 0;
+
+    /* log if this process is currently on the critical path */
+    processOnCriticalPath[event.location] = cpValue;
 
     activityGroupMap[currentActivity].totalBlame        += counters[cTable->getCtrId( CTR_BLAME )];
   }
@@ -572,7 +578,7 @@ OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
 }
 
 void
-OTF2ParallelTraceWriter::writeEvent( OTF2Event event, CounterMap counters )
+OTF2ParallelTraceWriter::writeEvent( OTF2Event event, CounterMap& counters )
 {
   UTILS_ASSERT( evt_writerMap.find( event.location ) != evt_writerMap.end( ),
                 "Could not find OTF2 event writer for location" );
