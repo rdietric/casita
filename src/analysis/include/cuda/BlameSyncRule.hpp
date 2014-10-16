@@ -78,7 +78,7 @@ namespace casita
           {
             GraphNode* lastLeaveNode = commonAnalysis->getLastLeave(
               sync.second->getTime( ), deviceProcess->getId( ) );
-            GraphNode* waitEnter     = NULL, * waitLeave = NULL;
+            GraphNode* waitLeave = NULL;
 
             if ( lastLeaveNode && lastLeaveNode->isWaitstate( ) )
             {
@@ -88,7 +88,7 @@ namespace casita
               }
               else
               {
-                waitEnter = commonAnalysis->addNewGraphNode(
+                commonAnalysis->addNewGraphNode(
                   std::max( lastLeaveNode->getTime( ),
                             kernel.second->getTime( ) ),
                   deviceProcess, NAME_WAITSTATE,
@@ -98,7 +98,7 @@ namespace casita
             }
             else
             {
-              waitEnter = commonAnalysis->addNewGraphNode(
+              commonAnalysis->addNewGraphNode(
                 kernel.second->getTime( ),
                 deviceProcess, NAME_WAITSTATE,
                 PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE );

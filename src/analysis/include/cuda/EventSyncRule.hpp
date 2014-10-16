@@ -121,11 +121,10 @@ namespace casita
                     getName( ) );
           }
 
-          uint64_t syncDeltaTicks = commonAnalysis->getDeltaTicks( );
+          /* ignore delta ticks for now until we have a better heuristic */
+          /* uint64_t syncDeltaTicks = commonAnalysis->getDeltaTicks( ); */
 
-          if ( ( sync.first->getTime( ) < kernelLeave->getTime( ) ) &&
-               ( sync.second->getTime( ) - kernelLeave->getTime( ) <=
-                 syncDeltaTicks ) )
+          if ( ( sync.first->getTime( ) < kernelLeave->getTime( ) ) )
           {
             commonAnalysis->getEdge( sync.first, sync.second )->makeBlocking( );
 
