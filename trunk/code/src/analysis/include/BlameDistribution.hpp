@@ -99,7 +99,7 @@ namespace casita
                                          (double)( totalWalkTime - waitTime );
 
      edge->addCPUBlame( cpuBlame );
-     if ( cpuBlame > 0 && false )
+     if ( cpuBlame > 0 && true )
      {
        std::cout << "Write cpuBlame " << cpuBlame << " (of " << totalBlame
                  << " and " << ratioBlame << " cpuTimeDiff: " << cpuTimeDiff

@@ -29,8 +29,8 @@ sub test_trace
 
     my $nprocs = $1;
     my $trace_name = $2;
-    print "Executing 'mpirun -n $nprocs casita ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2'\n";
-    my @output = qx(mpirun -n $nprocs casita ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2);
+    print "Executing 'mpirun -n $nprocs casita ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2 --verbose=1'\n";
+    my @output = qx(mpirun -n $nprocs casita ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2 --verbose=1);
     my $status = $? >> 8;
 
     if (not ($status == 0))
@@ -45,15 +45,6 @@ sub test_trace
     if (not ($#running_analysis + 1 >= 1))
     {
         print "Error: CASITA did not run analysis\n";
-        print "@output \n\n";
-        return 1;
-    }
-
-    # test that the critical path is computed
-    my @critical_path = grep (/\[(\d+)\] Critical path length/, @output);
-    if (not ($#critical_path + 1 == 1))
-    {
-        print "Error: CASITA did not compute the critical path\n";
         print "@output \n\n";
         return 1;
     }
