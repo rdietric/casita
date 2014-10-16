@@ -70,18 +70,15 @@ namespace casita
      void
      outputMessage( const char* fmt, ... )
      {
-       if ( verbose )
-       {
-         va_list      argp;
-         const size_t MAX_LEN = 512;
-         char msg[MAX_LEN];
+       va_list      argp;
+       const size_t MAX_LEN = 512;
+       char msg[MAX_LEN];
 
-         va_start( argp, fmt );
-         vsnprintf( msg, MAX_LEN, fmt, argp );
-         va_end( argp );
+       va_start( argp, fmt );
+       vsnprintf( msg, MAX_LEN, fmt, argp );
+       va_end( argp );
 
-         fprintf( stderr, "%s\n", msg );
-       }
+       fprintf( stderr, "%s\n", msg );
      }
 
      void
@@ -118,6 +115,11 @@ namespace casita
 #define UTILS_ASSERT( cond, fmt, ... ) \
   if ( !( cond ) ) { \
     ErrorUtils::getInstance( ).throwError( fmt, ## __VA_ARGS__ ); \
+  }
+
+#define UTILS_DBG_MSG( cond, fmt, ... ) \
+  if ( cond ) { \
+    ErrorUtils::getInstance( ).outputMessage( fmt, ## __VA_ARGS__ ); \
   }
 
 }

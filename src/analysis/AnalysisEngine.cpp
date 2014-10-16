@@ -376,8 +376,6 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
     }
   }
 
-  /* printf( "[%u] wrote definition \n", mpiAnalysis.getMPIRank( ) ); */
-
   MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
   for ( EventStreamGroup::EventStreamList::const_iterator pIter =
@@ -414,7 +412,5 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
       ( *pIter )->getId( ), &nodes, enableWaitStates, pLastGraphNode,
       verbose, &( this->getCtrTable( ) ), &( this->getGraph( ) ) );
   }
-
-  /* printf( "[%u] wrote events \n", mpiAnalysis.getMPIRank( ) ); */
 
 }

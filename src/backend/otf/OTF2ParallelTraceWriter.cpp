@@ -166,8 +166,8 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
     boost_filename.filename( ), "" ).string( );
   pathToFile     = boost_path.remove_filename( ).string( );
 
-  printf( "[%u] FILENAME: %s path: %s \n ", mpiRank,
-          outputFilename.c_str( ), pathToFile.c_str( ) );
+  UTILS_DBG_MSG( mpiRank == 0, "[%u] FILENAME: '%s' PATH: '%s'",
+                 mpiRank, outputFilename.c_str( ), pathToFile.c_str( ) );
 
   if ( writeToFile )
   {
@@ -359,7 +359,8 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions( )
                                         global_def_reader,
                                         &definitions_read );
 
-  printf( "Read and wrote %lu definitions\n ", definitions_read );
+  UTILS_DBG_MSG( mpiRank == 0, "[%u] Read and wrote %lu definitions",
+                 mpiRank, definitions_read );
 
 }
 
@@ -449,12 +450,6 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
   event.time        = timerOffset;
   lastCPUEventPerProcess[processId] = event;
 
-  if ( verbose )
-  {
-    std::cout << "[" << mpiRank << "] Start writing for process " <<
-    processId << std::endl;
-  }
-
   processNodes      = nodes;
   enableWaitStates  = waitStates;
   iter = processNodes->begin( );
@@ -462,6 +457,8 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
   this->verbose     = verbose;
   this->graph       = graph;
   cTable = ctrTable;
+
+  UTILS_DBG_MSG( verbose, "[%u] Start writing for process %lu", mpiRank, processId );
 
   if ( isFirstProcess )
   {
@@ -644,11 +641,8 @@ OTF2ParallelTraceWriter::processCPUEvent( OTF2Event event )
 void
 OTF2ParallelTraceWriter::bufferCPUEvent( OTF2Event event )
 {
-  if ( verbose )
-  {
-    std::cout << "[" << mpiRank << "] Buffer: [" << event.location <<
-    "] function: " << idStringMap[regionNameIdList[event.regionRef]] << std::endl;
-  }
+  UTILS_DBG_MSG( verbose, "[%u] Buffer: [%lu] function %s",
+                 mpiRank, event.location, idStringMap[regionNameIdList[event.regionRef]] );
 
   /* Add Blame for region since last event */
   assignBlame( event.time, event.location );
@@ -672,11 +666,7 @@ OTF2ParallelTraceWriter::bufferCPUEvent( OTF2Event event )
   cpuNodes++;
   lastCPUEventPerProcess[event.location] = event;
 
-  if ( verbose )
-  {
-    std::cout << "[" << mpiRank << "] processed " << cpuNodes << " cpuNodes" <<
-    std::endl;
-  }
+  UTILS_DBG_MSG( verbose, "[%u] processed %lu cpu nodes", mpiRank, cpuNodes );
 }
 
 void
@@ -684,11 +674,11 @@ OTF2ParallelTraceWriter::replaceWithOriginalEvent( OTF2Event event, GraphNode* n
 {
   if ( verbose )
   {
-    std::cout <<
-    "Node not written from original trace, since there is an inconsistency: Time: "
-              << event.time << " (trace) - " << node->getTime( ) + timerOffset
-              << " (casita), Function ID = " << event.regionRef << " (trace) - "
-              << node->getFunctionId( ) << " (casita)" << std::endl;
+    UTILS_DBG_MSG( verbose, "[%u] Event not written from original trace, since there is an inconsistency. "
+                            "Time: %lu (trace) %lu (casita), "
+                            "Function ID: %u (trace) %u casita",
+                   event.time, node->getTime( ) + timerOffset,
+                   event.regionRef, node->getFunctionId( ) );
   }
 
   switch ( event.type )
@@ -735,18 +725,9 @@ OTF2ParallelTraceWriter::findNextCriticalPathNode( GraphNode* node )
     }
   }
 
-  if ( verbose )
-  {
-    if ( futureCPNode == NULL )
-    {
-      std::cout << "[" << mpiRank << "] futureCP NULL " << std::endl;
-    }
-    else
-    {
-      std::cout << "[" << mpiRank << "] futureCP: "
-                << futureCPNode->getUniqueName( ) << std::endl;
-    }
-  }
+  UTILS_DBG_MSG( ( futureCPNode == NULL ) && verbose, "[%u] futureCP NULL", mpiRank );
+  UTILS_DBG_MSG( ( futureCPNode != NULL ) && verbose, "[%u] futureCP: %s",
+                 mpiRank, futureCPNode->getUniqueName( ).c_str( ) );
 
   return futureCPNode;
 }
@@ -770,23 +751,17 @@ OTF2ParallelTraceWriter::processNextNode( OTF2Event event )
     activityGroupMap[event.regionRef].numInstances++;
   }
 
-  if ( verbose > VERBOSE_ANNOY )
-  {
-    std::cout << "[" << mpiRank << "] process " << event.regionRef << " "
-              << idStringMap[regionNameIdList[event.regionRef]] << " " << event.type
-              << " at " << ( (double)event.time - (double)timerOffset ) / (double)timerResolution
-              << " on " << event.location << std::endl;
-  }
+  UTILS_DBG_MSG( verbose > VERBOSE_ANNOY, "[%u] process %u %s %u at %f on %lu",
+                 mpiRank, event.regionRef, idStringMap[regionNameIdList[event.regionRef]], event.type,
+                 ( (double)event.time - (double)timerOffset ) / (double)timerResolution,
+                 event.location );
 
   /* Skip threadFork/Join (also skips first inserted processNode that
    * is not in original trace)
    */
   while ( ( iter != processNodes->end( ) ) && ( *iter )->isOMPParallelRegion( ) )
   {
-    if ( verbose )
-    {
-      std::cout << "Skipping " << ( *iter )->getUniqueName( ) << std::endl;
-    }
+    UTILS_DBG_MSG( verbose, "[%u] Skipping %s", mpiRank, ( *iter )->getUniqueName( ).c_str( ) );
     iter++;
   }
 
@@ -858,16 +833,13 @@ OTF2ParallelTraceWriter::processNextNode( OTF2Event event )
   {
     if ( ( !node->isPureWaitstate( ) ) || enableWaitStates )
     {
-      if ( verbose )
-      {
-        printf( "[%u] [%12lu:%12.8fs] %60s in %8lu (FID %lu)\n",
-                mpiRank,
-                node->getTime( ),
-                (double)( node->getTime( ) ) / (double)timerResolution,
-                node->getUniqueName( ).c_str( ),
-                node->getStreamId( ),
-                node->getFunctionId( ) );
-      }
+      UTILS_DBG_MSG( verbose, "[%u] [%12lu:%12.8fs] %60s in %8lu (FID %lu)\n",
+                     mpiRank,
+                     node->getTime( ),
+                     (double)( node->getTime( ) ) / (double)timerResolution,
+                     node->getUniqueName( ).c_str( ),
+                     node->getStreamId( ),
+                     node->getFunctionId( ) );
 
       writeNode( node, *cTable,
                  node == lastGraphNode, futureCPNode );

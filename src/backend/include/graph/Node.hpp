@@ -450,9 +450,6 @@ namespace casita
        uint64_t time1 = n1->getTime( );
        uint64_t time2 = n2->getTime( );
 
-       /* printf("< (%s, %s)\n", n1->getUniqueName().c_str(),
-        * n2->getUniqueName().c_str()); */
-
        if ( time1 != time2 )
        {
          return time1 < time2;

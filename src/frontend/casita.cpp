@@ -39,10 +39,7 @@ main( int argc, char** argv )
   MPI_CHECK( MPI_Comm_rank( MPI_COMM_WORLD, &mpiRank ) );
   MPI_CHECK( MPI_Comm_size( MPI_COMM_WORLD, &mpiSize ) );
 
-  if ( mpiRank == 0 )
-  {
-    printf( "[0] Running with %d analysis processes\n", mpiSize );
-  }
+  UTILS_DBG_MSG( mpiRank == 0, "[%u] Running with %d analysis processes", mpiRank, mpiSize );
 
   if ( !Parser::getInstance( ).init( argc, argv ) )
   {
@@ -63,10 +60,7 @@ main( int argc, char** argv )
 
   MPI_Barrier( MPI_COMM_WORLD );
 
-  if ( mpiRank == 0 )
-  {
-    printf( "[%u] Computing the critical path\n", mpiRank );
-  }
+  UTILS_DBG_MSG( mpiRank == 0, "[%u] Computing the critical path", mpiRank );
 
   computeCriticalPaths( runner, mpiRank );
 
@@ -74,10 +68,8 @@ main( int argc, char** argv )
   if ( options.createOTF )
   {
     MPI_Barrier( MPI_COMM_WORLD );
-    if ( mpiRank == 0 )
-    {
-      printf( "[%u] Writing result to %s\n", mpiRank, options.outOtfFile.c_str( ) );
-    }
+    UTILS_DBG_MSG( mpiRank == 0, "[%u] Writing result to %s",
+                   mpiRank, options.outOtfFile.c_str( ) );
   }
 
   runner->getAnalysis( ).saveParallelEventGroupToFile(
@@ -90,11 +82,7 @@ main( int argc, char** argv )
 
   if ( options.mergeActivities )
   {
-
-    if ( mpiRank == 0 )
-    {
-      printf( "[%u] Merging activity statistics... \n", mpiRank );
-    }
+    UTILS_DBG_MSG( mpiRank == 0, "[%u] Merging activity statistics...", mpiRank );
 
     runner->mergeActivityGroups( );
 

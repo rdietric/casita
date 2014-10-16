@@ -35,7 +35,7 @@ dumpAllocationTail( AnalysisEngine& analysis )
         iter != allProcs.end( ); ++iter )
   {
     EventStream* p = *iter;
-    printf( "# %s (%lu)\n", p->getName( ), p->getId( ) );
+    fprintf( stderr, "# %s (%lu)\n", p->getName( ), p->getId( ) );
     EventStream::SortedGraphNodeList& nodes = p->getNodes( );
     int n          = 0;
     for ( EventStream::SortedGraphNodeList::const_reverse_iterator rIter =
@@ -47,10 +47,12 @@ dumpAllocationTail( AnalysisEngine& analysis )
         break;
       }
 
-      printf( "  %s\n", ( *rIter )->getUniqueName( ).c_str( ) );
+      fprintf( stderr, "  %s\n", ( *rIter )->getUniqueName( ).c_str( ) );
       n++;
     }
   }
+
+  fflush( stderr );
 }
 
 Runner::Runner( int mpiRank, int mpiSize ) :
@@ -100,18 +102,12 @@ Runner::readOTF( )
   uint32_t      mpiRank     = analysis.getMPIRank( );
   ITraceReader* traceReader = NULL;
 
-  if ( mpiRank == 0 )
-  {
-    printf( "[%u] Reading OTF %s\n", mpiRank, options.filename.c_str( ) );
-  }
+  UTILS_DBG_MSG( mpiRank == 0, "[%u] Reading OTF %s", mpiRank, options.filename.c_str( ) );
 
   if ( strstr( options.filename.c_str( ), ".otf2" ) != NULL )
   {
     uint32_t mpiSize = analysis.getMPISize( );
-    if ( mpiRank == 0 )
-    {
-      printf( "Operating in OTF2-Mode.\n" );
-    }
+    UTILS_DBG_MSG( mpiRank == 0, "[%u] Operating in OTF2-Mode", mpiRank );
     traceReader = new OTF2TraceReader( &callbacks, mpiRank, mpiSize );
   }
 
@@ -129,10 +125,8 @@ Runner::readOTF( )
   traceReader->handleMPICommGroup      = CallbackHandler::handleMPICommGroup;
 
   traceReader->open( options.filename, 10 );
-  if ( options.verbose >= VERBOSE_BASIC )
-  {
-    printf( " [%u] Reading definitions\n", mpiRank );
-  }
+  UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+                 "[%u] Reading definitions", mpiRank );
   traceReader->readDefinitions( );
 
   analysis.getMPIAnalysis( ).createMPICommunicatorsFromMap( );
@@ -140,22 +134,19 @@ Runner::readOTF( )
 
   uint64_t timerResolution = traceReader->getTimerResolution( );
   analysis.setTimerResolution( timerResolution );
-  if ( options.verbose >= VERBOSE_BASIC )
-  {
-    printf( " [%u] Timer resolution = %llu\n",
-            mpiRank, (long long unsigned)( timerResolution ) );
-  }
+  UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+                 "[%u] Timer resolution = %llu",
+                 mpiRank, (long long unsigned)( timerResolution ) );
+
   if ( timerResolution < 1000000000 ) /* 1GHz */
   {
-    printf( " [%u] Warning: your timer resolution is very low!\n", mpiRank );
+    UTILS_DBG_MSG( mpiRank == 0, "[%u] Warning: your timer resolution is very low!", mpiRank );
   }
 
   try
   {
-    if ( options.verbose >= VERBOSE_BASIC )
-    {
-      printf( " [%u] Reading events\n", mpiRank );
-    }
+    UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+                   "[%u] Reading events", mpiRank );
 
     traceReader->readEvents( );
   }
@@ -198,10 +189,8 @@ Runner::mergeActivityGroups( )
   /* send/receive groups to master/from other MPI streams */
   if ( analysis.getMPIRank( ) == 0 )
   {
-    if ( options.verbose >= VERBOSE_BASIC )
-    {
-      printf( "Combining results from all analysis streams\n" );
-    }
+    UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+                   "[%u] Combining results from all analysis streams", mpiRank );
 
     /* receive from all other MPI streams */
     uint32_t mpiSize = analysis.getMPISize( );
@@ -330,10 +319,8 @@ Runner::getCriticalPath( )
   else
   {
     /* compute local critical path on root, only */
-    if ( options.verbose >= VERBOSE_BASIC )
-    {
-      printf( "[0] Single process: defaulting to CUDA/OMP only mode\n" );
-    }
+    UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+                   "[%u] Single process: defaulting to CUDA/OMP only mode", mpiRank );
 
     Graph& subGraph = analysis.getGraph( );
 
@@ -343,10 +330,8 @@ Runner::getCriticalPath( )
   }
 
   /* compute the time-on-critical-path counter */
-  if ( mpiRank == 0 )
-  {
-    printf( "[%u] Computing additional counters\n", mpiRank );
-  }
+  UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+                 "[%u] Computing additional counters", mpiRank );
 
   const uint32_t cpCtrId     = analysis.getCtrTable( ).getCtrId( CTR_CRITICALPATH );
   for ( EventStream::SortedGraphNodeList::const_iterator iter =
@@ -419,10 +404,8 @@ Runner::getCriticalPath( )
 
   if ( options.mergeActivities )
   {
-    if ( mpiRank == 0 )
-    {
-      printf( "[%u] Calculate total length of critical path \n", mpiRank );
-    }
+    UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+                   "[%u] Calculate total length of critical path", mpiRank );
 
     uint64_t firstTimestamp = 0;
     uint64_t lastTimestamp  = analysis.getLastGraphNode( )->getTime( );
@@ -476,11 +459,9 @@ Runner::getCriticalPath( )
     }
 
     globalLengthCP = lastTimestamp - firstTimestamp;
-    if ( mpiRank == 0 )
-    {
-      std::cout << "[0] Critical path length: " << analysis.getRealTime(
-        globalLengthCP ) << std::endl;
-    }
+    UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+                   "[%u] Critical path length = %f",
+                   mpiRank, analysis.getRealTime( globalLengthCP ) );
 
     MPI_Barrier( MPI_COMM_WORLD );
   }
@@ -492,13 +473,10 @@ Runner::getCriticalPathIntern( GraphNode*                        start,
                                EventStream::SortedGraphNodeList& cpNodes,
                                Graph&                            subGraph )
 {
-  if ( options.printCriticalPath )
-  {
-    printf( "\n[%u] Longest path (%s,%s):\n",
-            analysis.getMPIRank( ),
-            start->getUniqueName( ).c_str( ),
-            end->getUniqueName( ).c_str( ) );
-  }
+  UTILS_DBG_MSG( options.printCriticalPath, "\n[%u] Longest path (%s,%s):",
+                 analysis.getMPIRank( ),
+                 start->getUniqueName( ).c_str( ),
+                 end->getUniqueName( ).c_str( ) );
 
   GraphNode::GraphNodeList criticalPath;
   subGraph.getLongestPath( start, end, criticalPath );
@@ -510,13 +488,10 @@ Runner::getCriticalPathIntern( GraphNode*                        start,
     GraphNode* node = *cpNode;
     cpNodes.push_back( node );
 
-    if ( options.printCriticalPath )
-    {
-      printf( "[%u] %u: %s (%f)\n",
-              analysis.getMPIRank( ), i,
-              node->getUniqueName( ).c_str( ),
-              analysis.getRealTime( node->getTime( ) ) );
-    }
+    UTILS_DBG_MSG( options.printCriticalPath, "[%u] %u: %s (%f)",
+                   analysis.getMPIRank( ), i,
+                   node->getUniqueName( ).c_str( ),
+                   analysis.getRealTime( node->getTime( ) ) );
 
     i++;
   }
@@ -543,15 +518,12 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
   {
     MPIAnalysis::CriticalPathSection* section = &( sections[i] );
 
-    if ( options.verbose >= VERBOSE_BASIC )
-    {
-      printf(
-        "[%u] computing local critical path between MPI nodes [%u, %u] on process %lu\n",
-        mpiRank,
-        section->nodeStartID,
-        section->nodeEndID,
-        section->streamID );
-    }
+    UTILS_DBG_MSG( options.verbose > VERBOSE_BASIC,
+                   "[%u] computing local critical path between MPI nodes [%u, %u] on process %lu",
+                   mpiRank,
+                   section->nodeStartID,
+                   section->nodeEndID,
+                   section->streamID );
 
     /* find local MPI nodes with their IDs */
     GraphNode* startNode = NULL, * endNode = NULL;
@@ -592,15 +564,13 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
     }
     else
     {
-      if ( options.verbose >= VERBOSE_BASIC )
-      {
-        printf( "[%u] node mapping: %u = %s (%f), %u = %s (%f)\n",
-                mpiRank, section->nodeStartID,
-                startNode->getUniqueName( ).c_str( ),
-                analysis.getRealTime( startNode->getTime( ) ),
-                section->nodeEndID, endNode->getUniqueName( ).c_str( ),
-                analysis.getRealTime( endNode->getTime( ) ) );
-      }
+      UTILS_DBG_MSG( options.verbose > VERBOSE_BASIC,
+                     "[%u] node mapping: %u = %s (%f), %u = %s (%f)",
+                     mpiRank, section->nodeStartID,
+                     startNode->getUniqueName( ).c_str( ),
+                     analysis.getRealTime( startNode->getTime( ) ),
+                     section->nodeEndID, endNode->getUniqueName( ).c_str( ),
+                     analysis.getRealTime( endNode->getTime( ) ) );
     }
 
     MPIAnalysis::CriticalPathSection mappedSection;
@@ -631,49 +601,36 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
            !endLocalNode ) ||
          ( startLocalNode->getTime( ) >= endLocalNode->getTime( ) ) )
     {
-      if ( options.verbose >= VERBOSE_BASIC )
-      {
-        printf(
-          "[%u] No local path possible between MPI nodes %s (link %p) and %s (link %p)\n",
-          mpiRank,
-          startNode->getUniqueName( ).c_str( ),
-          startLocalNode,
-          endNode->getUniqueName( ).c_str( ),
-          endLocalNode );
-        if ( startLocalNode && endLocalNode )
-        {
-          printf( "[%u] local nodes %s and %s\n",
-                  mpiRank,
-                  startLocalNode->getUniqueName( ).c_str( ),
-                  endLocalNode->getUniqueName( ).c_str( ) );
-        }
+      UTILS_DBG_MSG( options.verbose > VERBOSE_BASIC,
+                     "[%u] No local path possible between MPI nodes %s (link %p) and %s (link %p)",
+                     mpiRank,
+                     startNode->getUniqueName( ).c_str( ),
+                     startLocalNode,
+                     endNode->getUniqueName( ).c_str( ),
+                     endLocalNode );
 
-      }
+      UTILS_DBG_MSG( options.verbose > VERBOSE_BASIC && startLocalNode && endLocalNode,
+                     "[%u] local nodes %s and %s",
+                     mpiRank,
+                     startLocalNode->getUniqueName( ).c_str( ),
+                     endLocalNode->getUniqueName( ).c_str( ) );
+
       continue;
     }
 
-    if ( options.verbose >= VERBOSE_BASIC )
-    {
-      printf( "[%u] MPI/local mapping: %u > %s, %u > %s\n",
-              mpiRank, section->nodeStartID,
-              startLocalNode->getUniqueName( ).c_str( ),
-              section->nodeEndID, endLocalNode->getUniqueName( ).c_str( ) );
+    UTILS_DBG_MSG( options.verbose > VERBOSE_BASIC,
+                   "[%u] MPI/local mapping: %u > %s, %u > %s",
+                   mpiRank, section->nodeStartID,
+                   startLocalNode->getUniqueName( ).c_str( ),
+                   section->nodeEndID, endLocalNode->getUniqueName( ).c_str( ) );
 
-      printf( "[%d] Computing local critical path (%s, %s)\n", mpiRank,
-              startLocalNode->getUniqueName( ).c_str( ),
-              endLocalNode->getUniqueName( ).c_str( ) );
-    }
+    UTILS_DBG_MSG( options.verbose > VERBOSE_BASIC,
+                   "[%u] Computing local critical path (%s, %s)", mpiRank,
+                   startLocalNode->getUniqueName( ).c_str( ),
+                   endLocalNode->getUniqueName( ).c_str( ) );
 
     EventStream::SortedGraphNodeList sectionLocalNodes;
     sectionLocalNodes.push_back( startNode );
-
-    /* This new version might be faster, but does not produce correct
-     * results */
-    /*getLocalCriticalPath(
-            sectionLocalNodes,
-            startLocalNode,
-            endLocalNode,
-            *subGraph);*/
 
     getCriticalPathIntern( startLocalNode,
                            endLocalNode,
@@ -694,8 +651,8 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
     if ( ( mpiRank == 0 ) && ( omp_get_thread_num( ) == 0 ) &&
          ( i - lastSecCtr > numSections / 10 ) )
     {
-      printf( "[%u] %lu%% ", mpiRank,
-              (size_t)( 100.0 * (double)i / (double)numSections ) );
+      UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC, "[%u] %lu%% ", mpiRank,
+                     (size_t)( 100.0 * (double)i / (double)numSections ) );
       fflush( NULL );
       lastSecCtr = i;
     }
@@ -703,10 +660,8 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
 
   omp_destroy_lock( &localNodesLock );
 
-  if ( mpiRank == 0 )
-  {
-    printf( "[%u] 100%%\n", mpiRank );
-  }
+  UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+                 "[%u] 100%%", mpiRank );
 
   delete subGraph;
 }
@@ -744,12 +699,10 @@ Runner::findLastMpiNode( GraphNode** node )
     myLastMpiNode->setCounter( analysis.getCtrTable( ).getCtrId(
                                  CTR_CRITICALPATH ), 1 );
 
-    if ( options.verbose >= VERBOSE_ANNOY )
-    {
-      printf( "[%u] critical path reverse replay starts at node %s (%f)\n",
-              mpiRank, myLastMpiNode->getUniqueName( ).c_str( ),
-              analysis.getRealTime( myLastMpiNode->getTime( ) ) );
-    }
+    UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
+                   "[%u] critical path reverse replay starts at node %s (%f)",
+                   mpiRank, myLastMpiNode->getUniqueName( ).c_str( ),
+                   analysis.getRealTime( myLastMpiNode->getTime( ) ) );
 
   }
 }
@@ -784,29 +737,25 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
     if ( isMaster )
     {
       /* master */
-      if ( options.verbose >= VERBOSE_ANNOY )
+      if ( lastNode )
       {
-        if ( lastNode )
-        {
-          printf( "[%u] isMaster, currentNode = %s (%f), lastNode = %s (%f)\n",
-                  mpiRank, currentNode->getUniqueName( ).c_str( ),
-                  analysis.getRealTime( currentNode->getTime( ) ),
-                  lastNode->getUniqueName( ).c_str( ),
-                  analysis.getRealTime( lastNode->getTime( ) ) );
-        }
-        else
-        {
-          printf( "[%u] isMaster, currentNode = %s (%f)\n",
-                  mpiRank, currentNode->getUniqueName( ).c_str( ),
-                  analysis.getRealTime( currentNode->getTime( ) ) );
-        }
+        UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
+                       "[%u] isMaster, currentNode = %s (%f), lastNode = %s (%f)",
+                       mpiRank, currentNode->getUniqueName( ).c_str( ),
+                       analysis.getRealTime( currentNode->getTime( ) ),
+                       lastNode->getUniqueName( ).c_str( ),
+                       analysis.getRealTime( lastNode->getTime( ) ) );
+      }
+      else
+      {
+        UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
+                       "[%u] isMaster, currentNode = %s (%f)",
+                       mpiRank, currentNode->getUniqueName( ).c_str( ),
+                       analysis.getRealTime( currentNode->getTime( ) ) );
       }
 
-      if ( lastNode && ( lastNode->getId( ) <= currentNode->getId( ) ) )
-      {
-        printf( "[%u] ! [Warning] current node ID is not strictly decreasing\n",
-                mpiRank );
-      }
+      UTILS_DBG_MSG( lastNode && ( lastNode->getId( ) <= currentNode->getId( ) ),
+                     "[%u] ! [Warning] current node ID is not strictly decreasing", mpiRank );
 
       if ( currentNode->isLeave( ) )
       {
@@ -846,19 +795,15 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
             commMaster = currentNode->getGraphPair( ).first;
           }
 
-          if ( options.verbose >= VERBOSE_ANNOY )
-          {
-            printf(
-              "[%u]  found waitstate for %s (%f), changing stream at %s\n",
-              mpiRank, currentNode->getUniqueName( ).c_str( ),
-              analysis.getRealTime( currentNode->getTime( ) ),
-              commMaster->getUniqueName( ).c_str( ) );
-          }
+          UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
+                         "[%u]  found waitstate for %s (%f), changing stream at %s",
+                         mpiRank, currentNode->getUniqueName( ).c_str( ),
+                         analysis.getRealTime( currentNode->getTime( ) ),
+                         commMaster->getUniqueName( ).c_str( ) );
 
           std::set< uint32_t > mpiPartnerRanks =
             analysis.getMPIAnalysis( ).getMpiPartnersRank( commMaster );
-          for ( std::set< uint32_t >::const_iterator iter =
-                  mpiPartnerRanks.begin( );
+          for ( std::set< uint32_t >::const_iterator iter = mpiPartnerRanks.begin( );
                 iter != mpiPartnerRanks.end( ); ++iter )
           {
             /* communicate with all slaves to find new master */
@@ -873,15 +818,12 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
             sendBfr[1] = commMaster->getStreamId( );
             sendBfr[2] = NO_MSG;
 
-            if ( options.verbose >= VERBOSE_ANNOY )
-            {
-              printf(
-                "[%u]  testing remote MPI worker %u for remote edge to my node %u on stream %lu\n",
-                mpiRank,
-                commMpiRank,
-                (uint32_t)sendBfr[0],
-                sendBfr[1] );
-            }
+            UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
+                           "[%u]  testing remote MPI worker %u for remote edge to my node %u on stream %lu",
+                           mpiRank,
+                           commMpiRank,
+                           (uint32_t)sendBfr[0],
+                           sendBfr[1] );
 
             MPI_CHECK( MPI_Send( sendBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                                  commMpiRank, 0, MPI_COMM_WORLD ) );
@@ -905,10 +847,8 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
           currentNode->setCounter( cpCtrId, 1 );
 
           /* notify all slaves that we are done */
-          if ( options.verbose >= VERBOSE_ANNOY )
-          {
-            printf( "[%u] * asking all slaves to terminate\n", mpiRank );
-          }
+          UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
+                         "[%u] * asking all slaves to terminate", mpiRank );
 
           sendBfr[0] = 0;
           sendBfr[1] = 0;
@@ -969,24 +909,19 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
 
       if ( recvBfr[2] == PATH_FOUND_MSG )
       {
-        if ( options.verbose >= VERBOSE_ANNOY )
-        {
-          printf( "[%u] * terminate requested by master\n", mpiRank );
-        }
+        UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
+                       "[%u] * terminate requested by master", mpiRank );
         break;
       }
 
       /* find local node for remote node id and decide if we can
        *continue here */
-      if ( options.verbose >= VERBOSE_ANNOY )
-      {
-        printf(
-          "[%u]  tested by remote MPI worker %u for remote edge to its node %u on stream %lu\n",
-          mpiRank,
-          status.MPI_SOURCE,
-          (uint32_t)recvBfr[0],
-          recvBfr[1] );
-      }
+      UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
+                     "[%u]  tested by remote MPI worker %u for remote edge to its node %u on stream %lu",
+                     mpiRank,
+                     status.MPI_SOURCE,
+                     (uint32_t)recvBfr[0],
+                     recvBfr[1] );
 
       /* check if the activity is a wait state */
       MPIAnalysis::MPIEdge mpiEdge;
@@ -1004,13 +939,11 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
 
         sectionEndNode = lastNode;
 
-        if ( options.verbose >= VERBOSE_ANNOY )
-        {
-          printf( "[%u] becomes new master at node %s, lastNode = %s\n",
-                  mpiRank,
-                  currentNode->getUniqueName( ).c_str( ),
-                  lastNode->getUniqueName( ).c_str( ) );
-        }
+        UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
+                       "[%u] becomes new master at node %s, lastNode = %s",
+                       mpiRank,
+                       currentNode->getUniqueName( ).c_str( ),
+                       lastNode->getUniqueName( ).c_str( ) );
 
         /* continue main loop as master */
       }
@@ -1028,35 +961,23 @@ Runner::runAnalysis( Paradigm                          paradigm,
   switch ( paradigm )
   {
     case PARADIGM_CUDA:
-      if ( mpiRank == 0 )
-      {
-        printf( "[%u] Running analysis: CUDA\n", mpiRank );
-      }
+      UTILS_DBG_MSG( mpiRank == 0, "[%u] Running analysis: CUDA", mpiRank );
 
       break;
 
     case PARADIGM_MPI:
-      if ( mpiRank == 0 )
-      {
-        printf( "[%u] Running analysis: MPI\n", mpiRank );
-      }
+      UTILS_DBG_MSG( mpiRank == 0, "[%u] Running analysis: MPI", mpiRank );
 
       break;
 
     case PARADIGM_OMP:
-      if ( mpiRank == 0 )
-      {
-        printf( "[%u] Running analysis: OMP\n", mpiRank );
-      }
+      UTILS_DBG_MSG( mpiRank == 0, "[%u] Running analysis: OMP", mpiRank );
 
       break;
 
     default:
-      if ( mpiRank == 0 )
-      {
-        printf( "[%u] No analysis for unknown paradigm %d\n",
-                mpiRank, paradigm );
-      }
+      UTILS_DBG_MSG( mpiRank == 0, "[%u] No analysis for unknown paradigm %d",
+                     mpiRank, paradigm );
       return;
   }
 
@@ -1078,16 +999,15 @@ Runner::runAnalysis( Paradigm                          paradigm,
 
     if ( ( mpiRank == 0 ) && ( ctr - last_ctr > num_nodes / 10 ) )
     {
-      printf( "[%u] %lu%% ", mpiRank,
-              (size_t)( 100.0 * (double)ctr / (double)num_nodes ) );
+      UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC, "[%u] %lu%% ", mpiRank,
+                     (size_t)( 100.0 * (double)ctr / (double)num_nodes ) );
       fflush( NULL );
       last_ctr = ctr;
     }
   }
-  if ( mpiRank == 0 )
-  {
-    printf( "[%u] 100%%\n", mpiRank );
-  }
+
+  UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+                 "[%u] 100%%", mpiRank );
 
 #ifdef DEBUG
   analysis.runSanityCheck( mpiRank );
