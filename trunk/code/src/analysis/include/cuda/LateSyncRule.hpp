@@ -67,11 +67,10 @@ namespace casita
 
           if ( kernelLeave && kernelLeave->getTime( ) <= sync.first->getTime( ) )
           {
-            printf( "latesync %s\n", kernelLeave->getUniqueName( ).c_str( ) );
+            UTILS_DBG_MSG( true, "latesync %s", kernelLeave->getUniqueName( ).c_str( ) );
+
             GraphNode* lastLeaveNode = commonAnalysis->getLastLeave(
-              sync.second->getTime( ),
-              deviceProcess->
-              getId( ) );
+              sync.second->getTime( ), deviceProcess->getId( ) );
             GraphNode* waitEnter     = NULL, * waitLeave = NULL;
 
             if ( lastLeaveNode && lastLeaveNode->isWaitstate( ) )

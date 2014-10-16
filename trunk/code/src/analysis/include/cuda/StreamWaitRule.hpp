@@ -77,9 +77,8 @@ namespace casita
           {
             /* found unnecessary streamWaitEvent call */
             /* we could blame this here */
-            /* printf(" * Ignoring unnecessary stream wait event node
-             * %s\n", */
-            /*      eNode->getUniqueName().c_str()); */
+            /* UTILS_DBG_MSG(" * Ignoring unnecessary stream wait event node
+             * %s", eNode->getUniqueName().c_str()); */
           }
           return true;
         }

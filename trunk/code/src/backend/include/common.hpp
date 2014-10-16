@@ -36,11 +36,11 @@ namespace casita
        std::runtime_error( "Runtime exception" )
      {
        va_list args;
-       printf( "Runtime Error: " );
+       fprintf( stderr, "Runtime Error: " );
        va_start( args, format );
        vprintf( format, args );
        va_end( args );
-       printf( "\n" );
+       fprintf( stderr, "\n" );
        assert( 0 );
      }
  };

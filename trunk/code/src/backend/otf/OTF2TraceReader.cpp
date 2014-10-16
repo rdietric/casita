@@ -165,7 +165,6 @@ OTF2TraceReader::readEvents( )
   for ( IdNameTokenMap::const_iterator iter = processNameTokenMap.begin( );
         iter != processNameTokenMap.end( ); ++iter )
   {
-    /* printf( "[%u] Read for process %lu \n", mpiRank, iter->first ); */
     OTF2_Reader_SelectLocation( reader, iter->first );
   }
 
@@ -224,7 +223,7 @@ OTF2TraceReader::readEvents( )
     throw RTException( "Failed to read OTF2 events" );
   }
 
-  printf( "[%u] Read %lu events. \n", mpiRank, events_read );
+  UTILS_DBG_MSG( mpiRank == 0, "[%u] Read %lu events", mpiRank, events_read );
 
   OTF2_Reader_CloseGlobalEvtReader( reader, global_evt_reader );
 
@@ -348,7 +347,8 @@ OTF2TraceReader::readDefinitions( )
                                         global_def_reader,
                                         &definitions_read );
 
-  printf( "Read %lu definitions in Phase 1 \n ", definitions_read );
+  UTILS_DBG_MSG( mpiRank == 0, "[%u] Read %lu definitions in Phase 1",
+                 mpiRank, definitions_read );
 
   close( );
 
@@ -381,7 +381,7 @@ OTF2TraceReader::readDefinitions( )
                                         global_def_reader,
                                         &definitions_read );
 
-  printf( "Read %lu definitions in Phase 2 \n ", definitions_read );
+  UTILS_DBG_MSG( mpiRank == 0, "[%u] Read %lu definitions in Phase 2", mpiRank, definitions_read );
 
   /* add "parallel Region" - region to support internal OMP-fork/join
    * model */
@@ -509,9 +509,6 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
     {
       processRankMap[members[i]] = i;
     }
-
-    /* printf( "Rank %u maps to process %lu\n", mpiRank,
-     * members[mpiRank] ); */
 
     if ( tr->handleMPICommGroup )
     {

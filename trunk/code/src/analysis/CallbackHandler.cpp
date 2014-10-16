@@ -45,47 +45,48 @@ void
 CallbackHandler::printNode( GraphNode* node, EventStream* stream )
 {
   if ( ( options.verbose >= VERBOSE_ALL ) ||
-       ( ( options.verbose >= VERBOSE_BASIC ) &&
+       ( ( options.verbose > VERBOSE_BASIC ) &&
          ( !node->isEventNode( ) ||
            ( ( (EventNode*)node )->
              getFunctionResult( ) ==
              EventNode::FR_SUCCESS ) ) ) )
   {
-    printf( " [%u]", mpiRank );
+    fprintf( stderr, " [%u]", mpiRank );
     if ( node->isEnter( ) )
     {
-      printf( " E " );
+      fprintf( stderr, " E " );
     }
     else
     {
-      printf( " L " );
+      fprintf( stderr, " L " );
     }
 
-    printf(
-      "[%12lu:%12.8fs:%10u,%5lu] [%20.20s] proc [%15s], pid [%11lu], [%s]",
-      node->getTime( ),
-      (double)( node->getTime( ) ) / (double)analysis.getTimerResolution( ),
-      node->getId( ),
-      node->getFunctionId( ),
-      node->getName( ),
-      stream->getName( ),
-      stream->getId( ),
-      Node::typeToStr( node->getParadigm( ), node->getType( ) ).c_str( ) );
+    fprintf( stderr,
+             "[%12lu:%12.8fs:%10u,%5lu] [%20.20s] proc [%15s], pid [%11lu], [%s]",
+             node->getTime( ),
+             (double)( node->getTime( ) ) / (double)analysis.getTimerResolution( ),
+             node->getId( ),
+             node->getFunctionId( ),
+             node->getName( ),
+             stream->getName( ),
+             stream->getId( ),
+             Node::typeToStr( node->getParadigm( ), node->getType( ) ).c_str( ) );
 
     uint64_t refProcess = node->getReferencedStreamId( );
     if ( refProcess )
     {
-      printf( ", ref = %lu", refProcess );
+      fprintf( stderr, ", ref = %lu", refProcess );
     }
 
     if ( node->isLeave( ) && node->isEventNode( ) )
     {
-      printf( ", event = %u, result = %u",
-              ( (EventNode*)node )->getEventId( ),
-              ( (EventNode*)node )->getFunctionResult( ) );
+      fprintf( stderr, ", event = %u, result = %u",
+               ( (EventNode*)node )->getEventId( ),
+               ( (EventNode*)node )->getFunctionResult( ) );
     }
 
-    printf( "\n" );
+    fprintf( stderr, "\n" );
+    fflush( stderr );
   }
 }
 
@@ -146,11 +147,9 @@ CallbackHandler::handleDefProcess( ITraceReader*  reader,
     }
   }
 
-  if ( handler->getOptions( ).verbose >= VERBOSE_BASIC )
-  {
-    printf( "  [%u] Found stream %s (%lu) with type %u, stream %u\n",
-            analysis.getMPIRank( ), name, streamId, streamType, stream );
-  }
+  UTILS_DBG_MSG( handler->getOptions( ).verbose >= VERBOSE_BASIC,
+                 "  [%u] Found stream %s (%lu) with type %u, stream %u",
+                 analysis.getMPIRank( ), name, streamId, streamType, stream );
 
   analysis.newEventStream( streamId, parentId, name, streamType, PARADIGM_CUDA );
 }
@@ -339,13 +338,11 @@ CallbackHandler::handleMPIComm( ITraceReader* reader,
       throw RTException( "Unknown cdm::io::MPIType %u", mpiType );
   }
 
-  if ( handler->getOptions( ).verbose >= VERBOSE_ALL )
-  {
-    printf( " [%u] mpi record, [%lu > %lu], type %u, tag %u\n",
-            analysis.getMPIRank( ),
-            streamId, partnerId,
-            pMPIType, tag );
-  }
+  UTILS_DBG_MSG( handler->getOptions( ).verbose > VERBOSE_ALL,
+                 " [%u] mpi record, [%lu > %lu], type %u, tag %u",
+                 analysis.getMPIRank( ),
+                 streamId, partnerId,
+                 pMPIType, tag );
 
   stream->setPendingMPIRecord( pMPIType, partnerId, root );
 }

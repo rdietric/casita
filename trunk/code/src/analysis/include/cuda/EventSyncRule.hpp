@@ -51,8 +51,8 @@ namespace casita
 
         if ( !eventLaunchLeave )
         {
-          printf( " * Ignoring event sync %s without matching event record\n",
-                  node->getUniqueName( ).c_str( ) );
+          UTILS_DBG_MSG( true, " * Ignoring event sync %s without matching event record",
+                         node->getUniqueName( ).c_str( ) );
           return false;
         }
 
