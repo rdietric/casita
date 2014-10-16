@@ -139,7 +139,7 @@ namespace casita
       processNextEvent( OTF2Event event );
 
       EventStream::SortedGraphNodeList* processNodes;
-      EventStream::SortedGraphNodeList::iterator iter;
+      EventStream::SortedGraphNodeList::iterator currentNodeIter;
 
       bool             enableWaitStates;
       bool             verbose;

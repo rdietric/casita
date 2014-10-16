@@ -104,8 +104,8 @@ namespace casita
                                                             sendRecv.second );
             sendRecordEdge->makeBlocking( );
             sendRecv.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                          CTR_WAITSTATE ),
-                                        otherStartTime - myStartTime );
+                                           CTR_WAITSTATE ),
+                                         otherStartTime - myStartTime );
           }
         }
         else
@@ -140,8 +140,8 @@ namespace casita
                                                           sendRecv.second );
           recvRecordEdge->makeBlocking( );
           sendRecv.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                        CTR_WAITSTATE ),
-                                      otherStartTime - myStartTime );
+                                         CTR_WAITSTATE ),
+                                       otherStartTime - myStartTime );
         }
 
         if ( myStartTime > otherStartTime )

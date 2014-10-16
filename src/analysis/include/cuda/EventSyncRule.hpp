@@ -130,10 +130,10 @@ namespace casita
 
             /* set counters */
             sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                      CTR_WAITSTATE ),
-                                    sync.second->getTime( ) -
-                                    std::max( sync.first->getTime( ),
-                                              kernelEnter->getTime( ) ) );
+                                       CTR_WAITSTATE ),
+                                     sync.second->getTime( ) -
+                                     std::max( sync.first->getTime( ),
+                                               kernelEnter->getTime( ) ) );
             kernelLeave->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                        CTR_BLAME ),
                                      sync.second->getTime( ) -

@@ -49,7 +49,7 @@ namespace casita
         /* ignore delta ticks for now until we have a better heuristic */
         /* uint64_t syncDeltaTicks        = commonAnalysis->getDeltaTicks( ); */
 
-        bool     ruleResult = false;
+        bool ruleResult = false;
         /* find all referenced (device) streams */
         EventStreamGroup::EventStreamList deviceStreams;
         commonAnalysis->getAllDeviceStreams( deviceStreams );
@@ -92,17 +92,17 @@ namespace casita
 
               /* set counters */
               sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                        CTR_WAITSTATE ),
-                                      std::min( sync.second->getTime( ),
-                                                kernel.second->getTime( ) ) -
-                                      std::max( sync.first->getTime( ),
-                                                kernel.first->getTime( ) ) );
+                                         CTR_WAITSTATE ),
+                                       std::min( sync.second->getTime( ),
+                                                 kernel.second->getTime( ) ) -
+                                       std::max( sync.first->getTime( ),
+                                                 kernel.first->getTime( ) ) );
               kernel.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                          CTR_BLAME ),
-                                        std::min( sync.second->getTime( ),
-                                                  kernel.second->getTime( ) ) -
-                                        std::max( sync.first->getTime( ),
-                                                  kernel.first->getTime( ) ) );
+                                           CTR_BLAME ),
+                                         std::min( sync.second->getTime( ),
+                                                   kernel.second->getTime( ) ) -
+                                         std::max( sync.first->getTime( ),
+                                                   kernel.first->getTime( ) ) );
 
               ruleResult    = true;
               isFirstKernel = false;

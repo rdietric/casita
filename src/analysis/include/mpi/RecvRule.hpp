@@ -73,8 +73,8 @@ namespace casita
                                                           recv.second );
           recvRecordEdge->makeBlocking( );
           recv.second->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                    CTR_WAITSTATE ), sendStartTime -
-                                  recvStartTime );
+                                     CTR_WAITSTATE ), sendStartTime -
+                                   recvStartTime );
 
 #ifdef MPI_CP_MERGE
           analysis->getMPIAnalysis( ).addMPIEdge( recv.first,

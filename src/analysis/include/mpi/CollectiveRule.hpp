@@ -124,7 +124,7 @@ namespace casita
                                                           coll.second );
           collRecordEdge->makeBlocking( );
           coll.second->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                   CTR_WAITSTATE ),
+                                     CTR_WAITSTATE ),
                                    lastEnterTime - collStartTime );
 
           commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
