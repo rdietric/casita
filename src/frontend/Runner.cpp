@@ -333,73 +333,11 @@ Runner::getCriticalPath( )
   UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
                  "[%u] Computing additional counters", mpiRank );
 
-  const uint32_t cpCtrId     = analysis.getCtrTable( ).getCtrId( CTR_CRITICALPATH );
-  for ( EventStream::SortedGraphNodeList::const_iterator iter =
-          criticalNodes.begin( );
+  const uint32_t cpCtrId = analysis.getCtrTable( ).getCtrId( CTR_CRITICALPATH );
+  for ( EventStream::SortedGraphNodeList::const_iterator iter = criticalNodes.begin( );
         iter != criticalNodes.end( ); ++iter )
   {
     ( *iter )->setCounter( cpCtrId, 1 );
-  }
-
-  EventStreamGroup::EventStreamList streams;
-  analysis.getStreams( streams );
-  const uint32_t cpTimeCtrId = analysis.getCtrTable( ).getCtrId(
-    CTR_CRITICALPATH_TIME );
-
-#pragma omp parallel for
-  for ( size_t i = 0; i < streams.size( ); ++i )
-  {
-    EventStream* p      = streams[i];
-    if ( p->isRemoteStream( ) )
-    {
-      continue;
-    }
-
-    EventStream::SortedGraphNodeList& nodes = p->getNodes( );
-
-    GraphNode* lastNode = NULL;
-    std::stack< uint64_t > cpTime;
-
-    for ( EventStream::SortedGraphNodeList::const_iterator nIter = nodes.begin( );
-          nIter != nodes.end( ); ++nIter )
-    {
-      if ( ( *nIter )->isAtomic( ) )
-      {
-        continue;
-      }
-
-      GraphNode* node   = (GraphNode*)( *nIter );
-      if ( !lastNode )
-      {
-        lastNode = node;
-      }
-
-      bool lastNodeOnCP = lastNode->getCounter( cpCtrId, NULL );
-      if ( node->isEnter( ) )
-      {
-        if ( lastNodeOnCP && !cpTime.empty( ) && node->getCounter( cpCtrId, NULL ) )
-        {
-          cpTime.top( ) += node->getTime( ) - lastNode->getTime( );
-        }
-
-        cpTime.push( 0 );
-      }
-      else
-      {
-        uint64_t myCPTime = cpTime.top( );
-        cpTime.pop( );
-
-        /* compute time for non-stacked function (parts) */
-        if ( lastNodeOnCP &&
-             ( lastNode == node->getPartner( ) || lastNode->isLeave( ) ) )
-        {
-          myCPTime += node->getTime( ) - lastNode->getTime( );
-        }
-        node->getPartner( )->setCounter( cpTimeCtrId, myCPTime );
-      }
-
-      lastNode = node;
-    }
   }
 
   if ( options.mergeActivities )

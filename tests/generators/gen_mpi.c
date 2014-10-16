@@ -44,7 +44,7 @@ void foo(const int load)
 
 void barrier()
 {
-  foo((mpi_rank == root_rank) ? HIGH_LOAD : LOW_LOAD);
+  foo((mpi_rank == last_rank) ? HIGH_LOAD : LOW_LOAD);
   printf("%d: barrier\n", mpi_rank);
   MPI_Barrier(MPI_COMM_WORLD);
 }
