@@ -59,10 +59,10 @@ namespace casita
                             IKeyValueList* list );
 
       GraphNode*
-      getPendingParallelRegion( );
+      getPendingForkJoin( );
 
       void
-      setPendingParallelRegion( GraphNode* node );
+      setPendingForkJoin( GraphNode* node );
 
       GraphNode*
       getOmpCompute( uint64_t streamId );
@@ -115,11 +115,11 @@ namespace casita
        * nested function calls */
       OmpEventMap lastOmpEventMap;
 
-      /* remember opened parallel region TODO: implement
+      /* remember opened forkjoins TODO: implement
        * that as stack for nested parallelism */
-      GraphNode*  pendingParallelRegion;
+      GraphNode*  pendingForkJoin;
 
-      /* keep track of omp kernels between parallel regions */
+      /* keep track of omp kernels between forkjoins */
       OmpEventMap ompComputeTrackMap;
 
       /* collect barriers from different streams */

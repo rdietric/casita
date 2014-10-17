@@ -189,7 +189,6 @@ CallbackHandler::handleEnter( ITraceReader*  reader,
 
   if ( functionType.paradigm == PARADIGM_CPU )
   {
-    /* std::cout << " skipping " << funcName << std::endl; */
     analysis.addCPUEvent( time, streamId );
     return;
   }
