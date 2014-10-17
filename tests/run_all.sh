@@ -30,7 +30,7 @@ function check_setup {
     command -v $OTF2_PRINT_EXE &> /dev/null || { echo "Warning: Could not find otf2-print executable." >&2; OTF2_PRINT_EXE=; }
 
     # try to run casita
-    $EXE --help | grep "casita" &> /dev/null
+    $EXE --help 2>&1 | grep "casita" &> /dev/null
     if [ $? -ne 0 ]; then
         echo "CASITA does not seem to work, abort." >&2
         return 1
