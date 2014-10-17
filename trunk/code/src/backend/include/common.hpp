@@ -23,8 +23,6 @@
 #define VERBOSE_ALL 2
 #define VERBOSE_ANNOY 3
 
-/* #define MPI_CP_MERGE */
-
 namespace casita
 {
  class RTException :
@@ -41,6 +39,7 @@ namespace casita
        vprintf( format, args );
        va_end( args );
        fprintf( stderr, "\n" );
+       fflush( stderr );
        assert( 0 );
      }
  };
