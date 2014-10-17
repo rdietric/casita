@@ -13,7 +13,7 @@
 #include "omp/AnalysisParadigmOMP.hpp"
 #include "AnalysisEngine.hpp"
 
-#include "omp/OMPParallelRegionRule.hpp"
+#include "omp/OMPForkJoinRule.hpp"
 #include "omp/OMPComputeRule.hpp"
 #include "omp/OMPBarrierRule.hpp"
 #include "omp/OMPTargetRule.hpp"
@@ -29,9 +29,9 @@ using namespace casita::io;
 
 AnalysisParadigmOMP::AnalysisParadigmOMP( AnalysisEngine* analysisEngine ) :
   IAnalysisParadigm( analysisEngine ),
-  pendingParallelRegion( NULL )
+  pendingForkJoin( NULL )
 {
-  addRule( new OMPParallelRegionRule( 1 ) );
+  addRule( new OMPForkJoinRule( 1 ) );
   addRule( new OMPComputeRule( 1 ) );
   addRule( new OMPBarrierRule( 1 ) );
   addRule( new OMPTargetRule( 1 ) );
@@ -52,7 +52,7 @@ AnalysisParadigmOMP::getParadigm( )
 void
 AnalysisParadigmOMP::handlePostLeave( GraphNode* node )
 {
-  if ( node->isOMPParallelRegion( ) &&
+  if ( node->isOMPForkJoinRegion( ) &&
        ( commonAnalysis->getStream( node->getStreamId( ) )->getStreamType( )
          ==
          EventStream::ES_DEVICE ) )
@@ -143,15 +143,15 @@ AnalysisParadigmOMP::handleKeyValuesLeave( ITraceReader*  reader,
 }
 
 GraphNode*
-AnalysisParadigmOMP::getPendingParallelRegion( )
+AnalysisParadigmOMP::getPendingForkJoin( )
 {
-  return pendingParallelRegion;
+  return pendingForkJoin;
 }
 
 void
-AnalysisParadigmOMP::setPendingParallelRegion( GraphNode* node )
+AnalysisParadigmOMP::setPendingForkJoin( GraphNode* node )
 {
-  pendingParallelRegion = node;
+  pendingForkJoin = node;
 }
 
 GraphNode*

@@ -642,7 +642,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event )
   /* Skip threadFork/Join (also skips first inserted processNode that
    * is not in original trace)
    */
-  while ( ( currentNodeIter != processNodes->end( ) ) && ( *currentNodeIter )->isOMPParallelRegion( ) )
+  while ( ( currentNodeIter != processNodes->end( ) ) && ( *currentNodeIter )->isOMPForkJoinRegion( ) )
   {
     UTILS_DBG_MSG( verbose, "[%u] Skipping %s", mpiRank,
                    ( *currentNodeIter )->getUniqueName( ).c_str( ) );

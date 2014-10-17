@@ -163,7 +163,7 @@ namespace casita
       setTraceLength( uint64_t length );
 
       uint32_t
-      getOmpRegionRef( );
+      getOmpForkJoinRef( );
 
       bool
       isChildOf( uint64_t child, uint64_t parent );
@@ -439,7 +439,7 @@ namespace casita
       uint64_t         ticksPerSecond;
       uint64_t         timerOffset;
       uint64_t         traceLength;
-      uint32_t         ompParallelRegionRef;
+      uint32_t         ompForkJoinRef;
 
       int processingPhase;
   };

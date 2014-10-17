@@ -344,13 +344,6 @@ namespace casita
          return true;
        }
 
-       if ( strstr( name, "parallel region" ) )
-       {
-         descr->paradigm = PARADIGM_OMP;
-         descr->type     = OMP_PAR_REGION;
-         return true;
-       }
-
        /* kernel ? */
        if ( deviceNullStream )
        {

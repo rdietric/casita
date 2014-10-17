@@ -88,7 +88,7 @@ namespace casita
  enum NodeTypeOMP
  {
    OMP_SYNC = ( 1 << 1 ),
-   OMP_PAR_REGION         = ( 1 << 2 ),
+   OMP_FORKJOIN         = ( 1 << 2 ),
    OMP_COMPUTE = ( 1 << 3 ),
    OMP_WAITSTATE          = ( 1 << 4 ),
    OMP_TARGET_OFFLOAD     = ( 1 << 5 ),
@@ -147,7 +147,7 @@ namespace casita
  static const TypeStrEntryOMP typeStrTableOMP[numTypeStrEntriesOMP] =
  {
    { OMP_SYNC, "omp_sync" },
-   { OMP_PAR_REGION, "omp_parallel_region" },
+   { OMP_FORKJOIN, "omp_forkjoin" },
    { OMP_COMPUTE, "omp_compute" },
    { OMP_TARGET_OFFLOAD, "omp_target_offload" },
    { OMP_TARGET_FLUSH, "omp_target_flush" }
@@ -372,9 +372,9 @@ namespace casita
      }
 
      bool
-     isOMPParallelRegion( ) const
+     isOMPForkJoinRegion( ) const
      {
-       return isOMP( ) && ( nodeType & OMP_PAR_REGION );
+       return isOMP( ) && ( nodeType & OMP_FORKJOIN );
      }
 
      bool

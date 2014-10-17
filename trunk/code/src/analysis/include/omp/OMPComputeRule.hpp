@@ -45,22 +45,16 @@ namespace casita
         /* if no kernel buffered -> save this one */
         if ( analysis->getOmpCompute( node->getStreamId( ) ) == NULL )
         {
-          GraphNode* ppr = analysis->getPendingParallelRegion( );
+          GraphNode* pForkJoin = analysis->getPendingForkJoin( );
 
-          /* if pending parallel region -> connect kernel to it */
-          if ( ( ppr != NULL ) && ( ppr->getStreamId( ) != node->getStreamId( ) ) )
+          /* if pending forkjoin -> connect kernel to it */
+          if ( ( pForkJoin != NULL ) && ( pForkJoin->getStreamId( ) != node->getStreamId( ) ) )
           {
             /* get the complete execution */
             GraphNode::GraphNodePair& kernelPair = node->getGraphPair( );
 
             /* create Edges */
-            analysis->getCommon( )->newEdge( ppr, kernelPair.first );
-
-            /* EventStream* p = analysis->getStream( node->getStreamId( ) );
-              ErrorUtils::getInstance( ).outputMessage(
-              "[OMPCR] add Edge %s to %s (%s)\n",
-              ppr->getUniqueName( ).
-              c_str( ), kernelPair.first->getUniqueName( ).c_str( ), p->getName( ) );*/
+            analysis->getCommon( )->newEdge( pForkJoin, kernelPair.first );
           }
           analysis->setOmpCompute( node, node->getStreamId( ) );
         }

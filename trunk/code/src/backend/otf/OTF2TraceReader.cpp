@@ -40,7 +40,7 @@ OTF2TraceReader::OTF2TraceReader( void*    userData,
   ticksPerSecond( 1 ),
   timerOffset( 0 ),
   traceLength( 0 ),
-  ompParallelRegionRef( 0 ),
+  ompForkJoinRef( 0 ),
   processingPhase( 0 )
 {
 
@@ -383,12 +383,11 @@ OTF2TraceReader::readDefinitions( )
 
   UTILS_DBG_MSG( mpiRank == 0, "[%u] Read %lu definitions in Phase 2", mpiRank, definitions_read );
 
-  /* add "parallel Region" - region to support internal OMP-fork/join
-   * model */
+  /* add forkjoin "region" to support internal OMP-fork/join model */
   uint32_t stringSize = definitionTokenStringMap.size( );
-  definitionTokenStringMap[stringSize]       = "parallel region";
-  ompParallelRegionRef = functionNameTokenMap.size( );
-  functionNameTokenMap[ompParallelRegionRef] = stringSize;
+  definitionTokenStringMap[stringSize] = "forkjoin";
+  ompForkJoinRef = functionNameTokenMap.size( );
+  functionNameTokenMap[ompForkJoinRef] = stringSize;
 }
 
 OTF2_CallbackCode
@@ -747,7 +746,7 @@ OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadFork( OTF2_LocationRef locat
 
   return OTF2TraceReader::otf2CallbackEnter( locationID, time, userData,
                                              attributeList,
-                                             tr->getOmpRegionRef( ) );
+                                             tr->getOmpForkJoinRef( ) );
 }
 
 OTF2_CallbackCode
@@ -763,7 +762,7 @@ OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadJoin( OTF2_LocationRef locat
 
   return OTF2TraceReader::otf2CallbackLeave( locationID, time, userData,
                                              attributeList,
-                                             tr->getOmpRegionRef( ) );
+                                             tr->getOmpForkJoinRef( ) );
 }
 
 std::string
@@ -824,9 +823,9 @@ OTF2TraceReader::setTraceLength( uint64_t length )
 }
 
 uint32_t
-OTF2TraceReader::getOmpRegionRef( )
+OTF2TraceReader::getOmpForkJoinRef( )
 {
-  return ompParallelRegionRef;
+  return ompForkJoinRef;
 }
 
 uint32_t
