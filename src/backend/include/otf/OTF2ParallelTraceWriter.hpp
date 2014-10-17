@@ -17,6 +17,7 @@
 #include <map>
 #include <stack>
 #include <list>
+#include <string>
 #include "CounterTable.hpp"
 #include "otf/IParallelTraceWriter.hpp"
 #include "OTF2TraceReader.hpp"
@@ -28,14 +29,14 @@ namespace casita
 
   typedef std::map< uint32_t, uint32_t > CtrInstanceMap;
 
-  enum OTF2EventType { OTF2_EVT_ENTER, OTF2_EVT_LEAVE };
+  enum OTF2EventType { OTF2_EVT_ENTER, OTF2_EVT_LEAVE, OTF2_EVT_ATOMIC };
 
   typedef struct
   {
-    uint64_t      time;
-    uint32_t      regionRef;
-    uint64_t      location;
-    OTF2EventType type;
+    uint64_t         time;
+    OTF2_RegionRef   regionRef;
+    OTF2_LocationRef location;
+    OTF2EventType    type;
   } OTF2Event;
 
   typedef struct
@@ -90,6 +91,8 @@ namespace casita
                     CounterTable*                     ctrTable,
                     Graph*                            graph );
 
+      std::string getRegionName( const OTF2_RegionRef regionRef ) const;
+
     private:
       uint64_t      timerResolution;
       uint64_t      timerOffset;
@@ -136,7 +139,7 @@ namespace casita
       writeEvent( OTF2Event event, CounterMap& counters );
 
       void
-      processNextEvent( OTF2Event event );
+      processNextEvent( OTF2Event event, const std::string eventName );
 
       EventStream::SortedGraphNodeList* processNodes;
       EventStream::SortedGraphNodeList::iterator currentNodeIter;

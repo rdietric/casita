@@ -81,8 +81,7 @@ AnalysisEngine::getFunctionType( uint32_t            id,
   assert( descr );
   assert( stream );
 
-  return FunctionTable::getAPIFunctionType( name, descr, stream->isDeviceStream(
-                                                                               ),
+  return FunctionTable::getAPIFunctionType( name, descr, stream->isDeviceStream(),
                                             stream->isDeviceNullStream( ) );
 }
 

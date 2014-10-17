@@ -23,6 +23,8 @@
 #define VERBOSE_ALL 2
 #define VERBOSE_ANNOY 3
 
+#define OTF2_OMP_FORKJOIN_INTERNAL "__ompforkjoin__internal"
+
 namespace casita
 {
  class RTException :

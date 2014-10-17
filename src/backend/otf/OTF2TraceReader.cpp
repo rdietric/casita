@@ -385,7 +385,7 @@ OTF2TraceReader::readDefinitions( )
 
   /* add forkjoin "region" to support internal OMP-fork/join model */
   uint32_t stringSize = definitionTokenStringMap.size( );
-  definitionTokenStringMap[stringSize] = "forkjoin";
+  definitionTokenStringMap[stringSize] = OTF2_OMP_FORKJOIN_INTERNAL;
   ompForkJoinRef = functionNameTokenMap.size( );
   functionNameTokenMap[ompForkJoinRef] = stringSize;
 }
