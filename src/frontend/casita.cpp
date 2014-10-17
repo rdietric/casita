@@ -31,6 +31,7 @@ computeCriticalPaths( Runner* runner, uint32_t mpiRank )
 int
 main( int argc, char** argv )
 {
+  int status  = 0;
   int mpiRank = 0;
   int mpiSize = 0;
 
@@ -45,54 +46,62 @@ main( int argc, char** argv )
   {
     return -1;
   }
-  ProgramOptions& options = Parser::getInstance( ).getProgramOptions( );
 
-  Runner* runner          = new Runner( mpiRank, mpiSize );
-
-  runner->readOTF( );
-
-  EventStream::SortedGraphNodeList allNodes;
-  runner->getAnalysis( ).getAllNodes( allNodes );
-
-  runner->runAnalysis( PARADIGM_CUDA, allNodes );
-  runner->runAnalysis( PARADIGM_OMP, allNodes );
-  runner->runAnalysis( PARADIGM_MPI, allNodes );
-
-  MPI_Barrier( MPI_COMM_WORLD );
-
-  UTILS_DBG_MSG( mpiRank == 0, "[%u] Computing the critical path", mpiRank );
-
-  computeCriticalPaths( runner, mpiRank );
-
-  /* create OTF with wait states and critical path */
-  if ( options.createOTF )
+  try
   {
-    MPI_Barrier( MPI_COMM_WORLD );
-    UTILS_DBG_MSG( mpiRank == 0, "[%u] Writing result to %s",
-                   mpiRank, options.outOtfFile.c_str( ) );
-  }
+    ProgramOptions& options = Parser::getInstance( ).getProgramOptions( );
 
-  runner->getAnalysis( ).saveParallelEventGroupToFile(
-    options.outOtfFile,
-    options.filename,
-    false,
-    options.createOTF,
-    options.verbose >=
-    VERBOSE_ANNOY );
+    Runner* runner          = new Runner( mpiRank, mpiSize );
 
-  if ( options.mergeActivities )
-  {
-    UTILS_DBG_MSG( mpiRank == 0, "[%u] Merging activity statistics...", mpiRank );
+    runner->readOTF( );
 
-    runner->mergeActivityGroups( );
+    EventStream::SortedGraphNodeList allNodes;
+    runner->getAnalysis( ).getAllNodes( allNodes );
 
-    runner->printAllActivities( );
+    runner->runAnalysis( PARADIGM_CUDA, allNodes );
+    runner->runAnalysis( PARADIGM_OMP, allNodes );
+    runner->runAnalysis( PARADIGM_MPI, allNodes );
 
     MPI_Barrier( MPI_COMM_WORLD );
-  }
 
-  delete runner;
+    UTILS_DBG_MSG( mpiRank == 0, "[%u] Computing the critical path", mpiRank );
+
+    computeCriticalPaths( runner, mpiRank );
+
+    /* create OTF with wait states and critical path */
+    if ( options.createOTF )
+    {
+      MPI_Barrier( MPI_COMM_WORLD );
+      UTILS_DBG_MSG( mpiRank == 0, "[%u] Writing result to %s",
+                     mpiRank, options.outOtfFile.c_str( ) );
+    }
+
+    runner->getAnalysis( ).saveParallelEventGroupToFile(
+      options.outOtfFile,
+      options.filename,
+      false,
+      options.createOTF,
+      options.verbose >=
+      VERBOSE_ANNOY );
+
+    if ( options.mergeActivities )
+    {
+      UTILS_DBG_MSG( mpiRank == 0, "[%u] Merging activity statistics...", mpiRank );
+
+      runner->mergeActivityGroups( );
+
+      runner->printAllActivities( );
+
+      MPI_Barrier( MPI_COMM_WORLD );
+    }
+
+    delete runner;
+  }
+  catch( RTException e )
+  {
+    status = 1;
+  }
 
   MPI_CHECK( MPI_Finalize( ) );
-  return 0;
+  return status;
 }

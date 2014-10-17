@@ -12,7 +12,7 @@ ENDIF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -g -Wall -Wno-pmf-conversions -Wno-deprecated")
 
 # enable release build
-OPTION(RELEASE "disable all debug asserts" OFF)
+OPTION(RELEASE "Disable all debug asserts" OFF)
 IF(NOT RELEASE)
     SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
     SET(CMAKE_BUILD_TYPE Debug)
@@ -20,7 +20,8 @@ IF(NOT RELEASE)
     message("building debug")
 ELSE()
     message("building release")
-	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Werror")
+    SET(CMAKE_BUILD_TYPE Release)
+	  SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -Werror")
 ENDIF(NOT RELEASE)
 
 # enable gprof

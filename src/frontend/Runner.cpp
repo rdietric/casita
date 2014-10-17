@@ -25,36 +25,6 @@
 using namespace casita;
 using namespace casita::io;
 
-static void
-dumpAllocationTail( AnalysisEngine& analysis )
-{
-  EventStreamGroup::EventStreamList allProcs;
-  analysis.getStreams( allProcs );
-
-  for ( EventStreamGroup::EventStreamList::const_iterator iter = allProcs.begin( );
-        iter != allProcs.end( ); ++iter )
-  {
-    EventStream* p = *iter;
-    fprintf( stderr, "# %s (%lu)\n", p->getName( ), p->getId( ) );
-    EventStream::SortedGraphNodeList& nodes = p->getNodes( );
-    int n          = 0;
-    for ( EventStream::SortedGraphNodeList::const_reverse_iterator rIter =
-            nodes.rbegin( );
-          rIter != nodes.rend( ); ++rIter )
-    {
-      if ( n > 10 )
-      {
-        break;
-      }
-
-      fprintf( stderr, "  %s\n", ( *rIter )->getUniqueName( ).c_str( ) );
-      n++;
-    }
-  }
-
-  fflush( stderr );
-}
-
 Runner::Runner( int mpiRank, int mpiSize ) :
   mpiRank( mpiRank ),
   mpiSize( mpiSize ),
@@ -143,19 +113,10 @@ Runner::readOTF( )
     UTILS_DBG_MSG( mpiRank == 0, "[%u] Warning: your timer resolution is very low!", mpiRank );
   }
 
-  try
-  {
-    UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-                   "[%u] Reading events", mpiRank );
+  UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+                 "[%u] Reading events", mpiRank );
 
-    traceReader->readEvents( );
-  }
-  catch( RTException e )
-  {
-    /* dump */
-    dumpAllocationTail( analysis );
-    throw e;
-  }
+  traceReader->readEvents( );
   traceReader->close( );
   delete traceReader;
 }
