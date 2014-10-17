@@ -185,7 +185,8 @@ CallbackHandler::handleEnter( ITraceReader*  reader,
   const char* funcName      = reader->getFunctionName( functionId ).c_str( );
 
   FunctionDescriptor functionType;
-  AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType );
+  AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType,
+                                   handler->getOptions( ).ignoreAsyncMpi );
 
   if ( functionType.paradigm == PARADIGM_CPU )
   {
@@ -244,7 +245,8 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
   const char* funcName      = reader->getFunctionName( functionId ).c_str( );
 
   FunctionDescriptor functionType;
-  AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType );
+  AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType,
+                                   handler->getOptions( ).ignoreAsyncMpi );
 
   if ( functionType.paradigm == PARADIGM_CPU )
   {

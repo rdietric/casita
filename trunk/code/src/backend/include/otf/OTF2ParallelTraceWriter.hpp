@@ -64,6 +64,7 @@ namespace casita
                                uint32_t             mpiSize,
                                const char*          originalFilename,
                                bool                 writeToFile,
+                               bool                 ignoreAsyncMpi,
                                std::set< uint32_t > ctrIdSet );
       virtual
       ~OTF2ParallelTraceWriter( );
@@ -95,6 +96,7 @@ namespace casita
       getRegionName( const OTF2_RegionRef regionRef ) const;
 
     private:
+      bool          ignoreAsyncMpi;
       uint64_t      timerResolution;
       uint64_t      timerOffset;
       /* counter to assign ids to stringdefinitions */

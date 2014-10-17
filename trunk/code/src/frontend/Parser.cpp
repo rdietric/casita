@@ -106,9 +106,12 @@ namespace casita
        "do not aggregate statistics to summary" )
        ( "path,p", po::value< bool >( &options.printCriticalPath )->zero_tokens( ),
        "print critical paths" )
-       ( "verbose,v", po::value< int >( &options.verbose ), "verbosity level" )
+       ( "verbose,v", po::value< int >( &options.verbose ),
+       "verbosity level" )
        ( "no-errors", po::value< bool >( &options.noErrors ),
        "ignore non-fatal analysis errors" )
+       ( "ignore-async-mpi", po::value< bool >( &options.ignoreAsyncMpi )->zero_tokens( ),
+       "treat async MPI calls as CPU functions" )
      ;
 
      po::positional_options_description pos_options_descr;
