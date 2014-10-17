@@ -88,7 +88,7 @@ namespace casita
  enum NodeTypeOMP
  {
    OMP_SYNC = ( 1 << 1 ),
-   OMP_FORKJOIN         = ( 1 << 2 ),
+   OMP_FORKJOIN           = ( 1 << 2 ),
    OMP_COMPUTE = ( 1 << 3 ),
    OMP_WAITSTATE          = ( 1 << 4 ),
    OMP_TARGET_OFFLOAD     = ( 1 << 5 ),

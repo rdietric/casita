@@ -503,21 +503,21 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
   OTF2_Reader_CloseEvtReader( reader, evt_reader );
 }
 
-std::string 
+std::string
 OTF2ParallelTraceWriter::getRegionName( const OTF2_RegionRef regionRef ) const
 {
   std::map< uint32_t, OTF2_StringRef >::const_iterator regionNameIter =
-          regionNameIdList.find( regionRef );
-  
-  UTILS_ASSERT(regionNameIter != regionNameIdList.end(),
-          "Could not find region reference in map");
-  
-  std::map< uint32_t, const char* >::const_iterator idStrIter = 
+    regionNameIdList.find( regionRef );
+
+  UTILS_ASSERT( regionNameIter != regionNameIdList.end( ),
+                "Could not find region reference in map" );
+
+  std::map< uint32_t, const char* >::const_iterator idStrIter         =
     idStringMap.find( regionNameIter->second );
-  
-  UTILS_ASSERT(idStrIter != idStringMap.end(),
-          "Could not find string reference in map");
-  
+
+  UTILS_ASSERT( idStrIter != idStringMap.end( ),
+                "Could not find string reference in map" );
+
   return idStrIter->second;
 }
 
@@ -600,16 +600,16 @@ OTF2ParallelTraceWriter::writeEvent( OTF2Event event, CounterMap& counters )
 
   OTF2_EvtWriter* evt_writer = evt_writerMap[event.location];
 
-  switch ( event.type  )
+  switch ( event.type )
   {
     case OTF2_EVT_ENTER:
       OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writer, NULL, event.time, event.regionRef ) );
       break;
-  
+
     case OTF2_EVT_LEAVE:
       OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writer, NULL, event.time, event.regionRef ) );
       break;
-      
+
     case OTF2_EVT_ATOMIC:
       /* write only counters for atomic events */
       break;
@@ -660,7 +660,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, const std::string ev
   FunctionDescriptor desc;
   const bool isDeviceStream   = deviceStreamMap[event.location];
   const bool mapsInternalNode = FunctionTable::getAPIFunctionType(
-    eventName.c_str(), &desc, isDeviceStream, false );
+    eventName.c_str( ), &desc, isDeviceStream, false );
 
   /* non-internal counter values for this event */
   CounterMap tmpCounters;
@@ -668,20 +668,20 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, const std::string ev
   if ( mapsInternalNode )
   {
     GraphNode* currentNode = *currentNodeIter;
-    
+
     /* model forkjoin nodes as the currently running activity */
-    if ( currentNode->isOMPForkJoinRegion() )
+    if ( currentNode->isOMPForkJoinRegion( ) )
     {
-      UTILS_ASSERT( activityStack[event.location].size() > 0,
-              "No current activity for OMP ForkJoin");
-      
+      UTILS_ASSERT( activityStack[event.location].size( ) > 0,
+                    "No current activity for OMP ForkJoin" );
+
       UTILS_ASSERT( event.regionRef == 0,
-              "ForkJoin must have regionRef 0" );
-      
+                    "ForkJoin must have regionRef 0" );
+
       UTILS_ASSERT( event.type == OTF2_EVT_ATOMIC,
-              "Event %s has unexpected type", eventName.c_str() );
-      
-      const uint64_t newRegionRef = activityStack[event.location].top();
+                    "Event %s has unexpected type", eventName.c_str( ) );
+
+      const uint64_t newRegionRef = activityStack[event.location].top( );
       currentNode->setFunctionId( newRegionRef );
       event.regionRef = newRegionRef;
     }
@@ -749,18 +749,18 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, const std::string ev
 
   /* set last event time for all event types */
   lastEventTime[event.location] = event.time;
-  
+
   /* update activity stack */
-  switch (event.type)
+  switch ( event.type )
   {
     case OTF2_EVT_ENTER:
       activityStack[event.location].push( event.regionRef );
       break;
-      
+
     case OTF2_EVT_LEAVE:
       activityStack[event.location].pop( );
       break;
-      
+
     case OTF2_EVT_ATOMIC:
       /* nothing to do here */
       break;
@@ -1366,9 +1366,9 @@ OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadFork( OTF2_LocationRef loc
   event.regionRef = 0;
   event.time      = time;
   event.type      = OTF2_EVT_ATOMIC;
-  
+
   tw->processNextEvent( event, OTF2_OMP_FORKJOIN_INTERNAL );
-  
+
   if ( tw->writeToFile )
   {
     OTF2_CHECK( OTF2_EvtWriter_ThreadFork( tw->evt_writerMap[locationID],
@@ -1401,9 +1401,9 @@ OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadJoin( OTF2_LocationRef loc
   event.regionRef = 0;
   event.time      = time;
   event.type      = OTF2_EVT_ATOMIC;
-  
+
   tw->processNextEvent( event, OTF2_OMP_FORKJOIN_INTERNAL );
-  
+
   if ( tw->writeToFile )
   {
     OTF2_CHECK( OTF2_EvtWriter_ThreadJoin( tw->evt_writerMap[locationID],

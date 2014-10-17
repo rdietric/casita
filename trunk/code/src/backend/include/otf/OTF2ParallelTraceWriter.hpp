@@ -91,7 +91,8 @@ namespace casita
                     CounterTable*                     ctrTable,
                     Graph*                            graph );
 
-      std::string getRegionName( const OTF2_RegionRef regionRef ) const;
+      std::string
+      getRegionName( const OTF2_RegionRef regionRef ) const;
 
     private:
       uint64_t      timerResolution;
