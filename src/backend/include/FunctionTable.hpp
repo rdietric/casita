@@ -346,7 +346,7 @@ namespace casita
 
        if ( strstr( name, OTF2_OMP_FORKJOIN_INTERNAL ) )
        {
-         descr->type = OMP_FORKJOIN;
+         descr->type     = OMP_FORKJOIN;
          descr->paradigm = PARADIGM_OMP;
          return true;
        }

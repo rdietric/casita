@@ -101,7 +101,6 @@ main( int argc, char** argv )
   {
     status = 1;
   }
-
   MPI_CHECK( MPI_Finalize( ) );
   return status;
 }
