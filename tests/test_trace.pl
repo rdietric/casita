@@ -21,6 +21,12 @@ sub test_trace
     my $full_trace_dir = $ARGV[0];
     my $casita         = $ARGV[1];
     my $tmp_dir        = $ARGV[2];
+    my $otf2_print;
+
+    if ($num_args > 3)
+    {
+        $otf2_print = $ARGV[3];
+    }
 
     if (not ($full_trace_dir =~ /traces\/(\d+)_(\w+)\//))
     {
@@ -137,15 +143,39 @@ sub test_trace
         return 1;
     }
 
+    # run otf2-print on trace
+    if ($num_args > 3 && length $otf2_print > 0)
+    {
+        my @otf2_output = qx($otf2_print $tmp_dir/${trace_name}.otf2 2>&1);
+        my $otf2_status = $? >> 8;
+        if (not ($otf2_status == 0))
+        {
+            print "Error: Could not run otf2-print on output trace\n";
+            return $status;
+        }
+
+        # check that output trace contains metrics
+        my @metrics = grep (/^METRIC/, @otf2_output);
+        if (not ($#metrics + 1 > 0))
+        {
+            print "@otf2_output \n\n";
+            print "Error: Could not find any METRICs in output trace\n";
+            return 1;
+        }
+    } else
+    {
+        print "Warning: No otf2-print, skipping output trace tests\n";
+    }
+
     return 0;
 }
 
 sub main
 {
-    if ($num_args != 3)
+    if ($num_args < 3)
     {
         print "Error: Invalid number of arguments.\n";
-        print "Usage: test_trace.pl <casita-binary> <trace-dir> <tmp-dir>\n";
+        print "Usage: test_trace.pl <casita-binary> <trace-dir> <tmp-dir> [<otf2-binary>]\n";
         exit 1;
     }
 

@@ -19,6 +19,7 @@ TRACE_INPUT_DIR=traces
 NUM_TESTS_SUCCESS=0
 NUM_TOTAL_TESTS=0
 TRACE_OUTPUT_DIR=
+OTF2_PRINT_EXE=otf2-print
 
 # functions
 
@@ -26,6 +27,7 @@ function check_setup {
     # find casita
     command -v $EXE &> /dev/null || { echo "Could not find CASITA executable '$EXE', abort." >&2; return 1; }
     command -v $PERL &> /dev/null || { echo "Could not find perl executable, abort." >&2; return 1; }
+    command -v $OTF2_PRINT_EXE &> /dev/null || { echo "Warning: Could not find otf2-print executable." >&2; OTF2_PRINT_EXE=; }
 
     # try to run casita
     $EXE --help | grep "casita" &> /dev/null
@@ -59,7 +61,7 @@ function check_setup {
 function run_single_test {
     echo "Testing '$1'" >&2
 
-    $PERL $TEST_SCRIPT $1 $EXE $TRACE_OUTPUT_DIR
+    $PERL $TEST_SCRIPT $1 $EXE $TRACE_OUTPUT_DIR $OTF2_PRINT_EXE
 }
 
 function run_tests {
