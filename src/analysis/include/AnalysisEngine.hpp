@@ -53,7 +53,8 @@ namespace casita
      getFunctionType( uint32_t            id,
                       const char*         name,
                       EventStream*        stream,
-                      FunctionDescriptor* descr );
+                      FunctionDescriptor* descr,
+                      bool                ignoreAsyncMpi );
 
      void
      addFunction( uint32_t funcId, const char* name );
@@ -123,6 +124,7 @@ namespace casita
                                    std::string origFilename,
                                    bool        enableWaitStates,
                                    bool        writeToFile,
+                                   bool        ignoreAsyncMpi,
                                    bool        verbose );
 
      io::IParallelTraceWriter::ActivityGroupMap*

@@ -81,6 +81,7 @@ main( int argc, char** argv )
       options.filename,
       false,
       options.createOTF,
+      options.ignoreAsyncMpi,
       options.verbose >=
       VERBOSE_ANNOY );
 

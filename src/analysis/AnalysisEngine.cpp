@@ -75,14 +75,15 @@ bool
 AnalysisEngine::getFunctionType( uint32_t            id,
                                  const char*         name,
                                  EventStream*        stream,
-                                 FunctionDescriptor* descr )
+                                 FunctionDescriptor* descr,
+                                 bool                ignoreAsyncMpi )
 {
   assert( name );
   assert( descr );
   assert( stream );
 
   return FunctionTable::getAPIFunctionType( name, descr, stream->isDeviceStream( ),
-                                            stream->isDeviceNullStream( ) );
+                                            stream->isDeviceNullStream( ), ignoreAsyncMpi );
 }
 
 void
@@ -334,6 +335,7 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
                                               std::string origFilename,
                                               bool        enableWaitStates,
                                               bool        writeToFile,
+                                              bool        ignoreAsyncMpi,
                                               bool        verbose )
 {
   EventStreamGroup::EventStreamList allStreams;
@@ -349,6 +351,7 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
       mpiAnalysis.getMPISize( ),
       origFilename.c_str( ),
       writeToFile,
+      ignoreAsyncMpi,
       this->ctrTable.getAllCounterIDs( ) );
 
     if ( !writeToFile )

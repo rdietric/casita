@@ -225,7 +225,8 @@ namespace casita
 
      static bool
      getAPIFunctionType( const char* name, FunctionDescriptor* descr,
-                         bool deviceStream, bool deviceNullStream )
+                         bool deviceStream, bool deviceNullStream,
+                         bool ignoreAsyncMpi )
      {
        descr->paradigm = PARADIGM_CPU;
        descr->type     = 0;
@@ -239,8 +240,16 @@ namespace casita
          {
            if ( strcmp( entry.table[j], name ) == 0 )
            {
-             throw RTException( "%s is ASYNC. This is not supported.",
-                                name );
+             if ( ignoreAsyncMpi )
+             {
+               descr->paradigm = PARADIGM_CPU;
+               descr->type     = MISC_CPU;
+               return false;
+             }
+             else
+             {
+               throw RTException( "Asynchronous MPI functions are not supported (%s).", name );
+             }
            }
          }
        }

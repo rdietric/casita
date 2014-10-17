@@ -122,10 +122,12 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t             mpiRank,
                                                   uint32_t             mpiSize,
                                                   const char*          originalFilename,
                                                   bool                 writeToFile,
+                                                  bool                 ignoreAsyncMpi,
                                                   std::set< uint32_t > ctrIdSet )
   :
     IParallelTraceWriter( mpiRank, mpiSize ),
     writeToFile( writeToFile ),
+    ignoreAsyncMpi( ignoreAsyncMpi ),
     global_def_writer( NULL ),
     processNodes( NULL ),
     currentNodeIter( NULL ),
@@ -660,7 +662,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, const std::string ev
   FunctionDescriptor desc;
   const bool isDeviceStream   = deviceStreamMap[event.location];
   const bool mapsInternalNode = FunctionTable::getAPIFunctionType(
-    eventName.c_str( ), &desc, isDeviceStream, false );
+    eventName.c_str( ), &desc, isDeviceStream, false, ignoreAsyncMpi );
 
   /* non-internal counter values for this event */
   CounterMap tmpCounters;

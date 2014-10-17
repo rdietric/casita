@@ -30,6 +30,7 @@ namespace casita
    bool        printCriticalPath;
    bool        mergeActivities;
    bool        noErrors;
+   bool        ignoreAsyncMpi;
    int         verbose;
    int         eventsProcessed;
    int         memLimit;
