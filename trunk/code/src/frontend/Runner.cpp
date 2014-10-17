@@ -417,7 +417,7 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
   {
     MPIAnalysis::CriticalPathSection* section = &( sections[i] );
 
-    UTILS_DBG_MSG( options.verbose > VERBOSE_BASIC,
+    UTILS_DBG_MSG( options.verbose > VERBOSE_ALL,
                    "[%u] computing local critical path between MPI nodes [%u, %u] on process %lu",
                    mpiRank,
                    section->nodeStartID,
@@ -463,7 +463,7 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
     }
     else
     {
-      UTILS_DBG_MSG( options.verbose > VERBOSE_BASIC,
+      UTILS_DBG_MSG( options.verbose > VERBOSE_ALL,
                      "[%u] node mapping: %u = %s (%f), %u = %s (%f)",
                      mpiRank, section->nodeStartID,
                      startNode->getUniqueName( ).c_str( ),
@@ -500,7 +500,7 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
            !endLocalNode ) ||
          ( startLocalNode->getTime( ) >= endLocalNode->getTime( ) ) )
     {
-      UTILS_DBG_MSG( options.verbose > VERBOSE_BASIC,
+      UTILS_DBG_MSG( options.verbose > VERBOSE_ALL,
                      "[%u] No local path possible between MPI nodes %s (link %p) and %s (link %p)",
                      mpiRank,
                      startNode->getUniqueName( ).c_str( ),
@@ -508,7 +508,7 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
                      endNode->getUniqueName( ).c_str( ),
                      endLocalNode );
 
-      UTILS_DBG_MSG( options.verbose > VERBOSE_BASIC && startLocalNode && endLocalNode,
+      UTILS_DBG_MSG( options.verbose > VERBOSE_ALL && startLocalNode && endLocalNode,
                      "[%u] local nodes %s and %s",
                      mpiRank,
                      startLocalNode->getUniqueName( ).c_str( ),
@@ -517,13 +517,13 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
       continue;
     }
 
-    UTILS_DBG_MSG( options.verbose > VERBOSE_BASIC,
+    UTILS_DBG_MSG( options.verbose > VERBOSE_ALL,
                    "[%u] MPI/local mapping: %u > %s, %u > %s",
                    mpiRank, section->nodeStartID,
                    startLocalNode->getUniqueName( ).c_str( ),
                    section->nodeEndID, endLocalNode->getUniqueName( ).c_str( ) );
 
-    UTILS_DBG_MSG( options.verbose > VERBOSE_BASIC,
+    UTILS_DBG_MSG( options.verbose > VERBOSE_ALL,
                    "[%u] Computing local critical path (%s, %s)", mpiRank,
                    startLocalNode->getUniqueName( ).c_str( ),
                    endLocalNode->getUniqueName( ).c_str( ) );

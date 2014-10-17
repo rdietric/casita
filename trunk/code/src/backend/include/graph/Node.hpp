@@ -53,8 +53,8 @@ namespace casita
 
  enum NodeTypeMisc
  {
-   MISC_CPU = ( 1 << 1 ),
-   MISC_PROCESS           = ( 1 << 2 )
+   MISC_CPU = ( 1 << 30 ),
+   MISC_PROCESS           = ( 1 << 31 )
  };
 
  enum NodeTypeCUDA
