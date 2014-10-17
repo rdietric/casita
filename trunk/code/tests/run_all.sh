@@ -24,7 +24,7 @@ TRACE_OUTPUT_DIR=
 
 function check_setup {
     # find casita
-    command -v $EXE &> /dev/null || { echo "Could not find CASITA executable, abort." >&2; return 1; }
+    command -v $EXE &> /dev/null || { echo "Could not find CASITA executable '$EXE', abort." >&2; return 1; }
     command -v $PERL &> /dev/null || { echo "Could not find perl executable, abort." >&2; return 1; }
 
     # try to run casita
@@ -59,7 +59,7 @@ function check_setup {
 function run_single_test {
     echo "Testing '$1'" >&2
 
-    $PERL $TEST_SCRIPT $1 $TRACE_OUTPUT_DIR
+    $PERL $TEST_SCRIPT $1 $EXE $TRACE_OUTPUT_DIR
 }
 
 function run_tests {
@@ -76,6 +76,11 @@ function run_tests {
 
 
 # main
+if [ "$#" -gt 0 ]; then
+    echo "Using '$1' as casita executable"
+    EXE=$1
+fi
+
 check_setup
 if [ $? -ne 0 ]; then
     exit 1
