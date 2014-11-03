@@ -434,14 +434,23 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
                                        GraphNode*                        pLastGraphNode,
                                        bool                              verbose,
                                        CounterTable*                     ctrTable,
-                                       Graph*                            graph )
+                                       Graph*                            graph,
+                                       bool                              isHost )
 {
   assert( nodes );
 
+  for(EventStream::SortedGraphNodeList::iterator iter = nodes->begin(); 
+          iter != nodes->end(); iter++)
+  {
+      //std::cout << "[ " << mpiRank << "] " << (*iter)->getUniqueName() << std::endl;
+  }
+  
   processNodes     = nodes;
   enableWaitStates = waitStates;
-  /* set current node behin first node on process as first node is PROCESS node */
-  currentNodeIter  = ++processNodes->begin( );
+  currentNodeIter  = processNodes->begin( );
+  /* set current node behind first node on host processes since first node is an additional start node */
+  if( isHost )
+      currentNodeIter = ++processNodes->begin();
   this->verbose    = verbose;
   this->graph      = graph;
   cTable           = ctrTable;
@@ -669,8 +678,21 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, const std::string ev
 
   if ( mapsInternalNode )
   {
+      
+      
+    if(currentNodeIter == processNodes->end( ))
+        std::cout << "[" << mpiRank << "] That was strange... " << eventName 
+                << " " << event.location << " " << event.time
+                << std::endl;
+    else
+    {
+      //std::cout << "[" << mpiRank << "] process " << eventName << " and " << (*currentNodeIter)->getUniqueName() << std::endl;
+        
     GraphNode* currentNode = *currentNodeIter;
-
+    
+    UTILS_ASSERT( currentNode->getFunctionId() == event.regionRef,
+                    " [%u] RegionRef doesnt fit for %s and %s \n", mpiRank, eventName.c_str(), currentNode->getUniqueName().c_str());
+    
     /* model forkjoin nodes as the currently running activity */
     if ( currentNode->isOMPForkJoinRegion( ) )
     {
@@ -718,6 +740,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, const std::string ev
     }
 
     ++currentNodeIter;
+    }
   }
   else
   {

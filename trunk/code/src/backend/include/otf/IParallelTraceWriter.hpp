@@ -84,7 +84,8 @@ namespace casita
                     GraphNode*                        pLastGraphNode,
                     bool                              verbose,
                     CounterTable*                     ctrTable,
-                    Graph*                            graph ) = 0;
+                    Graph*                            graph,
+                    bool                              isHost ) = 0;
 
       ActivityGroupMap*
       getActivityGroupMap( )
