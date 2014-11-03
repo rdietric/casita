@@ -145,14 +145,6 @@ namespace casita
      }
      else
      {
-       if ( endsWith( options.filename, ".otf" ) )
-       {
-#if ( ENABLE_OTF1 != 1 )
-         std::cerr << "OTF1 not supported" << std::endl;
-         return false;
-#endif
-       }
-
        if ( endsWith( options.filename, ".otf2" ) )
        {
 #if ( ENABLE_OTF2 != 1 )

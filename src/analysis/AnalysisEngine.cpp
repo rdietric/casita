@@ -412,7 +412,7 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
 
     writer->writeProcess(
       ( *pIter )->getId( ), &nodes, enableWaitStates, pLastGraphNode,
-      verbose, &( this->getCtrTable( ) ), &( this->getGraph( ) ) );
+      verbose, &( this->getCtrTable( ) ), &( this->getGraph( ) ), ( *pIter )->isHostStream() );
   }
 
 }

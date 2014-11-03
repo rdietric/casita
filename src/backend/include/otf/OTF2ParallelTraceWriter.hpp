@@ -90,7 +90,8 @@ namespace casita
                     GraphNode*                        pLastGraphNode,
                     bool                              verbose,
                     CounterTable*                     ctrTable,
-                    Graph*                            graph );
+                    Graph*                            graph,
+                    bool                              isHost );
 
       std::string
       getRegionName( const OTF2_RegionRef regionRef ) const;
