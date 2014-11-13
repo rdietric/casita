@@ -51,7 +51,8 @@ AnalysisParadigmCUDA::AnalysisParadigmCUDA( AnalysisEngine* analysisEngine ) :
 
 AnalysisParadigmCUDA::~AnalysisParadigmCUDA( )
 {
-
+    if(pendingKernelLaunchMap.size() > 0 )
+        std::cout << "[" << commonAnalysis->getMPIRank() << "] WARNING: there are " << pendingKernelLaunchMap.size() << " kernel launches left, but no kernels to call..." << std::endl;
 }
 
 Paradigm
