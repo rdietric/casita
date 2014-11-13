@@ -80,7 +80,6 @@ namespace casita
       virtual void
       writeProcess( uint64_t                          streamId,
                     EventStream::SortedGraphNodeList* nodes,
-                    bool                              enableWaitStates,
                     GraphNode*                        pLastGraphNode,
                     bool                              verbose,
                     CounterTable*                     ctrTable,

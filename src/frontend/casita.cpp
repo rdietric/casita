@@ -79,7 +79,6 @@ main( int argc, char** argv )
     runner->getAnalysis( ).saveParallelEventGroupToFile(
       options.outOtfFile,
       options.filename,
-      false,
       options.createOTF,
       options.ignoreAsyncMpi,
       options.verbose >=
