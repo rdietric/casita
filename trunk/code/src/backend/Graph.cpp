@@ -280,7 +280,9 @@ Graph::getLongestPath( GraphNode* start, GraphNode* end,
     }
 
     GraphNode* gn     = *iter;
+    /** initialize infinite distances */
     distance[gn] = infinite;
+    /** initialize predecessors (-> start is pred of start) */
     preds[gn]    = gn;
 
     if ( gn != start )
