@@ -64,8 +64,7 @@ namespace casita
                                uint32_t             mpiSize,
                                const char*          originalFilename,
                                bool                 writeToFile,
-                               bool                 ignoreAsyncMpi,
-                               std::set< uint32_t > ctrIdSet );
+                               bool                 ignoreAsyncMpi );
       virtual
       ~OTF2ParallelTraceWriter( );
 
@@ -86,7 +85,6 @@ namespace casita
       void
       writeProcess( uint64_t                          processId,
                     EventStream::SortedGraphNodeList* nodes,
-                    bool                              enableWaitStates,
                     GraphNode*                        pLastGraphNode,
                     bool                              verbose,
                     CounterTable*                     ctrTable,
@@ -104,6 +102,8 @@ namespace casita
       uint64_t      counterForStringDefinitions;
       /* counter to assign ids to MetricInstances */
       uint64_t      counterForMetricInstanceId;
+      /** regionReference for internal Fork/Join */
+      uint32_t      ompForkJoinRef;
 
       std::string   outputFilename, originalFilename, pathToFile;
 
@@ -113,14 +113,7 @@ namespace casita
       OTF2_Archive* archive;
       OTF2_Reader*  reader;
 
-      std::stack< uint64_t > cpTimeCtrStack;
-      /* maps a counter to its corresponding String-Id */
-      std::map< uint32_t, uint32_t > ctrStrIdMap;
-
       MPI_Comm commGroup;
-
-      /* set of all counterIds */
-      std::set< uint32_t > ctrIdSet;
 
       std::map< uint32_t, const char* > idStringMap;
 
@@ -148,17 +141,29 @@ namespace casita
       EventStream::SortedGraphNodeList* processNodes;
       EventStream::SortedGraphNodeList::iterator currentNodeIter;
 
-      bool             enableWaitStates;
       bool             verbose;
       bool             isFirstProcess;
       Graph*           graph;
       CounterTable*    cTable;
 
+      /* Keep track of activity stack per process. */
       ActivityStackMap activityStack;
+      /* Store last event time per process. Necessary to calculate 
+       * counter values correctly. */
       TimeMap          lastEventTime;
+      /* Keep track of edges that exist between past and future nodes.
+       * Necessary to distribute correct blame to CPU nodes.
+       * When processing internal nodes, all out-edges are opened.
+       * Blame was assigned to these edges during analysis, now it is 
+       * distributed to CPU nodes between internal nodes.
+       */
       OpenEdgesList    openEdges;
+      /* Keep track if process is currently on critical path 
+       * -> necessary to write counter values correctly */
       BooleanMap       processOnCriticalPath;
 
+      /** Tells if a stream is a device stream. 
+       * (necessary to find out if an event is mapped by an internal node. */
       std::map< uint64_t, bool > deviceStreamMap;
       std::map< uint32_t, OTF2_StringRef > regionNameIdList;
 

@@ -122,7 +122,6 @@ namespace casita
      void
      saveParallelEventGroupToFile( std::string filename,
                                    std::string origFilename,
-                                   bool        enableWaitStates,
                                    bool        writeToFile,
                                    bool        ignoreAsyncMpi,
                                    bool        verbose );

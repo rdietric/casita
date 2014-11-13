@@ -333,7 +333,6 @@ streamSort( EventStream* p1, EventStream* p2 )
 void
 AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
                                               std::string origFilename,
-                                              bool        enableWaitStates,
                                               bool        writeToFile,
                                               bool        ignoreAsyncMpi,
                                               bool        verbose )
@@ -351,8 +350,7 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
       mpiAnalysis.getMPISize( ),
       origFilename.c_str( ),
       writeToFile,
-      ignoreAsyncMpi,
-      this->ctrTable.getAllCounterIDs( ) );
+      ignoreAsyncMpi );
 
     if ( !writeToFile )
     {
@@ -411,7 +409,7 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
     GraphNode* pLastGraphNode = p->getLastNode( );
 
     writer->writeProcess(
-      ( *pIter )->getId( ), &nodes, enableWaitStates, pLastGraphNode,
+      ( *pIter )->getId( ), &nodes, pLastGraphNode,
       verbose, &( this->getCtrTable( ) ), &( this->getGraph( ) ), ( *pIter )->isHostStream() );
   }
 
