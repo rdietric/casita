@@ -349,6 +349,5 @@ AnalysisParadigmOMP::findOmpTargetParentRegion( GraphNode* node,
       }
     }
   }
-
   return NULL;
 }

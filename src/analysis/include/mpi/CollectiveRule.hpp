@@ -173,7 +173,7 @@ namespace casita
                            streamWalkCallback );
         }
 
-        delete[]recvBuffer;
+        delete[] recvBuffer;
 
         return true;
       }

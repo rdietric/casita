@@ -137,7 +137,6 @@ namespace casita
            return iter->first;
          }
        }
-
        return 0;
      }
 

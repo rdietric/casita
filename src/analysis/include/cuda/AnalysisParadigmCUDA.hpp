@@ -115,6 +115,7 @@ namespace casita
       /* maps event ID to (device) stream ID */
       IdIdMap eventProcessMap;
       NullStreamWaitList nullStreamWaits;
+      /* Contains a list of nodes for every stream */
       IdNodeListMap      pendingKernelLaunchMap;
   };
 

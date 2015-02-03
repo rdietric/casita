@@ -132,7 +132,6 @@ namespace casita
           {
             tmpBarrierList.pop_back( );
           }
-
           GraphNode::GraphNodeList::const_iterator iter = tmpBarrierList.begin( );
           /* keep enter event with max enter timestamp */
           GraphNode* maxEnterTimeNode = *iter;
@@ -148,7 +147,6 @@ namespace casita
               maxEnterTimeNode = *iter;
             }
           }
-
           /* accumulate blame, set edges from latest enter to all
            * other leaves */
           for ( iter = tmpBarrierList.begin( );

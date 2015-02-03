@@ -247,8 +247,7 @@ namespace casita
                return false;
              }
              else
-             {
-               throw RTException( "Asynchronous MPI functions are not supported (%s).", name );
+             { throw RTException( "Asynchronous MPI functions are not supported (%s).", name );
              }
            }
          }

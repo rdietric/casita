@@ -84,8 +84,7 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
         node->setData( tmpId );
         break;
 
-      default:
-        throw RTException( "Not a valid MPICommRecord type here" );
+      default: throw RTException( "Not a valid MPICommRecord type here" );
     }
   }
 }

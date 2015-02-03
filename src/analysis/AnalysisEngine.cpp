@@ -45,7 +45,6 @@ AnalysisEngine::~AnalysisEngine( )
   {
     delete iter->second;
   }
-
   if ( writer != NULL )
   {
     writer->close( );
@@ -359,8 +358,7 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
   }
 
   if ( !writer )
-  {
-    throw RTException( "Could not create trace writer" );
+  { throw RTException( "Could not create trace writer" );
   }
 
   writer->open( filename.c_str( ), 100, allStreams.size( ) );
@@ -410,7 +408,7 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
 
     writer->writeProcess(
       ( *pIter )->getId( ), &nodes, pLastGraphNode,
-      verbose, &( this->getCtrTable( ) ), &( this->getGraph( ) ), ( *pIter )->isHostStream() );
+      verbose, &( this->getCtrTable( ) ), &( this->getGraph( ) ), ( *pIter )->isHostStream( ) );
   }
 
 }

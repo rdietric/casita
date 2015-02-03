@@ -39,7 +39,7 @@ EventStream::~EventStream( )
   for ( SortedGraphNodeList::iterator iter = nodes.begin( );
         iter != nodes.end( ); ++iter )
   {
-    delete( *iter );
+    delete ( *iter );
   }
 }
 
@@ -164,8 +164,7 @@ EventStream::addGraphNode( GraphNode*                  node,
   {
     oldNode[i] = NULL;
   }
-
-  Paradigm nodeParadigm = node->getParadigm( );
+  Paradigm   nodeParadigm = node->getParadigm( );
 
   for ( size_t o = 1; o < NODE_PARADIGM_INVALID; o *= 2 )
   {
@@ -183,8 +182,7 @@ EventStream::addGraphNode( GraphNode*                  node,
     {
       if ( oldNode[paradigm_index] &&
            Node::compareLess( node, oldNode[paradigm_index] ) )
-      {
-        throw RTException(
+      { throw RTException(
                 "Can't add graph node (%s) before last graph node (%s)",
                 node->getUniqueName( ).c_str( ),
                 oldNode[paradigm_index]->getUniqueName( ).c_str( ) );

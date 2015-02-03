@@ -60,11 +60,11 @@ namespace casita
     public:
       bool writeToFile;
 
-      OTF2ParallelTraceWriter( uint32_t             mpiRank,
-                               uint32_t             mpiSize,
-                               const char*          originalFilename,
-                               bool                 writeToFile,
-                               bool                 ignoreAsyncMpi );
+      OTF2ParallelTraceWriter( uint32_t    mpiRank,
+                               uint32_t    mpiSize,
+                               const char* originalFilename,
+                               bool        writeToFile,
+                               bool        ignoreAsyncMpi );
       virtual
       ~OTF2ParallelTraceWriter( );
 
@@ -113,7 +113,7 @@ namespace casita
       OTF2_Archive* archive;
       OTF2_Reader*  reader;
 
-      MPI_Comm commGroup;
+      MPI_Comm      commGroup;
 
       std::map< uint32_t, const char* > idStringMap;
 
@@ -141,28 +141,28 @@ namespace casita
       EventStream::SortedGraphNodeList* processNodes;
       EventStream::SortedGraphNodeList::iterator currentNodeIter;
 
-      bool             verbose;
-      bool             isFirstProcess;
-      Graph*           graph;
+      bool   verbose;
+      bool   isFirstProcess;
+      Graph* graph;
       CounterTable*    cTable;
 
       /* Keep track of activity stack per process. */
       ActivityStackMap activityStack;
-      /* Store last event time per process. Necessary to calculate 
+      /* Store last event time per process. Necessary to calculate
        * counter values correctly. */
-      TimeMap          lastEventTime;
+      TimeMap lastEventTime;
       /* Keep track of edges that exist between past and future nodes.
        * Necessary to distribute correct blame to CPU nodes.
        * When processing internal nodes, all out-edges are opened.
-       * Blame was assigned to these edges during analysis, now it is 
+       * Blame was assigned to these edges during analysis, now it is
        * distributed to CPU nodes between internal nodes.
        */
-      OpenEdgesList    openEdges;
-      /* Keep track if process is currently on critical path 
+      OpenEdgesList openEdges;
+      /* Keep track if process is currently on critical path
        * -> necessary to write counter values correctly */
-      BooleanMap       processOnCriticalPath;
+      BooleanMap    processOnCriticalPath;
 
-      /** Tells if a stream is a device stream. 
+      /** Tells if a stream is a device stream.
        * (necessary to find out if an event is mapped by an internal node. */
       std::map< uint64_t, bool > deviceStreamMap;
       std::map< uint32_t, OTF2_StringRef > regionNameIdList;

@@ -281,7 +281,6 @@ GraphEngine::getEdge( GraphNode* source, GraphNode* target )
       return *iter;
     }
   }
-
   return NULL;
 }
 
@@ -467,7 +466,7 @@ GraphEngine::reset( )
           Graph::EdgeList::const_iterator next = eIter;
           ++next;
 
-          delete*eIter;
+          delete *eIter;
           graph.removeEdge( *eIter );
 
           eIter = next;
@@ -535,8 +534,7 @@ GraphEngine::sanityCheckEdge( Edge* edge, uint32_t mpiRank )
   }
 
   if ( edge->getDuration( ) != expectedTime )
-  {
-    throw RTException(
+  { throw RTException(
 
             "[%u] Sanity check failed: edge %s has wrong duration (expected %lu, found %lu)",
             mpiRank,
@@ -549,8 +547,7 @@ GraphEngine::sanityCheckEdge( Edge* edge, uint32_t mpiRank )
        getStream( edge->getStartNode( )->getStreamId( ) )->isHostStream( )
        &&
        edge->getDuration( ) != edge->getInitialDuration( ) )
-  {
-    throw RTException(
+  { throw RTException(
             "[%u] Sanity check failed: edge %s has not its initial duration",
             mpiRank, edge->getName( ).c_str( ) );
   }
@@ -559,8 +556,7 @@ GraphEngine::sanityCheckEdge( Edge* edge, uint32_t mpiRank )
        edge->getStartNode( )->isEnter( ) &&
        edge->getEndNode( )->isWaitstate( ) &&
        edge->getEndNode( )->isLeave( ) )
-  {
-    throw RTException(
+  { throw RTException(
             "[%u] Sanity check failed: edge %s is not blocking but should be",
             mpiRank, edge->getName( ).c_str( ) );
   }
@@ -660,8 +656,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   if ( node->isLeave( ) )
   {
     if ( stackNode == NULL )
-    {
-      throw RTException( "StackNode NULL and found leave event %s.\n",
+    { throw RTException( "StackNode NULL and found leave event %s.\n",
                          node->getUniqueName( ).c_str( ) );
     }
     else
@@ -775,8 +770,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
             Edge*      oldEdge = getEdge( pred, succ );
             if ( !oldEdge )
-            {
-              throw RTException( "No edge between %s (p %u) and %s (p %u)",
+            { throw RTException( "No edge between %s (p %u) and %s (p %u)",
                                  pred->getUniqueName( ).c_str( ),
                                  pred->getStreamId( ),
                                  succ->getUniqueName( ).c_str( ),
