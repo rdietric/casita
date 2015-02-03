@@ -51,8 +51,14 @@ AnalysisParadigmCUDA::AnalysisParadigmCUDA( AnalysisEngine* analysisEngine ) :
 
 AnalysisParadigmCUDA::~AnalysisParadigmCUDA( )
 {
-    if(pendingKernelLaunchMap.size() > 0 )
-        std::cout << "[" << commonAnalysis->getMPIRank() << "] WARNING: there are " << pendingKernelLaunchMap.size() << " kernel launches left, but no kernels to call..." << std::endl;
+  /*    for(IdNodeListMap::iterator iter = pendingKernelLaunchMap.begin(); iter != pendingKernelLaunchMap.end(); */
+  /*            iter++) */
+  /*    { */
+  /*        if(iter->second.size() > 0 ) */
+  /*            std::cout << "[" << commonAnalysis->getMPIRank() << "] WARNING: there are " << iter->second.size() << "
+   * kernel launches left, but no kernels to call..." << std::endl; */
+  /*    } */
+
 }
 
 Paradigm
@@ -66,6 +72,7 @@ AnalysisParadigmCUDA::handlePostEnter( GraphNode* node )
 {
   if ( node->isCUDAKernelLaunch( ) )
   {
+    /* std::cout << "[" << commonAnalysis->getMPIRank() << "] add ENTER launch: " << node->getUniqueName() << std::endl; */
     addPendingKernelLaunch( node );
   }
 }
@@ -75,6 +82,7 @@ AnalysisParadigmCUDA::handlePostLeave( GraphNode* node )
 {
   if ( node->isCUDAKernelLaunch( ) )
   {
+    /* std::cout << "[" << commonAnalysis->getMPIRank() << "] add LEAVE launch: " << node->getUniqueName() << std::endl; */
     addPendingKernelLaunch( node );
   }
 }
@@ -214,7 +222,6 @@ AnalysisParadigmCUDA::consumePendingKernelLaunch( uint64_t kernelStreamId )
   {
     launchIter++;
   }
-
   /* found no enter record */
   if ( launchIter == listIter->second.end( ) )
   {
@@ -254,7 +261,6 @@ AnalysisParadigmCUDA::addStreamWaitEvent( uint64_t   deviceProcId,
         break;
       }
     }
-
     streamWaitMap[deviceProcId].push_back( streamWaitLeave );
   }
 }
@@ -280,7 +286,7 @@ AnalysisParadigmCUDA::getFirstStreamWaitEvent( uint64_t deviceStreamId )
        * streams */
       if ( swTagged->tags.size( ) == numAllDevProcs )
       {
-        delete( *nullIter );
+        delete ( *nullIter );
         nullStreamWaits.erase( nullIter );
       }
       else
@@ -325,7 +331,7 @@ AnalysisParadigmCUDA::consumeFirstStreamWaitEvent( uint64_t deviceStreamId )
        * streams */
       if ( swTagged->tags.size( ) == numAllDevProcs )
       {
-        delete( *nullIter );
+        delete ( *nullIter );
         nullStreamWaits.erase( nullIter );
       }
       else
@@ -420,6 +426,5 @@ AnalysisParadigmCUDA::getLastLaunchLeave( uint64_t timestamp,
       }
     }
   }
-
   return lastLaunchLeave;
 }

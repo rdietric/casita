@@ -58,8 +58,7 @@ namespace casita
  {
    std::istringstream iss( s );
    if ( ( iss >> f >> t ).fail( ) )
-   {
-     throw std::invalid_argument( "conversion invalid!" );
+   { throw std::invalid_argument( "conversion invalid!" );
    }
 
    return true;
@@ -73,8 +72,7 @@ namespace casita
  }
 
  bool
- Parser::init( int argc, char** argv )
- throw ( std::runtime_error )
+ Parser::init( int argc, char** argv ) throw ( std::runtime_error )
  {
    bool noSummary = false;
 
@@ -160,7 +158,7 @@ namespace casita
      }
 
    }
-   catch( boost::program_options::error& e )
+   catch ( boost::program_options::error& e )
    {
      std::cerr << e.what( ) << std::endl;
      return false;

@@ -157,7 +157,7 @@ namespace casita
             MPI_EDGE_LOCAL_REMOTE );
         }
 
-        delete[]recvBuffer;
+        delete[] recvBuffer;
 
         return true;
       }

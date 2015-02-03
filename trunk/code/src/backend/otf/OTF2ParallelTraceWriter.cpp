@@ -39,16 +39,14 @@ using namespace casita::io;
 
 #define OTF2_CHECK( cmd ) \
   { \
-   int _status = cmd; \
-   if ( _status ) { \
-     throw RTException( "OTF2 command '%s' returned error %d", #cmd, _status );} \
+    int _status = cmd; \
+    if ( _status ) { throw RTException( "OTF2 command '%s' returned error %d", #cmd, _status );} \
   }
 
 #define MPI_CHECK( cmd ) \
   { \
     int mpi_result = cmd; \
-    if ( mpi_result != MPI_SUCCESS ) { \
-      throw RTException( "MPI error %d in call %s", mpi_result, #cmd );} \
+    if ( mpi_result != MPI_SUCCESS ) { throw RTException( "MPI error %d in call %s", mpi_result, #cmd );} \
   }
 
 /** Callbacks for OTF2 */
@@ -122,24 +120,24 @@ otf2_to_mpi_type( OTF2_Type type )
 }
 
 /**
- * 
- * 
+ *
+ *
  * @param mpiRank               MPIrank of this analysis process
  * @param mpiSize               Size of communicator
  * @param originalFilename      Name of original trace file
  * @param writeToFile           Write to new OTF2 file or just analysis
  * @param ignoreAsyncMpi        Ignore all asynchronous MPI communication in analysis
  */
-OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t             mpiRank,
-                                                  uint32_t             mpiSize,
-                                                  const char*          originalFilename,
-                                                  bool                 writeToFile,
-                                                  bool                 ignoreAsyncMpi )
+OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t    mpiRank,
+                                                  uint32_t    mpiSize,
+                                                  const char* originalFilename,
+                                                  bool        writeToFile,
+                                                  bool        ignoreAsyncMpi )
   :
     IParallelTraceWriter( mpiRank, mpiSize ),
     writeToFile( writeToFile ),
     ignoreAsyncMpi( ignoreAsyncMpi ),
-    ompForkJoinRef ( 0 ),
+    ompForkJoinRef( 0 ),
     global_def_writer( NULL ),
     processNodes( NULL ),
     currentNodeIter( NULL ),
@@ -153,9 +151,9 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t             mpiRank,
   this->originalFilename.assign( originalFilename );
 
   flush_callbacks.otf2_post_flush = postFlush;
-  flush_callbacks.otf2_pre_flush = preFlush;
+  flush_callbacks.otf2_pre_flush  = preFlush;
 
-  commGroup      = MPI_COMM_WORLD;
+  commGroup = MPI_COMM_WORLD;
 }
 
 OTF2ParallelTraceWriter::~OTF2ParallelTraceWriter( )
@@ -223,8 +221,7 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
   OTF2_MPI_Reader_SetCollectiveCallbacks( reader, commGroup );
 
   if ( !reader )
-  {
-    throw RTException( "Failed to open OTF2 trace file %s",
+  { throw RTException( "Failed to open OTF2 trace file %s",
                        originalFilename.c_str( ) );
   }
 
@@ -253,7 +250,6 @@ OTF2ParallelTraceWriter::close( )
     {
       OTF2_Archive_CloseEvtWriter( archive, iter->second );
     }
-
     if ( mpiRank == 0 )
     {
       OTF2_Archive_CloseDefFiles( archive );
@@ -376,24 +372,24 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions( )
   UTILS_DBG_MSG( mpiRank == 0, "[%u] Read and wrote %lu definitions",
                  mpiRank, definitions_read );
 
-  /* add forkjoin "region" to support internal OMP-fork/join model 
+  /* add forkjoin "region" to support internal OMP-fork/join model
    * ( OMP-fork/join is a node in casita internally )
    */
-  uint32_t stringSize = idStringMap.size( );
-  idStringMap[stringSize] = OTF2_OMP_FORKJOIN_INTERNAL;
-  ompForkJoinRef = regionNameIdList.size( );
+  uint32_t stringSize       = idStringMap.size( );
+  idStringMap[stringSize]          = OTF2_OMP_FORKJOIN_INTERNAL;
+  ompForkJoinRef                   = regionNameIdList.size( );
   regionNameIdList[ompForkJoinRef] = stringSize;
-  
+
 }
 
 /**
  * OTF2: create event writer for this process.
- * 
+ *
  * @param id            ID of event stream
  * @param parentId      ID of parent event stream
  * @param name          Name of this event stream
  * @param pg            Process group this event stream belongs to
- */ 
+ */
 void
 OTF2ParallelTraceWriter::writeDefProcess( uint64_t id, uint64_t parentId,
                                           const char* name, ProcessGroup pg )
@@ -406,14 +402,14 @@ OTF2ParallelTraceWriter::writeDefProcess( uint64_t id, uint64_t parentId,
     OTF2_CHECK( OTF2_EvtWriter_SetLocationID( evt_writer, id ) );
     evt_writerMap[id] = evt_writer;
   }
-  
+
   /* Tell writer to read from this event stream */
   OTF2_Reader_SelectLocation( reader, id );
 }
 
 /**
  * Write self-defined metrics/counter to new trace file.
- * 
+ *
  * @param otfId         ID for counter
  * @param name          Name of counter
  * @param metricMode    Mode for this counter (e.g. Accumulate, absolute, ...)
@@ -453,13 +449,13 @@ OTF2ParallelTraceWriter::writeDefCounter( uint32_t        otfId,
 /**
  * Read all events from original trace for this process and combine them with the
  * events and counter values from analysis.
- * 
+ *
  * @param processId         Id of the event stream to be analyzed
  * @param nodes             list of all nodes in this event stream
  * @param pLastGraphNode    Pointer to the last node in the call graph
  * @param verbose           Verbose output
  * @param ctrTable          CounterTable for counters to be written
- * @param graph             Pointer to internal built graph 
+ * @param graph             Pointer to internal built graph
  * @param isHost            Is this stream a host stream? Necessary since host streams have one additional node at the beginning
  */
 void
@@ -473,20 +469,22 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
 {
   assert( nodes );
 
-  for(EventStream::SortedGraphNodeList::iterator iter = nodes->begin(); 
-          iter != nodes->end(); iter++)
+  for ( EventStream::SortedGraphNodeList::iterator iter = nodes->begin( );
+        iter != nodes->end( ); iter++ )
   {
-      //std::cout << "[ " << mpiRank << "] " << (*iter)->getUniqueName() << std::endl;
+    /* std::cout << "[ " << mpiRank << "] " << (*iter)->getUniqueName() << std::endl; */
   }
-  
-  processNodes     = nodes;
-  currentNodeIter  = processNodes->begin( );
+
+  processNodes    = nodes;
+  currentNodeIter = processNodes->begin( );
   /* set current node behind first node on host processes since first node is an additional start node */
-  if( isHost )
-      currentNodeIter = ++processNodes->begin();
-  this->verbose    = verbose;
-  this->graph      = graph;
-  cTable           = ctrTable;
+  if ( isHost )
+  {
+    currentNodeIter = ++processNodes->begin( );
+  }
+  this->verbose   = verbose;
+  this->graph     = graph;
+  cTable          = ctrTable;
   processOnCriticalPath[processId] = false;
 
   UTILS_DBG_MSG( verbose, "[%u] Start writing for process %lu", mpiRank, processId );
@@ -540,8 +538,7 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
 
   /* returns 0 if successfull, >0 otherwise */
   if ( OTF2_Reader_ReadAllLocalEvents( reader, evt_reader, &events_read ) )
-  {
-    throw RTException( "Failed to read OTF2 events" );
+  { throw RTException( "Failed to read OTF2 events" );
   }
 
   OTF2_Reader_CloseEvtReader( reader, evt_reader );
@@ -549,7 +546,7 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
 
 /**
  * Returns the name of a region as a string.
- * 
+ *
  * @param regionRef     ID of region the name is requested for
  * @return              String with Name of the region
  */
@@ -572,9 +569,9 @@ OTF2ParallelTraceWriter::getRegionName( const OTF2_RegionRef regionRef ) const
 }
 
 /**
- * The collect statistical information for activity groups 
+ * The collect statistical information for activity groups
  * that is used later to create the profile.
- * 
+ *
  * @param event         current event that was read from original OTF2 file
  * @param counters      counter values for that event
  */
@@ -618,7 +615,7 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& co
 /**
  * Compute blame for CPU event from blame that is stored in edges.
  * See also the documentation of the variable "openEdges".
- * 
+ *
  * @param event     Current CPU event
  * @return          Blame to assign to this event
  */
@@ -658,7 +655,7 @@ OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
 
 /**
  * Write event and corresponding counter values to new OTF2 file.
- * 
+ *
  * @param event         Current event to be written.
  * @param counters      Corresponding counter values.
  */
@@ -725,7 +722,7 @@ OTF2ParallelTraceWriter::writeEvent( OTF2Event event, CounterMap& counters )
 
 /**
  * Process the next event read from original trace file.
- * 
+ *
  * @param event
  * @param eventName
  */
@@ -743,69 +740,72 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, const std::string ev
 
   if ( mapsInternalNode )
   {
-      
-      
-    if(currentNodeIter == processNodes->end( ))
-        std::cout << "[" << mpiRank << "] That was strange... " << eventName 
+
+    if ( currentNodeIter == processNodes->end( ) )
+    {
+      std::cout << "[" << mpiRank << "] That was strange... " << eventName
                 << " " << event.location << " " << event.time
                 << std::endl;
+    }
     else
     {
-      //std::cout << "[" << mpiRank << "] process " << eventName << " and " << (*currentNodeIter)->getUniqueName() << std::endl;
-        
-    GraphNode* currentNode = *currentNodeIter;
-    
-    UTILS_ASSERT( currentNode->getFunctionId() == event.regionRef ,
-                    " [%u] RegionRef doesnt fit for %s and %s, %u != %u \n", mpiRank, eventName.c_str(), currentNode->getUniqueName().c_str(),
-                                currentNode->getFunctionId(), event.regionRef);
-    
-    /* model forkjoin nodes as the currently running activity */
-    if ( currentNode->isOMPForkJoinRegion( ) )
-    {
-      UTILS_ASSERT( activityStack[event.location].size( ) > 0,
-                    "No current activity for OMP ForkJoin" );
+      /* std::cout << "[" << mpiRank << "] process " << eventName << " and " << (*currentNodeIter)->getUniqueName() <<
+       * std::endl; */
 
-      UTILS_ASSERT( event.regionRef == ompForkJoinRef,
-                    "ForkJoin must have regionRef %u", ompForkJoinRef );
+      GraphNode* currentNode = *currentNodeIter;
 
-      UTILS_ASSERT( event.type == OTF2_EVT_ATOMIC,
-                    "Event %s has unexpected type", eventName.c_str( ) );
+      UTILS_ASSERT( currentNode->getFunctionId( ) == event.regionRef,
+                    " [%u] RegionRef doesnt fit for %s and %s, %u != %u \n", mpiRank,
+                    eventName.c_str( ), currentNode->getUniqueName( ).c_str( ),
+                    currentNode->getFunctionId( ), event.regionRef );
 
-      const uint64_t newRegionRef = activityStack[event.location].top( );
-      currentNode->setFunctionId( newRegionRef );
-      event.regionRef = newRegionRef;
-    }
-
-    /* preprocess current internal node */
-    if ( graph->hasOutEdges( currentNode ) )
-    {
-      const Graph::EdgeList& edges = graph->getOutEdges( currentNode );
-      for ( Graph::EdgeList::const_iterator edgeIter = edges.begin( );
-            edgeIter != edges.end( ); edgeIter++ )
+      /* model forkjoin nodes as the currently running activity */
+      if ( currentNode->isOMPForkJoinRegion( ) )
       {
-        Edge* edge = *edgeIter;
-        if ( edge->getCPUBlame( ) > 0 )
+        UTILS_ASSERT( activityStack[event.location].size( ) > 0,
+                      "No current activity for OMP ForkJoin" );
+
+        UTILS_ASSERT( event.regionRef == ompForkJoinRef,
+                      "ForkJoin must have regionRef %u", ompForkJoinRef );
+
+        UTILS_ASSERT( event.type == OTF2_EVT_ATOMIC,
+                      "Event %s has unexpected type", eventName.c_str( ) );
+
+        const uint64_t newRegionRef = activityStack[event.location].top( );
+        currentNode->setFunctionId( newRegionRef );
+        event.regionRef = newRegionRef;
+      }
+
+      /* preprocess current internal node */
+      if ( graph->hasOutEdges( currentNode ) )
+      {
+        const Graph::EdgeList& edges = graph->getOutEdges( currentNode );
+        for ( Graph::EdgeList::const_iterator edgeIter = edges.begin( );
+              edgeIter != edges.end( ); edgeIter++ )
         {
-          openEdges.push_back( edge );
+          Edge* edge = *edgeIter;
+          if ( edge->getCPUBlame( ) > 0 )
+          {
+            openEdges.push_back( edge );
+          }
         }
       }
-    }
 
-    /* copy node counter values to tmp counter map */
-    const CounterTable::CtrIdSet& ctrIdSet = cTable->getAllCounterIDs( );
-    for ( CounterTable::CtrIdSet::const_iterator ctrIter = ctrIdSet.begin( );
-          ctrIter != ctrIdSet.end( ); ++ctrIter )
-    {
-      const uint32_t ctrId         = *ctrIter;
-      const CtrTableEntry* counter = cTable->getCounter( ctrId );
-
-      if ( !counter->isInternal )
+      /* copy node counter values to tmp counter map */
+      const CounterTable::CtrIdSet& ctrIdSet = cTable->getAllCounterIDs( );
+      for ( CounterTable::CtrIdSet::const_iterator ctrIter = ctrIdSet.begin( );
+            ctrIter != ctrIdSet.end( ); ++ctrIter )
       {
-        tmpCounters[ctrId] = currentNode->getCounter( ctrId, NULL );
-      }
-    }
+        const uint32_t ctrId         = *ctrIter;
+        const CtrTableEntry* counter = cTable->getCounter( ctrId );
 
-    ++currentNodeIter;
+        if ( !counter->isInternal )
+        {
+          tmpCounters[ctrId] = currentNode->getCounter( ctrId, NULL );
+        }
+      }
+
+      ++currentNodeIter;
     }
   }
   else
@@ -1007,9 +1007,9 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_String( void* userData,
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  /** keep track how many strings are defined to add definitions for 
+  /** keep track how many strings are defined to add definitions for
    *  metrics later.
-   */  
+   */
   tw->counterForStringDefinitions++;
 
   tw->idStringMap[self] = string;
@@ -1458,14 +1458,13 @@ OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadFork( OTF2_LocationRef loc
   OTF2Event event;
   event.location  = locationID;
   /* Fork/Join-RegionRef is created when definitions are read.
-   * This event is processed because internal it is a node and counters have to 
+   * This event is processed because internal it is a node and counters have to
    * be calculated correctly (always happens between internal nodes).
    */
   event.regionRef = tw->ompForkJoinRef;
   event.time      = time;
   event.type      = OTF2_EVT_ATOMIC;
 
-  
   tw->processNextEvent( event, OTF2_OMP_FORKJOIN_INTERNAL );
 
   if ( tw->writeToFile )
@@ -1498,7 +1497,7 @@ OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadJoin( OTF2_LocationRef loc
   OTF2Event event;
   event.location  = locationID;
   /* Fork/Join-RegionRef is created when definitions are read.
-   * This event is processed because internal it is a node and counters have to 
+   * This event is processed because internal it is a node and counters have to
    * be calculated correctly (always happens between internal nodes).
    */
   event.regionRef = tw->ompForkJoinRef;

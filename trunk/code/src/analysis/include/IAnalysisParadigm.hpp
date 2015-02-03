@@ -76,7 +76,6 @@ namespace casita
            ruleResult = true;
          }
        }
-
        return ruleResult;
      }
 
@@ -129,7 +128,7 @@ namespace casita
        for ( std::vector< AbstractRule* >::iterator iter = rules.begin( );
              iter != rules.end( ); ++iter )
        {
-         delete( *iter );
+         delete ( *iter );
        }
        rules.clear( );
      }

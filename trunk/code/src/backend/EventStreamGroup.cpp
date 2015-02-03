@@ -62,7 +62,6 @@ EventStreamGroup::removeHostStream( EventStream* p )
       return hostStreams.erase( iter );
     }
   }
-
   return hostStreams.end( );
 }
 

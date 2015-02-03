@@ -97,7 +97,7 @@ main( int argc, char** argv )
 
     delete runner;
   }
-  catch( RTException e )
+  catch ( RTException e )
   {
     status = 1;
   }
