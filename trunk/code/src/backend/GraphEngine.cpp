@@ -8,6 +8,14 @@
  * a BSD-style license. See the COPYING file in the package base
  * directory for details.
  *
+ * What this file does:
+ * - provide interaction with Graph: create/delete nodes/Edges/streams, getter, setter
+ * - Streams are eventstreams within a process (OMP,CUDA). Nodes are stored both in the graph (per process) and in each event stream (as a pointer)
+ * - For every stream there is a start node, additionally, there is a global start node per process
+ * - CPU Data is aggregated during reading of OTF (=graph creation) and added to edges between non-cpu events
+ * - sanity-check (not sure if that's used anywhere in the program -> Deprecated)
+ * -
+ *
  */
 
 #include <stdio.h>

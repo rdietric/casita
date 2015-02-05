@@ -146,9 +146,9 @@ namespace casita
             {
               maxEnterTimeNode = *iter;
             }
+            /* accumulate blame, set edges from latest enter to all
+             * other leaves */
           }
-          /* accumulate blame, set edges from latest enter to all
-           * other leaves */
           for ( iter = tmpBarrierList.begin( );
                 iter != tmpBarrierList.end( );
                 ++iter )

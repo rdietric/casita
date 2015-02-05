@@ -8,6 +8,10 @@
  * a BSD-style license. See the COPYING file in the package base
  * directory for details.
  *
+ * What this file does:
+ * This file defines a table for several counters that are computed and written
+ * to an OTF2 File
+ *
  */
 
 #pragma once

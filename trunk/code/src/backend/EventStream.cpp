@@ -8,6 +8,12 @@
  * a BSD-style license. See the COPYING file in the package base
  * directory for details.
  *
+ * What this file does:
+ * - Basic interaction with an event stream: add/remove/insert nodes, getter, get Attributes about eventstream
+ * - walk forward/backward through stream (and call callback for each node on that walk)
+ * - manage pending/consuming kernels (CUDA)
+ * - manage pending MPIRecords
+ *
  */
 
 #include "EventStream.hpp"

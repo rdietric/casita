@@ -8,6 +8,12 @@
  * a BSD-style license. See the COPYING file in the package base
  * directory for details.
  *
+ * What this file does:
+ * Basic functions to perform analysis of the read events, apply rules
+ * - contains the different analysis classes for the different paradigms
+ * - helper functions (getFunctionName, getter, addGraphNode,
+ * - prepare and trigger writing new OTF2 file
+ *
  */
 
 #include <stdio.h>

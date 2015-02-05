@@ -8,6 +8,13 @@
  * a BSD-style license. See the COPYING file in the package base
  * directory for details.
  *
+ * What this file does:
+ * - read original OTF2 file and immediately write it out again, combined with counter values for blame and CP
+ * - open/close an OTF2 archive for file handling
+ * - copy definitions from original OTF2 file
+ * - compute counter values for CPU events
+ * - update statistics for summary for critical blame
+ *
  */
 
 #include <mpi.h>
