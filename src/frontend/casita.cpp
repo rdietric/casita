@@ -8,6 +8,17 @@
  * a BSD-style license. See the COPYING file in the package base
  * directory for details.
  *
+ * What this file does:
+ * This file contains the main routine.
+ * - Initialize communication
+ * - Parse command line options
+ * - Create runner
+ * - trigger reading of trace file
+ * - trigger analysis for different paradigms
+ * - trigger computation of critical path
+ * - trigger creation of output OTF file
+ * - trigger display and calculation of summary
+ *
  */
 
 #define __STDC_LIMIT_MACROS

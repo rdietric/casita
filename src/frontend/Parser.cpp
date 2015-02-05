@@ -8,6 +8,9 @@
  * a BSD-style license. See the COPYING file in the package base
  * directory for details.
  *
+ * What this file does:
+ * - parsing command line options
+ *
  */
 
 #include <iostream>

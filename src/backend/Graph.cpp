@@ -8,6 +8,10 @@
  * a BSD-style license. See the COPYING file in the package base
  * directory for details.
  *
+ * What this file does:
+ * - basic interaction with the Graph: add/delete nodes/edges
+ * - get longest Path
+ *
  */
 
 #include <sstream>

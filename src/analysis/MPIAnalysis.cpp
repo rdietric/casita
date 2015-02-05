@@ -8,6 +8,11 @@
  * a BSD-style license. See the COPYING file in the package base
  * directory for details.
  *
+ * What this file does:
+ * This class glues the analysis engines for all processes together.
+ * - create communicators
+ * - create remoteEdges
+ *
  */
 
 #include "MPIAnalysis.hpp"

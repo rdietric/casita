@@ -8,6 +8,11 @@
  * a BSD-style license. See the COPYING file in the package base
  * directory for details.
  *
+ * What this file does:
+ * - perform analysis with CUDA-specific rules
+ * - add kernels as pending, consume pending kernels
+ * - Callbacks for KeyValue, postEnter/leave
+ *
  */
 
 #include "cuda/AnalysisParadigmCUDA.hpp"
@@ -72,7 +77,8 @@ AnalysisParadigmCUDA::handlePostEnter( GraphNode* node )
 {
   if ( node->isCUDAKernelLaunch( ) )
   {
-    /* std::cout << "[" << commonAnalysis->getMPIRank() << "] add ENTER launch: " << node->getUniqueName() << std::endl; */
+    /* std::cout << "[" << commonAnalysis->getMPIRank() << "] add ENTER launch: " << node->getUniqueName() << std::endl;
+     **/
     addPendingKernelLaunch( node );
   }
 }
@@ -82,7 +88,8 @@ AnalysisParadigmCUDA::handlePostLeave( GraphNode* node )
 {
   if ( node->isCUDAKernelLaunch( ) )
   {
-    /* std::cout << "[" << commonAnalysis->getMPIRank() << "] add LEAVE launch: " << node->getUniqueName() << std::endl; */
+    /* std::cout << "[" << commonAnalysis->getMPIRank() << "] add LEAVE launch: " << node->getUniqueName() << std::endl;
+     **/
     addPendingKernelLaunch( node );
   }
 }
@@ -221,8 +228,8 @@ AnalysisParadigmCUDA::consumePendingKernelLaunch( uint64_t kernelStreamId )
           ( ( *launchIter )->isLeave( ) ) )
   {
     launchIter++;
+    /* found no enter record */
   }
-  /* found no enter record */
   if ( launchIter == listIter->second.end( ) )
   {
     return NULL;

@@ -82,9 +82,9 @@ namespace casita
             {
               maxEnterTimeNode = *iter;
             }
+            /* accumulate blame, set edges from latest enter to all
+             * other leaves */
           }
-          /* accumulate blame, set edges from latest enter to all
-           * other leaves */
           for ( iter = barrierList.begin( ); iter != barrierList.end( ); ++iter )
           {
             GraphNode::GraphNodePair& barrier = ( *iter )->getGraphPair( );

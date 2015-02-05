@@ -8,6 +8,17 @@
  * a BSD-style license. See the COPYING file in the package base
  * directory for details.
  *
+ * What this file does:
+ * - create trace reader and trigger reading
+ * - merge statistics from different streams (blame, time on CP, total length CP)
+ * - trigger computation of critical path:
+ * - getCriticalPath()
+ *      * 1 MPI process  -> getCriticalPathIntern()-> graph.getLongestPath()
+ *      * >1 MPI process -> reverseReplayMPICriticalPath()
+ *                       -> getCriticalLocalSections() -> getCriticalPathIntern() for all sections created in replay, add nodes to set of critical nodes
+ *      * Compute global length of CP (TODO: right now this takes the difference between first and last global timestamp...)
+ * - runAnalysis() -> goes through all nodes (non-CPU) and applies rules for a given paradigm
+ * - printAllActivities() -> print the summary for time on CP, Blame, etc.
  */
 
 #include <sys/types.h>

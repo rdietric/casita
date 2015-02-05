@@ -8,6 +8,11 @@
  * a BSD-style license. See the COPYING file in the package base
  * directory for details.
  *
+ * What this file does:
+ * This file matches the name of a read event to an event type & paradigm.
+ * - mark CPU functions
+ * - mark async MPI communication
+ *
  */
 
 #pragma once
@@ -177,12 +182,11 @@ namespace casita
    { CUDA_WAITSTATE, 1, FTABLE_CUDA_WAITSTATE }
  };
 
- static const size_t      fTableEntriesMPI = 9;
+ static const size_t      fTableEntriesMPI = 8;
  static const FTableEntry fTableMPI[fTableEntriesMPI] =
  {
    { MPI_RECV, 1, FTABLE_MPI_RECV },
    { MPI_SEND, 1, FTABLE_MPI_SEND },
-   { MPI_WAIT, 1, FTABLE_MPI_WAIT },
    { MPI_COLL, 5, FTABLE_MPI_COLL },
    { MPI_ONETOALL, 2, FTABLE_MPI_ONETOALL },
    { MPI_ALLTOONE, 2, FTABLE_MPI_ALLTOONE },
@@ -191,9 +195,10 @@ namespace casita
    { MPI_WAITSTATE, 1, FTABLE_CUDA_WAITSTATE }
  };
 
- static const size_t      fTableEntriesMPIAsync = 1;
+ static const size_t      fTableEntriesMPIAsync = 2;
  static const FTableEntry fTableMPIAsync[fTableEntriesMPIAsync] =
  {
+   { MPI_WAIT, 1, FTABLE_MPI_WAIT },
    { MPI_MISC, 2, FTABLE_MPI_ASYNC }
  };
 
@@ -310,7 +315,7 @@ namespace casita
                case MPI_COLL:
                case MPI_ONETOALL:
                case MPI_ALLTOONE:
-               case MPI_WAIT:
+               /* case MPI_WAIT: */
                case MPI_SENDRECV:
                case MPI_RECV:
                case MPI_SEND:

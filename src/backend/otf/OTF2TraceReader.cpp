@@ -8,6 +8,10 @@
  * a BSD-style license. See the COPYING file in the package base
  * directory for details.
  *
+ * What this file does:
+ * Provide interactions with OTF2-file for reading definitions and events.
+ * - read otf2 file and trigger callbacks to start appropriate actions for read definitions and events like creating the graph, event streams
+ *
  */
 
 #include <stdexcept>

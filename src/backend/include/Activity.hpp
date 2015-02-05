@@ -8,6 +8,10 @@
  * a BSD-style license. See the COPYING file in the package base
  * directory for details.
  *
+ * What this file does:
+ * Provide the type "activity".
+ * An activity is a region instance with start and end node.
+ *
  */
 
 #pragma once
