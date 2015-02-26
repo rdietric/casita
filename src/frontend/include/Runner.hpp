@@ -48,7 +48,7 @@ namespace casita
      runAnalysis( Paradigm paradigm, EventStream::SortedGraphNodeList& allNodes );
 
      void
-     getCriticalPath( );
+     computeCriticalPath( );
 
      ProgramOptions&
      getOptions( );

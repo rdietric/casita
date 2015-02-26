@@ -46,13 +46,17 @@ namespace casita
 
         /* get the complete execution */
         GraphNode::GraphNodePair coll  = node->getGraphPair( );
-        uint32_t mpiGroupId        =
+        uint32_t mpiGroupId =
           node->getReferencedStreamId( );
         const MPIAnalysis::MPICommGroup& mpiCommGroup =
           commonAnalysis->getMPIAnalysis( ).getMPICommGroup( mpiGroupId );
-        uint32_t myMpiRank         =
+        uint32_t myMpiRank  =
           commonAnalysis->getMPIRank( );
 
+        if ( node->isMPIInit( ) )
+        {
+          std::cout << "[" << myMpiRank << "] Collective Rule for MPI INIT " << std::endl;
+        }
         if ( mpiCommGroup.comm == MPI_COMM_SELF )
         {
           return false;
