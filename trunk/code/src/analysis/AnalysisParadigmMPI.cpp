@@ -8,6 +8,9 @@
  * a BSD-style license. See the COPYING file in the package base
  * directory for details.
  *
+ * What this file does:
+ * Add MPI specific rules.
+ *
  */
 
 #include "mpi/AnalysisParadigmMPI.hpp"

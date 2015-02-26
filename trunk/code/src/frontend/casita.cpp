@@ -33,12 +33,6 @@
 using namespace casita;
 using namespace casita::io;
 
-void
-computeCriticalPaths( Runner* runner, uint32_t mpiRank )
-{
-  runner->getCriticalPath( );
-}
-
 int
 main( int argc, char** argv )
 {
@@ -69,6 +63,7 @@ main( int argc, char** argv )
     EventStream::SortedGraphNodeList allNodes;
     runner->getAnalysis( ).getAllNodes( allNodes );
 
+    /* Apply analysis to all nodes of a certain paradigm, create dependency edges */
     runner->runAnalysis( PARADIGM_CUDA, allNodes );
     runner->runAnalysis( PARADIGM_OMP, allNodes );
     runner->runAnalysis( PARADIGM_MPI, allNodes );
@@ -77,7 +72,7 @@ main( int argc, char** argv )
 
     UTILS_DBG_MSG( mpiRank == 0, "[%u] Computing the critical path", mpiRank );
 
-    computeCriticalPaths( runner, mpiRank );
+    runner->computeCriticalPath( );
 
     /* create OTF with wait states and critical path */
     if ( options.createOTF )
@@ -87,6 +82,7 @@ main( int argc, char** argv )
                      mpiRank, options.outOtfFile.c_str( ) );
     }
 
+    /* Write new OTF2-File with new counter values for CP and critical blame */
     runner->getAnalysis( ).saveParallelEventGroupToFile(
       options.outOtfFile,
       options.filename,
@@ -95,6 +91,7 @@ main( int argc, char** argv )
       options.verbose >=
       VERBOSE_ANNOY );
 
+    /* if selected as parameter, the summary statistics are merged and printed */
     if ( options.mergeActivities )
     {
       UTILS_DBG_MSG( mpiRank == 0, "[%u] Merging activity statistics...", mpiRank );

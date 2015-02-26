@@ -272,8 +272,16 @@ Runner::mergeActivityGroups( )
   }
 }
 
+/**
+ * Compute critical path, i.e. all nodes on the critical path, add counters.
+ * Depending on the number of processes this is done via MPI reverse-replay
+ * and following parallel computation for critical sections between MPI nodes
+ * on each process.
+ * If there's only one process, the longest path is calculated serially.
+ * (One process can have multiple event streams)
+ */
 void
-Runner::getCriticalPath( )
+Runner::computeCriticalPath( )
 {
   EventStream::SortedGraphNodeList criticalNodes;
   MPIAnalysis::CriticalSectionsMap sectionsMap;
@@ -375,6 +383,15 @@ Runner::getCriticalPath( )
   }
 }
 
+/**
+ * Compute the critical path between two nodes of the same process
+ * (might have multiple event streams).
+ *
+ * @param start
+ * @param end
+ * @param cpNodes - list to store nodes of computed cp in
+ * @param subGraph - subgraph between the two nodes
+ */
 void
 Runner::getCriticalPathIntern( GraphNode*                        start,
                                GraphNode*                        end,
@@ -405,6 +422,15 @@ Runner::getCriticalPathIntern( GraphNode*                        start,
   }
 }
 
+/**
+ * Compute critical path for nodes between two critical MPI nodes on the
+ * same process.
+ *
+ * @param sections
+ * @param numSections
+ * @param criticalNodes - store nodes on critical path here...
+ * @param sectionsMap
+ */
 void
 Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
                                   uint32_t                          numSections,
@@ -573,6 +599,11 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
   delete subGraph;
 }
 
+/**
+ * Find globally last MPI node.
+ *
+ * @param node - store found last MPI node in this variable
+ */
 void
 Runner::findLastMpiNode( GraphNode** node )
 {
@@ -613,6 +644,13 @@ Runner::findLastMpiNode( GraphNode** node )
   }
 }
 
+/**
+ * Perform reverse replay for all MPI nodes, detect wait states
+ * and the critical path
+ *
+ * @param sectionsList - critical sections between MPI regions
+ *                       on the critical path will be stored in this list
+ */
 void
 Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& sectionsList )
 {
@@ -691,7 +729,7 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
           /* make myself a new slave */
           isMaster = false;
 
-          /* commnicate with slaves to decide new master */
+          /* communicate with slaves to decide new master */
           GraphNode* commMaster  = currentNode->getGraphPair( ).second;
           bool nodeHasRemoteInfo = false;
           analysis.getMPIAnalysis( ).getRemoteNodeInfo( commMaster,
@@ -859,6 +897,12 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
 
 }
 
+/**
+ * Apply all paradigm-specific rules to all nodes of that paradigm
+ *
+ * @param paradigm
+ * @param allNodes
+ */
 void
 Runner::runAnalysis( Paradigm                          paradigm,
                      EventStream::SortedGraphNodeList& allNodes )
@@ -919,6 +963,9 @@ Runner::runAnalysis( Paradigm                          paradigm,
 #endif
 }
 
+/**
+ * Print the summary statistics for regions with highest critical blame
+ */
 void
 Runner::printAllActivities( )
 {
