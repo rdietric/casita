@@ -147,7 +147,7 @@ namespace casita
             uint64_t enterTime = recvBuffer[i];
             total_blame += lastEnterTime - enterTime;
 
-            if ( i != myMpiRank )
+            if ( recvBuffer[i + 4] != myMpiRank )
             {
               commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
                 coll.first,
