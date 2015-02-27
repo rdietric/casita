@@ -53,10 +53,6 @@ namespace casita
         uint32_t myMpiRank  =
           commonAnalysis->getMPIRank( );
 
-        if ( node->isMPIInit( ) )
-        {
-          std::cout << "[" << myMpiRank << "] Collective Rule for MPI INIT " << std::endl;
-        }
         if ( mpiCommGroup.comm == MPI_COMM_SELF )
         {
           return false;
