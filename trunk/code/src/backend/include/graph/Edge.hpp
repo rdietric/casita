@@ -62,7 +62,6 @@ namespace casita
        this->initialDuration = duration;
        this->edgeWeight      = computeWeight( duration, isBlocking( ) );
        this->edgeParadigm    = edgeParadigm;
-       this->timeProfile     = NULL;
      }
 
      bool
@@ -202,12 +201,6 @@ namespace casita
        return pair.first->getStreamId( ) != pair.second->getStreamId( );
      }
 
-     TimeProfileMap*
-     getTimeProfile( )
-     {
-       return timeProfile;
-     }
-
      void
      addCPUData( uint32_t nodes, uint64_t startTime, uint64_t endTime )
      {
@@ -258,7 +251,6 @@ namespace casita
      uint64_t edgeWeight;
      Paradigm edgeParadigm;
      GraphNode::GraphNodePair pair;
-     TimeProfileMap* timeProfile;
 
      uint32_t cpuNodes;
      cpuStartEndTime cpuStartEnd;

@@ -46,11 +46,11 @@ namespace casita
 
         /* get the complete execution */
         GraphNode::GraphNodePair coll  = node->getGraphPair( );
-        uint32_t mpiGroupId =
+        uint32_t mpiGroupId        =
           node->getReferencedStreamId( );
         const MPIAnalysis::MPICommGroup& mpiCommGroup =
           commonAnalysis->getMPIAnalysis( ).getMPICommGroup( mpiGroupId );
-        uint32_t myMpiRank  =
+        uint32_t myMpiRank         =
           commonAnalysis->getMPIRank( );
 
         if ( mpiCommGroup.comm == MPI_COMM_SELF )
@@ -108,7 +108,7 @@ namespace casita
 
         /* I'm not latest collective -> blocking + remoteEdge to
          * lastEnter */
-        if ( collStartTime < lastEnterTime )
+        if ( lastEnterProcessId != node->getStreamId( ) ) /* collStartTime < lastEnterTime ) */
         {
           /** These nodes/edges are needed for dependency correctness but are
            *  omitted since they are currently not used anywhere.
