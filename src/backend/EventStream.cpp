@@ -392,20 +392,6 @@ EventStream::getPendingMPIRecords( )
   return copyList;
 }
 
-Edge::TimeProfileMap*
-EventStream::newTimeProfile( )
-{
-  currentTimeProfile = new Edge::TimeProfileMap( );
-
-  return getTimeProfile( );
-}
-
-Edge::TimeProfileMap*
-EventStream::getTimeProfile( )
-{
-  return currentTimeProfile;
-}
-
 bool
 EventStream::walkBackward( GraphNode*         node,
                            StreamWalkCallback callback,

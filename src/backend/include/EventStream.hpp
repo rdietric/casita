@@ -151,23 +151,21 @@ namespace casita
      walkForward( GraphNode* node, StreamWalkCallback callback, void* userData );
 
    private:
-     uint64_t              id;
-     uint64_t              parentId;
-     const std::string     name;
-     EventStreamType       streamType;
-     bool                  remoteStream;
+     uint64_t            id;
+     uint64_t            parentId;
+     const std::string   name;
+     EventStreamType     streamType;
+     bool                remoteStream;
 
      SortedGraphNodeList pendingKernels;    /* list of unsynchronized
                                              * kernels (leave records) */
 
-     GraphNode*            lastNode;
-     GraphData             graphData[NODE_PARADIGM_COUNT];
-     SortedGraphNodeList   nodes;
-     SortedGraphNodeList   unlinkedMPINodes;
+     GraphNode*          lastNode;
+     GraphData           graphData[NODE_PARADIGM_COUNT];
+     SortedGraphNodeList nodes;
+     SortedGraphNodeList unlinkedMPINodes;
 
-     MPICommRecordList     mpiCommRecords;
-
-     Edge::TimeProfileMap* currentTimeProfile;
+     MPICommRecordList   mpiCommRecords;
 
      EventStream::SortedGraphNodeList::const_reverse_iterator
      findNode( GraphNode* node ) const;
