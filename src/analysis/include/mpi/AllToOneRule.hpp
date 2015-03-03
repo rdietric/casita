@@ -68,14 +68,14 @@ namespace casita
 
         const uint32_t BUFFER_SIZE = 7;
         uint32_t recvBufferSize    = 0;
-        if ( node->getStreamId( ) == rootId )
-        {
-          recvBufferSize = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
-        }
-        else
-        {
-          recvBufferSize = BUFFER_SIZE;
-        }
+        /* if ( node->getStreamId( ) == rootId ) */
+        /* { */
+        recvBufferSize = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
+        /* } */
+        /* else */
+        /* { */
+        /*  recvBufferSize = BUFFER_SIZE; */
+        /* } */
 
         uint64_t  sendBuffer[BUFFER_SIZE];
         uint64_t* recvBuffer        = new uint64_t[recvBufferSize];
@@ -94,9 +94,29 @@ namespace casita
         sendBuffer[3] = allToOne.second->getId( );
         sendBuffer[4] = node->getStreamId( );
 
-        MPI_CHECK( MPI_Gather( sendBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
-                               recvBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
-                               rootMPIRank, mpiCommGroup.comm ) );
+        /*        MPI_CHECK( MPI_Allgather( sendBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, */
+        /*                               recvBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, */
+        /*                               rootMPIRank, mpiCommGroup.comm ) ); */
+        MPI_CHECK( MPI_Allgather( sendBuffer, BUFFER_SIZE,
+                                  MPI_UNSIGNED_LONG_LONG,
+                                  recvBuffer, BUFFER_SIZE,
+                                  MPI_UNSIGNED_LONG_LONG, mpiCommGroup.comm ) );
+
+        /* get last enter event for collective */
+        uint64_t lastEnterTime         = 0;
+        uint64_t lastEnterProcessId    = 0;
+        uint64_t lastEnterRemoteNodeId = 0;
+
+        for ( size_t i = 0; i < recvBufferSize; i += BUFFER_SIZE )
+        {
+          uint64_t enterTime = recvBuffer[i];
+          if ( enterTime > lastEnterTime )
+          {
+            lastEnterTime         = enterTime;
+            lastEnterRemoteNodeId = recvBuffer[i + 2];
+            lastEnterProcessId    = recvBuffer[i + 4];
+          }
+        }
 
         if ( node->getStreamId( ) == rootId )
         {
@@ -112,12 +132,15 @@ namespace casita
               total_waiting_time += enterTime - allToOneStartTime;
             }
 
-            commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
-              allToOne.second,
-              recvBuffer[i + 2],
-              recvBuffer[i + 4],
-              MPIAnalysis::
-              MPI_EDGE_REMOTE_LOCAL );
+            if ( lastEnterProcessId == recvBuffer[i + 4] )
+            {
+              commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
+                allToOne.second,
+                recvBuffer[i + 2],
+                recvBuffer[i + 4],
+                MPIAnalysis::
+                MPI_EDGE_REMOTE_LOCAL );
+            }
           }
 
           if ( total_waiting_time )
@@ -149,12 +172,15 @@ namespace casita
                              streamWalkCallback );
           }
 
-          commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
-            allToOne.first,
-            recvBuffer[3],
-            recvBuffer[4],
-            MPIAnalysis::
-            MPI_EDGE_LOCAL_REMOTE );
+          if ( lastEnterProcessId == node->getStreamId( ) )
+          {
+            commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
+              allToOne.first,
+              recvBuffer[3],
+              recvBuffer[4],
+              MPIAnalysis::
+              MPI_EDGE_LOCAL_REMOTE );
+          }
         }
 
         delete[] recvBuffer;
