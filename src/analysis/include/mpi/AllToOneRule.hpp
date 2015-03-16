@@ -66,55 +66,39 @@ namespace casita
             rootId,
             mpiCommGroup );
 
-        const uint32_t BUFFER_SIZE = 7;
+        /* Exchange data for all matching activities with everyone */
+        const uint32_t BUFFER_SIZE = 5;
         uint32_t recvBufferSize    = 0;
-        /* if ( node->getStreamId( ) == rootId ) */
-        /* { */
         recvBufferSize = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
-        /* } */
-        /* else */
-        /* { */
-        /*  recvBufferSize = BUFFER_SIZE; */
-        /* } */
 
-        uint64_t  sendBuffer[BUFFER_SIZE];
-        uint64_t* recvBuffer        = new uint64_t[recvBufferSize];
+        uint64_t sendBuffer[BUFFER_SIZE];
+        uint64_t*      recvBuffer  = new uint64_t[recvBufferSize];
         memset( recvBuffer, 0, recvBufferSize * sizeof( uint64_t ) );
 
-        uint64_t  allToOneStartTime = allToOne.first->getTime( );
-        uint64_t  allToOneEndTime   = allToOne.second->getTime( );
+        uint64_t allToOneStartTime = allToOne.first->getTime( );
+        uint64_t allToOneEndTime   = allToOne.second->getTime( );
 
-        /* memcpy(sendBuffer, &allToOneStartTime, sizeof (uint64_t));
-         **/
-        /* memcpy(sendBuffer + 2, &allToOneEndTime, sizeof
-         * (uint64_t)); */
-        sendBuffer[0] = allToOneStartTime;
-        sendBuffer[1] = allToOneEndTime;
-        sendBuffer[2] = allToOne.first->getId( );
-        sendBuffer[3] = allToOne.second->getId( );
-        sendBuffer[4] = node->getStreamId( );
+        sendBuffer[0]  = allToOneStartTime;
+        sendBuffer[1]  = allToOneEndTime;
+        sendBuffer[2]  = allToOne.first->getId( );
+        sendBuffer[3]  = allToOne.second->getId( );
+        sendBuffer[4]  = node->getStreamId( );
 
-        /*        MPI_CHECK( MPI_Allgather( sendBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, */
-        /*                               recvBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, */
-        /*                               rootMPIRank, mpiCommGroup.comm ) ); */
         MPI_CHECK( MPI_Allgather( sendBuffer, BUFFER_SIZE,
                                   MPI_UNSIGNED_LONG_LONG,
                                   recvBuffer, BUFFER_SIZE,
                                   MPI_UNSIGNED_LONG_LONG, mpiCommGroup.comm ) );
 
         /* get last enter event for collective */
-        uint64_t lastEnterTime         = 0;
-        uint64_t lastEnterProcessId    = 0;
-        uint64_t lastEnterRemoteNodeId = 0;
-
+        uint64_t lastEnterTime      = 0;
+        uint64_t lastEnterProcessId = 0;
         for ( size_t i = 0; i < recvBufferSize; i += BUFFER_SIZE )
         {
           uint64_t enterTime = recvBuffer[i];
           if ( enterTime > lastEnterTime )
           {
-            lastEnterTime         = enterTime;
-            lastEnterRemoteNodeId = recvBuffer[i + 2];
-            lastEnterProcessId    = recvBuffer[i + 4];
+            lastEnterTime      = enterTime;
+            lastEnterProcessId = recvBuffer[i + 4];
           }
         }
 
@@ -143,6 +127,7 @@ namespace casita
             }
           }
 
+          /* make edge blocking if root is a wait state */
           if ( total_waiting_time )
           {
             Edge* allToOneRecordEdge = commonAnalysis->getEdge(
@@ -156,14 +141,10 @@ namespace casita
 
         MPI_Barrier( mpiCommGroup.comm );
 
-        memcpy( recvBuffer, sendBuffer, sizeof( uint64_t ) * BUFFER_SIZE );
-        MPI_CHECK( MPI_Bcast( recvBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
-                              rootMPIRank, mpiCommGroup.comm ) );
-
         if ( node->getStreamId( ) != rootId )
         {
           /* all others compute their blame */
-          uint64_t rootEnterTime = recvBuffer[0];
+          uint64_t rootEnterTime = recvBuffer[rootMPIRank];
 
           if ( rootEnterTime < allToOneStartTime )
           {
@@ -176,8 +157,8 @@ namespace casita
           {
             commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
               allToOne.first,
-              recvBuffer[3],
-              recvBuffer[4],
+              recvBuffer[rootMPIRank + 3],
+              recvBuffer[rootMPIRank + 4],
               MPIAnalysis::
               MPI_EDGE_LOCAL_REMOTE );
           }

@@ -26,7 +26,7 @@ namespace casita
 
   enum MPIType
   {
-    MPI_SEND, MPI_RECV, MPI_COLLECTIVE, MPI_ONEANDALL
+    MPI_SEND, MPI_RECV, MPI_COLLECTIVE, MPI_ONEANDALL, MPI_ISEND, MPI_IRECV
   };
 
   typedef void ( *HandleEnter )( ITraceReader* reader, uint64_t time,
@@ -55,6 +55,11 @@ namespace casita
   typedef void ( *HandleMPICommGroup )( ITraceReader* reader, uint32_t group,
                                         uint32_t numProcs,
                                         const uint64_t* procs );
+  typedef void ( *HandleMPIIRecv )( ITraceReader* reader, uint64_t sender,
+                                    uint64_t request );
+  typedef void ( *HandleMPIIRecvRequest )( ITraceReader* reader,
+                                           uint64_t      request );
+  typedef void ( *HandleAddPendingMPICommForWaitAll )( ITraceReader* reader );
 
   class ITraceReader
   {
@@ -69,6 +74,9 @@ namespace casita
         handleProcessMPIMapping( NULL ),
         handleMPIComm( NULL ),
         handleMPICommGroup( NULL ),
+        handleMPIIRecv( NULL ),
+        handleMPIIRecvRequest( NULL ),
+        handleAddPendingMPICommForWaitAll( NULL ),
         userData( userData )
       {
       }
@@ -128,6 +136,9 @@ namespace casita
       HandleProcessMPIMapping handleProcessMPIMapping;
       HandleMPIComm           handleMPIComm;
       HandleMPICommGroup      handleMPICommGroup;
+      HandleMPIIRecv          handleMPIIRecv;
+      HandleMPIIRecvRequest   handleMPIIRecvRequest;
+      HandleAddPendingMPICommForWaitAll handleAddPendingMPICommForWaitAll;
 
     private:
       void* userData;

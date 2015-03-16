@@ -299,6 +299,11 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
   analysis.handleKeyValuesLeave( reader, leaveNode, leaveNode->getGraphPair( ).first, list );
   analysis.handlePostLeave( leaveNode );
 
+  if ( leaveNode->isMPIIRecv( ) )
+  {
+    analysis.addPendingIRecv( leaveNode );
+  }
+
   handler->printNode( leaveNode, stream );
   options.eventsProcessed++;
 }
@@ -331,6 +336,11 @@ CallbackHandler::handleMPIComm( ITraceReader* reader,
       break;
     case io::MPI_ONEANDALL:
       pMPIType = EventStream::MPI_ONEANDALL;
+    case io::MPI_ISEND:
+      pMPIType = EventStream::MPI_ISEND;
+      break;
+    case io::MPI_IRECV:
+      pMPIType = EventStream::MPI_IRECV;
       break;
     default: throw RTException( "Unknown cdm::io::MPIType %u", mpiType );
   }
@@ -353,4 +363,29 @@ CallbackHandler::handleMPICommGroup( ITraceReader* reader, uint32_t group,
   handler->getAnalysis( ).getMPIAnalysis( ).setMPICommGroupMap( group,
                                                                 numProcs,
                                                                 procs );
+}
+
+void
+CallbackHandler::handleMPIIRecv( ITraceReader* reader, uint64_t sender,
+                                 uint64_t request )
+{
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
+
+  handler->getAnalysis( ).addDataForPendingIRecv( request, sender );
+}
+
+void
+CallbackHandler::handleMPIIRecvRequest( ITraceReader* reader, uint64_t request )
+{
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
+
+  handler->getAnalysis( ).addPendingIRecvRequest( request );
+}
+
+void
+CallbackHandler::HandleAddPendingMPICommForWaitAll( ITraceReader* reader )
+{
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
+
+  handler->getAnalysis( ).addPendingMPICommForWaitAll( );
 }

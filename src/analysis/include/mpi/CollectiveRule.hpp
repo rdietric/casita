@@ -58,7 +58,8 @@ namespace casita
           return false;
         }
 
-        const uint32_t BUFFER_SIZE = 7;
+        /* Data about each collective is exchanged with everyone */
+        const uint32_t BUFFER_SIZE = 5;
         uint32_t recvBufferSize    = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
         uint64_t sendBuffer[BUFFER_SIZE];
         uint64_t*      recvBuffer  = new uint64_t[recvBufferSize];
@@ -67,8 +68,6 @@ namespace casita
         uint64_t collStartTime     = coll.first->getTime( );
         uint64_t collEndTime       = coll.second->getTime( );
 
-        /* memcpy(sendBuffer, &collStartTime, sizeof (uint64_t)); */
-        /* memcpy(sendBuffer + 2, &collEndTime, sizeof (uint64_t)); */
         sendBuffer[0] = collStartTime;
         sendBuffer[1] = collEndTime;
         sendBuffer[2] = coll.first->getId( );
@@ -83,10 +82,7 @@ namespace casita
         /* get last enter event for collective */
         uint64_t lastEnterTime         = 0, lastLeaveTime = 0;
         uint64_t lastEnterProcessId    = 0;
-        /* uint64_t lastLeaveProcessId = 0; */
         uint64_t lastEnterRemoteNodeId = 0;
-        /* uint64_t lastLeaveRemoteNodeId = 0; */
-
         for ( size_t i = 0; i < recvBufferSize; i += BUFFER_SIZE )
         {
           uint64_t enterTime = recvBuffer[i];

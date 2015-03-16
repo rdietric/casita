@@ -45,7 +45,7 @@ namespace casita
    int      type;
  } FunctionDescriptor;
 
- static const char*       FTABLE_CUDA_COLL_SYNC[] =
+ static const char* FTABLE_CUDA_COLL_SYNC[] =
  {
    "cuCtxSynchronize",
 
@@ -71,17 +71,17 @@ namespace casita
    "cudaSynchronize"
  };
 
- static const char*       FTABLE_CUDA_SYNC[]         =
+ static const char* FTABLE_CUDA_SYNC[]         =
  {
    "cuStreamSynchronize",
  };
 
- static const char*       FTABLE_CUDA_QUERY[]        =
+ static const char* FTABLE_CUDA_QUERY[]        =
  {
    "cuStreamQuery"
  };
 
- static const char*       FTABLE_CUDA_LAUNCH[]       =
+ static const char* FTABLE_CUDA_LAUNCH[]       =
  {
    "cuLaunch",
    "cuLaunchGrid",
@@ -91,53 +91,68 @@ namespace casita
    "cudaLaunch"
  };
 
- static const char*       FTABLE_CUDA_EVENT_QUERY[]  =
+ static const char* FTABLE_CUDA_EVENT_QUERY[]  =
  {
    "cuEventQuery"
  };
 
- static const char*       FTABLE_CUDA_EVENT_SYNC[]   =
+ static const char* FTABLE_CUDA_EVENT_SYNC[]   =
  {
    "cuEventSynchronize"
  };
 
- static const char*       FTABLE_CUDA_EVENT_LAUNCH[] =
+ static const char* FTABLE_CUDA_EVENT_LAUNCH[] =
  {
    "cuEventRecord"
  };
 
- static const char*       FTABLE_CUDA_STREAM_WAIT[]  =
+ static const char* FTABLE_CUDA_STREAM_WAIT[]  =
  {
    "cuStreamWaitEvent"
  };
 
- static const char*       FTABLE_CUDA_WAITSTATE[]    =
+ static const char* FTABLE_CUDA_WAITSTATE[]    =
  {
    "__WaitState__"
  };
 
- static const char*       FTABLE_MPI_RECV[]          =
+ static const char* FTABLE_MPI_RECV[]          =
  {
    "MPI_Recv"
  };
 
- static const char*       FTABLE_MPI_SEND[]          =
+ static const char* FTABLE_MPI_SEND[]          =
  {
    "MPI_Send"
  };
 
- static const char*       FTABLE_MPI_WAIT[]          =
+ static const char* FTABLE_MPI_WAIT[]          =
  {
    "MPI_Wait"
  };
 
- static const char*       FTABLE_MPI_ASYNC[]         =
+ static const char* FTABLE_MPI_WAITALL[]       =
  {
-   "MPI_Isend",
+   "MPI_Waitall"
+ };
+
+ static const char* FTABLE_MPI_ISEND[]         =
+ {
+   "MPI_Isend"
+ };
+
+ static const char* FTABLE_MPI_IRECV[]         =
+ {
    "MPI_Irecv"
  };
 
- static const char*       FTABLE_MPI_COLL[]          =
+ /* static const char*       FTABLE_MPI_ASYNC[]         = */
+ /* { */
+ /*   "MPI_Isend", */
+ /*   "MPI_Irecv" */
+ /* }; */
+
+ static const char*       FTABLE_MPI_COLL[]     =
  {
    "MPI_Barrier",
    "MPI_Allreduce",
@@ -146,24 +161,24 @@ namespace casita
    "MPI_Init"
  };
 
- static const char*       FTABLE_MPI_ONETOALL[]      =
+ static const char*       FTABLE_MPI_ONETOALL[] =
  {
    "MPI_Scatter",
    "MPI_Bcast"
  };
 
- static const char*       FTABLE_MPI_ALLTOONE[]      =
+ static const char*       FTABLE_MPI_ALLTOONE[] =
  {
    "MPI_Gather",
    "MPI_Reduce",
  };
 
- static const char*       FTABLE_MPI_SENDRECV[]      =
+ static const char*       FTABLE_MPI_SENDRECV[] =
  {
    "MPI_Sendrecv"
  };
 
- static const char*       FTABLE_MPI_MISC[]          =
+ static const char*       FTABLE_MPI_MISC[]     =
  {
 
  };
@@ -195,11 +210,13 @@ namespace casita
    { MPI_WAITSTATE, 1, FTABLE_CUDA_WAITSTATE }
  };
 
- static const size_t      fTableEntriesMPIAsync = 2;
+ static const size_t      fTableEntriesMPIAsync = 4;
  static const FTableEntry fTableMPIAsync[fTableEntriesMPIAsync] =
  {
    { MPI_WAIT, 1, FTABLE_MPI_WAIT },
-   { MPI_MISC, 2, FTABLE_MPI_ASYNC }
+   { MPI_WAITALL, 1, FTABLE_MPI_WAITALL },
+   { MPI_IRECV, 1, FTABLE_MPI_IRECV },
+   { MPI_ISEND, 1, FTABLE_MPI_ISEND }
  };
 
  class FunctionTable
@@ -252,7 +269,11 @@ namespace casita
                return false;
              }
              else
-             { throw RTException( "Asynchronous MPI functions are not supported (%s).", name );
+             {
+               descr->paradigm = PARADIGM_MPI;
+               descr->type     = entry.type;
+               return true;
+               /* throw RTException( "Asynchronous MPI functions are not supported (%s).", name ); */
              }
            }
          }

@@ -47,7 +47,7 @@ namespace casita
         uint64_t   partnerProcessId    = node->getReferencedStreamId( );
         GraphNode::GraphNodePair& recv = node->getGraphPair( );
 
-        const int  BUFFER_SIZE         = 8;
+        const int  BUFFER_SIZE         = 5;
         uint64_t   buffer[BUFFER_SIZE];
         /* uint64_t *bfr64 = (uint64_t*) buffer; */
 

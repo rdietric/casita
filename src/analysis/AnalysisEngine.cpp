@@ -37,6 +37,7 @@ using namespace casita::io;
 AnalysisEngine::AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize ) :
   mpiAnalysis( mpiRank, mpiSize ),
   maxFunctionId( 0 ),
+  pendingMPICommForWaitAll( 0 ),
   waitStateFuncId( 0 )
 {
   addAnalysisParadigm( new cuda::AnalysisParadigmCUDA( this ) );
@@ -417,4 +418,56 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
       verbose, &( this->getCtrTable( ) ), &( this->getGraph( ) ), ( *pIter )->isHostStream( ) );
   }
 
+}
+
+void
+AnalysisEngine::addPendingIRecvRequest( uint64_t request )
+{
+  pendingIRecvRequest = request;
+}
+
+void
+AnalysisEngine::addPendingIRecv( GraphNode* node )
+{
+  requestIRecvMap[pendingIRecvRequest] = node;
+}
+
+void
+AnalysisEngine::addDataForPendingIRecv( uint64_t request, uint64_t partner )
+{
+  uint64_t* tmpId = new uint64_t;
+  *tmpId = partner;
+  requestIRecvMap[request]->setData( tmpId );
+}
+
+void
+AnalysisEngine::addPendingMPIRequest( MPI_Request* request )
+{
+  /* std::cout << "[" << mpiAnalysis.getMPIRank() << "] addRequest: " << request << " " << (uint64_t) *request <<
+   * std::endl; */
+  pendingMPIRequests.push_back( request );
+}
+
+MPI_Request*
+AnalysisEngine::getPendingMPIRequest( )
+{
+  /* std::cout << "[" << mpiAnalysis.getMPIRank() << "] getRequest Size: " << pendingMPIRequests.size() <<  std::endl; */
+  MPI_Request* temp = pendingMPIRequests.front( );
+  pendingMPIRequests.erase( pendingMPIRequests.begin( ) );
+  /* std::cout << "[" << mpiAnalysis.getMPIRank() << "] getRequest: " << temp << " " << (uint64_t) *temp << std::endl; */
+  return temp;
+}
+
+void
+AnalysisEngine::addPendingMPICommForWaitAll( )
+{
+  pendingMPICommForWaitAll++;
+}
+
+uint64_t
+AnalysisEngine::getNumberOfPendingMPICommForWaitAll( )
+{
+  uint64_t temp = pendingMPICommForWaitAll;
+  pendingMPICommForWaitAll = 0;
+  return temp;
 }

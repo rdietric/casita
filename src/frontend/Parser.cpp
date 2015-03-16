@@ -87,6 +87,7 @@ namespace casita
    options.outOtfFile        = "";
    options.printCriticalPath = false;
    options.verbose           = 0;
+   options.ignoreAsyncMpi    = false;
 
    try
    {

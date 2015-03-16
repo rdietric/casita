@@ -49,9 +49,8 @@ namespace casita
         uint64_t* data = (uint64_t*)( send.second->getData( ) );
         uint64_t  partnerProcessId     = *data;
 
-        const int BUFFER_SIZE          = 8;
+        const int BUFFER_SIZE          = 5;
         uint64_t  buffer[BUFFER_SIZE];
-        /* uint64_t *bfr64 = (uint64_t*) buffer; */
 
         /* send */
         uint64_t  sendStartTime        = send.first->getTime( );
@@ -60,8 +59,6 @@ namespace casita
         uint32_t  partnerMPIRank       =
           commonAnalysis->getMPIAnalysis( ).getMPIRank(
             partnerProcessId );
-        /* memcpy(bfr64 + 0, &sendStartTime, sizeof (uint64_t)); */
-        /* memcpy(bfr64 + 1, &sendEndTime, sizeof (uint64_t)); */
 
         buffer[0] = sendStartTime;
         buffer[1] = sendEndTime;
@@ -75,14 +72,16 @@ namespace casita
         /* receive */
         MPI_Status status;
         uint64_t   recvStartTime = 0;
-        /* uint64_t recvEndTime = 0; */
         MPI_CHECK( MPI_Recv( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                              partnerMPIRank,
                              0, MPI_COMM_WORLD, &status ) );
-        recvStartTime = buffer[0];         /* bfr64[0]; */
-        /* recvEndTime = bfr64[1]; */
-        /* int partnerType = buffer[BUFFER_SIZE - 1]; */
+        recvStartTime = buffer[0];
 
+        if ( buffer[BUFFER_SIZE - 1] == MPI_IRECV )
+        {
+          std::cout << "[" << node->getStreamId( ) << "] SEND " << node->getUniqueName( ) << " DONE " << std::endl;
+          return true;
+        }
         /* compute wait states */
         if ( ( sendStartTime <= recvStartTime ) )
         {
