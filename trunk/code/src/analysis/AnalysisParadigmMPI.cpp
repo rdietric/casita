@@ -22,6 +22,10 @@
 #include "mpi/SendRecvRule.hpp"
 #include "mpi/OneToAllRule.hpp"
 #include "mpi/AllToOneRule.hpp"
+#include "mpi/IRecvRule.hpp"
+#include "mpi/ISendRule.hpp"
+#include "mpi/WaitAllRule.hpp"
+#include "mpi/WaitRule.hpp"
 
 using namespace casita;
 using namespace casita::mpi;
@@ -37,6 +41,10 @@ AnalysisParadigmMPI::AnalysisParadigmMPI( AnalysisEngine* analysisEngine,
   addRule( new SendRecvRule( 1 ) );
   addRule( new OneToAllRule( 1 ) );
   addRule( new AllToOneRule( 1 ) );
+  addRule( new IRecvRule( 1 ) );
+  addRule( new ISendRule( 1 ) );
+  addRule( new WaitAllRule( 1 ) );
+  addRule( new WaitRule( 1 ) );
 }
 
 AnalysisParadigmMPI::~AnalysisParadigmMPI( )
@@ -82,6 +90,12 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
         break;
 
       case EventStream::MPI_SEND:
+        tmpId  = new uint64_t;
+        *tmpId = iter->partnerId;
+        node->setData( tmpId );
+        break;
+
+      case EventStream::MPI_ISEND:
         tmpId  = new uint64_t;
         *tmpId = iter->partnerId;
         node->setData( tmpId );

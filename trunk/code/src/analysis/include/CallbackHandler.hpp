@@ -96,6 +96,16 @@ namespace casita
      handleMPICommGroup( io::ITraceReader* reader, uint32_t group,
                          uint32_t numProcs, const uint64_t* procs );
 
+     static void
+     handleMPIIRecv( ITraceReader* reader, uint64_t sender,
+                     uint64_t request );
+
+     static void
+     handleMPIIRecvRequest( ITraceReader* reader, uint64_t request );
+
+     static void
+     HandleAddPendingMPICommForWaitAll( ITraceReader* reader );
+
    private:
      ProgramOptions& options;
      AnalysisEngine& analysis;

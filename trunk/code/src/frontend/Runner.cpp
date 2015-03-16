@@ -103,6 +103,8 @@ Runner::readOTF( )
   traceReader->handleProcessMPIMapping = CallbackHandler::handleProcessMPIMapping;
   traceReader->handleMPIComm           = CallbackHandler::handleMPIComm;
   traceReader->handleMPICommGroup      = CallbackHandler::handleMPICommGroup;
+  traceReader->handleMPIIRecv          = CallbackHandler::handleMPIIRecv;
+  traceReader->handleMPIIRecvRequest   = CallbackHandler::handleMPIIRecvRequest;
 
   traceReader->open( options.filename, 10 );
   UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
@@ -845,11 +847,12 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
     {
       /* slave */
       /* int flag = 0; */
+      std::cout << "[" << mpiRank << "] Slave " << std::endl;
       MPI_Status status;
       MPI_CHECK( MPI_Recv( recvBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                            MPI_ANY_SOURCE,
                            MPI_ANY_TAG, MPI_COMM_WORLD, &status ) );
-
+      std::cout << "[" << mpiRank << "] Slave after Recv " << std::endl;
       if ( recvBfr[2] == PATH_FOUND_MSG )
       {
         UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
@@ -866,7 +869,7 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
                      (uint32_t)recvBfr[0],
                      recvBfr[1] );
 
-      /* check if the activity is a wait state */
+      /* check if remote edge exists */
       MPIAnalysis::MPIEdge mpiEdge;
       if ( analysis.getMPIAnalysis( ).getRemoteMPIEdge( (uint32_t)recvBfr[0],
                                                         recvBfr[1], mpiEdge ) )

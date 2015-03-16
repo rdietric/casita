@@ -210,6 +210,9 @@ OTF2TraceReader::readEvents( )
     event_callbacks,
     &
     OTF2_GlobalEvtReaderCallback_ThreadJoin );
+  OTF2_GlobalEvtReaderCallbacks_SetMpiIrecvRequestCallback( event_callbacks, &otf2Callback_MpiIRecvRequest );
+  OTF2_GlobalEvtReaderCallbacks_SetMpiIrecvCallback( event_callbacks, &otf2Callback_MpiIRecv );
+  OTF2_GlobalEvtReaderCallbacks_SetMpiIsendCallback( event_callbacks, &otf2Callback_MpiISend );
   OTF2_Reader_RegisterGlobalEvtCallbacks( reader,
                                           global_evt_reader,
                                           event_callbacks,
@@ -271,6 +274,9 @@ OTF2TraceReader::readEventsForProcess( uint64_t id )
     event_callbacks,
     &
     OTF2_GlobalEvtReaderCallback_ThreadJoin );
+  OTF2_GlobalEvtReaderCallbacks_SetMpiIrecvRequestCallback( event_callbacks, &otf2Callback_MpiIRecvRequest );
+  OTF2_GlobalEvtReaderCallbacks_SetMpiIrecvCallback( event_callbacks, &otf2Callback_MpiIRecv );
+  OTF2_GlobalEvtReaderCallbacks_SetMpiIsendCallback( event_callbacks, &otf2Callback_MpiISend );
   OTF2_Reader_RegisterGlobalEvtCallbacks( reader,
                                           global_evt_reader,
                                           event_callbacks,
@@ -722,6 +728,87 @@ OTF2TraceReader::otf2Callback_MpiSend( OTF2_LocationRef    locationID,
   if ( tr->handleMPIComm )
   {
     tr->handleMPIComm( tr, MPI_SEND, locationID, receiver, 0, msgTag );
+  }
+
+  return OTF2_CALLBACK_SUCCESS;
+}
+
+OTF2_CallbackCode
+OTF2TraceReader::otf2Callback_MpiISend( OTF2_LocationRef    locationID,
+                                        OTF2_TimeStamp      time,
+                                        void*               userData,
+                                        OTF2_AttributeList* attributeList,
+                                        uint32_t            receiver,
+                                        OTF2_CommRef        communicator,
+                                        uint32_t            msgTag,
+                                        uint64_t            msgLength,
+                                        uint64_t            requestID )
+{
+  OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+
+  if ( tr->handleMPIComm )
+  {
+    tr->handleMPIComm( tr, MPI_ISEND, locationID, receiver, 0, msgTag );
+  }
+
+  return OTF2_CALLBACK_SUCCESS;
+}
+
+OTF2_CallbackCode
+OTF2TraceReader::otf2Callback_MpiISendComplete( OTF2_LocationRef    locationID,
+                                                OTF2_TimeStamp      time,
+                                                void*               userData,
+                                                OTF2_AttributeList* attributeList,
+                                                uint64_t            requestID )
+{
+  OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+
+  if ( tr->handleAddPendingMPICommForWaitAll )
+  {
+    tr->handleAddPendingMPICommForWaitAll( tr );
+  }
+
+  return OTF2_CALLBACK_SUCCESS;
+}
+
+OTF2_CallbackCode
+OTF2TraceReader::otf2Callback_MpiIRecvRequest( OTF2_LocationRef    locationID,
+                                               OTF2_TimeStamp      time,
+                                               void*               userData,
+                                               OTF2_AttributeList* attributeList,
+                                               uint64_t            requestID )
+{
+  OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+
+  if ( tr->handleMPIIRecvRequest )
+  {
+    tr->handleMPIIRecvRequest( tr, requestID );
+  }
+
+  return OTF2_CALLBACK_SUCCESS;
+}
+
+OTF2_CallbackCode
+OTF2TraceReader::otf2Callback_MpiIRecv( OTF2_LocationRef    locationID,
+                                        OTF2_TimeStamp      time,
+                                        void*               userData,
+                                        OTF2_AttributeList* attributeList,
+                                        uint32_t            sender,
+                                        OTF2_CommRef        communicator,
+                                        uint32_t            msgTag,
+                                        uint64_t            msgLength,
+                                        uint64_t            requestID )
+{
+  OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+
+  if ( tr->handleMPIIRecv )
+  {
+    tr->handleMPIIRecv( tr, sender, requestID );
+  }
+
+  if ( tr->handleAddPendingMPICommForWaitAll )
+  {
+    tr->handleAddPendingMPICommForWaitAll( tr );
   }
 
   return OTF2_CALLBACK_SUCCESS;

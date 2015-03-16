@@ -40,7 +40,7 @@ namespace casita
 
      enum MPIType
      {
-       MPI_SEND, MPI_RECV, MPI_COLLECTIVE, MPI_SENDRECV, MPI_ONEANDALL
+       MPI_SEND, MPI_RECV, MPI_COLLECTIVE, MPI_SENDRECV, MPI_ONEANDALL, MPI_ISEND, MPI_IRECV
      };
 
      typedef struct

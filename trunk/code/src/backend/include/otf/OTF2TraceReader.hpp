@@ -208,6 +208,42 @@ namespace casita
                             uint64_t            msgLength );
 
       static OTF2_CallbackCode
+      otf2Callback_MpiIRecvRequest( OTF2_LocationRef    locationID,
+                                    OTF2_TimeStamp      time,
+                                    void*               userData,
+                                    OTF2_AttributeList* attributeList,
+                                    uint64_t            requestID );
+
+      static OTF2_CallbackCode
+      otf2Callback_MpiIRecv( OTF2_LocationRef    locationID,
+                             OTF2_TimeStamp      time,
+                             void*               userData,
+                             OTF2_AttributeList* attributeList,
+                             uint32_t            sender,
+                             OTF2_CommRef        communicator,
+                             uint32_t            msgTag,
+                             uint64_t            msgLength,
+                             uint64_t            requestID );
+
+      static OTF2_CallbackCode
+      otf2Callback_MpiISend( OTF2_LocationRef    locationID,
+                             OTF2_TimeStamp      time,
+                             void*               userData,
+                             OTF2_AttributeList* attributeList,
+                             uint32_t            receiver,
+                             OTF2_CommRef        communicator,
+                             uint32_t            msgTag,
+                             uint64_t            msgLength,
+                             uint64_t            requestID );
+
+      static OTF2_CallbackCode
+      otf2Callback_MpiISendComplete( OTF2_LocationRef    locationID,
+                                     OTF2_TimeStamp      time,
+                                     void*               userData,
+                                     OTF2_AttributeList* attributeList,
+                                     uint64_t            requestID );
+
+      static OTF2_CallbackCode
       otf2Callback_MpiSend( OTF2_LocationRef    locationID,
                             OTF2_TimeStamp      time,
                             void*               userData,

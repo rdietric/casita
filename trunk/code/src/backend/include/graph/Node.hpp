@@ -82,7 +82,10 @@ namespace casita
    MPI_EXIT = ( 1 << 7 ),
    MPI_WAITSTATE          = ( 1 << 8 ),
    MPI_ONETOALL           = ( 1 << 9 ),
-   MPI_ALLTOONE           = ( 1 << 10 )
+   MPI_ALLTOONE           = ( 1 << 10 ),
+   MPI_ISEND = ( 1 << 11 ),
+   MPI_IRECV = ( 1 << 12 ),
+   MPI_WAITALL = ( 1 << 13 )
  };
 
  enum NodeTypeOMP
@@ -315,10 +318,31 @@ namespace casita
      }
 
      bool
+     isMPIIRecv( ) const
+     {
+
+       return isMPI( ) && ( nodeType & MPI_IRECV );
+     }
+
+     bool
+     isMPIISend( ) const
+     {
+
+       return isMPI( ) && ( nodeType & MPI_ISEND );
+     }
+
+     bool
      isMPIWait( ) const
      {
 
        return isMPI( ) && ( nodeType & MPI_WAIT );
+     }
+
+     bool
+     isMPIWaitAll( ) const
+     {
+
+       return isMPI( ) && ( nodeType & MPI_WAITALL );
      }
 
      bool
