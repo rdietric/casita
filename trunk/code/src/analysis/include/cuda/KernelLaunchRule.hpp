@@ -55,7 +55,8 @@ namespace casita
           kernelProcessId );
 
         if ( !launchEnterEvent )
-        { throw RTException( "Found kernel %s without matching kernel launch",
+        {
+          throw RTException( "Found kernel %s without matching kernel launch",
                              node->getUniqueName( ).c_str( ) );
         }
 

@@ -75,7 +75,8 @@ namespace casita
         EventNode* eventLaunchLeave  = analysis->getLastEventLaunchLeave(
           evQueryLeave->getEventId( ) );
         if ( !eventLaunchLeave )
-        { throw RTException( "Could not find event record for event %u",
+        {
+          throw RTException( "Could not find event record for event %u",
                              evQueryLeave->getEventId( ) );
         }
 
@@ -109,7 +110,8 @@ namespace casita
           GraphNode::GraphNodePair kernel = kernelLeave->getGraphPair( );
 
           if ( evQuery.second->getTime( ) < kernelLeave->getTime( ) )
-          { throw RTException( "Incorrect timing between %s and %s\n",
+          {
+            throw RTException( "Incorrect timing between %s and %s\n",
                                evQuery.second->getUniqueName( ).c_str( ),
                                kernelLeave->getUniqueName( ).c_str( ) );
           }

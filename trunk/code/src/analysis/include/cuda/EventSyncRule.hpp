@@ -89,7 +89,8 @@ namespace casita
           GraphNode* kernelEnter =
             (GraphNode*)kernelLaunch.first->getLink( );
           if ( !kernelEnter )
-          { throw RTException(
+          {
+            throw RTException(
 
                     "Event sync %s (%f) returned but kernel from %s (%f) on stream [%u, %s] did not start/finish yet",
                     node->getUniqueName( ).c_str( ),
@@ -105,7 +106,8 @@ namespace casita
 
           GraphNode* kernelLeave = kernelEnter->getGraphPair( ).second;
           if ( !kernelLeave || kernelLeave->getTime( ) > sync.second->getTime( ) )
-          { throw RTException(
+          {
+            throw RTException(
 
                     "Event sync %s (%f) returned but kernel from %s (%f) on stream [%u, %s] did not finish yet",
                     node->getUniqueName( ).c_str( ),

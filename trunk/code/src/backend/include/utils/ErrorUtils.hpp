@@ -44,7 +44,8 @@ namespace casita
        va_end( argp );
 
        if ( throwExceptions )
-       { throw RTException( msg );
+       {
+         throw RTException( msg );
        }
        else
        {
@@ -61,7 +62,8 @@ namespace casita
 
        va_start( argp, fmt );
        vsnprintf( msg, MAX_LEN, fmt, argp );
-       va_end( argp );throw RTException( msg );
+       va_end( argp );
+       throw RTException( msg );
      }
 
      void

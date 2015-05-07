@@ -58,11 +58,11 @@ OTF2TraceReader::~OTF2TraceReader( )
     ProcessGroup* pg = iter->second;
     if ( pg->name != NULL )
     {
-      delete[] pg->name;
+      delete[]pg->name;
     }
     if ( pg->procs != NULL )
     {
-      delete[] pg->procs;
+      delete[]pg->procs;
     }
     delete pg;
   }
@@ -71,7 +71,7 @@ OTF2TraceReader::~OTF2TraceReader( )
   for ( GroupIdGroupMap::iterator iter = groupMap.begin( );
         iter != groupMap.end( ); iter++ )
   {
-    delete[] iter->second.members;
+    delete[]iter->second.members;
   }
 }
 
@@ -151,7 +151,8 @@ OTF2TraceReader::open( const std::string otfFilename, uint32_t maxFiles )
   OTF2_Reader_SetSerialCollectiveCallbacks( reader );
 
   if ( !reader )
-  { throw RTException( "Failed to open OTF2 trace file %s", baseFilename.c_str( ) );
+  {
+    throw RTException( "Failed to open OTF2 trace file %s", baseFilename.c_str( ) );
   }
 }
 
@@ -223,7 +224,8 @@ OTF2TraceReader::readEvents( )
 
   /* returns 0 if successfull, >0 otherwise */
   if ( OTF2_Reader_ReadAllGlobalEvents( reader, global_evt_reader, &events_read ) )
-  { throw RTException( "Failed to read OTF2 events" );
+  {
+    throw RTException( "Failed to read OTF2 events" );
   }
 
   UTILS_DBG_MSG( mpiRank == 0, "[%u] Read %lu events", mpiRank, events_read );
@@ -287,7 +289,8 @@ OTF2TraceReader::readEventsForProcess( uint64_t id )
 
   /* returns 0 if successfull, >0 otherwise */
   if ( OTF2_Reader_ReadAllGlobalEvents( reader, global_evt_reader, &events_read ) )
-  { throw RTException( "Failed to read OTF2 events" );
+  {
+    throw RTException( "Failed to read OTF2 events" );
   }
 
   OTF2_Reader_CloseGlobalEvtReader( reader, global_evt_reader );
@@ -500,7 +503,8 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
     uint32_t mpiRank           = tr->getMPIRank( );
 
     if ( numberOfMembers <= tr->getMPIRank( ) )
-    { throw RTException(
+    {
+      throw RTException(
               "Process group MPI_COMM_WORLD has no process for this mpi rank (%u)",
               mpiRank );
     }
@@ -991,7 +995,8 @@ OTF2TraceReader::isChildOf( uint64_t child, uint64_t parent )
 {
   TokenTokenMap64::const_iterator iter = processFamilyMap.find( child );
   if ( iter == processFamilyMap.end( ) )
-  { throw RTException( "Requesting parent of unknown child process" );
+  {
+    throw RTException( "Requesting parent of unknown child process" );
   }
 
   bool myOwnParent = false;

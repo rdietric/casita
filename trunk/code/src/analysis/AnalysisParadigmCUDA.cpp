@@ -293,7 +293,7 @@ AnalysisParadigmCUDA::getFirstStreamWaitEvent( uint64_t deviceStreamId )
        * streams */
       if ( swTagged->tags.size( ) == numAllDevProcs )
       {
-        delete ( *nullIter );
+        delete( *nullIter );
         nullStreamWaits.erase( nullIter );
       }
       else
@@ -338,7 +338,7 @@ AnalysisParadigmCUDA::consumeFirstStreamWaitEvent( uint64_t deviceStreamId )
        * streams */
       if ( swTagged->tags.size( ) == numAllDevProcs )
       {
-        delete ( *nullIter );
+        delete( *nullIter );
         nullStreamWaits.erase( nullIter );
       }
       else

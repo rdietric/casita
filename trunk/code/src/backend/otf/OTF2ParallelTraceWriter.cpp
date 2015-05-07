@@ -46,8 +46,8 @@ using namespace casita::io;
 
 #define OTF2_CHECK( cmd ) \
   { \
-    int _status = cmd; \
-    if ( _status ) { throw RTException( "OTF2 command '%s' returned error %d", #cmd, _status );} \
+   int _status = cmd; \
+   if ( _status ) { throw RTException( "OTF2 command '%s' returned error %d", #cmd, _status );} \
   }
 
 #define MPI_CHECK( cmd ) \
@@ -228,7 +228,8 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
   OTF2_MPI_Reader_SetCollectiveCallbacks( reader, commGroup );
 
   if ( !reader )
-  { throw RTException( "Failed to open OTF2 trace file %s",
+  {
+    throw RTException( "Failed to open OTF2 trace file %s",
                        originalFilename.c_str( ) );
   }
 
@@ -545,7 +546,8 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
 
   /* returns 0 if successfull, >0 otherwise */
   if ( OTF2_Reader_ReadAllLocalEvents( reader, evt_reader, &events_read ) )
-  { throw RTException( "Failed to read OTF2 events" );
+  {
+    throw RTException( "Failed to read OTF2 events" );
   }
 
   OTF2_Reader_CloseEvtReader( reader, evt_reader );

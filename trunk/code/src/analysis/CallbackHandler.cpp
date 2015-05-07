@@ -172,16 +172,17 @@ CallbackHandler::handleEnter( ITraceReader*  reader,
                               uint64_t       streamId,
                               IKeyValueList* list )
 {
-  CallbackHandler*   handler  = (CallbackHandler*)( reader->getUserData( ) );
-  AnalysisEngine&    analysis = handler->getAnalysis( );
-  ProgramOptions&    options  = handler->getOptions( );
+  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
+  AnalysisEngine&  analysis = handler->getAnalysis( );
+  ProgramOptions&  options  = handler->getOptions( );
 
-  EventStream*       stream   = analysis.getStream( streamId );
+  EventStream*     stream   = analysis.getStream( streamId );
   if ( !stream )
-  { throw RTException( "Process %lu not found.", streamId );
+  {
+    throw RTException( "Process %lu not found.", streamId );
   }
 
-  const char*        funcName = reader->getFunctionName( functionId ).c_str( );
+  const char* funcName      = reader->getFunctionName( functionId ).c_str( );
 
   FunctionDescriptor functionType;
   AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType,
@@ -231,16 +232,17 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
                               uint64_t       streamId,
                               IKeyValueList* list )
 {
-  CallbackHandler*   handler  = (CallbackHandler*)( reader->getUserData( ) );
-  AnalysisEngine&    analysis = handler->getAnalysis( );
-  ProgramOptions&    options  = handler->getOptions( );
+  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
+  AnalysisEngine&  analysis = handler->getAnalysis( );
+  ProgramOptions&  options  = handler->getOptions( );
 
-  EventStream*       stream   = handler->getAnalysis( ).getStream( streamId );
+  EventStream*     stream   = handler->getAnalysis( ).getStream( streamId );
   if ( !stream )
-  { throw RTException( "Process %lu not found", streamId );
+  {
+    throw RTException( "Process %lu not found", streamId );
   }
 
-  const char*        funcName = reader->getFunctionName( functionId ).c_str( );
+  const char* funcName      = reader->getFunctionName( functionId ).c_str( );
 
   FunctionDescriptor functionType;
   AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType,
@@ -280,7 +282,8 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
                                                          functionType.type );
 
     if ( eventId == 0 )
-    { throw RTException( "No eventId for event node %s found",
+    {
+      throw RTException( "No eventId for event node %s found",
                          leaveNode->getUniqueName( ).c_str( ) );
     }
   }

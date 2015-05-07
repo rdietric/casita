@@ -62,7 +62,8 @@ MPIAnalysis::getMPIRank( uint64_t streamId ) const
     return iter->second;
   }
   else
-  { throw RTException( "Request for mpi rank with invalid stream ID %u",
+  {
+    throw RTException( "Request for mpi rank with invalid stream ID %u",
                        streamId );
   }
 }
@@ -79,8 +80,9 @@ MPIAnalysis::getMPIRank( uint64_t            streamId,
     {
       return ctr;
     }
-  } throw RTException( "Can not find rank for stream %u in MPI comm group",
-                       streamId );
+  }
+  throw RTException( "Can not find rank for stream %u in MPI comm group",
+                     streamId );
 }
 
 void
@@ -145,7 +147,8 @@ MPIAnalysis::getMPICommGroup( uint32_t group ) const
   if ( iter != mpiCommGroupMap.end( ) )
   {
     return iter->second;
-  } throw RTException( "Request for unknown MPI comm group %u", group );
+  }
+  throw RTException( "Request for unknown MPI comm group %u", group );
 }
 
 void

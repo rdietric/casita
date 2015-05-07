@@ -46,6 +46,10 @@ namespace casita
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
+        /* What this rule does:
+         * 1) Send indicator that this is an ISEND
+         */
+
         /* get the complete execution */
         GraphNode::GraphNodePair send  = node->getGraphPair( );
         uint64_t*    data = (uint64_t*)( send.second->getData( ) );
@@ -66,12 +70,12 @@ namespace casita
         MPI_CHECK( MPI_Isend( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, partnerMPIRank,
                               0, MPI_COMM_WORLD, sendRequest ) );
 
-        MPI_Request* recvRequest       = new MPI_Request;
-        MPI_CHECK( MPI_Irecv( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, partnerMPIRank,
-                              0, MPI_COMM_WORLD, recvRequest ) );
-
-        commonAnalysis->addPendingMPIRequest( sendRequest );
-        commonAnalysis->addPendingMPIRequest( recvRequest );
+        /*        MPI_Request* recvRequest       = new MPI_Request; */
+        /*        MPI_CHECK( MPI_Irecv( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, partnerMPIRank, */
+        /*                              0, MPI_COMM_WORLD, recvRequest ) ); */
+        /*  */
+        /*        commonAnalysis->addPendingMPIRequest( sendRequest ); */
+        /*        commonAnalysis->addPendingMPIRequest( recvRequest ); */
 
         return true;
       }
