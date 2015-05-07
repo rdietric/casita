@@ -71,8 +71,8 @@ namespace casita
         MPI_CHECK( MPI_Irecv( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, partnerMPIRank,
                               0, MPI_COMM_WORLD, recvRequest ) );
 
-        /* If partner is MPI_ISEND just do nothign */
-        if ( buffer[BUFFER_SIZE - 1] = MPI_ISEND )
+        /* If partner is MPI_ISEND just do nothing */
+        if ( buffer[BUFFER_SIZE - 1] == MPI_ISEND )
         {
           return true;
         }
