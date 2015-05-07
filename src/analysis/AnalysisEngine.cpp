@@ -365,7 +365,8 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
   }
 
   if ( !writer )
-  { throw RTException( "Could not create trace writer" );
+  {
+    throw RTException( "Could not create trace writer" );
   }
 
   writer->open( filename.c_str( ), 100, allStreams.size( ) );
@@ -451,10 +452,12 @@ AnalysisEngine::addPendingMPIRequest( MPI_Request* request )
 MPI_Request*
 AnalysisEngine::getPendingMPIRequest( )
 {
-  /* std::cout << "[" << mpiAnalysis.getMPIRank() << "] getRequest Size: " << pendingMPIRequests.size() <<  std::endl; */
+  /* std::cout << "[" << mpiAnalysis.getMPIRank() << "] getRequest Size: " << pendingMPIRequests.size() <<  std::endl;
+   **/
   MPI_Request* temp = pendingMPIRequests.front( );
   pendingMPIRequests.erase( pendingMPIRequests.begin( ) );
-  /* std::cout << "[" << mpiAnalysis.getMPIRank() << "] getRequest: " << temp << " " << (uint64_t) *temp << std::endl; */
+  /* std::cout << "[" << mpiAnalysis.getMPIRank() << "] getRequest: " << temp << " " << (uint64_t) *temp << std::endl;
+   **/
   return temp;
 }
 

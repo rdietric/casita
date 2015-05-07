@@ -42,7 +42,9 @@ namespace casita
           return false;
         }
 
-        std::cout << "[" << node->getStreamId( ) << "] WAITALL " << node->getUniqueName( ) << " START" << std::endl;
+        /* DO NOTHING ;-) */
+
+        /*std::cout << "[" << node->getStreamId( ) << "] WAITALL " << node->getUniqueName( ) << " START" << std::endl;
 
         MPI_Status      status;
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
@@ -59,7 +61,7 @@ namespace casita
           else
           { throw RTException( "Not enough pending MPI_Wait." );
           }
-        }
+        }*/
 
         return true;
       }

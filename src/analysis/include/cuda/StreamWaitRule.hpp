@@ -47,7 +47,8 @@ namespace casita
         {
           uint64_t referencedDevWaitProc = node->getReferencedStreamId( );
           if ( !referencedDevWaitProc )
-          { throw RTException(
+          {
+            throw RTException(
                     "Stream wait %s does not reference any device stream",
                     node->getUniqueName( ).c_str( ) );
           }
@@ -60,7 +61,8 @@ namespace casita
           uint64_t   eventProcessId      = analysis->getEventProcessId(
             swEventNode->getEventId( ) );
           if ( !eventProcessId )
-          { throw RTException(
+          {
+            throw RTException(
                     "Could not find device stream ID for event %u from %s",
                     swEventNode->getEventId( ),
                     swEventNode->getUniqueName( ).c_str( ) );
@@ -100,7 +102,8 @@ namespace casita
           GraphNode* waitingKernelLaunchEnter    =
             (GraphNode*)waitingKernel.first->getLink( );
           if ( !waitingKernelLaunchEnter )
-          { throw RTException( "Kernel %s has no matching kernel launch",
+          {
+            throw RTException( "Kernel %s has no matching kernel launch",
                                waitingKernel.first->getUniqueName( ).c_str( ) );
           }
 

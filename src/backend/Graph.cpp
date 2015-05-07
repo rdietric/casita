@@ -47,7 +47,7 @@ Graph::~Graph( )
     for ( EdgeList::const_iterator eIter = iter->second.begin( );
           eIter != iter->second.end( ); ++eIter )
     {
-      delete *eIter;
+      delete*eIter;
     }
   }
   outEdges.clear( );
@@ -117,8 +117,9 @@ Graph::getInEdges( GraphNode* node ) const
   if ( iter != inEdges.end( ) )
   {
     return iter->second;
-  } throw RTException( "Node %s not found in in-edge list",
-                       node->getUniqueName( ).c_str( ) );
+  }
+  throw RTException( "Node %s not found in in-edge list",
+                     node->getUniqueName( ).c_str( ) );
 }
 
 Graph::EdgeList
@@ -148,8 +149,9 @@ Graph::getOutEdges( GraphNode* node ) const
   if ( iter != outEdges.end( ) )
   {
     return iter->second;
-  } throw RTException( "Node %s not found in out-edge list",
-                       node->getUniqueName( ).c_str( ) );
+  }
+  throw RTException( "Node %s not found in out-edge list",
+                     node->getUniqueName( ).c_str( ) );
 }
 
 Graph::EdgeList

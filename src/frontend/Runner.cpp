@@ -93,7 +93,8 @@ Runner::readOTF( )
   }
 
   if ( !traceReader )
-  { throw RTException( "Could not create trace reader" );
+  {
+    throw RTException( "Could not create trace reader" );
   }
 
   traceReader->handleDefProcess        = CallbackHandler::handleDefProcess;
@@ -220,7 +221,7 @@ Runner::mergeActivityGroups( )
           globalBlame += group->totalBlame;
         }
 
-        delete[] buf;
+        delete[]buf;
       }
     }
 
@@ -270,7 +271,7 @@ Runner::mergeActivityGroups( )
               2,
               MPI_COMM_WORLD );
 
-    delete[] buf;
+    delete[]buf;
   }
 }
 
@@ -494,7 +495,8 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
     }
 
     if ( !startNode || !endNode )
-    { throw RTException( "[%u] Did not find local nodes for node IDs %u and %u",
+    {
+      throw RTException( "[%u] Did not find local nodes for node IDs %u and %u",
                          mpiRank, section->nodeStartID, section->nodeEndID );
     }
     else
@@ -837,7 +839,8 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
         }
 
         if ( !foundPredecessor )
-        { throw RTException( "[%u] No ingoing intra-stream edge for node %s",
+        {
+          throw RTException( "[%u] No ingoing intra-stream edge for node %s",
                              currentNode->getUniqueName( ).c_str( ) );
         }
 

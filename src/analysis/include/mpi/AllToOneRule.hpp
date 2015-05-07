@@ -164,7 +164,7 @@ namespace casita
           }
         }
 
-        delete[] recvBuffer;
+        delete[]recvBuffer;
 
         return true;
       }
