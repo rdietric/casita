@@ -42,7 +42,7 @@ namespace casita
           return false;
         }
 
-        analysis->waitForPendingMPIRequests();
+        analysis->waitForAllPendingMPIRequests();
 
         return true;
       }

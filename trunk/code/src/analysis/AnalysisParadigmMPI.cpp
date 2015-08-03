@@ -136,16 +136,22 @@ void
 AnalysisParadigmMPI::addPendingMPIRequest( uint64_t requestId, MPI_Request request )
 {
   //std::cerr << "[" << mpiRank << "] addPendingMPIRequest " << requestId << std::endl;
-  pendingMPIRequests[requestId] = request;
+  //pendingMPIRequests[requestId] = request;
+}
+
+void
+AnalysisParadigmMPI::addPendingMPIRequestId( uint64_t requestId, std::pair< MPI_Request, MPI_Request > requests )
+{
+  pendingMPIRequests[requestId] = requests;
 }
 
 /**
- * Analysis rules for non-blocking MPI communication.
+ * Analysis rules for non-blocking MPI communication:
  * 
  * Wait for open MPI_Request handles. Should be called before MPI_Finalize().
  */
 void
-AnalysisParadigmMPI::waitForPendingMPIRequests( )
+AnalysisParadigmMPI::waitForAllPendingMPIRequests( )
 {
   MPIRequestMap::const_iterator it = pendingMPIRequests.begin();
   
@@ -154,11 +160,16 @@ AnalysisParadigmMPI::waitForPendingMPIRequests( )
   for (; it != pendingMPIRequests.end( ); ++it )
   {
     MPI_Status status;
-    MPI_Request request = it->second;
+    MPI_Request request = it->second.first;
 
     //std::cerr << "[" << mpiRank << "] wait for request: " << request << std::endl;
-
-    MPI_CHECK( MPI_Wait( &request, &status ) );
+    if( MPI_REQUEST_NULL != request )
+      MPI_CHECK( MPI_Wait( &request, &status ) );
+    
+    request = it->second.second;
+    
+    if( MPI_REQUEST_NULL != request )
+      MPI_CHECK( MPI_Wait( &request, &status ) );
   }
   
   pendingMPIRequests.clear();
@@ -187,7 +198,16 @@ AnalysisParadigmMPI::waitForPendingMPIRequest( uint64_t requestId )
         //std::cerr << std::endl << " Wait for request ID " << requestId << std::endl;
         
         MPI_Status status;
-        MPI_CHECK( MPI_Wait( &(it->second), &status ) );
+        
+        if( it->second.first )
+        {
+          MPI_CHECK( MPI_Wait( &(it->second.first), &status ) );
+        }
+        
+        if( it->second.second )
+        {
+          MPI_CHECK( MPI_Wait( &(it->second.second), &status ) );
+        }
         
         pendingMPIRequests.erase( it );
         
@@ -195,8 +215,8 @@ AnalysisParadigmMPI::waitForPendingMPIRequest( uint64_t requestId )
       }
     }
     
-    /*std::cerr << std::endl << "[" << mpiRank << "] OTF2 MPI request ID " << requestId
-              << " could not be found. (Has already completed?" << std::endl;*/
+    std::cerr << std::endl << "[" << mpiRank << "] OTF2 MPI request ID " << requestId
+              << " could not be found. Has already completed?" << std::endl;
     
     return false;
 }

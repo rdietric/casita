@@ -38,9 +38,10 @@ namespace casita
        ES_HOST = 1, ES_DEVICE = 2, ES_DEVICE_NULL = 3
      };
 
+     // Types for blocking MPI communication
      enum MPIType
      {
-       MPI_SEND, MPI_RECV, MPI_COLLECTIVE, MPI_SENDRECV, MPI_ONEANDALL, MPI_ISEND, MPI_WAIT
+       MPI_SEND, MPI_RECV, MPI_COLLECTIVE, MPI_SENDRECV, MPI_ONEANDALL
      };
 
      typedef struct

@@ -86,24 +86,29 @@ namespace casita
         
         // collect pending non-blocking MPI operations
         uint64_t* requestID = (uint64_t* )( node->getData( ) );
-        std::cerr << "[" << node->getStreamId( ) << "] IRecvRule: requestID=" << *requestID << std::endl;
+        //std::cerr << "[" << node->getStreamId( ) << "] IRecvRule: requestID=" << *requestID << std::endl;
         
         // we are adding *requestID twice to the map -> fix it!
         int finished = 0;
         MPI_Status status;
+        std::pair<MPI_Request,MPI_Request> requests = std::make_pair(MPI_REQUEST_NULL, MPI_REQUEST_NULL);
         
         MPI_Test(&recvRequest, &finished, &status);
         if(!finished)
         {
-          analysis->addPendingMPIRequest( *requestID, recvRequest );
+          //analysis->addPendingMPIRequest( *requestID, recvRequest );
+          requests.first = recvRequest;
         }
 
         finished = 0;
         MPI_Test(&sendRequest, &finished, &status);
         if(!finished)
         {
-          analysis->addPendingMPIRequest( *requestID + 42, sendRequest );
+          //analysis->addPendingMPIRequest( *requestID + 42, sendRequest );
+          requests.second = sendRequest;
         }
+        
+        analysis->addPendingMPIRequestId( *requestID, requests );
 
         return true;
       }

@@ -46,7 +46,6 @@ namespace casita
         uint64_t* requestID = (uint64_t* ) node->getData();
 
         analysis->waitForPendingMPIRequest( *requestID );
-        analysis->waitForPendingMPIRequest( *requestID + 42 );
         
         //TODO: free data?
 
