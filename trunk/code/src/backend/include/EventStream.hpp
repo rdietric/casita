@@ -171,7 +171,7 @@ namespace casita
      * @param requestId MPI_Irecv request ID
      */
      void
-     handleMPIIrecvEventData ( uint64_t request, uint64_t partnerId );
+     handleMPIIrecvEventData ( uint64_t requestId, uint64_t partnerId );
      
      void
      handleMPIIsendEventData( uint64_t requestId, uint64_t partnerId );
@@ -219,16 +219,16 @@ namespace casita
      SortedGraphNodeList nodes;
      SortedGraphNodeList unlinkedMPINodes;
 
-     MPICommRecordList   mpiCommRecords;  /**< pending MPI communcation records */
+     /**< pending blocking MPI communcation records */
+     MPICommRecordList   mpiCommRecords;  
      
-     uint64_t            mpiIsendRequest; /**< OTF2 request of the MPI_Isend record */
+     /**< pending OTF2 request ID to be consumned by MPI_Isend, MPI_Irecv or 
+          MPI_Wait leave node */
+     uint64_t            pendingMPIRequestId;
      uint64_t            mpiIsendPartner; /**< partner ID of the MPI_Isend */
      
-     uint64_t            mpiIrecvRequest; /**< current pending MPI_Irecv request */
      MPIIrecvRecordList  mpiIrecvRecords; /**< list of MPI_Irecv record data */
-     
-     /**< current pending OTF2 request ID to be consumned by MPI_Wait */
-     uint64_t            mpiWaitRequest;  
+
 
      EventStream::SortedGraphNodeList::const_reverse_iterator
      findNode( GraphNode* node ) const;
