@@ -86,7 +86,7 @@ namespace casita
         
         // collect pending non-blocking MPI operations
         uint64_t* requestID = (uint64_t* )( node->getData( ) );
-        //std::cerr << "[" << node->getStreamId( ) << "] IRecvRule: requestID=" << *requestID << std::endl;
+        std::cerr << "[" << node->getStreamId( ) << "] IRecvRule: requestID=" << *requestID << std::endl;
         
         // we are adding *requestID twice to the map -> fix it!
         int finished = 0;

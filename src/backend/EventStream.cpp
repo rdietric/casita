@@ -32,10 +32,8 @@ EventStream::EventStream( uint64_t          id,
   streamType( eventStreamType ),
   remoteStream( remoteStream ),
   lastNode( NULL ),
-  mpiIsendRequest( UINT64_MAX ),
-  mpiIsendPartner( UINT64_MAX ),
-  mpiIrecvRequest( UINT64_MAX ),
-  mpiWaitRequest( UINT64_MAX )
+  pendingMPIRequestId( UINT64_MAX ),
+  mpiIsendPartner( UINT64_MAX )
 {
   for ( size_t i = 0; i < NODE_PARADIGM_COUNT; ++i )
   {
@@ -407,7 +405,7 @@ EventStream::getPendingMPIRecords( )
 void
 EventStream::saveMPIIrecvRequest( uint64_t requestId )
 {
-  mpiIrecvRequest = requestId;
+  pendingMPIRequestId = requestId;
   //std::cerr << "MPIIrecvRequest: mpiIrecvRequest = " << requestId << std::endl;
 }
 
@@ -426,13 +424,13 @@ EventStream::addPendingMPIIrecvNode( GraphNode* node )
     
     record.leaveNode = node;
     
-    UTILS_ASSERT( mpiIrecvRequest != UINT64_MAX,
+    UTILS_ASSERT( pendingMPIRequestId != UINT64_MAX,
                   "MPI_Irecv request ID invalid! race file might be corrupted!");
     
-    record.requestId = mpiIrecvRequest;
+    record.requestId = pendingMPIRequestId;
     
     //invalidate mpiIrecvRequest
-    mpiIrecvRequest = UINT64_MAX;
+    pendingMPIRequestId = UINT64_MAX;
     
     // store record in a list
     mpiIrecvRecords.push_back( record );
@@ -440,8 +438,6 @@ EventStream::addPendingMPIIrecvNode( GraphNode* node )
     uint64_t* request = new uint64_t;
     *request = record.requestId;
     node->setData( request );
-    //node->setData( &(mpiIrecvRecords.back().requestId) );
-    //std::cerr << "Irecv node setData request ID: " << mpiIrecvRecords.back().requestId << std::endl;
 }
 
 /**
@@ -464,29 +460,27 @@ EventStream::handleMPIIrecvEventData( uint64_t requestId,
       {
           iter->leaveNode->setReferencedStreamId(partnerId);
           
-          iter->leaveNode->setData( &(iter->requestId) );
+          //iter->leaveNode->setData( &(iter->requestId) );
       }
   }
   
   // temporarily store the request that is consumed by MPI_Wait leave event
-  mpiWaitRequest = requestId;
+  pendingMPIRequestId = requestId;
   //std::cerr << "MPIIrecv: mpiWaitRequest = " << requestId << std::endl;
 }
 
 /**
- * Set partner stream ID for the given MPI_Irecv request ID.
- * The node is identified by the given request ID.
- * Triggered by the MPI_Irecv record (between MPI_Wait enter and leave).
+ * Triggered by MPI_Isend communication record, between MPI_Isend enter/leave.
  * 
  * @param partnerId stream ID of the communication partner
- * @param requestId OTF2 MPI_Irecv request ID 
+ * @param requestId OTF2 MPI_Isend request ID 
  */
 void
 EventStream::handleMPIIsendEventData( uint64_t requestId,
                                       uint64_t partnerId )
 {  
   // temporarily store the request that is consumed by MPI_Wait leave event
-  mpiIsendRequest = requestId;
+  pendingMPIRequestId = requestId;
   mpiIsendPartner = partnerId;
   
   //std::cerr << "MPIIsend: mpiIsendRequest = " << requestId << std::endl;
@@ -495,16 +489,16 @@ EventStream::handleMPIIsendEventData( uint64_t requestId,
 bool
 EventStream::setMPIIsendNodeData( GraphNode* node )
 {
-  UTILS_ASSERT( mpiIsendRequest != UINT64_MAX && mpiIsendPartner != UINT64_MAX, 
+  UTILS_ASSERT( pendingMPIRequestId != UINT64_MAX && mpiIsendPartner != UINT64_MAX, 
                 "MPI request or MPI partner ID is invalid!");
  
   uint64_t* request = new uint64_t; //TODO: free?
-  *request = mpiIsendRequest;
+  *request = pendingMPIRequestId;
   node->setData( request );
   node->setReferencedStreamId( mpiIsendPartner ); 
   
   //invalidate temporary stored request and partner ID
-  mpiIsendRequest = UINT64_MAX;
+  pendingMPIRequestId = UINT64_MAX;
   mpiIsendPartner = UINT64_MAX;
  
   return true;
@@ -521,25 +515,25 @@ EventStream::saveMPIIsendRequest( uint64_t requestId )
 {
   //std::cerr << "MPIIsend: mpiWaitRequest = " << requestId << std::endl;
  
-  mpiWaitRequest = requestId;
+  pendingMPIRequestId = requestId;
 }
 
 bool
 EventStream::setMPIWaitNodeData( GraphNode* node )
 {
-  UTILS_ASSERT( mpiWaitRequest != UINT64_MAX, 
+  UTILS_ASSERT( pendingMPIRequestId != UINT64_MAX, 
                "MPI request ID invalid! Trace file might be corrupted! ");
   
-  assert( mpiWaitRequest != UINT64_MAX );
+  assert( pendingMPIRequestId != UINT64_MAX );
   
   uint64_t* request = new uint64_t; // TODO: is this freed again?
-  *request = mpiWaitRequest;
+  *request = pendingMPIRequestId;
   
   // set OTF2 request ID as node-specific data
   node->setData(request);
   
   // invalidate the stored request ID
-  mpiWaitRequest = UINT64_MAX;
+  pendingMPIRequestId = UINT64_MAX;
   
   return true;
 }
