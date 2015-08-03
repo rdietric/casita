@@ -81,6 +81,7 @@ namespace casita
                       NodeRecordType recordType,
                       int            nodeType );
 
+     /*
      void
      addPendingIRecvRequest( uint64_t request );
 
@@ -101,13 +102,13 @@ namespace casita
 
      void
      getPendingISendPartner( );
-
+     
      void
      addPendingMPICommForWaitAll( );
 
      uint64_t
      getNumberOfPendingMPICommForWaitAll( );
-
+     */
      bool
      applyRules( GraphNode* node, Paradigm paradigm, bool verbose );
 
@@ -162,17 +163,18 @@ namespace casita
    private:
      MPIAnalysis mpiAnalysis;
 
+     // map of analysis paradigms
      typedef std::map< Paradigm, IAnalysisParadigm* > AnalysisParadigmsMap;
      AnalysisParadigmsMap      analysisParadigms;
 
      io::IParallelTraceWriter* writer;
-
+/*
      uint64_t pendingIRecvRequest;
      uint64_t pendingISendPartner;
      uint64_t pendingMPICommForWaitAll;
      std::map< uint64_t, GraphNode* > requestIRecvMap;
      std::vector< MPI_Request* > pendingMPIRequests;
-
+*/
      std::map< uint32_t, std::string > functionMap;
      uint32_t maxFunctionId;
      uint32_t waitStateFuncId;

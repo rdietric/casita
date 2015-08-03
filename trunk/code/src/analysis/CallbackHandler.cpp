@@ -188,6 +188,8 @@ CallbackHandler::handleEnter( ITraceReader*  reader,
   AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType,
                                    handler->getOptions( ).ignoreAsyncMpi );
 
+  // for CPU functions no graph node is created
+  // only start time, end time and number of CPU events between nodes is stored
   if ( functionType.paradigm == PARADIGM_CPU )
   {
     analysis.addCPUEvent( time, streamId );
@@ -300,17 +302,24 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
   leaveNode->setFunctionId( functionId );
 
   analysis.handleKeyValuesLeave( reader, leaveNode, leaveNode->getGraphPair( ).first, list );
+  
+  // additional handling for special nodes (e.g. MPI communication)
   analysis.handlePostLeave( leaveNode );
-
-  if ( leaveNode->isMPIIRecv( ) )
-  {
-    analysis.addPendingIRecv( leaveNode );
-  }
 
   handler->printNode( leaveNode, stream );
   options.eventsProcessed++;
 }
 
+/**
+ * Handle blocking MPI communication.
+ * 
+ * @param reader
+ * @param mpiType
+ * @param streamId
+ * @param partnerId
+ * @param root
+ * @param tag
+ */
 void
 CallbackHandler::handleMPIComm( ITraceReader* reader,
                                 MPIType       mpiType,
@@ -339,11 +348,6 @@ CallbackHandler::handleMPIComm( ITraceReader* reader,
       break;
     case io::MPI_ONEANDALL:
       pMPIType = EventStream::MPI_ONEANDALL;
-    case io::MPI_ISEND:
-      pMPIType = EventStream::MPI_ISEND;
-      break;
-    case io::MPI_IRECV:
-      pMPIType = EventStream::MPI_IRECV;
       break;
     default: throw RTException( "Unknown cdm::io::MPIType %u", mpiType );
   }
@@ -368,27 +372,83 @@ CallbackHandler::handleMPICommGroup( ITraceReader* reader, uint32_t group,
                                                                 procs );
 }
 
+/**
+ * MPI_Isend communication record.
+ * 
+ * @param reader pointer to the internal OTF2 trace reader
+ * @param streamId ID of the active stream
+ * @param receiver ID of the communication partner stream
+ * @param requestId OTF2 ID of the request handle
+ */
 void
-CallbackHandler::handleMPIIRecv( ITraceReader* reader, uint64_t sender,
-                                 uint64_t request )
+CallbackHandler::handleMPIIsend( ITraceReader* reader, 
+                                 uint64_t      streamId,
+                                 uint64_t      receiver,
+                                 uint64_t      requestId )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
+  AnalysisEngine&  analysis = handler->getAnalysis( );
+  EventStream*     stream   = analysis.getStream( streamId );
+  
+  stream->handleMPIIsendEventData( requestId, receiver );
+}
 
-  handler->getAnalysis( ).addDataForPendingIRecv( request, sender );
+/**
+ * MPI_Irecv communication record.
+ * 
+ * Fourth callback that appears for an MPI_Irecv operation. It brings the sender 
+ * (communication partner) in the game. The request ID is used to get the
+ * matching MPI_Irecv leave node of the stream it occurred on. It is the third
+ * record in the MPI_Irecv chain.
+ * 
+ * @param reader pointer to the internal OTF2 trace reader
+ * @param streamId ID of the active stream
+ * @param sender ID of the communication partner stream
+ * @param request OTF2 ID of the MPI_Irecv request handle
+ */
+void
+CallbackHandler::handleMPIIrecv( ITraceReader* reader, 
+                                 uint64_t      streamId,
+                                 uint64_t      sender,
+                                 uint64_t      requestId )
+{
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
+  AnalysisEngine&  analysis = handler->getAnalysis( );
+  EventStream*     stream   = analysis.getStream( streamId );
+  
+  stream->handleMPIIrecvEventData( requestId, sender );
+}
+
+/**
+ * MPI_Irecv request record. 
+ * 
+ * Is enclosed in the MPI_Irecv enter and leave record. It is the first record
+ * in the MPI_Irecv chain. Adds a pending MPI_Irecv request in the active stream. 
+ * 
+ * @param reader
+ * @param streamId
+ * @param request
+ */
+void
+CallbackHandler::handleMPIIrecvRequest( ITraceReader* reader, 
+                                        uint64_t streamId, 
+                                        uint64_t requestId )
+{
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
+  AnalysisEngine&  analysis = handler->getAnalysis( );
+  EventStream*     stream   = analysis.getStream( streamId );
+  
+  stream->saveMPIIrecvRequest( requestId );
 }
 
 void
-CallbackHandler::handleMPIIRecvRequest( ITraceReader* reader, uint64_t request )
+CallbackHandler::handleMPIIsendComplete( ITraceReader* reader, 
+                                         uint64_t streamId, 
+                                         uint64_t requestId )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
-
-  handler->getAnalysis( ).addPendingIRecvRequest( request );
-}
-
-void
-CallbackHandler::HandleAddPendingMPICommForWaitAll( ITraceReader* reader )
-{
-  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
-
-  handler->getAnalysis( ).addPendingMPICommForWaitAll( );
+  AnalysisEngine&  analysis = handler->getAnalysis( );
+  EventStream*     stream   = analysis.getStream( streamId );
+  
+  stream->saveMPIIsendRequest( requestId );
 }

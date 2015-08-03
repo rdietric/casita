@@ -36,49 +36,19 @@ namespace casita
       bool
       apply( AnalysisParadigmMPI* analysis, GraphNode* node )
       {
-        /* applied at MPI_IRecv leave */
+        /* applied at MPI_Wait leave */
         if ( !node->isMPIWait( ) || !node->isLeave( ) )
         {
           return false;
         }
+        
+        // MPI request handle is stored in the data field of the MPI_Wait leave node
+        uint64_t* requestID = (uint64_t* ) node->getData();
 
-        /* Do nothing ;-) */
-
-        /*        std::cout << "[" << node->getStreamId( ) << "] WAIT " << node->getUniqueName( ) << " START" <<
-         * std::endl; */
-        /*  */
-        /*        MPI_Status      status; */
-        /*        AnalysisEngine* commonAnalysis = analysis->getCommon( ); */
-        /*  */
-        /*        MPI_Request*    request1       = commonAnalysis->getPendingMPIRequest( ); */
-        /*        if ( request1 ) */
-        /*        { */
-        /*          MPI_Wait( request1, &status ); */
-        /*        } */
-        /*        else */
-        /*        { throw RTException( "Not enough pending MPI_Wait." ); */
-        /*        } */
-        /*        / *        if(request1) * / */
-        /*        / *            delete request1; * / */
-        /*  */
-        /*        std::cout << "[" << node->getStreamId( ) << "] WAIT second " << node->getUniqueName( ) << " START" <<
-         * std::endl; */
-        /*  */
-        /*        MPI_Request* request2 = commonAnalysis->getPendingMPIRequest( ); */
-        /*        if ( request2 ) */
-        /*        { */
-        /*          MPI_Wait( request2, &status ); */
-        /*        } */
-        /*        else */
-        /*        { throw RTException( "Not enough pending MPI_Wait." ); */
-        /*        } */
-        /*  */
-        /*        / * \TODO this causes an exception * / */
-        /*        / * if(request2) * / */
-        /*        / *    delete request2; * / */
-        /*  */
-        /*        std::cout << "[" << node->getStreamId( ) << "] WAIT " << node->getUniqueName( ) << " DONE" <<
-         * std::endl; */
+        analysis->waitForPendingMPIRequest( *requestID );
+        analysis->waitForPendingMPIRequest( *requestID + 42 );
+        
+        //TODO: free data?
 
         return true;
       }

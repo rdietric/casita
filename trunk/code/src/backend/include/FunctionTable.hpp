@@ -330,13 +330,13 @@ namespace casita
                  return true;
              }
 
+           // only blocking MPI (non-blocking is handled separately)
            case PARADIGM_MPI:
              switch ( descr->type )
              {
                case MPI_COLL:
                case MPI_ONETOALL:
                case MPI_ALLTOONE:
-               /* case MPI_WAIT: */
                case MPI_SENDRECV:
                case MPI_RECV:
                case MPI_SEND:

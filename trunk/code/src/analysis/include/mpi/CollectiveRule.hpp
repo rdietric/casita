@@ -43,15 +43,19 @@ namespace casita
         }
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
+        
+        // wait for pending non-blocking MPI communication
+        if ( node->isMPIFinalize() )
+        {
+            analysis->waitForPendingMPIRequests();
+        }
 
         /* get the complete execution */
         GraphNode::GraphNodePair coll  = node->getGraphPair( );
-        uint32_t mpiGroupId        =
-          node->getReferencedStreamId( );
+        uint32_t mpiGroupId            =  node->getReferencedStreamId( );
         const MPIAnalysis::MPICommGroup& mpiCommGroup =
           commonAnalysis->getMPIAnalysis( ).getMPICommGroup( mpiGroupId );
-        uint32_t myMpiRank         =
-          commonAnalysis->getMPIRank( );
+        uint32_t myMpiRank             = commonAnalysis->getMPIRank( );
 
         if ( mpiCommGroup.comm == MPI_COMM_SELF )
         {
@@ -59,15 +63,18 @@ namespace casita
         }
 
         /* Data about each collective is exchanged with everyone */
+        
         const uint32_t BUFFER_SIZE = 5;
-        uint32_t recvBufferSize    = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
         uint64_t sendBuffer[BUFFER_SIZE];
-        uint64_t*      recvBuffer  = new uint64_t[recvBufferSize];
+
+        uint32_t recvBufferSize    = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
+        uint64_t* recvBuffer  = new uint64_t[recvBufferSize];
         memset( recvBuffer, 0, recvBufferSize * sizeof( uint64_t ) );
 
         uint64_t collStartTime     = coll.first->getTime( );
         uint64_t collEndTime       = coll.second->getTime( );
-
+        
+        // prepare send buffer
         sendBuffer[0] = collStartTime;
         sendBuffer[1] = collEndTime;
         sendBuffer[2] = coll.first->getId( );
@@ -79,7 +86,7 @@ namespace casita
                                   recvBuffer, BUFFER_SIZE,
                                   MPI_UNSIGNED_LONG_LONG, mpiCommGroup.comm ) );
 
-        /* get last enter event for collective */
+        // get last enter event for collective
         uint64_t lastEnterTime         = 0, lastLeaveTime = 0;
         uint64_t lastEnterProcessId    = 0;
         uint64_t lastEnterRemoteNodeId = 0;
@@ -102,20 +109,19 @@ namespace casita
 
         }
 
-        /* I'm not latest collective -> blocking + remoteEdge to
-         * lastEnter */
-        if ( lastEnterProcessId != node->getStreamId( ) ) /* collStartTime < lastEnterTime ) */
+        // I'm not latest collective -> blocking + remoteEdge to lastEnter
+        if ( lastEnterProcessId != node->getStreamId( ) ) // collStartTime < lastEnterTime )
         {
-          /** These nodes/edges are needed for dependency correctness but are
-           *  omitted since they are currently not used anywhere.
-           * analysis->getMPIAnalysis().addRemoteMPIEdge(coll.second, lastEnterRemoteNodeId, lastEnterProcessId);
-           *
-           * GraphNode *remoteNode = analysis->addNewRemoteNode(lastEnterTime, lastEnterProcessId,
-           *         lastEnterRemoteNodeId, PARADIGM_MPI, RECORD_ENTER, MPI_COLL,
-           *         analysis->getMPIAnalysis().getMPIRank(lastEnterProcessId));
-           *
-           * analysis->newEdge(remoteNode, coll.second);
-           **/
+          // These nodes/edges are needed for dependency correctness but are
+          // omitted since they are currently not used anywhere.
+//           analysis->getMPIAnalysis().addRemoteMPIEdge(coll.second, lastEnterRemoteNodeId, lastEnterProcessId);
+//           
+//           GraphNode *remoteNode = analysis->addNewRemoteNode(lastEnterTime, lastEnterProcessId,
+//                   lastEnterRemoteNodeId, PARADIGM_MPI, RECORD_ENTER, MPI_COLL,
+//                   analysis->getMPIAnalysis().getMPIRank(lastEnterProcessId));
+//           
+//           analysis->newEdge(remoteNode, coll.second);
+           
           Edge* collRecordEdge = commonAnalysis->getEdge( coll.first,
                                                           coll.second );
           collRecordEdge->makeBlocking( );
@@ -130,9 +136,9 @@ namespace casita
             MPIAnalysis::
             MPI_EDGE_REMOTE_LOCAL );
         }
-        else           /* I'm latest collective */
+        else           // I'm latest collective
         {
-          /* aggregate blame from all other streams */
+          // aggregate blame from all other streams
           uint64_t total_blame = 0;
           for ( size_t i = 0; i < recvBufferSize; i += BUFFER_SIZE )
           {
@@ -141,25 +147,31 @@ namespace casita
 
             if ( recvBuffer[i + 4] != myMpiRank )
             {
-              commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
+              /*commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
                 coll.first,
                 recvBuffer[i + 3],
                 recvBuffer[i + 4],
-                MPIAnalysis::
-                MPI_EDGE_LOCAL_REMOTE );
+                MPIAnalysis::MPI_EDGE_LOCAL_REMOTE );*/
+              uint64_t remoteNodeID = recvBuffer[i + 3];
+              uint64_t remoteStreamID = recvBuffer[i + 4];
+              commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
+                coll.first, // local node
+                remoteNodeID,
+                remoteStreamID,
+                MPIAnalysis::MPI_EDGE_LOCAL_REMOTE );
             }
 
-            /** These nodes/edges are needed for dependency correctness but are
-             *  omitted since they are currently not used anywhere.
-             * uint64_t leaveTime = recvBuffer[i + 1];
-             * uint64_t remoteLeaveNodeId = recvBuffer[i + 3];
-             * uint64_t remoteProcessId = recvBuffer[i + 4];
-             *
-             * GraphNode *remoteNode = analysis->addNewRemoteNode(leaveTime, remoteProcessId,
-                    remoteLeaveNodeId, PARADIGM_MPI, RECORD_LEAVE, MPI_COLL,
-                    analysis->getMPIAnalysis().getMPIRank(remoteProcessId));
-
-             * analysis->newEdge(coll.first, remoteNode);*/
+            // These nodes/edges are needed for dependency correctness but are
+            // omitted since they are currently not used anywhere.
+//             uint64_t leaveTime = recvBuffer[i + 1];
+//             uint64_t remoteLeaveNodeId = recvBuffer[i + 3];
+//             uint64_t remoteProcessId = recvBuffer[i + 4];
+//             
+//             GraphNode *remoteNode = analysis->addNewRemoteNode(leaveTime, remoteProcessId,
+//                    remoteLeaveNodeId, PARADIGM_MPI, RECORD_LEAVE, MPI_COLL,
+//                    analysis->getMPIAnalysis().getMPIRank(remoteProcessId));
+//
+//             analysis->newEdge(coll.first, remoteNode);
 
           }
 

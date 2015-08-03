@@ -142,6 +142,11 @@ namespace casita
        this->data = value;
      }
 
+     /**
+      * Return void pointer to node-type-specific data.
+      * 
+      * @return void pointer to node-type-specific data.
+      */
      void*
      getData( ) const
      {
@@ -152,7 +157,7 @@ namespace casita
      GraphNodePair pair;
      GraphNode*    linkLeft, * linkRight;
      GraphNode*    caller;
-     void* data;
+     void* data; /**< node specific data pointer */
  };
 
  typedef GraphNode* GraphNodePtr;

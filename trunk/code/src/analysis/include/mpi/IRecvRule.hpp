@@ -42,8 +42,6 @@ namespace casita
           return false;
         }
 
-        std::cout << "[" << node->getStreamId( ) << "] IRECV " << node->getUniqueName( ) << " START" << std::endl;
-
         /* What this rule does:
          * 1) Recv type of Send
          * 2) If type is ISend, do nothing
@@ -52,40 +50,60 @@ namespace casita
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        /* get the complete execution */
-        GraphNode::GraphNodePair send  = node->getGraphPair( );
-        uint64_t*    data = (uint64_t*)( send.second->getData( ) );
-        uint64_t     partnerProcessId  = *data;
+        uint64_t   partnerProcessId    = node->getReferencedStreamId( );
+        GraphNode::GraphNodePair& recv = node->getGraphPair( );
 
         /* Buffer size 5 necessary because original Send/Recv-Rules need that size. */
-        const int    BUFFER_SIZE       = 5;
-        uint64_t     buffer[BUFFER_SIZE];
+        const int BUFFER_SIZE = 5;
+        uint64_t *buffer = (uint64_t *) malloc(sizeof(uint64_t) * BUFFER_SIZE); 
+        // TODO: free buffer
 
         /* send */
-        uint32_t     partnerMPIRank    =
-          commonAnalysis->getMPIAnalysis( ).getMPIRank(
-            partnerProcessId );
-        uint32_t     myMpiRank         = commonAnalysis->getMPIAnalysis( ).getMPIRank( );
+        uint32_t partnerMPIRank =
+          commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
 
-        MPI_Request* recvRequest       = new MPI_Request;
-        MPI_CHECK( MPI_Irecv( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, partnerMPIRank,
-                              0, MPI_COMM_WORLD, recvRequest ) );
+        MPI_Request recvRequest;
+        MPI_CHECK( MPI_Irecv( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, 
+                              partnerMPIRank, 0, MPI_COMM_WORLD, &recvRequest ) );
+        /*std::cerr << "[" << node->getStreamId( ) << "] IRecvRule: MPI_Irecv <- Rank " 
+                  << partnerMPIRank << " (request: " << recvRequest << ") "
+                  << node->getUniqueName( ) << std::endl;*/
+        
+        uint64_t *buffer_send = (uint64_t *) malloc(sizeof(uint64_t) * BUFFER_SIZE);
+        //TODO: free buffer!!!
+        buffer_send[0] = recv.first->getTime( );
+        buffer_send[BUFFER_SIZE - 1] = recv.second->getType( );
 
-        /* If partner is MPI_ISEND just do nothing */
-        if ( buffer[BUFFER_SIZE - 1] == MPI_ISEND )
+        /* Send indicator that this is an MPI_Irecv */
+        MPI_Request sendRequest;
+        MPI_CHECK( MPI_Isend( buffer_send, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, partnerMPIRank,
+                              0, MPI_COMM_WORLD, &sendRequest ) );
+        
+        /*std::cerr << "[" << node->getStreamId( ) << "] IRecvRule: MPI_Isend -> Rank " 
+                  << partnerMPIRank << " (request: " << sendRequest << ") "
+                  << node->getUniqueName( ) << " ISend start: " << buffer_send[0] 
+                  << std::endl;*/
+        
+        // collect pending non-blocking MPI operations
+        uint64_t* requestID = (uint64_t* )( node->getData( ) );
+        //std::cerr << "[" << node->getStreamId( ) << "] IRecvRule: requestID=" << *requestID << std::endl;
+        
+        // we are adding *requestID twice to the map -> fix it!
+        int finished = 0;
+        MPI_Status status;
+        
+        MPI_Test(&recvRequest, &finished, &status);
+        if(!finished)
         {
-          return true;
+          analysis->addPendingMPIRequest( *requestID, recvRequest );
         }
 
-        buffer[BUFFER_SIZE - 1] = send.second->getType( );
-
-        /* Send indicator that this is a IRECV */
-        MPI_Request* sendRequest = new MPI_Request;
-        MPI_CHECK( MPI_Isend( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, partnerMPIRank,
-                              0, MPI_COMM_WORLD, sendRequest ) );
-
-        /*        commonAnalysis->addPendingMPIRequest( sendRequest ); */
-        /*        commonAnalysis->addPendingMPIRequest( recvRequest ); */
+        finished = 0;
+        MPI_Test(&sendRequest, &finished, &status);
+        if(!finished)
+        {
+          analysis->addPendingMPIRequest( *requestID + 42, sendRequest );
+        }
 
         return true;
       }
