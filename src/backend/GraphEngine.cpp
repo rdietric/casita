@@ -10,7 +10,7 @@
  *
  * What this file does:
  * - provide interaction with Graph: create/delete nodes/Edges/streams, getter, setter
- * - Streams are eventstreams within a process (OMP,CUDA). Nodes are stored both in the graph (per process) and in each event stream (as a pointer)
+ * - Streams are event streams within a process (OMP,CUDA). Nodes are stored both in the graph (per process) and in each event stream (as a pointer)
  * - For every stream there is a start node, additionally, there is a global start node per process
  * - CPU Data is aggregated during reading of OTF (=graph creation) and added to edges between non-cpu events
  * - sanity-check (not sure if that's used anywhere in the program -> Deprecated)
@@ -697,7 +697,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
    * of its paradigm, if these are not the same.
    */
 
-  /* get direct predecessor and successor */
+  // get direct predecessor and successor
   GraphNode* directPredecessor = NULL;
   GraphNode* directSuccessor   = NULL;
   for ( size_t p_index = 0; p_index < NODE_PARADIGM_COUNT; ++p_index )

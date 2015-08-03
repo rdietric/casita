@@ -55,11 +55,20 @@ namespace casita
   typedef void ( *HandleMPICommGroup )( ITraceReader* reader, uint32_t group,
                                         uint32_t numProcs,
                                         const uint64_t* procs );
-  typedef void ( *HandleMPIIRecv )( ITraceReader* reader, uint64_t sender,
-                                    uint64_t request );
-  typedef void ( *HandleMPIIRecvRequest )( ITraceReader* reader,
+  typedef void ( *HandleMPIIsend )( ITraceReader* reader, 
+                                    uint64_t      streamId,
+                                    uint64_t      receiver,
+                                    uint64_t      request );
+  typedef void ( *HandleMPIIrecv )( ITraceReader* reader, 
+                                    uint64_t      streamId,
+                                    uint64_t      sender,
+                                    uint64_t      request );
+  typedef void ( *HandleMPIIrecvRequest )( ITraceReader* reader,
+                                           uint64_t      streamId,
                                            uint64_t      request );
-  typedef void ( *HandleAddPendingMPICommForWaitAll )( ITraceReader* reader );
+  typedef void ( *HandleMPIIsendComplete )( ITraceReader* reader,
+                                            uint64_t      streamId,
+                                            uint64_t      request );
 
   class ITraceReader
   {
@@ -74,9 +83,9 @@ namespace casita
         handleProcessMPIMapping( NULL ),
         handleMPIComm( NULL ),
         handleMPICommGroup( NULL ),
-        handleMPIIRecv( NULL ),
-        handleMPIIRecvRequest( NULL ),
-        handleAddPendingMPICommForWaitAll( NULL ),
+        handleMPIIrecv( NULL ),
+        handleMPIIrecvRequest( NULL ),
+        handleMPIIsendComplete( NULL ),
         userData( userData )
       {
       }
@@ -136,9 +145,10 @@ namespace casita
       HandleProcessMPIMapping handleProcessMPIMapping;
       HandleMPIComm           handleMPIComm;
       HandleMPICommGroup      handleMPICommGroup;
-      HandleMPIIRecv          handleMPIIRecv;
-      HandleMPIIRecvRequest   handleMPIIRecvRequest;
-      HandleAddPendingMPICommForWaitAll handleAddPendingMPICommForWaitAll;
+      HandleMPIIsend          handleMPIIsend;
+      HandleMPIIrecv          handleMPIIrecv;
+      HandleMPIIrecvRequest   handleMPIIrecvRequest;
+      HandleMPIIsendComplete  handleMPIIsendComplete;
 
     private:
       void* userData;

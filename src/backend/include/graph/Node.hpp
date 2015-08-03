@@ -131,11 +131,12 @@ namespace casita
    { CUDA_STREAMWAIT, "cuda_streamwait" }
  };
 
- static const size_t numTypeStrEntriesMPI = 10;
+ static const size_t numTypeStrEntriesMPI = 11;
  static const TypeStrEntryMPI typeStrTableMPI[numTypeStrEntriesMPI] =
  {
    { MPI_RECV, "mpi_recv" },
    { MPI_SEND, "mpi_send" },
+   { MPI_ISEND, "mpi_isend" },
    { MPI_WAIT, "mpi_wait" },
    { MPI_COLL, "mpi_coll" },
    { MPI_ONETOALL, "mpi_one_to_all" },
@@ -615,6 +616,11 @@ namespace casita
        return time;
      }
 
+     /**
+      * Get the ID of the node's EventStream
+      * 
+      * @return ID of the node's EventStream
+      */
      uint64_t
      getStreamId( ) const
      {
@@ -801,7 +807,7 @@ namespace casita
      }
 
    protected:
-     NodeId         id;
+     NodeId         id;           /*<< node ID */
      uint64_t       time;
      uint64_t       streamId;
      uint64_t       functionId;
@@ -820,6 +826,7 @@ namespace casita
       * - EventQuery/leave > EventQuery/leave
       * - StreamWaitEvent/leave > EventLaunch/leave
       */
+     
      uint64_t referencedStream;
      std::map< uint32_t, uint64_t > counters;
  };

@@ -88,7 +88,8 @@ Runner::readOTF( )
   if ( strstr( options.filename.c_str( ), ".otf2" ) != NULL )
   {
     uint32_t mpiSize = analysis.getMPISize( );
-    UTILS_DBG_MSG( mpiRank == 0, "[%u] Operating in OTF2-Mode", mpiRank );
+    // OTF is not supported any more
+    //UTILS_DBG_MSG( mpiRank == 0, "[%u] Operating in OTF2-Mode", mpiRank );
     traceReader = new OTF2TraceReader( &callbacks, mpiRank, mpiSize );
   }
 
@@ -97,6 +98,7 @@ Runner::readOTF( )
     throw RTException( "Could not create trace reader" );
   }
 
+  // set the OTF2 callback handlers
   traceReader->handleDefProcess        = CallbackHandler::handleDefProcess;
   traceReader->handleDefFunction       = CallbackHandler::handleDefFunction;
   traceReader->handleEnter             = CallbackHandler::handleEnter;
@@ -104,15 +106,22 @@ Runner::readOTF( )
   traceReader->handleProcessMPIMapping = CallbackHandler::handleProcessMPIMapping;
   traceReader->handleMPIComm           = CallbackHandler::handleMPIComm;
   traceReader->handleMPICommGroup      = CallbackHandler::handleMPICommGroup;
-  traceReader->handleMPIIRecv          = CallbackHandler::handleMPIIRecv;
-  traceReader->handleMPIIRecvRequest   = CallbackHandler::handleMPIIRecvRequest;
+  traceReader->handleMPIIsend          = CallbackHandler::handleMPIIsend;
+  traceReader->handleMPIIrecv          = CallbackHandler::handleMPIIrecv;
+  traceReader->handleMPIIrecvRequest   = CallbackHandler::handleMPIIrecvRequest;
+  traceReader->handleMPIIsendComplete  = CallbackHandler::handleMPIIsendComplete;
 
   traceReader->open( options.filename, 10 );
   UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
                  "[%u] Reading definitions", mpiRank );
+  
+  // read the OTF2 definitions and initialize some maps and variables of the trace reader
   traceReader->readDefinitions( );
 
+  // TODO:
   analysis.getMPIAnalysis( ).createMPICommunicatorsFromMap( );
+  
+  // TODO: 
   analysis.setWaitStateFunctionId( analysis.getNewFunctionId( ) );
 
   uint64_t timerResolution = traceReader->getTimerResolution( );
@@ -123,12 +132,14 @@ Runner::readOTF( )
 
   if ( timerResolution < 1000000000 ) /* 1GHz */
   {
-    UTILS_DBG_MSG( mpiRank == 0, "[%u] Warning: your timer resolution is very low!", mpiRank );
+    UTILS_DBG_MSG( mpiRank == 0, "[%u] Warning: your timer resolution is very low (< 1 GHz)!", mpiRank );
   }
 
   UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
                  "[%u] Reading events", mpiRank );
 
+  // use a global event reader that triggers the registered callbacks
+  // TODO: global vs. local event reader
   traceReader->readEvents( );
   traceReader->close( );
   delete traceReader;
@@ -945,6 +956,7 @@ Runner::runAnalysis( Paradigm                          paradigm,
     GraphNode* node = *nIter;
     ctr++;
 
+    // TODO: do we really want this?
     if ( !( node->getParadigm( ) & paradigm ) )
     {
       continue;

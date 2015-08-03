@@ -97,14 +97,18 @@ namespace casita
                          uint32_t numProcs, const uint64_t* procs );
 
      static void
-     handleMPIIRecv( ITraceReader* reader, uint64_t sender,
+     handleMPIIsend( ITraceReader* reader, uint64_t streamId, uint64_t receiver,
+                     uint64_t request );
+     
+     static void
+     handleMPIIrecv( ITraceReader* reader, uint64_t streamId, uint64_t sender,
                      uint64_t request );
 
      static void
-     handleMPIIRecvRequest( ITraceReader* reader, uint64_t request );
+     handleMPIIrecvRequest( ITraceReader* reader, uint64_t streamId, uint64_t request );
 
      static void
-     HandleAddPendingMPICommForWaitAll( ITraceReader* reader );
+     handleMPIIsendComplete( ITraceReader* reader, uint64_t streamId, uint64_t request );
 
    private:
      ProgramOptions& options;

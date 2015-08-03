@@ -46,20 +46,22 @@ namespace casita
 
         /* get the complete execution */
         GraphNode::GraphNodePair send  = node->getGraphPair( );
-        uint64_t* data = (uint64_t*)( send.second->getData( ) );
-        uint64_t  partnerProcessId     = *data;
-
-        const int BUFFER_SIZE          = 5;
-        uint64_t  buffer[BUFFER_SIZE];
-
+        
         /* send */
         uint64_t  sendStartTime        = send.first->getTime( );
         uint64_t  sendEndTime          = send.second->getTime( );
 
-        uint32_t  partnerMPIRank       =
-          commonAnalysis->getMPIAnalysis( ).getMPIRank(
-            partnerProcessId );
+        uint64_t partnerProcessId = node->getReferencedStreamId( );
+        uint32_t  partnerMPIRank  =
+          commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
+        
+        /*std::cerr << "[" << node->getStreamId( ) << "] SendRule: MPI_Send -> Rank " 
+                  << partnerMPIRank << " " << node->getUniqueName( ) << " Send start: " 
+                  << sendStartTime << std::endl;*/
 
+        const int BUFFER_SIZE          = 5;
+        uint64_t  buffer[BUFFER_SIZE];
+        
         buffer[0] = sendStartTime;
         buffer[1] = sendEndTime;
         buffer[2] = send.first->getId( );
@@ -68,6 +70,12 @@ namespace casita
         MPI_CHECK( MPI_Send( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                              partnerMPIRank,
                              0, MPI_COMM_WORLD ) );
+        
+        /*std::cerr << "[" << node->getStreamId( ) << "] SendRule: MPI_Send " 
+                  << node->getUniqueName( ) << " DONE" << std::endl;
+        
+        std::cerr << "[" << node->getStreamId( ) << "] SendRule: MPI_Recv <- Rank " 
+                  << partnerMPIRank << " " << node->getUniqueName( ) << " START" << std::endl;*/
 
         /* receive */
         MPI_Status status;
@@ -76,12 +84,19 @@ namespace casita
                              partnerMPIRank,
                              0, MPI_COMM_WORLD, &status ) );
         recvStartTime = buffer[0];
+        
+        /*std::cerr << "[" << node->getStreamId( ) << "] SendRule: MPI_Recv " 
+                  << node->getUniqueName( ) << " DONE" 
+                  << " received start time: " << recvStartTime << std::endl;*/
 
-        if ( buffer[BUFFER_SIZE - 1] == MPI_IRECV )
+        // TODO: check this!!!
+        /*if ( buffer[BUFFER_SIZE - 1] == MPI_IRECV )
         {
-          std::cout << "[" << node->getStreamId( ) << "] SEND " << node->getUniqueName( ) << " DONE " << std::endl;
+          std::cout << "[" << node->getStreamId( ) << "] SendRule: Partner is MPI_IRECV " 
+                    << node->getUniqueName( ) << std::endl;
           return true;
-        }
+        }*/
+        
         /* compute wait states */
         if ( ( sendStartTime <= recvStartTime ) )
         {

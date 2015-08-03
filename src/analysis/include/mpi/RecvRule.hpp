@@ -36,7 +36,7 @@ namespace casita
       bool
       apply( AnalysisParadigmMPI* analysis, GraphNode* node )
       {
-        /* applied at MPI_Recv leave */
+        // applied only at MPI_Recv leave
         if ( !node->isMPIRecv( ) || !node->isLeave( ) )
         {
           return false;
@@ -47,22 +47,25 @@ namespace casita
         uint64_t   partnerProcessId    = node->getReferencedStreamId( );
         GraphNode::GraphNodePair& recv = node->getGraphPair( );
 
-        const int  BUFFER_SIZE         = 5;
-        uint64_t   buffer[BUFFER_SIZE];
-        /* uint64_t *bfr64 = (uint64_t*) buffer; */
+        const int BUFFER_SIZE = 5;
+        uint64_t  buffer[BUFFER_SIZE];
 
         /* receive */
-        uint32_t   partnerMPIRank      =
-          commonAnalysis->getMPIAnalysis( ).getMPIRank(
-            partnerProcessId );
+        uint32_t partnerMPIRank =
+          commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
+        
+        /*std::cerr << "[" << node->getStreamId( ) << "] RecvRule: MPI_Recv <- Rank " 
+                  << partnerMPIRank << " "
+                  << node->getUniqueName( ) << " START" << std::endl;*/
+        
         MPI_Status status;
         MPI_CHECK( MPI_Recv( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
-                             partnerMPIRank, 0,
-                             MPI_COMM_WORLD, &status ) );
-        uint64_t   sendStartTime       = buffer[0];          /* bfr64[0]; */
-        /* uint64_t sendEndTime = bfr64[1]; */
-        /* int partnerType = buffer[BUFFER_SIZE - 1]; */
-
+                             partnerMPIRank, 0, MPI_COMM_WORLD, &status ) );
+        
+        /*std::cerr << "[" << node->getStreamId( ) << "] RecvRule: MPI_Recv " 
+                  << node->getUniqueName( ) << " DONE" << std::endl;*/
+        
+        uint64_t   sendStartTime       = buffer[0];  
         uint64_t   recvStartTime       = recv.first->getTime( );
         uint64_t   recvEndTime         = recv.second->getTime( );
 
@@ -99,16 +102,20 @@ namespace casita
           MPI_EDGE_REMOTE_LOCAL );
 
         /* send */
-        /* memcpy(bfr64 + 0, &recvStartTime, sizeof (uint64_t)); */
-        /* memcpy(bfr64 + 1, &recvEndTime, sizeof (uint64_t)); */
         buffer[0] = recvStartTime;
         buffer[1] = recvEndTime;
         buffer[2] = recv.first->getId( );
         buffer[3] = recv.second->getId( );
         buffer[BUFFER_SIZE - 1] = recv.second->getType( );
+        /*std::cerr << "[" << node->getStreamId( ) << "] RecvRule: MPI_Send -> Rank " 
+                  << partnerMPIRank << " "
+                  << node->getUniqueName( ) << " START" << std::endl;*/
         MPI_CHECK( MPI_Send( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                              partnerMPIRank,
                              0, MPI_COMM_WORLD ) );
+        
+        /*std::cerr << "[" << node->getStreamId( ) << "] RecvRule: MPI_Send " 
+                  << node->getUniqueName( ) << " DONE" << std::endl;*/
 
         return true;
       }

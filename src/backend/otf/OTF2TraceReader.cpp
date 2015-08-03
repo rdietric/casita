@@ -148,6 +148,7 @@ OTF2TraceReader::open( const std::string otfFilename, uint32_t maxFiles )
   baseFilename.append( otfFilename.c_str( ), otfFilename.length( ) );
   reader = OTF2_Reader_Open( baseFilename.c_str( ) );
 
+  // TODO: why?
   OTF2_Reader_SetSerialCollectiveCallbacks( reader );
 
   if ( !reader )
@@ -165,11 +166,13 @@ OTF2TraceReader::close( )
 void
 OTF2TraceReader::readEvents( )
 {
+  // processNameTokenMap is initialized during traceReader->readDefinitions( );
   for ( IdNameTokenMap::const_iterator iter = processNameTokenMap.begin( );
         iter != processNameTokenMap.end( ); ++iter )
   {
     OTF2_Reader_SelectLocation( reader, iter->first );
   }
+  
   OTF2_Reader_OpenEvtFiles( reader );
   OTF2_Reader_OpenDefFiles( reader );
 
@@ -214,6 +217,7 @@ OTF2TraceReader::readEvents( )
   OTF2_GlobalEvtReaderCallbacks_SetMpiIrecvRequestCallback( event_callbacks, &otf2Callback_MpiIRecvRequest );
   OTF2_GlobalEvtReaderCallbacks_SetMpiIrecvCallback( event_callbacks, &otf2Callback_MpiIRecv );
   OTF2_GlobalEvtReaderCallbacks_SetMpiIsendCallback( event_callbacks, &otf2Callback_MpiISend );
+  OTF2_GlobalEvtReaderCallbacks_SetMpiIsendCompleteCallback( event_callbacks, &otf2Callback_MpiISendComplete );
   OTF2_Reader_RegisterGlobalEvtCallbacks( reader,
                                           global_evt_reader,
                                           event_callbacks,
@@ -236,6 +240,7 @@ OTF2TraceReader::readEvents( )
 
 }
 
+// not used
 void
 OTF2TraceReader::readEventsForProcess( uint64_t id )
 {
@@ -750,9 +755,9 @@ OTF2TraceReader::otf2Callback_MpiISend( OTF2_LocationRef    locationID,
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
-  if ( tr->handleMPIComm )
+  if ( tr->handleMPIIsend )
   {
-    tr->handleMPIComm( tr, MPI_ISEND, locationID, receiver, 0, msgTag );
+    tr->handleMPIIsend( tr, locationID, receiver, requestID );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -767,9 +772,9 @@ OTF2TraceReader::otf2Callback_MpiISendComplete( OTF2_LocationRef    locationID,
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
-  if ( tr->handleAddPendingMPICommForWaitAll )
+  if ( tr->handleMPIIsendComplete )
   {
-    tr->handleAddPendingMPICommForWaitAll( tr );
+    tr->handleMPIIsendComplete( tr, locationID, requestID );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -784,9 +789,9 @@ OTF2TraceReader::otf2Callback_MpiIRecvRequest( OTF2_LocationRef    locationID,
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
-  if ( tr->handleMPIIRecvRequest )
+  if ( tr->handleMPIIrecvRequest )
   {
-    tr->handleMPIIRecvRequest( tr, requestID );
+    tr->handleMPIIrecvRequest( tr, locationID, requestID );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -805,14 +810,9 @@ OTF2TraceReader::otf2Callback_MpiIRecv( OTF2_LocationRef    locationID,
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
-  if ( tr->handleMPIIRecv )
+  if ( tr->handleMPIIrecv )
   {
-    tr->handleMPIIRecv( tr, sender, requestID );
-  }
-
-  if ( tr->handleAddPendingMPICommForWaitAll )
-  {
-    tr->handleAddPendingMPICommForWaitAll( tr );
+    tr->handleMPIIrecv( tr, locationID, sender, requestID );
   }
 
   return OTF2_CALLBACK_SUCCESS;

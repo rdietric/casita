@@ -99,6 +99,8 @@ namespace casita
                                          (double)( totalWalkTime - waitTime );
 
      edge->addCPUBlame( cpuBlame );
+     
+     // was is das für ne leiche?
      if ( cpuBlame > 0 && false )
      {
        std::cout << "Write cpuBlame " << cpuBlame << " (of " << totalBlame

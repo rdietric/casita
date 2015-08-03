@@ -58,12 +58,14 @@ main( int argc, char** argv )
 
     Runner* runner          = new Runner( mpiRank, mpiSize );
 
+    // read the OTF2 trace and generate a graph
     runner->readOTF( );
 
     EventStream::SortedGraphNodeList allNodes;
     runner->getAnalysis( ).getAllNodes( allNodes );
 
-    /* Apply analysis to all nodes of a certain paradigm, create dependency edges, distribute blame */
+    //apply analysis to all nodes of a certain paradigm
+    // create dependency edges, identify wait states, distribute blame
     runner->runAnalysis( PARADIGM_CUDA, allNodes );
     runner->runAnalysis( PARADIGM_OMP, allNodes );
     runner->runAnalysis( PARADIGM_MPI, allNodes );
