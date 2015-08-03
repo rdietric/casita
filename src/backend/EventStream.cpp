@@ -400,7 +400,7 @@ EventStream::getPendingMPIRecords( )
  * leave record will consume and invalidate it. 
  * See {@link #addPendingMPIIrecvNode(GraphNode* node)}.
  * 
- * @param request OTF2 MPI_Irecv request ID
+ * @param requestId OTF2 MPI_Irecv request ID
  */
 void
 EventStream::saveMPIIrecvRequest( uint64_t requestId )
@@ -425,7 +425,7 @@ EventStream::addPendingMPIIrecvNode( GraphNode* node )
     record.leaveNode = node;
     
     UTILS_ASSERT( pendingMPIRequestId != UINT64_MAX,
-                  "MPI_Irecv request ID invalid! race file might be corrupted!");
+                  "MPI_Irecv request ID invalid! Trace file might be corrupted!");
     
     record.requestId = pendingMPIRequestId;
     

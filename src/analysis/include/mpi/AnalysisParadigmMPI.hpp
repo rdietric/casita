@@ -45,19 +45,24 @@ namespace casita
       addPendingMPIRequest( uint64_t requestId, MPI_Request request );
       
       void
-      waitForPendingMPIRequests( );
+      addPendingMPIRequestId( uint64_t requestId, 
+                              std::pair< MPI_Request, MPI_Request > requests);
+      
+      void
+      waitForAllPendingMPIRequests( );
       
       /**
-        * Safely complete an MPI request. (Only if it is the pending list.)
-        * 
-        * @param requestId OTF2 request for replayed non-blocking communication to be completed.
-        * 
-        * @return true, if the handle was found, otherwise false
-        */
+       * Safely complete MPI request that are associated with the request ID.
+       * (Only if the request ID is the pending list.)
+       * 
+       * @param requestId OTF2 request for replayed non-blocking communication to be completed.
+       * 
+       * @return true, if the handle was found, otherwise false
+       */
       bool
       waitForPendingMPIRequest( uint64_t requestId );
 
-      typedef std::map< uint64_t, MPI_Request > MPIRequestMap;
+      typedef std::map< uint64_t, std::pair< MPI_Request, MPI_Request > > MPIRequestMap;
 
       private:
           

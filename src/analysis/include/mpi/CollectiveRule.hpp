@@ -47,7 +47,7 @@ namespace casita
         // wait for pending non-blocking MPI communication
         if ( node->isMPIFinalize() )
         {
-            analysis->waitForPendingMPIRequests();
+            analysis->waitForAllPendingMPIRequests();
         }
 
         /* get the complete execution */

@@ -86,7 +86,7 @@ namespace casita
         
         uint64_t *buffer_recv = (uint64_t *) malloc(sizeof(uint64_t) * BUFFER_SIZE);
 
-        // MPI_Irecv to have a matching partner for MPI_R[I]ecv rule
+        // MPI_Irecv to have a matching partner for MPI_[I]Recv rule
         MPI_Request recvRequest;
         MPI_CHECK( MPI_Irecv( buffer_recv, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, 
                               partnerMPIRank, 0, MPI_COMM_WORLD, &recvRequest ) );
@@ -99,19 +99,24 @@ namespace casita
         //std::cerr << "[" << node->getStreamId( ) << "] ISendRule: requestID=" << *requestID << std::endl;
         int finished = 0;
         MPI_Status status;
+        std::pair <MPI_Request,MPI_Request> requests = std::make_pair(MPI_REQUEST_NULL, MPI_REQUEST_NULL);
 
         MPI_CHECK( MPI_Test(&sendRequest, &finished, &status) );
         if(!finished)
         {
-          analysis->addPendingMPIRequest( *requestID, sendRequest );
+          //analysis->addPendingMPIRequest( *requestID, sendRequest );
+          requests.first = sendRequest;
         }
 
         finished = 0;
         MPI_CHECK( MPI_Test(&recvRequest, &finished, &status) );
         if(!finished)
         {
-          analysis->addPendingMPIRequest( *requestID + 42, recvRequest );
+          //analysis->addPendingMPIRequest( *requestID + 42, recvRequest );
+          requests.second = recvRequest;
         }
+        
+        analysis->addPendingMPIRequestId( *requestID, requests );
 
         return true;
       }
