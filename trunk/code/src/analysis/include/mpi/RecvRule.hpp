@@ -44,27 +44,19 @@ namespace casita
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        uint64_t   partnerProcessId    = node->getReferencedStreamId( );
-        GraphNode::GraphNodePair& recv = node->getGraphPair( );
-
-        const int BUFFER_SIZE = 5;
-        uint64_t  buffer[BUFFER_SIZE];
-
-        /* receive */
-        uint32_t partnerMPIRank =
+        uint64_t partnerProcessId = node->getReferencedStreamId( );
+        uint32_t partnerMPIRank   =
           commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
         
-        /*std::cerr << "[" << node->getStreamId( ) << "] RecvRule: MPI_Recv <- Rank " 
-                  << partnerMPIRank << " "
-                  << node->getUniqueName( ) << " START" << std::endl;*/
-        
+        // receive
+        uint64_t   buffer[CASITA_MPI_P2P_BUF_SIZE];
         MPI_Status status;
-        MPI_CHECK( MPI_Recv( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
+        MPI_CHECK( MPI_Recv( buffer, 
+                             CASITA_MPI_P2P_BUF_SIZE, 
+                             CASITA_MPI_P2P_ELEMENT_TYPE,
                              partnerMPIRank, 0, MPI_COMM_WORLD, &status ) );
         
-        /*std::cerr << "[" << node->getStreamId( ) << "] RecvRule: MPI_Recv " 
-                  << node->getUniqueName( ) << " DONE" << std::endl;*/
-        
+        GraphNode::GraphNodePair& recv = node->getGraphPair( );
         uint64_t   sendStartTime       = buffer[0];  
         uint64_t   recvStartTime       = recv.first->getTime( );
         uint64_t   recvEndTime         = recv.second->getTime( );
@@ -106,16 +98,13 @@ namespace casita
         buffer[1] = recvEndTime;
         buffer[2] = recv.first->getId( );
         buffer[3] = recv.second->getId( );
-        buffer[BUFFER_SIZE - 1] = recv.second->getType( );
-        /*std::cerr << "[" << node->getStreamId( ) << "] RecvRule: MPI_Send -> Rank " 
-                  << partnerMPIRank << " "
-                  << node->getUniqueName( ) << " START" << std::endl;*/
-        MPI_CHECK( MPI_Send( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
+        buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = recv.second->getType( );
+
+        MPI_CHECK( MPI_Send( buffer, 
+                             CASITA_MPI_P2P_BUF_SIZE, 
+                             CASITA_MPI_P2P_ELEMENT_TYPE,
                              partnerMPIRank,
                              0, MPI_COMM_WORLD ) );
-        
-        /*std::cerr << "[" << node->getStreamId( ) << "] RecvRule: MPI_Send " 
-                  << node->getUniqueName( ) << " DONE" << std::endl;*/
 
         return true;
       }

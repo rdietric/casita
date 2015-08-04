@@ -40,35 +40,8 @@ namespace casita
 
       void
       handlePostLeave( GraphNode* node );
-      
-      void
-      addPendingMPIRequest( uint64_t requestId, MPI_Request request );
-      
-      void
-      addPendingMPIRequestId( uint64_t requestId, 
-                              std::pair< MPI_Request, MPI_Request > requests);
-      
-      void
-      waitForAllPendingMPIRequests( );
-      
-      /**
-       * Safely complete MPI request that are associated with the request ID.
-       * (Only if the request ID is the pending list.)
-       * 
-       * @param requestId OTF2 request for replayed non-blocking communication to be completed.
-       * 
-       * @return true, if the handle was found, otherwise false
-       */
-      bool
-      waitForPendingMPIRequest( uint64_t requestId );
-
-      typedef std::map< uint64_t, std::pair< MPI_Request, MPI_Request > > MPIRequestMap;
 
       private:
-          
-        /**< Map of uncompleted/pending MPI requests 
-            (key: OTF2 request ID, value: MPI_Request handle */
-        MPIRequestMap pendingMPIRequests;
         
         uint32_t mpiRank;
         uint32_t mpiSize;

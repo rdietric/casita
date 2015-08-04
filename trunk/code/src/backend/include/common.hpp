@@ -25,6 +25,12 @@
 
 #define OTF2_OMP_FORKJOIN_INTERNAL "__ompforkjoin__internal"
 
+#define MPI_CHECK( cmd ) \
+  { \
+    int mpi_result = cmd; \
+    if ( mpi_result != MPI_SUCCESS ) { throw RTException( "MPI error %d in call %s", mpi_result, #cmd );} \
+  }
+
 namespace casita
 {
  class RTException :

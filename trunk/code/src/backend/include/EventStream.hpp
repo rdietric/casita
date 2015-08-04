@@ -19,12 +19,19 @@
 #include <iostream>
 #include <map>
 #include <math.h>
+#include <mpi.h>
 
 #include "graph/GraphNode.hpp"
 #include "graph/Edge.hpp"
 #include "common.hpp"
 
 #include <sys/time.h>
+
+/** Number of elements for replayed MPI communication */
+#define CASITA_MPI_P2P_BUF_SIZE 5
+
+/** MPI type of buffer elements */
+#define CASITA_MPI_P2P_ELEMENT_TYPE MPI_UNSIGNED_LONG_LONG
 
 namespace casita
 {
@@ -60,6 +67,18 @@ namespace casita
      } MPIIrecvRecord;
 
      typedef std::vector< MPIIrecvRecord > MPIIrecvRecordList;
+     
+     typedef struct
+     {
+       uint64_t    requestId;   /**< OTF2 request ID */
+       MPI_Request requests[2]; /**< internel MPI_Isend and MPI_Irecv request */
+       uint64_t    sendBuffer[CASITA_MPI_P2P_BUF_SIZE]; /**< MPI_Isend buffer */
+       uint64_t    recvBuffer[CASITA_MPI_P2P_BUF_SIZE]; /**< MPI_Irecv buffer */
+       GraphNode*  leaveNode;   /**< pointer to leave node of MPI Icomm */
+     } MPIIcommRecord;
+     
+     /**< Map of OTF2 request IDs (key) and the corresponding record data */
+     typedef std::map< uint64_t, MPIIcommRecord > MPIIcommRecordMap;
 
      typedef std::vector< GraphNode* > SortedGraphNodeList;
 
@@ -148,40 +167,17 @@ namespace casita
      getPendingMPIRecords( );
      
      /**
-      * Save the request ID for the following MPI_Irecv leave node.
+      * Temporarily save the MPI_Irecv request ID. The following MPI_Irecv function 
+      * leave record will consume and invalidate it. 
+      * See {@link #addPendingMPIIrecvNode(GraphNode* node)}.
       * 
-      * @param request MPI_Irecv request ID
+      * @param requestId OTF2 MPI_Irecv request ID
       */
      void
-     saveMPIIrecvRequest  ( uint64_t request );
+     saveMPIIrecvRequest( uint64_t request );
      
      /**
-      * Add the MPI_Irecv node to a list to add the partner stream ID later.
-      * Consume the stored request ID.
-      * 
-      * @param node the MPI_Irecv request ID
-      */
-     void
-     addPendingMPIIrecvNode( GraphNode* node );
-     
-    /**
-     * Set the stream ID of the communication partner for a pending MPI_Irecv 
-     * leave node.
-     * 
-     * @param partnerId stream ID of the communication partner
-     * @param requestId MPI_Irecv request ID
-     */
-     void
-     handleMPIIrecvEventData ( uint64_t requestId, uint64_t partnerId );
-     
-     void
-     handleMPIIsendEventData( uint64_t requestId, uint64_t partnerId );
-             
-     bool
-     setMPIIsendNodeData( GraphNode* node );
-     
-     /**
-      * Temporarily store the MPI_Isend request that is consumed by MPI_Wait leave.
+      * Temporarily save the MPI_Isend request that is consumed by MPI_Wait leave.
       * See {@link #setMPIWaitNodeData(GraphNode* node)}.
       * 
       * @param request OTF2 MPI_Isend request ID
@@ -189,9 +185,85 @@ namespace casita
      void
      saveMPIIsendRequest( uint64_t request );
      
+     /**
+      * Store the MPI_Irecv leave node together with the MPI_Request handle. The 
+      * MPI_Irecv record provides the communication partner ID and the MPI_request to 
+      * put it all together. 
+      * See {@link #setMPIIrecvPartnerStreamId(uint64_t requestId, uint64_t partnerId)}.
+      * 
+      * @param node the graph node of the MPI_Irecv leave record
+      */
+     void
+     addPendingMPIIrecvNode( GraphNode* node );
      
-     bool
+     /**
+      * Set partner stream ID for the given MPI_Irecv request ID.
+      * The node is identified by the given request ID.
+      * It saves the request ID to be consumed by the following MPI_Wait leave node. 
+      * Triggered by the MPI_Irecv record (between MPI_Wait enter and leave).
+      * 
+      * @param requestId OTF2 MPI_Irecv request ID 
+      * @param partnerId stream ID of the communication partner
+      */
+     void
+     handleMPIIrecvEventData ( uint64_t requestId, uint64_t partnerId );
+     
+     /**
+      * Temporarily store the request that is consumed by MPI_Isend leave event.
+      * Triggered by MPI_Isend communication record, between MPI_Isend enter/leave.
+      * 
+      * @param partnerId stream ID of the communication partner
+      * @param requestId OTF2 MPI_Isend request ID 
+      */
+     void
+     handleMPIIsendEventData( uint64_t requestId, uint64_t partnerId );
+
+     /**
+      * Adds MPI_Isend request to a map and sets node-specific data. 
+      * Consumes the pending OTF2 request ID and the MPI_Isend communication partner ID.
+      * 
+      * @param node the graph node of the MPI_Isend leave record
+      */
+     void
+     setMPIIsendNodeData( GraphNode* node );
+
+     /**
+      * Sets node-specific data for the given MPI_Wait leave node.
+      * Consumes the pending OTF2 request ID.
+      * 
+      * @param node the graph node of the MPI_Isend leave record
+      */
+     void
      setMPIWaitNodeData( GraphNode* node );
+
+     /**
+      * Safely complete MPI request that are associated with the request ID.
+      * (Only if the request ID is the pending map.)
+      * 
+      * @param requestId OTF2 request for replayed non-blocking communication to be completed.
+      * 
+      * @return true, if the handle was found, otherwise false
+      */
+     bool
+     waitForPendingMPIRequest( uint64_t requestId );
+     
+     /**
+      * Analysis rules for non-blocking MPI communication:
+      * 
+      * Wait for open MPI_Request handles. Should be called before MPI_Finalize().
+      */
+     void
+     waitForAllPendingMPIRequests( );
+     
+     /**
+      * Analysis rules for non-blocking MPI communication:
+      * 
+      * Test for completed MPI_Request handles. Can be used to decrease the number of 
+      * open MPI request handles, e.g. at blocking collective operations.
+      * This might improve the performance of the MPI implementation. 
+      */
+     void
+     testAllPendingMPIRequests( );
 
      Edge::TimeProfileMap*
      newTimeProfile( );
@@ -221,15 +293,15 @@ namespace casita
      SortedGraphNodeList unlinkedMPINodes;
 
      /**< pending blocking MPI communcation records */
-     MPICommRecordList   mpiCommRecords;  
+     MPICommRecordList   mpiCommRecords;
      
      /**< pending OTF2 request ID to be consumned by MPI_Isend, MPI_Irecv or 
           MPI_Wait leave node */
      uint64_t            pendingMPIRequestId;
      uint64_t            mpiIsendPartner; /**< partner ID of the MPI_Isend */
      
-     MPIIrecvRecordList  mpiIrecvRecords; /**< list of MPI_Irecv record data */
-
+     /**< pending non-blocking MPI communication records */
+     MPIIcommRecordMap   mpiIcommRecords;
 
      EventStream::SortedGraphNodeList::const_reverse_iterator
      findNode( GraphNode* node ) const;

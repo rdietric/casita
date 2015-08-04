@@ -59,15 +59,16 @@ namespace casita
                   << partnerMPIRank << " " << node->getUniqueName( ) << " Send start: " 
                   << sendStartTime << std::endl;*/
 
-        const int BUFFER_SIZE          = 5;
-        uint64_t  buffer[BUFFER_SIZE];
+        uint64_t buffer[CASITA_MPI_P2P_BUF_SIZE];
         
         buffer[0] = sendStartTime;
         buffer[1] = sendEndTime;
         buffer[2] = send.first->getId( );
         buffer[3] = send.second->getId( );
-        buffer[BUFFER_SIZE - 1] = send.second->getType( );
-        MPI_CHECK( MPI_Send( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
+        buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = send.second->getType( );
+        MPI_CHECK( MPI_Send( buffer, 
+                             CASITA_MPI_P2P_BUF_SIZE, 
+                             CASITA_MPI_P2P_ELEMENT_TYPE,
                              partnerMPIRank,
                              0, MPI_COMM_WORLD ) );
         
@@ -80,7 +81,9 @@ namespace casita
         /* receive */
         MPI_Status status;
         uint64_t   recvStartTime = 0;
-        MPI_CHECK( MPI_Recv( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
+        MPI_CHECK( MPI_Recv( buffer, 
+                             CASITA_MPI_P2P_BUF_SIZE, 
+                             CASITA_MPI_P2P_ELEMENT_TYPE,
                              partnerMPIRank,
                              0, MPI_COMM_WORLD, &status ) );
         recvStartTime = buffer[0];

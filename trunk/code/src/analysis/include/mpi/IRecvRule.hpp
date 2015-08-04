@@ -50,34 +50,33 @@ namespace casita
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        uint64_t   partnerProcessId    = node->getReferencedStreamId( );
+        uint64_t partnerProcessId      = node->getReferencedStreamId( );
         GraphNode::GraphNodePair& recv = node->getGraphPair( );
+        EventStream::MPIIcommRecord* record = 
+                (EventStream::MPIIcommRecord* )node->getData( );
 
-        /* Buffer size 5 necessary because original Send/Recv-Rules need that size. */
-        const int BUFFER_SIZE = 5;
-        uint64_t *buffer = (uint64_t *) malloc(sizeof(uint64_t) * BUFFER_SIZE); 
-        // TODO: free buffer
-
-        /* send */
         uint32_t partnerMPIRank =
           commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
 
-        MPI_Request recvRequest;
-        MPI_CHECK( MPI_Irecv( buffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, 
-                              partnerMPIRank, 0, MPI_COMM_WORLD, &recvRequest ) );
+        MPI_CHECK( MPI_Irecv( record->recvBuffer, 
+                              CASITA_MPI_P2P_BUF_SIZE, 
+                              CASITA_MPI_P2P_ELEMENT_TYPE, 
+                              partnerMPIRank, 0, MPI_COMM_WORLD, 
+                              &(record->requests[0]) ) );
         /*std::cerr << "[" << node->getStreamId( ) << "] IRecvRule: MPI_Irecv <- Rank " 
                   << partnerMPIRank << " (request: " << recvRequest << ") "
                   << node->getUniqueName( ) << std::endl;*/
         
-        uint64_t *buffer_send = (uint64_t *) malloc(sizeof(uint64_t) * BUFFER_SIZE);
-        //TODO: free buffer!!!
+        uint64_t *buffer_send = record->sendBuffer;
         buffer_send[0] = recv.first->getTime( );
-        buffer_send[BUFFER_SIZE - 1] = recv.second->getType( );
+        buffer_send[CASITA_MPI_P2P_BUF_SIZE - 1] = recv.second->getType( );
 
         /* Send indicator that this is an MPI_Irecv */
-        MPI_Request sendRequest;
-        MPI_CHECK( MPI_Isend( buffer_send, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, partnerMPIRank,
-                              0, MPI_COMM_WORLD, &sendRequest ) );
+        MPI_CHECK( MPI_Isend( buffer_send, 
+                              CASITA_MPI_P2P_BUF_SIZE, 
+                              CASITA_MPI_P2P_ELEMENT_TYPE, 
+                              partnerMPIRank,
+                              0, MPI_COMM_WORLD, &(record->requests[1]) ) );
         
         /*std::cerr << "[" << node->getStreamId( ) << "] IRecvRule: MPI_Isend -> Rank " 
                   << partnerMPIRank << " (request: " << sendRequest << ") "
@@ -85,30 +84,26 @@ namespace casita
                   << std::endl;*/
         
         // collect pending non-blocking MPI operations
-        uint64_t* requestID = (uint64_t* )( node->getData( ) );
-        //std::cerr << "[" << node->getStreamId( ) << "] IRecvRule: requestID=" << *requestID << std::endl;
-        
-        // we are adding *requestID twice to the map -> fix it!
         int finished = 0;
         MPI_Status status;
-        std::pair<MPI_Request,MPI_Request> requests = std::make_pair(MPI_REQUEST_NULL, MPI_REQUEST_NULL);
-        
-        MPI_Test(&recvRequest, &finished, &status);
-        if(!finished)
+
+        MPI_Test(&(record->requests[0]), &finished, &status);
+        if(finished)
         {
-          //analysis->addPendingMPIRequest( *requestID, recvRequest );
-          requests.first = recvRequest;
+          // TODO: check if necessary!!!
+          std::cerr << "[" << node->getStreamId( ) << "] record->requests[0] = "
+                    << record->requests[0] << " MPI_REQUEST_NULL=" << MPI_REQUEST_NULL << std::endl;
+          record->requests[0] = MPI_REQUEST_NULL;
         }
 
         finished = 0;
-        MPI_Test(&sendRequest, &finished, &status);
-        if(!finished)
+        MPI_Test(&(record->requests[1]), &finished, &status);
+        if(finished)
         {
-          //analysis->addPendingMPIRequest( *requestID + 42, sendRequest );
-          requests.second = sendRequest;
+          std::cerr << "[" << node->getStreamId( ) << "] record->requests[0] = "
+                    << record->requests[0] << " MPI_REQUEST_NULL=" << MPI_REQUEST_NULL << std::endl;
+          record->requests[1] = MPI_REQUEST_NULL;
         }
-        
-        analysis->addPendingMPIRequestId( *requestID, requests );
 
         return true;
       }
