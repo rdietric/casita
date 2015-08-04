@@ -19,6 +19,8 @@
 #include "EventStream.hpp"
 #include "utils/ErrorUtils.hpp"
 
+#define UINT64_MAX 0xFFFFFFFFFFFFFFFF
+
 using namespace casita;
 
 EventStream::EventStream( uint64_t          id,
