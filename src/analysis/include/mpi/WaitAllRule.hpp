@@ -42,7 +42,7 @@ namespace casita
           return false;
         }
 
-        analysis->waitForAllPendingMPIRequests();
+        analysis->getCommon()->getStream( node->getStreamId() )->waitForAllPendingMPIRequests();
 
         return true;
       }

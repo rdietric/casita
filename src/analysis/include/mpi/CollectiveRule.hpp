@@ -44,15 +44,19 @@ namespace casita
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
         
-        // wait for pending non-blocking MPI communication
+        // wait or test for pending non-blocking MPI communication
         if ( node->isMPIFinalize() )
         {
-            analysis->waitForAllPendingMPIRequests();
+          analysis->getCommon()->getStream( node->getStreamId() )->waitForAllPendingMPIRequests();
+        }
+        else if ( !node->isMPIInit() )
+        {
+          analysis->getCommon()->getStream( node->getStreamId() )->testAllPendingMPIRequests();
         }
 
         /* get the complete execution */
         GraphNode::GraphNodePair coll  = node->getGraphPair( );
-        uint32_t mpiGroupId            =  node->getReferencedStreamId( );
+        uint32_t mpiGroupId            = node->getReferencedStreamId( );
         const MPIAnalysis::MPICommGroup& mpiCommGroup =
           commonAnalysis->getMPIAnalysis( ).getMPICommGroup( mpiGroupId );
         uint32_t myMpiRank             = commonAnalysis->getMPIRank( );

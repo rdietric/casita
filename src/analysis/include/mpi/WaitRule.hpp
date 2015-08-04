@@ -44,11 +44,9 @@ namespace casita
         
         // MPI request handle is stored in the data field of the MPI_Wait leave node
         uint64_t* requestID = (uint64_t* ) node->getData();
-
-        analysis->waitForPendingMPIRequest( *requestID );
         
-        //TODO: free data?
-
+        analysis->getCommon()->getStream( node->getStreamId() )->waitForPendingMPIRequest( *requestID );
+        
         return true;
       }
   };
