@@ -37,11 +37,12 @@ namespace casita
       apply( AnalysisParadigmMPI* analysis, GraphNode* node )
       {
         /* applied at MPI_WaitAll leave */
-        if ( !node->isMPIWaitAll( ) || !node->isLeave( ) )
+        if ( !node->isMPIWaitall( ) || !node->isLeave( ) )
         {
           return false;
         }
 
+        //TODO: Waits for all pending requests! Should only wait for "its" requests. 
         analysis->getCommon()->getStream( node->getStreamId() )->waitForAllPendingMPIRequests();
 
         return true;

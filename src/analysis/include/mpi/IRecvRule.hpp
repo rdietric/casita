@@ -91,8 +91,8 @@ namespace casita
         if(finished)
         {
           // TODO: check if necessary!!!
-          std::cerr << "[" << node->getStreamId( ) << "] record->requests[0] = "
-                    << record->requests[0] << " MPI_REQUEST_NULL=" << MPI_REQUEST_NULL << std::endl;
+          //std::cerr << "[" << node->getStreamId( ) << "] record->requests[0] = "
+          //          << record->requests[0] << " MPI_REQUEST_NULL=" << MPI_REQUEST_NULL << std::endl;
           record->requests[0] = MPI_REQUEST_NULL;
         }
 
@@ -100,8 +100,8 @@ namespace casita
         MPI_Test(&(record->requests[1]), &finished, &status);
         if(finished)
         {
-          std::cerr << "[" << node->getStreamId( ) << "] record->requests[0] = "
-                    << record->requests[0] << " MPI_REQUEST_NULL=" << MPI_REQUEST_NULL << std::endl;
+          //std::cerr << "[" << node->getStreamId( ) << "] record->requests[0] = "
+          //          << record->requests[0] << " MPI_REQUEST_NULL=" << MPI_REQUEST_NULL << std::endl;
           record->requests[1] = MPI_REQUEST_NULL;
         }
 

@@ -61,6 +61,12 @@ AnalysisParadigmMPI::getParadigm( )
   return PARADIGM_MPI;
 }
 
+//void
+//AnalysisParadigmMPI::handlePostEnter( GraphNode* node )
+//{
+//  
+//}
+
 void
 AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
 {
@@ -88,6 +94,14 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
     
     return;
   }
+  
+  // MPI_Waitall waits for an arbitrary number of requests
+//  if( node->isMPIWaitall() )
+//  {
+//    stream->setMPIWaitallNodeData( node );
+//    
+//    return;
+//  }
 
   // handle blocking MPI communication enter/leave events
   EventStream::MPICommRecordList mpiCommRecords = stream->getPendingMPIRecords( );
@@ -109,14 +123,19 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
 
       case EventStream::MPI_ONEANDALL:
         node->setReferencedStreamId( iter->partnerId );
-        tmpId  = new uint64_t;
+        tmpId  = new uint64_t; // TODO: free
         *tmpId = iter->rootId;
-        node->setData( tmpId ); // TODO: list object is already allocated, use it?
+        node->setData( tmpId ); 
         break;
 
       case EventStream::MPI_SEND:
-        node->setReferencedStreamId ( iter->partnerId );
+        tmpId  = new uint64_t; // TODO: free
+        *tmpId = iter->partnerId;
+        node->setData( tmpId );
         break;
+        
+      // MPI_Sendrecv collects the MPI_Send and MPI_Recv partner IDs from the
+      // respective pending records
 
       default: throw RTException( "Not a valid MPICommRecord type here" );
     }

@@ -340,7 +340,7 @@ namespace casita
      }
 
      bool
-     isMPIWaitAll( ) const
+     isMPIWaitall( ) const
      {
 
        return isMPI( ) && ( nodeType & MPI_WAITALL );

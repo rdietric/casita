@@ -544,7 +544,6 @@ GraphEngine::sanityCheckEdge( Edge* edge, uint32_t mpiRank )
   if ( edge->getDuration( ) != expectedTime )
   {
     throw RTException(
-
             "[%u] Sanity check failed: edge %s has wrong duration (expected %lu, found %lu)",
             mpiRank,
             edge->getName( ).c_str( ),

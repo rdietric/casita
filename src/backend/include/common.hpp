@@ -44,7 +44,7 @@ namespace casita
        va_list args;
        fprintf( stderr, "Runtime Error: " );
        va_start( args, format );
-       vprintf( format, args );
+       vfprintf( stderr, format, args );
        va_end( args );
        fprintf( stderr, "\n" );
        fflush( stderr );

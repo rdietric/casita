@@ -48,9 +48,9 @@ namespace casita
         GraphNode::GraphNodePair sendRecv = node->getGraphPair( );
 
         uint64_t* data =
-          (uint64_t*)( sendRecv.second->getData( ) );
+          (uint64_t*)( node->getData( ) );
         UTILS_ASSERT( data, "No data found for %s",
-                      sendRecv.second->getUniqueName( ).c_str( ) );
+                      node->getUniqueName( ).c_str( ) );
 
         uint64_t  partnerProcessIdRecv    = node->getReferencedStreamId( );
         uint64_t  partnerProcessIdSend    = *data;

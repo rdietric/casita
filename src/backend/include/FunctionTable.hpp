@@ -123,7 +123,10 @@ namespace casita
 
  static const char* FTABLE_MPI_SEND[]          =
  {
-   "MPI_Send"
+   "MPI_Send",
+   "MPI_Ssend",
+   "MPI_Bsend",
+   "MPI_Rsend"
  };
 
  static const char* FTABLE_MPI_WAIT[]          =
@@ -145,12 +148,6 @@ namespace casita
  {
    "MPI_Irecv"
  };
-
- /* static const char*       FTABLE_MPI_ASYNC[]         = */
- /* { */
- /*   "MPI_Isend", */
- /*   "MPI_Irecv" */
- /* }; */
 
  static const char*       FTABLE_MPI_COLL[]     =
  {
@@ -180,7 +177,7 @@ namespace casita
 
  static const char*       FTABLE_MPI_MISC[]     =
  {
-
+   //"MPI_Bsend", "MPI_Cancel", "MPI_Probe"
  };
 
  static const size_t      fTableEntriesCUDA = 9;
@@ -201,7 +198,7 @@ namespace casita
  static const FTableEntry fTableMPI[fTableEntriesMPI] =
  {
    { MPI_RECV, 1, FTABLE_MPI_RECV },
-   { MPI_SEND, 1, FTABLE_MPI_SEND },
+   { MPI_SEND, 4, FTABLE_MPI_SEND },
    { MPI_COLL, 5, FTABLE_MPI_COLL },
    { MPI_ONETOALL, 2, FTABLE_MPI_ONETOALL },
    { MPI_ALLTOONE, 2, FTABLE_MPI_ALLTOONE },
