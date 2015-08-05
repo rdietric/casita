@@ -51,7 +51,9 @@ namespace casita
         uint64_t  sendStartTime        = send.first->getTime( );
         uint64_t  sendEndTime          = send.second->getTime( );
 
-        uint64_t partnerProcessId = node->getReferencedStreamId( );
+        //uint64_t partnerProcessId = node->getReferencedStreamId( );
+        uint64_t* data = (uint64_t*)( node->getData( ) );
+        uint64_t partnerProcessId = *data;
         uint32_t  partnerMPIRank  =
           commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
         

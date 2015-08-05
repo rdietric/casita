@@ -683,6 +683,9 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
   if ( currentNode )
   {
     isMaster       = true;
+    
+    
+    
     sectionEndNode = currentNode;
   }
 
@@ -695,6 +698,7 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
   {
     if ( isMaster )
     {
+      std::cerr << "[" << mpiRank << "] Master " << std::endl;
       /* master */
       if ( lastNode )
       {
@@ -861,7 +865,7 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
     {
       /* slave */
       /* int flag = 0; */
-      std::cout << "[" << mpiRank << "] Slave " << std::endl;
+      std::cerr << "[" << mpiRank << "] Slave " << std::endl;
       MPI_Status status;
       MPI_CHECK( MPI_Recv( recvBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                            MPI_ANY_SOURCE,

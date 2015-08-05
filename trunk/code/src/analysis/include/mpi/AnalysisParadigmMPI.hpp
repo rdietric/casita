@@ -37,6 +37,9 @@ namespace casita
 
       Paradigm
       getParadigm( );
+      
+      //void
+      //handlePostEnter ( GraphNode* node );
 
       void
       handlePostLeave( GraphNode* node );

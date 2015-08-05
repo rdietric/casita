@@ -19,7 +19,7 @@
 #include "EventStream.hpp"
 #include "utils/ErrorUtils.hpp"
 
-#define UINT64_MAX 0xFFFFFFFFFFFFFFFF
+//#define UINT64_MAX 0xFFFFFFFFFFFFFFFF
 
 using namespace casita;
 
@@ -399,6 +399,7 @@ EventStream::getPendingMPIRecords( )
 
 /**
  * Temporarily save the MPI_Isend request that is consumed by MPI_Wait leave.
+ * (Triggered by MPI_IsendComplete event.)
  * See {@link #setMPIWaitNodeData(GraphNode* node)}.
  * 
  * @param requestId OTF2 MPI_Isend request ID
@@ -408,11 +409,14 @@ EventStream::saveMPIIsendRequest( uint64_t requestId )
 {
   pendingMPIRequestId = requestId;
   //std::cerr << "MPIIsend: mpiWaitRequest = " << requestId << std::endl;
+  
+  //TODO: save requestId for potential MPI_Wait or MPI_Waitall
 }
 
 /**
  * Temporarily save the MPI_Irecv request ID. The following MPI_Irecv function 
  * leave record will consume and invalidate it. 
+ * (Triggered by MPI_IrecvRequest event.)
  * See {@link #addPendingMPIIrecvNode(GraphNode* node)}.
  * 
  * @param requestId OTF2 MPI_Irecv request ID
@@ -457,8 +461,8 @@ EventStream::addPendingMPIIrecvNode( GraphNode* node )
 /**
  * Set partner stream ID for the given MPI_Irecv request ID.
  * The node is identified by the given request ID.
- * It saves the request ID to be consumed by the following MPI_Wait leave node. 
- * Triggered by the MPI_Irecv record (between MPI_Wait enter and leave).
+ * It saves the request ID to be consumed by the following MPI_Wait[all] leave node. 
+ * Triggered by the MPI_Irecv record (between MPI_Wait[all] enter and leave).
  * 
  * @param requestId OTF2 MPI_Irecv request ID 
  * @param partnerId stream ID of the communication partner
@@ -469,7 +473,7 @@ EventStream::handleMPIIrecvEventData( uint64_t requestId,
 {  
   mpiIcommRecords[requestId].leaveNode->setReferencedStreamId(partnerId);
   
-  // temporarily store the request that is consumed by MPI_Wait leave event
+  // temporarily store the request that is consumed by MPI_Wait[all] leave event
   pendingMPIRequestId = requestId;
   
   //std::cerr << "MPIIrecv: mpiWaitRequest = " << requestId << std::endl;
@@ -540,6 +544,26 @@ EventStream::setMPIWaitNodeData( GraphNode* node )
   // invalidate the stored request ID
   pendingMPIRequestId = UINT64_MAX;
 }
+
+///**
+// * Sets node-specific data for the given MPI_Wait leave node.
+// * Consumes the pending OTF2 request ID.
+// * 
+// * @param node the graph node of the MPI_Isend leave record
+// */
+//void
+//EventStream::setMPIWaitallNodeData( GraphNode* node )
+//{
+//  UTILS_ASSERT( pendingMPIRequestId != UINT64_MAX, 
+//               "MPI request ID invalid! Trace file might be corrupted! ");
+//
+//  // set OTF2 request ID as node-specific data
+//  // the request ID has to be already in the map from Irecv or Isend record
+//  node->setData( &(mpiIcommRecords[pendingMPIRequestId].requestId) );
+//  
+//  // invalidate the stored request ID
+//  pendingMPIRequestId = UINT64_MAX;
+//}
 
 /**
  * If the MPI request is not complete (is still in the list) we wait for it and
