@@ -103,7 +103,7 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
 //    return;
 //  }
 
-  // handle blocking MPI communication enter/leave events
+  // handle blocking MPI communication events
   EventStream::MPICommRecordList mpiCommRecords = stream->getPendingMPIRecords( );
   for ( EventStream::MPICommRecordList::const_iterator iter =
           mpiCommRecords.begin( );

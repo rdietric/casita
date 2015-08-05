@@ -44,7 +44,7 @@ namespace casita
       bool
       apply( AnalysisParadigmMPI* analysis, GraphNode* node )
       {
-        /* applied at MPI_ISend leave */
+        // applied at MPI_ISend leave
         if ( !node->isMPIISend( ) || !node->isLeave( ) )
         {
           return false;
@@ -52,7 +52,6 @@ namespace casita
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        /* get the complete execution */
         GraphNode::GraphNodePair send  = node->getGraphPair( );
         EventStream::MPIIcommRecord* record = 
                 (EventStream::MPIIcommRecord* ) node->getData( );
@@ -63,19 +62,17 @@ namespace casita
         buffer[1] = 0; // leave time is not relevant
         buffer[2] = send.first->getId( );  // send start node
         buffer[3] = send.second->getId( ); // send leave node
-        buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = send.second->getType( );
+        buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_ISEND; //send.second->getType( );
         
         uint64_t partnerProcessId  = node->getReferencedStreamId();
         uint32_t partnerMPIRank =
           commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
 
-        // replay the MPI_Isend
+        // replay the MPI_Isend and provide the receiver with local information
+        // a blocking MPI_Recv can distribute blame then
         MPI_CHECK( MPI_Isend( buffer, CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
                               partnerMPIRank, 0, MPI_COMM_WORLD, &(record->requests[0]) ) );
-        /*std::cerr << "[" << node->getStreamId( ) << "] ISendRule: MPI_Isend -> Rank " 
-                  << partnerMPIRank << " (request: " << sendRequest << ") "
-                  << node->getUniqueName( ) << std::endl;*/
         
         // MPI_Isend does not need to receive information!
         // But the MPI_Irecv does not know if the partner is an MPI_Isend or MPI_Send.
@@ -83,7 +80,7 @@ namespace casita
         // MPI_Irecv to have a matching partner for MPI_[I]Send rule
         MPI_CHECK( MPI_Irecv( record->recvBuffer, CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
-                              partnerMPIRank, 0, MPI_COMM_WORLD, 
+                              partnerMPIRank, 42, MPI_COMM_WORLD, 
                               &(record->requests[1]) ) );
         /*
         std::cerr << "[" << node->getStreamId( ) << "] ISendRule - record data after Icomm:" 

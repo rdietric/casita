@@ -48,7 +48,7 @@ namespace casita
         uint32_t partnerMPIRank   =
           commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
         
-        // receive
+        // replay receive and retrieve information from communication partner
         uint64_t   buffer[CASITA_MPI_P2P_BUF_SIZE];
         MPI_Status status;
         MPI_CHECK( MPI_Recv( buffer, 
@@ -61,7 +61,9 @@ namespace casita
         uint64_t   recvStartTime       = recv.first->getTime( );
         uint64_t   recvEndTime         = recv.second->getTime( );
 
-        /* compute wait states and edges */
+        // TODO: check for an easy path if ( buffer[CASITA_MPI_P2P_BUF_SIZE - 1] == MPI_ISEND )
+        // TODO: MPI_Irecv should be always blocking
+        // compute wait states and edges
         if ( recvStartTime < sendStartTime )
         {
           Edge* recvRecordEdge = commonAnalysis->getEdge( recv.first,
@@ -93,18 +95,19 @@ namespace casita
           MPIAnalysis::
           MPI_EDGE_REMOTE_LOCAL );
 
-        /* send */
+        // send local information to communication partner to compute wait states
+        // use another tag to not mix up with replayed communication
         buffer[0] = recvStartTime;
         buffer[1] = recvEndTime;
         buffer[2] = recv.first->getId( );
         buffer[3] = recv.second->getId( );
-        buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = recv.second->getType( );
+        buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_IRECV; //recv.second->getType( );
 
         MPI_CHECK( MPI_Send( buffer, 
                              CASITA_MPI_P2P_BUF_SIZE, 
                              CASITA_MPI_P2P_ELEMENT_TYPE,
                              partnerMPIRank,
-                             0, MPI_COMM_WORLD ) );
+                             42, MPI_COMM_WORLD ) );
 
         return true;
       }

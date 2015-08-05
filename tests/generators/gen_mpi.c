@@ -107,15 +107,15 @@ void isend_recv_root_to_all()
 
 void irecv_send_ring()
 {
-  int buffer[10], buffer2[10];
+  int buffer[1000], buffer2[1000];
   MPI_Request request;
   MPI_Status status;
 
   int i = 0;
   for( i = 0; i < 1; i++ )
   {
-    MPI_Irecv(buffer, 10, MPI_INT, prev_rank, 123, MPI_COMM_WORLD, &request);
-    MPI_Send(buffer2, 10, MPI_INT, next_rank, 123, MPI_COMM_WORLD);
+    MPI_Irecv(buffer, 1000, MPI_INT, prev_rank, 123, MPI_COMM_WORLD, &request);
+    MPI_Send(buffer2, 1000, MPI_INT, next_rank, 123, MPI_COMM_WORLD);
     MPI_Wait(&request, &status);
   }
 }
@@ -219,15 +219,15 @@ int main(int argc, char **argv)
     next_rank = (mpi_rank + 1) % mpi_size;
     last_rank = mpi_size - 1;
     
-    late_sender();
+    //late_sender();
 
-    barrier();
+    //barrier();
     
-    isend_recv_root_to_all();
+    //isend_recv_root_to_all();
     
     irecv_send_ring();
     
-    isend_irecv_wait();
+    //isend_irecv_wait();
     
     //test();
   }

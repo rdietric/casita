@@ -20,6 +20,9 @@ namespace casita
  namespace mpi
  {
 
+  /* What this rule does:
+   * 1) Replay MPI_Irecv
+   */
   class IRecvRule :
     public IMPIRule
   {
@@ -41,13 +44,7 @@ namespace casita
         {
           return false;
         }
-
-        /* What this rule does:
-         * 1) Recv type of Send
-         * 2) If type is ISend, do nothing
-         * 3) If type is Send, send own type: IRecv
-         */
-
+        
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
         uint64_t partnerProcessId      = node->getReferencedStreamId( );
@@ -58,30 +55,27 @@ namespace casita
         uint32_t partnerMPIRank =
           commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
 
+        // replay MPI_Irecv (receive buffer is nether read as data are first valid in MPI_Wait[all])
         MPI_CHECK( MPI_Irecv( record->recvBuffer, 
                               CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
                               partnerMPIRank, 0, MPI_COMM_WORLD, 
                               &(record->requests[0]) ) );
-        /*std::cerr << "[" << node->getStreamId( ) << "] IRecvRule: MPI_Irecv <- Rank " 
-                  << partnerMPIRank << " (request: " << recvRequest << ") "
-                  << node->getUniqueName( ) << std::endl;*/
         
+        // send information to communication partner
+        // the blocking MPI_Recv can evaluate them and e.g. stop wait state analysis
         uint64_t *buffer_send = record->sendBuffer;
         buffer_send[0] = recv.first->getTime( );
-        buffer_send[CASITA_MPI_P2P_BUF_SIZE - 1] = recv.second->getType( );
+        buffer_send[3] = recv.second->getId( );
+        buffer_send[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_IRECV; //recv.second->getType( ); // MPI_IRECV
 
-        /* Send indicator that this is an MPI_Irecv */
+        // Send indicator that this is an MPI_Irecv
+        // use another tag to not mix up with replayed communication
         MPI_CHECK( MPI_Isend( buffer_send, 
                               CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
                               partnerMPIRank,
-                              0, MPI_COMM_WORLD, &(record->requests[1]) ) );
-        
-        /*std::cerr << "[" << node->getStreamId( ) << "] IRecvRule: MPI_Isend -> Rank " 
-                  << partnerMPIRank << " (request: " << sendRequest << ") "
-                  << node->getUniqueName( ) << " ISend start: " << buffer_send[0] 
-                  << std::endl;*/
+                              42, MPI_COMM_WORLD, &(record->requests[1]) ) );
         
         // collect pending non-blocking MPI operations
         int finished = 0;
