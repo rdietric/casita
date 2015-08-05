@@ -54,55 +54,53 @@ namespace casita
         //uint64_t partnerProcessId = node->getReferencedStreamId( );
         uint64_t* data = (uint64_t*)( node->getData( ) );
         uint64_t partnerProcessId = *data;
+        node->setReferencedStreamId( partnerProcessId ); // for debugging in CP analysis
         uint32_t  partnerMPIRank  =
           commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
-        
-        /*std::cerr << "[" << node->getStreamId( ) << "] SendRule: MPI_Send -> Rank " 
-                  << partnerMPIRank << " " << node->getUniqueName( ) << " Send start: " 
-                  << sendStartTime << std::endl;*/
 
+        // replay MPI_Send
         uint64_t buffer[CASITA_MPI_P2P_BUF_SIZE];
         
         buffer[0] = sendStartTime;
         buffer[1] = sendEndTime;
         buffer[2] = send.first->getId( );
         buffer[3] = send.second->getId( );
-        buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = send.second->getType( );
+        buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_SEND;//send.second->getType( );
         MPI_CHECK( MPI_Send( buffer, 
                              CASITA_MPI_P2P_BUF_SIZE, 
                              CASITA_MPI_P2P_ELEMENT_TYPE,
                              partnerMPIRank,
                              0, MPI_COMM_WORLD ) );
         
-        /*std::cerr << "[" << node->getStreamId( ) << "] SendRule: MPI_Send " 
-                  << node->getUniqueName( ) << " DONE" << std::endl;
-        
-        std::cerr << "[" << node->getStreamId( ) << "] SendRule: MPI_Recv <- Rank " 
-                  << partnerMPIRank << " " << node->getUniqueName( ) << " START" << std::endl;*/
-
-        /* receive */
+        // receive the communication partner start time to compute wait states
+        // use another tag to not mix up with replayed communication
         MPI_Status status;
         uint64_t   recvStartTime = 0;
         MPI_CHECK( MPI_Recv( buffer, 
                              CASITA_MPI_P2P_BUF_SIZE, 
                              CASITA_MPI_P2P_ELEMENT_TYPE,
                              partnerMPIRank,
-                             0, MPI_COMM_WORLD, &status ) );
+                             42, MPI_COMM_WORLD, &status ) );
         recvStartTime = buffer[0];
         
-        /*std::cerr << "[" << node->getStreamId( ) << "] SendRule: MPI_Recv " 
-                  << node->getUniqueName( ) << " DONE" 
-                  << " received start time: " << recvStartTime << std::endl;*/
-
-        // TODO: check this!!!
-        /*if ( buffer[BUFFER_SIZE - 1] == MPI_IRECV )
-        {
-          std::cout << "[" << node->getStreamId( ) << "] SendRule: Partner is MPI_IRECV " 
-                    << node->getUniqueName( ) << std::endl;
-          return true;
-        }*/
         
-        /* compute wait states */
+        // if the communication partner is an MPI_Irecv we can stop here
+        // as no wait states can be found
+        if(buffer[CASITA_MPI_P2P_BUF_SIZE - 1] & MPI_IRECV )
+        {
+          return true;
+        }
+        else if ( buffer[CASITA_MPI_P2P_BUF_SIZE - 1] & MPI_SEND || 
+                  buffer[CASITA_MPI_P2P_BUF_SIZE - 1] & MPI_ISEND )
+        {
+          // the communication partner should be a receive!!!
+          std::cerr << "[" << node->getStreamId( ) 
+                    << "] SendRule: Partner rank " << partnerMPIRank 
+                    << " is MPI_[I]SEND "
+                    << buffer[CASITA_MPI_P2P_BUF_SIZE - 1] << std::endl;
+        }
+        
+        // compute wait states
         if ( ( sendStartTime <= recvStartTime ) )
         {
           if ( sendStartTime < recvStartTime )
