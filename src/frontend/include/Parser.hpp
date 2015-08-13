@@ -43,6 +43,8 @@ namespace casita
    public:
      static Parser&
      getInstance( );
+     
+     static int getVerboseLevel( );
 
      bool
      init( int argc, char** argv ) throw ( std::runtime_error );

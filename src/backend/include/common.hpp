@@ -18,9 +18,9 @@
 #include <assert.h>
 #include <stdexcept>
 
-#define VERBOSE_NONE 0
+#define VERBOSE_NONE  0
 #define VERBOSE_BASIC 1
-#define VERBOSE_ALL 2
+#define VERBOSE_ALL   2
 #define VERBOSE_ANNOY 3
 
 #define OTF2_OMP_FORKJOIN_INTERNAL "__ompforkjoin__internal"
@@ -33,23 +33,23 @@
 
 namespace casita
 {
- class RTException :
-   virtual public std::runtime_error
- {
-   public:
+  class RTException :
+    virtual public std::runtime_error
+  {
+    public:
 
-     RTException( const char* format, ... ) :
-       std::runtime_error( "Runtime exception" )
-     {
-       va_list args;
-       fprintf( stderr, "Runtime Error: " );
-       va_start( args, format );
-       vfprintf( stderr, format, args );
-       va_end( args );
-       fprintf( stderr, "\n" );
-       fflush( stderr );
-       assert( 0 );
-     }
- };
+      RTException( const char* format, ... ) :
+        std::runtime_error( "Runtime exception" )
+      {
+        va_list args;
+        fprintf( stderr, "Runtime Error: " );
+        va_start( args, format );
+        vfprintf( stderr, format, args );
+        va_end( args );
+        fprintf( stderr, "\n" );
+        fflush( stderr );
+        assert( 0 );
+      }
+  };
 
 }

@@ -45,7 +45,7 @@ main( int argc, char** argv )
   MPI_CHECK( MPI_Comm_rank( MPI_COMM_WORLD, &mpiRank ) );
   MPI_CHECK( MPI_Comm_size( MPI_COMM_WORLD, &mpiSize ) );
 
-  UTILS_DBG_MSG( mpiRank == 0, "[%u] Running with %d analysis processes", mpiRank, mpiSize );
+  UTILS_MSG( mpiRank == 0, "[%u] Running with %d analysis processes", mpiRank, mpiSize );
 
   if ( !Parser::getInstance( ).init( argc, argv ) )
   {
@@ -64,23 +64,24 @@ main( int argc, char** argv )
     EventStream::SortedGraphNodeList allNodes;
     runner->getAnalysis( ).getAllNodes( allNodes );
 
-    //apply analysis to all nodes of a certain paradigm
+    // apply analysis to all nodes of a certain paradigm
     // create dependency edges, identify wait states, distribute blame
     runner->runAnalysis( PARADIGM_CUDA, allNodes );
-    runner->runAnalysis( PARADIGM_OMP, allNodes );
-    runner->runAnalysis( PARADIGM_MPI, allNodes );
+    runner->runAnalysis( PARADIGM_OMP,  allNodes );
+    runner->runAnalysis( PARADIGM_MPI,  allNodes );
 
     MPI_Barrier( MPI_COMM_WORLD );
 
-    UTILS_DBG_MSG( mpiRank == 0, "[%u] Computing the critical path", mpiRank );
+    UTILS_MSG( mpiRank == 0, "[%u] Computing the critical path", mpiRank );
 
     runner->computeCriticalPath( );
 
-    /* create OTF with wait states and critical path */
+    /* create OTF with wait state, blame and critical path counter */
     if ( options.createOTF )
     {
       MPI_Barrier( MPI_COMM_WORLD );
-      UTILS_DBG_MSG( mpiRank == 0, "[%u] Writing result to %s",
+      
+      UTILS_MSG( mpiRank == 0, "[%u] Writing result to %s",
                      mpiRank, options.outOtfFile.c_str( ) );
     }
 
@@ -90,13 +91,12 @@ main( int argc, char** argv )
       options.filename,
       options.createOTF,
       options.ignoreAsyncMpi,
-      options.verbose >=
-      VERBOSE_ANNOY );
+      options.verbose >= VERBOSE_ANNOY );
 
     /* if selected as parameter, the summary statistics are merged and printed */
     if ( options.mergeActivities )
     {
-      UTILS_DBG_MSG( mpiRank == 0, "[%u] Merging activity statistics...", mpiRank );
+      UTILS_MSG( mpiRank == 0, "[%u] Merging activity statistics...", mpiRank );
 
       runner->mergeActivityGroups( );
 

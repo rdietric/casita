@@ -179,7 +179,7 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
     boost_filename.filename( ), "" ).string( );
   pathToFile     = boost_path.remove_filename( ).string( );
 
-  UTILS_DBG_MSG( mpiRank == 0, "[%u] FILENAME: '%s' PATH: '%s'",
+  UTILS_MSG( mpiRank == 0, "[%u] FILENAME: '%s' PATH: '%s'",
                  mpiRank, outputFilename.c_str( ), pathToFile.c_str( ) );
 
   if ( writeToFile )
@@ -377,7 +377,7 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions( )
                                         global_def_reader,
                                         &definitions_read );
 
-  UTILS_DBG_MSG( mpiRank == 0, "[%u] Read and wrote %lu definitions",
+  UTILS_MSG( mpiRank == 0, "[%u] Read and wrote %lu definitions",
                  mpiRank, definitions_read );
 
   /* add forkjoin "region" to support internal OMP-fork/join model
@@ -495,7 +495,7 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
   cTable          = ctrTable;
   processOnCriticalPath[processId] = false;
 
-  UTILS_DBG_MSG( verbose, "[%u] Start writing for process %lu", mpiRank, processId );
+  UTILS_MSG( verbose, "[%u] Start writing for process %lu", mpiRank, processId );
 
   if ( isFirstProcess )
   {
@@ -526,6 +526,11 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
     event_callbacks, &otf2CallbackComm_MpiCollectiveEnd );
   OTF2_EvtReaderCallbacks_SetMpiRecvCallback( event_callbacks, &otf2Callback_MpiRecv );
   OTF2_EvtReaderCallbacks_SetMpiSendCallback( event_callbacks, &otf2Callback_MpiSend );
+  // TODO: This seems to break something
+  OTF2_EvtReaderCallbacks_SetMpiIrecvRequestCallback( event_callbacks, &otf2Callback_MpiIrecvRequest );
+  OTF2_EvtReaderCallbacks_SetMpiIrecvCallback( event_callbacks, &otf2Callback_MpiIrecv );
+  OTF2_EvtReaderCallbacks_SetMpiIsendCallback( event_callbacks, &otf2Callback_MpiIsend );
+  OTF2_EvtReaderCallbacks_SetMpiIsendCompleteCallback( event_callbacks, &otf2Callback_MpiIsendComplete );
   OTF2_EvtReaderCallbacks_SetRmaOpCompleteBlockingCallback(
     event_callbacks, &otf2CallbackComm_RmaOpCompleteBlocking );
   OTF2_EvtReaderCallbacks_SetRmaWinCreateCallback(
@@ -1567,6 +1572,101 @@ OTF2ParallelTraceWriter::otf2Callback_MpiSend( OTF2_LocationRef locationID,
     OTF2_CHECK( OTF2_EvtWriter_MpiSend( tw->evt_writerMap[locationID],
                                         attributeList, time, receiver,
                                         communicator, msgTag, msgLength ) );
+  }
+
+  return OTF2_CALLBACK_SUCCESS;
+}
+
+OTF2_CallbackCode
+OTF2ParallelTraceWriter::otf2Callback_MpiIrecvRequest( 
+                                              OTF2_LocationRef    locationID,
+                                              OTF2_TimeStamp      time,
+                                              uint64_t            eventPosition,
+                                              void*               userData,
+                                              OTF2_AttributeList* attributeList,
+                                              uint64_t            requestID )
+{
+  OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
+
+  if ( tw->writeToFile )
+  {
+    OTF2_CHECK( OTF2_EvtWriter_MpiIrecvRequest( tw->evt_writerMap[locationID],
+                                                attributeList,
+                                                time,
+                                                requestID ) );
+  }
+  
+  return OTF2_CALLBACK_SUCCESS;
+}
+
+OTF2_CallbackCode
+OTF2ParallelTraceWriter::otf2Callback_MpiIrecv( OTF2_LocationRef locationID,
+                                                OTF2_TimeStamp   time,
+                                                uint64_t         eventPosition,
+                                                void*            userData,
+                                                OTF2_AttributeList*
+                                                attributeList,
+                                                uint32_t         sender,
+                                                OTF2_CommRef     communicator,
+                                                uint32_t         msgTag,
+                                                uint64_t         msgLength,
+                                                uint64_t         requestID )
+{
+  OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
+
+  if ( tw->writeToFile )
+  {
+    OTF2_CHECK( OTF2_EvtWriter_MpiIrecv( tw->evt_writerMap[locationID],
+                                        attributeList, time, sender,
+                                        communicator, msgTag, msgLength,
+                                        requestID ) );
+  }
+
+  return OTF2_CALLBACK_SUCCESS;
+}
+
+OTF2_CallbackCode
+OTF2ParallelTraceWriter::otf2Callback_MpiIsend( OTF2_LocationRef locationID,
+                                                OTF2_TimeStamp   time,
+                                                uint64_t         eventPosition,
+                                                void*            userData,
+                                                OTF2_AttributeList*
+                                                attributeList,
+                                                uint32_t         receiver,
+                                                OTF2_CommRef     communicator,
+                                                uint32_t         msgTag,
+                                                uint64_t         msgLength,
+                                                uint64_t         requestID )
+{
+  OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
+
+  if ( tw->writeToFile )
+  {
+    OTF2_CHECK( OTF2_EvtWriter_MpiIsend( tw->evt_writerMap[locationID],
+                                        attributeList, time, receiver,
+                                        communicator, msgTag, msgLength,
+                                        requestID ) );
+  }
+
+  return OTF2_CALLBACK_SUCCESS;
+}
+
+OTF2_CallbackCode
+OTF2ParallelTraceWriter::otf2Callback_MpiIsendComplete( 
+                                                OTF2_LocationRef locationID,
+                                                OTF2_TimeStamp   time,
+                                                uint64_t         eventPosition,
+                                                void*            userData,
+                                                OTF2_AttributeList*
+                                                attributeList,
+                                                uint64_t         requestID )
+{
+  OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
+
+  if ( tw->writeToFile )
+  {
+    OTF2_CHECK( OTF2_EvtWriter_MpiIsendComplete( tw->evt_writerMap[locationID],
+                                                 attributeList, time, requestID ) );
   }
 
   return OTF2_CALLBACK_SUCCESS;

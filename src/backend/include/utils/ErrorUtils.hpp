@@ -17,6 +17,7 @@
 #include <cstdarg>
 #include <cassert>
 #include "common.hpp"
+#include "Parser.hpp"
 
 namespace casita
 {
@@ -91,7 +92,7 @@ namespace casita
      setVerbose( )
      {
        verbose = true;
-       fprintf( stderr, "Enabled verbose output for error utils\n" );
+       //fprintf( stderr, "Enabled verbose output for error utils\n" );
      }
 
    private:
@@ -116,9 +117,34 @@ namespace casita
     ErrorUtils::getInstance( ).throwError( fmt, ## __VA_ARGS__ ); \
   }
 
-#define UTILS_DBG_MSG( cond, fmt, ... ) \
+#define UTILS_MSG( cond, fmt, ... ) \
   if ( cond ) { \
     ErrorUtils::getInstance( ).outputMessage( fmt, ## __VA_ARGS__ ); \
   }
+
+// debugging
+#if defined(DEBUG) && defined(DEBUG_LEVEL)
+
+// debug MPI non-blocking communication (cmake .. -DDEBUG_LEVEL=2)
+#if (DEBUG_LEVEL == 1)
+  #define DEBUG_MPI_ICOMM 1
+#else
+  #define DEBUG_MPI_ICOMM 0
+#endif
+  
+// debug MPI critical-path detection (cmake .. -DDEBUG_LEVEL=2)
+#if (DEBUG_LEVEL == 2)
+  #define DEBUG_CPA_MPI 1
+#else
+  #define DEBUG_CPA_MPI 0
+#endif
+ 
+  #define UTILS_DBG_MSG( cond, fmt, ... ) \
+    if ( cond ) { \
+      ErrorUtils::getInstance( ).outputMessage( fmt, ## __VA_ARGS__ ); \
+    }
+#else
+  #define UTILS_DBG_MSG( cond, fmt, ... )
+#endif
 
 }

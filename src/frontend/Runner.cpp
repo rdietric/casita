@@ -51,6 +51,8 @@ Runner::Runner( int mpiRank, int mpiSize ) :
 
   if ( options.verbose )
   {
+    UTILS_MSG( mpiRank == 0 && options.verbose >= VERBOSE_BASIC,
+               "Enabled verbose output for error utils\n" );
     ErrorUtils::getInstance( ).setVerbose( );
   }
 }
@@ -83,7 +85,7 @@ Runner::readOTF( )
   uint32_t      mpiRank     = analysis.getMPIRank( );
   ITraceReader* traceReader = NULL;
 
-  UTILS_DBG_MSG( mpiRank == 0, "[%u] Reading OTF %s", mpiRank, options.filename.c_str( ) );
+  UTILS_MSG( mpiRank == 0, "[%u] Reading OTF %s", mpiRank, options.filename.c_str( ) );
 
   if ( strstr( options.filename.c_str( ), ".otf2" ) != NULL )
   {
@@ -112,8 +114,8 @@ Runner::readOTF( )
   traceReader->handleMPIIsendComplete  = CallbackHandler::handleMPIIsendComplete;
 
   traceReader->open( options.filename, 10 );
-  UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-                 "[%u] Reading definitions", mpiRank );
+  UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+             "[%u] Reading definitions", mpiRank );
   
   // read the OTF2 definitions and initialize some maps and variables of the trace reader
   traceReader->readDefinitions( );
@@ -126,20 +128,20 @@ Runner::readOTF( )
 
   uint64_t timerResolution = traceReader->getTimerResolution( );
   analysis.setTimerResolution( timerResolution );
-  UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-                 "[%u] Timer resolution = %llu",
-                 mpiRank, (long long unsigned)( timerResolution ) );
+  UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+             "[%u] Timer resolution = %llu",
+             mpiRank, (long long unsigned)( timerResolution ) );
 
   if ( timerResolution < 1000000000 ) /* 1GHz */
   {
-    UTILS_DBG_MSG( mpiRank == 0, "[%u] Warning: your timer resolution is very low (< 1 GHz)!", mpiRank );
+    UTILS_MSG( mpiRank == 0, "[%u] Warning: your timer resolution is very low (< 1 GHz)!", 
+               mpiRank );
   }
 
-  UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-                 "[%u] Reading events", mpiRank );
+  UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+             "[%u] Reading events", mpiRank );
 
   // use a global event reader that triggers the registered callbacks
-  // TODO: global vs. local event reader
   traceReader->readEvents( );
   traceReader->close( );
   delete traceReader;
@@ -174,8 +176,8 @@ Runner::mergeActivityGroups( )
   /* send/receive groups to master/from other MPI streams */
   if ( analysis.getMPIRank( ) == 0 )
   {
-    UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-                   "[%u] Combining results from all analysis streams", mpiRank );
+    UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+               "[%u] Combining results from all analysis streams", mpiRank );
 
     /* receive from all other MPI streams */
     uint32_t mpiSize = analysis.getMPISize( );
@@ -312,8 +314,8 @@ Runner::computeCriticalPath( )
   else
   {
     /* compute local critical path on root, only */
-    UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-                   "[%u] Single process: defaulting to CUDA/OMP only mode", mpiRank );
+    UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+               "[%u] Single process: defaulting to CUDA/OMP only mode", mpiRank );
 
     Graph& subGraph = analysis.getGraph( );
 
@@ -323,8 +325,8 @@ Runner::computeCriticalPath( )
   }
 
   /* compute the time-on-critical-path counter */
-  UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-                 "[%u] Computing additional counters", mpiRank );
+  UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+             "[%u] Computing additional counters", mpiRank );
 
   const uint32_t cpCtrId = analysis.getCtrTable( ).getCtrId( CTR_CRITICALPATH );
   for ( EventStream::SortedGraphNodeList::const_iterator iter = criticalNodes.begin( );
@@ -334,8 +336,8 @@ Runner::computeCriticalPath( )
   }
   if ( options.mergeActivities )
   {
-    UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-                   "[%u] Calculate total length of critical path", mpiRank );
+    UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+               "[%u] Calculate total length of critical path", mpiRank );
 
     uint64_t firstTimestamp = 0;
     uint64_t lastTimestamp  = analysis.getLastGraphNode( )->getTime( );
@@ -389,9 +391,9 @@ Runner::computeCriticalPath( )
     }
 
     globalLengthCP = lastTimestamp - firstTimestamp;
-    UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-                   "[%u] Critical path length = %f",
-                   mpiRank, analysis.getRealTime( globalLengthCP ) );
+    UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+               "[%u] Critical path length = %f",
+               mpiRank, analysis.getRealTime( globalLengthCP ) );
 
     MPI_Barrier( MPI_COMM_WORLD );
   }
@@ -412,10 +414,10 @@ Runner::getCriticalPathIntern( GraphNode*                        start,
                                EventStream::SortedGraphNodeList& cpNodes,
                                Graph&                            subGraph )
 {
-  UTILS_DBG_MSG( options.printCriticalPath, "\n[%u] Longest path (%s,%s):",
-                 analysis.getMPIRank( ),
-                 start->getUniqueName( ).c_str( ),
-                 end->getUniqueName( ).c_str( ) );
+  UTILS_MSG( options.printCriticalPath, "\n[%u] Longest path (%s,%s):",
+             analysis.getMPIRank( ),
+             start->getUniqueName( ).c_str( ),
+             end->getUniqueName( ).c_str( ) );
 
   GraphNode::GraphNodeList criticalPath;
   subGraph.getLongestPath( start, end, criticalPath );
@@ -427,10 +429,10 @@ Runner::getCriticalPathIntern( GraphNode*                        start,
     GraphNode* node = *cpNode;
     cpNodes.push_back( node );
 
-    UTILS_DBG_MSG( options.printCriticalPath, "[%u] %u: %s (%f)",
-                   analysis.getMPIRank( ), i,
-                   node->getUniqueName( ).c_str( ),
-                   analysis.getRealTime( node->getTime( ) ) );
+    UTILS_MSG( options.printCriticalPath, "[%u] %u: %s (%f)",
+               analysis.getMPIRank( ), i,
+               node->getUniqueName( ).c_str( ),
+               analysis.getRealTime( node->getTime( ) ) );
 
     i++;
   }
@@ -466,12 +468,12 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
   {
     MPIAnalysis::CriticalPathSection* section = &( sections[i] );
 
-    UTILS_DBG_MSG( options.verbose > VERBOSE_ALL,
-                   "[%u] computing local critical path between MPI nodes [%u, %u] on process %lu",
-                   mpiRank,
-                   section->nodeStartID,
-                   section->nodeEndID,
-                   section->streamID );
+    UTILS_MSG( options.verbose > VERBOSE_ALL,
+               "[%u] computing local critical path between MPI nodes [%u, %u] on process %lu",
+               mpiRank,
+               section->nodeStartID,
+               section->nodeEndID,
+               section->streamID );
 
     /* find local MPI nodes with their IDs */
     GraphNode* startNode = NULL, * endNode = NULL;
@@ -512,13 +514,13 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
     }
     else
     {
-      UTILS_DBG_MSG( options.verbose > VERBOSE_ALL,
-                     "[%u] node mapping: %u = %s (%f), %u = %s (%f)",
-                     mpiRank, section->nodeStartID,
-                     startNode->getUniqueName( ).c_str( ),
-                     analysis.getRealTime( startNode->getTime( ) ),
-                     section->nodeEndID, endNode->getUniqueName( ).c_str( ),
-                     analysis.getRealTime( endNode->getTime( ) ) );
+      UTILS_MSG( options.verbose > VERBOSE_ALL,
+                 "[%u] node mapping: %u = %s (%f), %u = %s (%f)",
+                 mpiRank, section->nodeStartID,
+                 startNode->getUniqueName( ).c_str( ),
+                 analysis.getRealTime( startNode->getTime( ) ),
+                 section->nodeEndID, endNode->getUniqueName( ).c_str( ),
+                 analysis.getRealTime( endNode->getTime( ) ) );
     }
 
     MPIAnalysis::CriticalPathSection mappedSection;
@@ -549,33 +551,33 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
            !endLocalNode ) ||
          ( startLocalNode->getTime( ) >= endLocalNode->getTime( ) ) )
     {
-      UTILS_DBG_MSG( options.verbose > VERBOSE_ALL,
-                     "[%u] No local path possible between MPI nodes %s (link %p) and %s (link %p)",
-                     mpiRank,
-                     startNode->getUniqueName( ).c_str( ),
-                     startLocalNode,
-                     endNode->getUniqueName( ).c_str( ),
-                     endLocalNode );
+      UTILS_MSG( options.verbose > VERBOSE_ALL,
+                 "[%u] No local path possible between MPI nodes %s (link %p) and %s (link %p)",
+                 mpiRank,
+                 startNode->getUniqueName( ).c_str( ),
+                 startLocalNode,
+                 endNode->getUniqueName( ).c_str( ),
+                 endLocalNode );
 
-      UTILS_DBG_MSG( options.verbose > VERBOSE_ALL && startLocalNode && endLocalNode,
-                     "[%u] local nodes %s and %s",
-                     mpiRank,
-                     startLocalNode->getUniqueName( ).c_str( ),
-                     endLocalNode->getUniqueName( ).c_str( ) );
+      UTILS_MSG( options.verbose > VERBOSE_ALL && startLocalNode && endLocalNode,
+                 "[%u] local nodes %s and %s",
+                 mpiRank,
+                 startLocalNode->getUniqueName( ).c_str( ),
+                 endLocalNode->getUniqueName( ).c_str( ) );
 
       continue;
     }
 
-    UTILS_DBG_MSG( options.verbose > VERBOSE_ALL,
-                   "[%u] MPI/local mapping: %u > %s, %u > %s",
-                   mpiRank, section->nodeStartID,
-                   startLocalNode->getUniqueName( ).c_str( ),
-                   section->nodeEndID, endLocalNode->getUniqueName( ).c_str( ) );
+    UTILS_MSG( options.verbose > VERBOSE_ALL,
+               "[%u] MPI/local mapping: %u > %s, %u > %s",
+               mpiRank, section->nodeStartID,
+               startLocalNode->getUniqueName( ).c_str( ),
+               section->nodeEndID, endLocalNode->getUniqueName( ).c_str( ) );
 
-    UTILS_DBG_MSG( options.verbose > VERBOSE_ALL,
-                   "[%u] Computing local critical path (%s, %s)", mpiRank,
-                   startLocalNode->getUniqueName( ).c_str( ),
-                   endLocalNode->getUniqueName( ).c_str( ) );
+    UTILS_MSG( options.verbose > VERBOSE_ALL,
+               "[%u] Computing local critical path (%s, %s)", mpiRank,
+               startLocalNode->getUniqueName( ).c_str( ),
+               endLocalNode->getUniqueName( ).c_str( ) );
 
     EventStream::SortedGraphNodeList sectionLocalNodes;
     sectionLocalNodes.push_back( startNode );
@@ -599,8 +601,9 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
     if ( ( mpiRank == 0 ) && ( omp_get_thread_num( ) == 0 ) &&
          ( i - lastSecCtr > numSections / 10 ) )
     {
-      UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC, "[%u] %lu%% ", mpiRank,
-                     (size_t)( 100.0 * (double)i / (double)numSections ) );
+      UTILS_MSG( options.verbose >= VERBOSE_BASIC, "[%u] %lu%% ", mpiRank,
+                 (size_t)( 100.0 * (double)i / (double)numSections ) );
+      
       fflush( NULL );
       lastSecCtr = i;
     }
@@ -608,8 +611,8 @@ Runner::getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
 
   omp_destroy_lock( &localNodesLock );
 
-  UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-                 "[%u] 100%%", mpiRank );
+  UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+             "[%u] 100%%", mpiRank );
 
   delete subGraph;
 }
@@ -651,7 +654,7 @@ Runner::findLastMpiNode( GraphNode** node )
     myLastMpiNode->setCounter( analysis.getCtrTable( ).getCtrId(
                                  CTR_CRITICALPATH ), 1 );
 
-    UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
+    UTILS_DBG_MSG( DEBUG_CPA_MPI,
                    "[%u] critical path reverse replay starts at node %s (%f)",
                    mpiRank, myLastMpiNode->getUniqueName( ).c_str( ),
                    analysis.getRealTime( myLastMpiNode->getTime( ) ) );
@@ -683,9 +686,6 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
   if ( currentNode )
   {
     isMaster       = true;
-    
-    
-    
     sectionEndNode = currentNode;
   }
 
@@ -698,38 +698,39 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
   {
     if ( isMaster )
     {
-      std::cerr << "[" << mpiRank << "] Master " << std::endl;
       /* master */
       if ( lastNode )
       {
-        UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
-                       "[%u] isMaster, currentNode = %s (%f), lastNode = %s (%f)",
-                       mpiRank, currentNode->getUniqueName( ).c_str( ),
-                       analysis.getRealTime( currentNode->getTime( ) ),
-                       lastNode->getUniqueName( ).c_str( ),
-                       analysis.getRealTime( lastNode->getTime( ) ) );
+        UTILS_MSG( options.verbose >= VERBOSE_ANNOY,
+                   "[%u] isMaster, currentNode = %s (%f), lastNode = %s (%f)",
+                   mpiRank, currentNode->getUniqueName( ).c_str( ),
+                   analysis.getRealTime( currentNode->getTime( ) ),
+                   lastNode->getUniqueName( ).c_str( ),
+                   analysis.getRealTime( lastNode->getTime( ) ) );
       }
       else
       {
-        UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
-                       "[%u] isMaster, currentNode = %s (%f)",
-                       mpiRank, currentNode->getUniqueName( ).c_str( ),
-                       analysis.getRealTime( currentNode->getTime( ) ) );
+        UTILS_MSG( options.verbose >= VERBOSE_ANNOY,
+                   "[%u] isMaster, currentNode = %s (%f)",
+                   mpiRank, currentNode->getUniqueName( ).c_str( ),
+                   analysis.getRealTime( currentNode->getTime( ) ) );
       }
 
-      UTILS_DBG_MSG( lastNode && ( lastNode->getId( ) <= currentNode->getId( ) ),
-                     "[%u] ! [Warning] current node ID is not strictly decreasing", mpiRank );
+      UTILS_MSG( lastNode && ( lastNode->getId( ) <= currentNode->getId( ) ),
+                 "[%u] ! [Warning] current node ID is not strictly decreasing", 
+                 mpiRank );
 
       if ( currentNode->isLeave( ) )
       {
-        /* isLeave */
+        // isLeave
         Edge* activityEdge = analysis.getEdge(
           currentNode->getPartner( ), currentNode );
 
+        // CP changes stream on blocking edges or if we are at MPI_Init()
         if ( activityEdge->isBlocking( ) || currentNode->isMPIInit( ) )
         {
-          /* create section */
-          if ( currentNode != sectionEndNode )
+          // create section for local processing later
+          if ( sectionEndNode && ( currentNode != sectionEndNode ) )
           {
             MPIAnalysis::CriticalPathSection section;
             section.streamID    = currentNode->getStreamId( );
@@ -739,16 +740,11 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
 
             currentNode->setCounter( cpCtrId, 1 );
           }
-          sectionEndNode = NULL;
-        }
-
-        /* change stream for blocking edges */
-        if ( activityEdge->isBlocking( ) )
-        {
-          /* make myself a new slave */
-          isMaster = false;
-
-          /* communicate with slaves to decide new master */
+//        }
+//        if ( activityEdge->isBlocking( ) )
+//        {
+          
+          // communicate with slaves to decide on new master
           GraphNode* commMaster  = currentNode->getGraphPair( ).second;
           bool nodeHasRemoteInfo = false;
           analysis.getMPIAnalysis( ).getRemoteNodeInfo( commMaster,
@@ -757,72 +753,127 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
           {
             commMaster = currentNode->getGraphPair( ).first;
           }
-
-          UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
-                         "[%u]  found waitstate for %s (%f), changing stream at %s",
+          
+          UTILS_DBG_MSG( DEBUG_CPA_MPI,
+                         "[%u]  found wait state for %s (%f), changing stream at %s",
                          mpiRank, currentNode->getUniqueName( ).c_str( ),
                          analysis.getRealTime( currentNode->getTime( ) ),
                          commMaster->getUniqueName( ).c_str( ) );
 
+          // find communication partners
           std::set< uint32_t > mpiPartnerRanks =
             analysis.getMPIAnalysis( ).getMpiPartnersRank( commMaster );
+          
+          // Communicate with all slaves to find new master.
+          // Make sure that not all ranks are slave then!
+          //bool foundNewMaster = false;
           for ( std::set< uint32_t >::const_iterator iter = mpiPartnerRanks.begin( );
                 iter != mpiPartnerRanks.end( ); ++iter )
           {
-            /* communicate with all slaves to find new master */
             uint32_t commMpiRank = *iter;
 
+            // do not communicate with myself
             if ( commMpiRank == (uint32_t)mpiRank )
             {
               continue;
             }
 
+            // prepare send buffer
             sendBfr[0] = commMaster->getId( );
             sendBfr[1] = commMaster->getStreamId( );
             sendBfr[2] = NO_MSG;
 
-            UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
+            UTILS_DBG_MSG( DEBUG_CPA_MPI,
                            "[%u]  testing remote MPI worker %u for remote edge to my node %u on stream %lu",
                            mpiRank,
                            commMpiRank,
                            (uint32_t)sendBfr[0],
                            sendBfr[1] );
 
+            //TODO: MPI_Bcast( sendBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, mpiRank, comm) 
             MPI_CHECK( MPI_Send( sendBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                                  commMpiRank, 0, MPI_COMM_WORLD ) );
+            /*
+            // make sure that we found a new master
+            MPI_Status status;
+            MPI_CHECK( MPI_Recv( recvBfr, 1, MPI_UNSIGNED_LONG_LONG,
+                                 commMpiRank, 42, MPI_COMM_WORLD, &status ) );
+            
+            if( recvBfr[0] )
+            {
+              std::cerr << "[" << mpiRank << "] Rank " << commMpiRank
+                      << " will be the new master." << std::endl;
+              
+              if( foundNewMaster )
+              {
+                std::cerr << "[" << mpiRank << "] More than one new master found!!!" << std::endl;
+              }
+              
+              foundNewMaster = true;
+            }
 
+            //foundNewMaster |= (bool)recvBfr[0];
+            */
           }
-          /* continue main loop as slave */
+          
+          //foundNewMaster = true;
+          
+          // free the set
+          mpiPartnerRanks.clear();
+                    
+          // continue main loop as slave, but only if a master has been found
+          //if ( foundNewMaster )
+          {
+            // make myself a new slave
+            isMaster = false;
+            sectionEndNode = NULL;
+          }
+          /*else
+          {
+            // this should not happen, but we do not want to abort here
+            
+            currentNode->setCounter( cpCtrId, 1 );
+            lastNode    = currentNode;
+            currentNode = activityEdge->getStartNode( );
+            
+            UTILS_MSG( true , "[%u] No new master could be found! "
+                                  "Continuing on node %s ", mpiRank, 
+                           currentNode->getUniqueName( ).c_str( ) );
+          }*/
         }
         else
         {
           currentNode->setCounter( cpCtrId, 1 );
           lastNode    = currentNode;
           currentNode = activityEdge->getStartNode( );
-          /* continue main loop as master */
+          // continue main loop as master
         }
-      }
-      else
+      } /* END: currentNode->isLeave( ) */
+      else // isEnter (master)
       {
-        /* isEnter */
+        // found the MPI_Init enter or an atomic node
         if ( currentNode->isMPIInit( ) || currentNode->isAtomic( ) )
         {
           currentNode->setCounter( cpCtrId, 1 );
 
-          /* notify all slaves that we are done */
-          UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
-                         "[%u] * asking all slaves to terminate", mpiRank );
+          // notify all slaves that we are done
+          UTILS_MSG( true, "[%u] Critical path reached MPI_Init(). "
+                           "Asking all slaves to terminate", mpiRank );
 
+          // send "path found" message to all ranks
           sendBfr[0] = 0;
           sendBfr[1] = 0;
           sendBfr[2] = PATH_FOUND_MSG;
 
           std::set< uint64_t > mpiPartners =
             analysis.getMPIAnalysis( ).getMPICommGroup( 0 ).procs;
+          
           for ( std::set< uint64_t >::const_iterator iter = mpiPartners.begin( );
                 iter != mpiPartners.end( ); ++iter )
           {
             int commMpiRank = analysis.getMPIAnalysis( ).getMPIRank( *iter );
+            
+            // not to myself
             if ( commMpiRank == mpiRank )
             {
               continue;
@@ -832,10 +883,11 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
                                  commMpiRank, 0, MPI_COMM_WORLD ) );
           }
 
-          /* leave main loop */
+          // leave main loop
           break;
         }
 
+        // master: find previous MPI node on the same stream
         bool foundPredecessor          = false;
         const Graph::EdgeList& inEdges = mpiGraph->getInEdges( currentNode );
         for ( Graph::EdgeList::const_iterator iter = inEdges.begin( );
@@ -848,7 +900,8 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
             lastNode         = currentNode;
             currentNode      = intraEdge->getStartNode( );
             foundPredecessor = true;
-            /* continue main loop as master */
+            
+            // continue main loop as master 
             break;
           }
         }
@@ -858,39 +911,50 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
           throw RTException( "[%u] No ingoing intra-stream edge for node %s",
                              currentNode->getUniqueName( ).c_str( ) );
         }
-
-      }
-    }
+      } // END: isEnter (master)
+    } // END: master
     else
-    {
-      /* slave */
-      /* int flag = 0; */
-      std::cerr << "[" << mpiRank << "] Slave " << std::endl;
+    { 
+      // slave
+      UTILS_DBG_MSG( DEBUG_CPA_MPI, "[%u] Slave receives... ", mpiRank);
+      
       MPI_Status status;
       MPI_CHECK( MPI_Recv( recvBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                            MPI_ANY_SOURCE,
                            MPI_ANY_TAG, MPI_COMM_WORLD, &status ) );
-      std::cout << "[" << mpiRank << "] Slave after Recv " << std::endl;
+      
+      // if the master send "found message" we can leave the while loop
       if ( recvBfr[2] == PATH_FOUND_MSG )
       {
-        UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
-                       "[%u] * terminate requested by master", mpiRank );
+        UTILS_MSG( options.verbose >= VERBOSE_ALL,
+                   "[%u] * terminate requested by master", mpiRank );
         break;
       }
-
-      /* find local node for remote node id and decide if we can
-       *continue here */
-      UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
+   
+      // find local node for remote node id and decide if we can continue here
+      UTILS_DBG_MSG( DEBUG_CPA_MPI,
                      "[%u]  tested by remote MPI worker %u for remote edge to its node %u on stream %lu",
                      mpiRank,
                      status.MPI_SOURCE,
                      (uint32_t)recvBfr[0],
                      recvBfr[1] );
 
-      /* check if remote edge exists */
+      // check if remote edge exists
       MPIAnalysis::MPIEdge mpiEdge;
-      if ( analysis.getMPIAnalysis( ).getRemoteMPIEdge( (uint32_t)recvBfr[0],
-                                                        recvBfr[1], mpiEdge ) )
+      bool haveEdge = analysis.getMPIAnalysis( ).getRemoteMPIEdge( 
+                                  (uint32_t)recvBfr[0], recvBfr[1], mpiEdge );
+/*
+      //send information back to current master, if this rank has an edge
+      int mpiMaster = analysis.getMPIAnalysis().getMPIRank( recvBfr[1] );
+      sendBfr[0] = haveEdge;
+      //std::cerr << "[" << mpiRank << "] Slave sends to " << mpiMaster 
+      //          << " has Edge: " << haveEdge << std::endl;
+      MPI_CHECK( MPI_Send( sendBfr, 1, MPI_UNSIGNED_LONG_LONG,
+                           mpiMaster,
+                           42, MPI_COMM_WORLD ) );
+      */
+      
+      if ( haveEdge )
       {
         GraphNode::GraphNodePair& slaveActivity =
           mpiEdge.localNode->getGraphPair( );
@@ -903,19 +967,18 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
 
         sectionEndNode = lastNode;
 
-        UTILS_DBG_MSG( options.verbose >= VERBOSE_ANNOY,
-                       "[%u] becomes new master at node %s, lastNode = %s",
+        UTILS_DBG_MSG( DEBUG_CPA_MPI,
+                       "[%u] becomes new master at node %s, lastNode = %s\n",
                        mpiRank,
                        currentNode->getUniqueName( ).c_str( ),
                        lastNode->getUniqueName( ).c_str( ) );
-
-        /* continue main loop as master */
+        
+        // continue main loop as master
       }
     }
   }
 
   MPI_Barrier( MPI_COMM_WORLD );
-
 }
 
 /**
@@ -931,22 +994,22 @@ Runner::runAnalysis( Paradigm                          paradigm,
   switch ( paradigm )
   {
     case PARADIGM_CUDA:
-      UTILS_DBG_MSG( mpiRank == 0, "[%u] Running analysis: CUDA", mpiRank );
+      UTILS_MSG( mpiRank == 0, "[%u] Running analysis: CUDA", mpiRank );
 
       break;
 
     case PARADIGM_MPI:
-      UTILS_DBG_MSG( mpiRank == 0, "[%u] Running analysis: MPI", mpiRank );
+      UTILS_MSG( mpiRank == 0, "[%u] Running analysis: MPI", mpiRank );
 
       break;
 
     case PARADIGM_OMP:
-      UTILS_DBG_MSG( mpiRank == 0, "[%u] Running analysis: OMP", mpiRank );
+      UTILS_MSG( mpiRank == 0, "[%u] Running analysis: OMP", mpiRank );
 
       break;
 
     default:
-      UTILS_DBG_MSG( mpiRank == 0, "[%u] No analysis for unknown paradigm %d",
+      UTILS_MSG( mpiRank == 0, "[%u] No analysis for unknown paradigm %d",
                      mpiRank, paradigm );
       return;
   }
@@ -970,14 +1033,14 @@ Runner::runAnalysis( Paradigm                          paradigm,
 
     if ( ( mpiRank == 0 ) && ( ctr - last_ctr > num_nodes / 10 ) )
     {
-      UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC, "[%u] %lu%% ", mpiRank,
+      UTILS_MSG( options.verbose >= VERBOSE_BASIC, "[%u] %lu%% ", mpiRank,
                      (size_t)( 100.0 * (double)ctr / (double)num_nodes ) );
       fflush( NULL );
       last_ctr = ctr;
     }
   }
 
-  UTILS_DBG_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+  UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
                  "[%u] 100%%", mpiRank );
 
 #ifdef DEBUG

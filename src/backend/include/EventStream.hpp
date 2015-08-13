@@ -59,14 +59,9 @@ namespace casita
      } MPICommRecord;
      
      typedef std::vector< MPICommRecord > MPICommRecordList;
-     
-     typedef struct
-     {
-       uint64_t   requestId;      /**< OTF2 request ID */
-       GraphNode* leaveNode;      /**< leave node of MPI Irecv record */
-     } MPIIrecvRecord;
 
-     typedef std::vector< MPIIrecvRecord > MPIIrecvRecordList;
+     /**< list of request IDs */
+     typedef std::vector< uint64_t > MPIIcommRequestList;
      
      typedef struct
      {
@@ -74,11 +69,12 @@ namespace casita
        MPI_Request requests[2]; /**< internel MPI_Isend and MPI_Irecv request */
        uint64_t    sendBuffer[CASITA_MPI_P2P_BUF_SIZE]; /**< MPI_Isend buffer */
        uint64_t    recvBuffer[CASITA_MPI_P2P_BUF_SIZE]; /**< MPI_Irecv buffer */
-       GraphNode*  leaveNode;   /**< pointer to leave node of MPI Icomm */
+       GraphNode*  leaveNode;   /**< pointer to associated node of MPI Icomm */
      } MPIIcommRecord;
      
      /**< Map of OTF2 request IDs (key) and the corresponding record data */
-     typedef std::map< uint64_t, MPIIcommRecord > MPIIcommRecordMap;
+     //typedef std::map< uint64_t, MPIIcommRecord > MPIIcommRecordMap;
+     typedef std::map< uint64_t, MPIIcommRecord * > MPIIcommRecordMap;
 
      typedef std::vector< GraphNode* > SortedGraphNodeList;
 
@@ -231,10 +227,19 @@ namespace casita
       * Sets node-specific data for the given MPI_Wait leave node.
       * Consumes the pending OTF2 request ID.
       * 
-      * @param node the graph node of the MPI_Isend leave record
+      * @param node the graph node of the MPI_Wait leave record
       */
      void
      setMPIWaitNodeData( GraphNode* node );
+     
+     /**
+      * Consumes the pending OTF2 request IDs and sets the given node as 
+      * associated operation.
+      * 
+      * @param node the graph node of the MPI_Waitall leave record
+      */
+     void
+     setMPIWaitallNodeData( GraphNode* node );
 
      /**
       * Safely complete MPI request that are associated with the request ID.
@@ -246,6 +251,17 @@ namespace casita
       */
      bool
      waitForPendingMPIRequest( uint64_t requestId );
+     
+
+     /**
+      * Wait for all pending MPI requests that are associated with the given node.
+      * 
+      * @param node the MPI_Waitall leave node
+      * 
+      * @return true, if the handle was found, otherwise false
+      */
+     void
+     waitForPendingMPIRequests( GraphNode* node );
      
      /**
       * Analysis rules for non-blocking MPI communication:
@@ -299,6 +315,9 @@ namespace casita
           MPI_Wait leave node */
      uint64_t            pendingMPIRequestId;
      uint64_t            mpiIsendPartner; /**< partner ID of the MPI_Isend */
+     
+     /**< Pending OTF2 request IDs (not yet associated to a MPI_Wait[all] leave node */
+     MPIIcommRequestList pendingRequests;
      
      /**< pending non-blocking MPI communication records */
      MPIIcommRecordMap   mpiIcommRecords;

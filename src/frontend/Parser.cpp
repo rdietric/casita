@@ -74,10 +74,17 @@ namespace casita
    static Parser instance;
    return instance;
  }
+ 
+ int
+ Parser::getVerboseLevel( )
+ {
+   return Parser::getInstance().options.verbose;
+ }
 
  bool
  Parser::init( int argc, char** argv ) throw ( std::runtime_error )
  {
+   // default values
    bool noSummary = false;
 
    options.createOTF         = false;
@@ -101,7 +108,7 @@ namespace casita
      desc.add_options( )
        ( "help,h", "print help message" )
 
-       ( "input", po::value< std::string >( &options.filename ),
+       ( "input,i", po::value< std::string >( &options.filename ),
        "input OTF file" )
        ( "output,o", po::value< std::string >( &options.outOtfFile ),
        "output OTF file" )
@@ -120,15 +127,14 @@ namespace casita
      po::positional_options_description pos_options_descr;
      pos_options_descr.add( "input", 1 );
 
-     /* parse command line options and config file and store values in
-      * vm */
+     /* parse command line options and config file and store values in vm */
      po::variables_map vm;
      po::store( po::command_line_parser( argc, argv ).options(
                   desc ).positional( pos_options_descr ).run( ), vm );
 
      po::notify( vm );
 
-     /* print help message and quit simulation */
+     // print help message and quit simulation
      if ( vm.count( "help" ) )
      {
        std::cout << desc << "\n";

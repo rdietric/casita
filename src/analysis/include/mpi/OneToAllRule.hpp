@@ -64,6 +64,10 @@ namespace casita
         }
 
         uint64_t rootId            = *root;
+        
+        //
+        //delete root;
+        
         uint32_t rootMPIRank;
         rootMPIRank = commonAnalysis->getMPIAnalysis( ).getMPIRank(
           rootId,

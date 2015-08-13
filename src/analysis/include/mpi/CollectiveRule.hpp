@@ -47,10 +47,12 @@ namespace casita
         // wait or test for pending non-blocking MPI communication
         if ( node->isMPIFinalize() )
         {
+          //std::cerr << "isMPIFinalize waitForAllPendingMPIRequests" << std::endl;
           analysis->getCommon()->getStream( node->getStreamId() )->waitForAllPendingMPIRequests();
         }
         else if ( !node->isMPIInit() )
         {
+          //std::cerr << "Collective testAllPendingMPIRequests" << std::endl;
           analysis->getCommon()->getStream( node->getStreamId() )->testAllPendingMPIRequests();
         }
 
@@ -58,7 +60,7 @@ namespace casita
         GraphNode::GraphNodePair coll  = node->getGraphPair( );
         uint32_t mpiGroupId            = node->getReferencedStreamId( );
         const MPIAnalysis::MPICommGroup& mpiCommGroup =
-          commonAnalysis->getMPIAnalysis( ).getMPICommGroup( mpiGroupId );
+          commonAnalysis->getMPIAnalysis( ).getMPICommGroup( mpiGroupId ); 
         uint32_t myMpiRank             = commonAnalysis->getMPIRank( );
 
         if ( mpiCommGroup.comm == MPI_COMM_SELF )
@@ -72,7 +74,11 @@ namespace casita
         uint64_t sendBuffer[BUFFER_SIZE];
 
         uint32_t recvBufferSize    = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
-        uint64_t* recvBuffer  = new uint64_t[recvBufferSize];
+        uint64_t *recvBuffer       = new uint64_t[recvBufferSize];
+        
+        if(recvBuffer == NULL)
+          std::cerr << "Could not allocate uint64_t[] " << std::endl;
+        
         memset( recvBuffer, 0, recvBufferSize * sizeof( uint64_t ) );
 
         uint64_t collStartTime     = coll.first->getTime( );
@@ -113,9 +119,9 @@ namespace casita
 
         }
 
-        // I'm not latest collective -> blocking + remoteEdge to lastEnter
+        // I'm not last collective -> blocking + remoteEdge to lastEnter
         if ( lastEnterProcessId != node->getStreamId( ) ) // collStartTime < lastEnterTime )
-        {
+        {          
           // These nodes/edges are needed for dependency correctness but are
           // omitted since they are currently not used anywhere.
 //           analysis->getMPIAnalysis().addRemoteMPIEdge(coll.second, lastEnterRemoteNodeId, lastEnterProcessId);
@@ -129,18 +135,20 @@ namespace casita
           Edge* collRecordEdge = commonAnalysis->getEdge( coll.first,
                                                           coll.second );
           collRecordEdge->makeBlocking( );
+          
+          // set the wait state counter for this blocking region
           coll.second->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                      CTR_WAITSTATE ),
                                    lastEnterTime - collStartTime );
 
           commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
-            coll.second,
-            lastEnterRemoteNodeId,
+            coll.second, // local leave node
+            lastEnterRemoteNodeId, // remote enter node
             lastEnterProcessId,
             MPIAnalysis::
             MPI_EDGE_REMOTE_LOCAL );
         }
-        else           // I'm latest collective
+        else // I am the last entering collective
         {
           // aggregate blame from all other streams
           uint64_t total_blame = 0;
@@ -151,17 +159,10 @@ namespace casita
 
             if ( recvBuffer[i + 4] != myMpiRank )
             {
-              /*commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
-                coll.first,
-                recvBuffer[i + 3],
-                recvBuffer[i + 4],
-                MPIAnalysis::MPI_EDGE_LOCAL_REMOTE );*/
-              uint64_t remoteNodeID = recvBuffer[i + 3];
-              uint64_t remoteStreamID = recvBuffer[i + 4];
               commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
-                coll.first, // local node
-                remoteNodeID,
-                remoteStreamID,
+                coll.first, // local enter node
+                recvBuffer[i + 3], // remote leave node ID
+                recvBuffer[i + 4], // remote process ID
                 MPIAnalysis::MPI_EDGE_LOCAL_REMOTE );
             }
 
@@ -185,7 +186,7 @@ namespace casita
                            streamWalkCallback );
         }
 
-        delete[]recvBuffer;
+        delete[] recvBuffer;
 
         return true;
       }

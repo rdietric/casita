@@ -16,13 +16,33 @@ OPTION(RELEASE "Disable all debug asserts" OFF)
 IF(NOT RELEASE)
     SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
     SET(CMAKE_BUILD_TYPE Debug)
-    ADD_DEFINITIONS(-DDEBUG)
+    ADD_DEFINITIONS(-DDEBUG=0)
     message("building debug")
 ELSE()
     message("building release")
     SET(CMAKE_BUILD_TYPE Release)
 	  SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -Werror")
 ENDIF(NOT RELEASE)
+
+# enable release build
+SET(DEBUG_LEVEL CACHE STRING "DOCUMENTATION")
+#OPTION(DEBUG "Disable all debug asserts" OFF)
+IF(DEBUG_LEVEL)
+    #TODO check variable such that it makes sense
+    #-EMPTY? => 2
+    #-!NUM
+    SET(FLAGS_TO_USE CMAKE_CXX_FLAGS)
+    IF(CMAKE_BUILD_TYPE)
+      STRING(TOUPPER ${CMAKE_BUILD_TYPE} TEMP)
+      SET(FLAGS_TO_USE "${FLAGS_TO_USE}_${TEMP}")
+      MESSAGE("${FLAGS_TO_USE} ${TEMP}")
+    ENDIF()
+    SET(${FLAGS_TO_USE} "${${FLAGS_TO_USE}} -DDEBUG_LEVEL=${DEBUG_LEVEL}")
+    #SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g" FORCE)
+    #SET(CMAKE_BUILD_TYPE Debug FORCE)
+    #ADD_DEFINITIONS(-DDEBUG=${DEBUG})
+    message("building debug with flags ${${FLAGS_TO_USE}}")
+ENDIF()
 
 # enable gprof
 OPTION(GPROF "enable gprof" OFF)

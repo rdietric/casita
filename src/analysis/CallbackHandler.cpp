@@ -147,7 +147,7 @@ CallbackHandler::handleDefProcess( ITraceReader*  reader,
     }
   }
 
-  UTILS_DBG_MSG( handler->getOptions( ).verbose >= VERBOSE_BASIC,
+  UTILS_MSG( handler->getOptions( ).verbose >= VERBOSE_BASIC,
                  "  [%u] Found stream %s (%lu) with type %u, stream %u",
                  analysis.getMPIRank( ), name, streamId, streamType, stream );
 
@@ -352,7 +352,7 @@ CallbackHandler::handleMPIComm( ITraceReader* reader,
     default: throw RTException( "Unknown cdm::io::MPIType %u", mpiType );
   }
 
-  UTILS_DBG_MSG( handler->getOptions( ).verbose > VERBOSE_ALL,
+  UTILS_MSG( handler->getOptions( ).verbose > VERBOSE_ALL,
                  " [%u] mpi record, [%lu > %lu], type %u, tag %u",
                  analysis.getMPIRank( ),
                  streamId, partnerId,
