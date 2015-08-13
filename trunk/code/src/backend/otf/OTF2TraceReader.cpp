@@ -232,7 +232,7 @@ OTF2TraceReader::readEvents( )
     throw RTException( "Failed to read OTF2 events" );
   }
 
-  UTILS_DBG_MSG( mpiRank == 0, "[%u] Read %lu events", mpiRank, events_read );
+  UTILS_MSG( mpiRank == 0, "[%u] Read %lu events", mpiRank, events_read );
 
   OTF2_Reader_CloseGlobalEvtReader( reader, global_evt_reader );
 
@@ -360,7 +360,7 @@ OTF2TraceReader::readDefinitions( )
                                         global_def_reader,
                                         &definitions_read );
 
-  UTILS_DBG_MSG( mpiRank == 0, "[%u] Read %lu definitions in Phase 1",
+  UTILS_MSG( mpiRank == 0, "[%u] Read %lu definitions in Phase 1",
                  mpiRank, definitions_read );
 
   close( );
@@ -394,7 +394,7 @@ OTF2TraceReader::readDefinitions( )
                                         global_def_reader,
                                         &definitions_read );
 
-  UTILS_DBG_MSG( mpiRank == 0, "[%u] Read %lu definitions in Phase 2", mpiRank, definitions_read );
+  UTILS_MSG( mpiRank == 0, "[%u] Read %lu definitions in Phase 2", mpiRank, definitions_read );
 
   /* add forkjoin "region" to support internal OMP-fork/join model */
   uint32_t stringSize = definitionTokenStringMap.size( );

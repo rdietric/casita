@@ -54,6 +54,8 @@ namespace casita
         //uint64_t partnerProcessId = node->getReferencedStreamId( );
         uint64_t* data = (uint64_t*)( node->getData( ) );
         uint64_t partnerProcessId = *data;
+        //delete data; // allocated in class AnalysisParadigmMPI, still used in CP analysis later
+        
         node->setReferencedStreamId( partnerProcessId ); // for debugging in CP analysis
         uint32_t  partnerMPIRank  =
           commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );

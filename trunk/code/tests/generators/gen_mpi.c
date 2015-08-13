@@ -83,7 +83,7 @@ void late_sender()
 }
 
 /*
- * 
+ * Open waits for Isend on root 
  */
 void isend_recv_root_to_all()
 {
@@ -221,13 +221,13 @@ int main(int argc, char **argv)
     
     //late_sender();
 
-    //barrier();
+    isend_recv_root_to_all();
     
-    //isend_recv_root_to_all();
+    barrier();
     
-    irecv_send_ring();
+    //irecv_send_ring();
     
-    //isend_irecv_wait();
+    isend_irecv_wait();
     
     //test();
   }

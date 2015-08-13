@@ -36,17 +36,25 @@ namespace casita
       bool
       apply( AnalysisParadigmMPI* analysis, GraphNode* node )
       {
-        /* applied at MPI_Wait leave */
+        // applied at MPI_Wait leave
         if ( !node->isMPIWait( ) || !node->isLeave( ) )
         {
           return false;
         }
         
-        // MPI request handle is stored in the data field of the MPI_Wait leave node
-        uint64_t* requestID = (uint64_t* ) node->getData();
+        EventStream::MPIIcommRecord* record = 
+                (EventStream::MPIIcommRecord* ) node->getData( );
         
-        analysis->getCommon()->getStream( node->getStreamId() )->waitForPendingMPIRequest( *requestID );
-        
+        if( NULL != record )
+        {
+          analysis->getCommon()->getStream( node->getStreamId() )
+                               ->waitForPendingMPIRequest( record->requestId );
+        }
+        else
+        {
+          std::cerr << "[" << node->getStreamId() << "] MPI_Wait rule: record is NULL!" << std::endl;
+        }
+
         return true;
       }
   };

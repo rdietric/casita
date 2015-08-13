@@ -234,7 +234,7 @@ MPIAnalysis::getMpiPartnersRank( GraphNode* node )
     node = node->getGraphPair( ).second;
   }
 
-  if ( node->isMPIRecv( ) )
+  if ( node->isMPIRecv( ) /*|| node->isMPIISend( ) || node->isMPIIRecv( )*/ )
   {
     partners.insert( getMPIRank( node->getReferencedStreamId( ) ) );
   }

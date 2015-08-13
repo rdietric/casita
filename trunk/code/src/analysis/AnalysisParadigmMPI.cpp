@@ -80,28 +80,23 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
     
     return;
   }
-  
-  if( node->isMPIIRecv() )
+  else  if( node->isMPIIRecv() )
   {
     stream->addPendingMPIIrecvNode( node );
     
     return;
   }
-  
-  if( node->isMPIWait() )
+  else if( node->isMPIWait() )
   {
     stream->setMPIWaitNodeData( node );
     
     return;
+  }else if( node->isMPIWaitall() )
+  {
+    stream->setMPIWaitallNodeData( node );
+    
+    return;
   }
-  
-  // MPI_Waitall waits for an arbitrary number of requests
-//  if( node->isMPIWaitall() )
-//  {
-//    stream->setMPIWaitallNodeData( node );
-//    
-//    return;
-//  }
 
   // handle blocking MPI communication events
   EventStream::MPICommRecordList mpiCommRecords = stream->getPendingMPIRecords( );
@@ -123,13 +118,13 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
 
       case EventStream::MPI_ONEANDALL:
         node->setReferencedStreamId( iter->partnerId );
-        tmpId  = new uint64_t; // TODO: free
+        tmpId  = new uint64_t;
         *tmpId = iter->rootId;
         node->setData( tmpId ); 
         break;
 
       case EventStream::MPI_SEND:
-        tmpId  = new uint64_t; // TODO: free
+        tmpId  = new uint64_t;
         *tmpId = iter->partnerId;
         node->setData( tmpId );
         break;
@@ -140,4 +135,6 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
       default: throw RTException( "Not a valid MPICommRecord type here" );
     }
   }
+  
+  // as all data is copied we can clear the list?
 }

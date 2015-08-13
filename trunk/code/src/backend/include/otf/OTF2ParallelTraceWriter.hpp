@@ -395,6 +395,48 @@ namespace casita
                             OTF2_CommRef        communicator,
                             uint32_t            msgTag,
                             uint64_t            msgLength );
+      
+      static OTF2_CallbackCode
+      otf2Callback_MpiIrecvRequest( OTF2_LocationRef    location,
+                                    OTF2_TimeStamp      time,
+                                    uint64_t            eventPosition,
+                                    void*               userData,
+                                    OTF2_AttributeList* attributeList,
+                                    uint64_t            requestID );
+      
+      static OTF2_CallbackCode
+      otf2Callback_MpiIrecv( OTF2_LocationRef    locationID,
+                            OTF2_TimeStamp      time,
+                            uint64_t            eventPosition,
+                            void*               userData,
+                            OTF2_AttributeList* attributeList,
+                            uint32_t            sender,
+                            OTF2_CommRef        communicator,
+                            uint32_t            msgTag,
+                            uint64_t            msgLength,
+                            uint64_t            requestID );
+      
+      
+      
+      static OTF2_CallbackCode
+      otf2Callback_MpiIsend( OTF2_LocationRef    locationID,
+                            OTF2_TimeStamp      time,
+                            uint64_t            eventPosition,
+                            void*               userData,
+                            OTF2_AttributeList* attributeList,
+                            uint32_t            receiver,
+                            OTF2_CommRef        communicator,
+                            uint32_t            msgTag,
+                            uint64_t            msgLength,
+                            uint64_t            requestID );
+      
+      static OTF2_CallbackCode
+      otf2Callback_MpiIsendComplete( OTF2_LocationRef    location,
+                                     OTF2_TimeStamp      time,
+                                     uint64_t            eventPosition,
+                                     void*               userData,
+                                     OTF2_AttributeList* attributeList,
+                                     uint64_t            requestID );
 
       static OTF2_CallbackCode
       OTF2_EvtReaderCallback_ThreadFork( OTF2_LocationRef locationID,
