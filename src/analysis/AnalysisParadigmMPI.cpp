@@ -73,28 +73,23 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
   EventStream* stream = commonAnalysis->getStream( node->getStreamId( ) );
   
   // handle non-blocking MPI communication enter/leave events
-  
   if( node->isMPIISend() )
   {
     stream->setMPIIsendNodeData( node );
-    
     return;
   }
   else  if( node->isMPIIRecv() )
   {
     stream->addPendingMPIIrecvNode( node );
-    
     return;
   }
   else if( node->isMPIWait() )
   {
     stream->setMPIWaitNodeData( node );
-    
     return;
   }else if( node->isMPIWaitall() )
   {
     stream->setMPIWaitallNodeData( node );
-    
     return;
   }
 
@@ -118,13 +113,13 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
 
       case EventStream::MPI_ONEANDALL:
         node->setReferencedStreamId( iter->partnerId );
-        tmpId  = new uint64_t;
+        tmpId  = new uint64_t; // TODO: is this free'd?
         *tmpId = iter->rootId;
         node->setData( tmpId ); 
         break;
 
       case EventStream::MPI_SEND:
-        tmpId  = new uint64_t;
+        tmpId  = new uint64_t; // TODO: is this free'd? still needed in CPA
         *tmpId = iter->partnerId;
         node->setData( tmpId );
         break;
@@ -136,5 +131,6 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
     }
   }
   
-  // as all data is copied we can clear the list?
+  // as all data is copied we can clear the list
+  mpiCommRecords.clear();
 }
