@@ -452,19 +452,19 @@ EventStream::addPendingMPIIrecvNode( GraphNode* node )
 {
     UTILS_ASSERT( pendingMPIRequestId != UINT64_MAX,
                   "MPI_Irecv request ID invalid! Trace file might be corrupted!");
-    /*
+    
     MPIIcommRecord record;
     record.requests[0] = MPI_REQUEST_NULL;
     record.requests[1] = MPI_REQUEST_NULL;
     record.requestId = pendingMPIRequestId;
     record.leaveNode = node;
-    */
+    /*
     MPIIcommRecord *record = new MPIIcommRecord;
     record->requests[0] = MPI_REQUEST_NULL;
     record->requests[1] = MPI_REQUEST_NULL;
     record->requestId = pendingMPIRequestId;
     record->leaveNode = node;
-    /*
+    *//*
     std::cerr << "[" << this->id << "] New MPI_Irecv record: " << record 
               << " Request ID: " << pendingMPIRequestId << std::endl;
     */
@@ -472,8 +472,8 @@ EventStream::addPendingMPIIrecvNode( GraphNode* node )
     mpiIcommRecords[pendingMPIRequestId] = record;
     
     // set node-specific data to a pointer to the record in the map
-    //node->setData( &mpiIcommRecords[pendingMPIRequestId] );
-    node->setData( record );
+    node->setData( &mpiIcommRecords[pendingMPIRequestId] );
+    //node->setData( record );
     
     //invalidate request ID variable
     pendingMPIRequestId = UINT64_MAX;
@@ -494,8 +494,8 @@ EventStream::handleMPIIrecvEventData( uint64_t requestId,
 {
   //std::cerr << "MPIIrecv: mpiWaitRequest = " << requestId << std::endl;
  
-  //mpiIcommRecords[requestId].leaveNode->setReferencedStreamId(partnerId);
-  mpiIcommRecords[requestId]->leaveNode->setReferencedStreamId(partnerId);
+  mpiIcommRecords[requestId].leaveNode->setReferencedStreamId(partnerId);
+  //mpiIcommRecords[requestId]->leaveNode->setReferencedStreamId(partnerId);
   
   // temporarily store the request that is consumed by MPI_Wait[all] leave event
   pendingRequests.push_back(requestId);
@@ -527,7 +527,7 @@ EventStream::setMPIIsendNodeData( GraphNode* node )
 {
   UTILS_ASSERT( pendingMPIRequestId != UINT64_MAX && mpiIsendPartner != UINT64_MAX, 
                 "MPI request or MPI partner ID is invalid!");
- /*
+ 
   // add new record to map
   MPIIcommRecord record;
   record.requests[0] = MPI_REQUEST_NULL;
@@ -535,17 +535,19 @@ EventStream::setMPIIsendNodeData( GraphNode* node )
   record.leaveNode = node;
   record.requestId = pendingMPIRequestId;
   mpiIcommRecords[pendingMPIRequestId] = record;
-  */
+  
+  // set node-specific data to a pointer to the record in the map
+  node->setData( &mpiIcommRecords[pendingMPIRequestId] );
+  
+  /*
   MPIIcommRecord *record = new MPIIcommRecord;
   record->requests[0] = MPI_REQUEST_NULL;
   record->requests[1] = MPI_REQUEST_NULL;
   record->leaveNode = node;
   record->requestId = pendingMPIRequestId;
   mpiIcommRecords[pendingMPIRequestId] = record;
-
-  // set node-specific data to a pointer to the record in the map
-  //node->setData( &mpiIcommRecords[pendingMPIRequestId] );
   node->setData( record );
+  */
   
   node->setReferencedStreamId( mpiIsendPartner ); 
   
@@ -568,11 +570,11 @@ EventStream::setMPIWaitNodeData( GraphNode* node )
 
   // set OTF2 request ID as node-specific data
   // the request ID has to be already in the map from Irecv or Isend record
-  node->setData( mpiIcommRecords[ pendingRequests.back( ) ] );
+  node->setData( &mpiIcommRecords[ pendingRequests.back( ) ] );
   
   
   // !!! invalidate node-specific data when deleting this entry
-  mpiIcommRecords[ pendingRequests.back( ) ]->leaveNode = node;
+  mpiIcommRecords[ pendingRequests.back( ) ].leaveNode = node;
   
   // request ID is consumed, therefore pop it from the vector
   pendingRequests.pop_back( );
@@ -594,7 +596,7 @@ EventStream::setMPIWaitallNodeData( GraphNode* node )
   
   for( ; it != pendingRequests.end( ); ++it )
   {
-    mpiIcommRecords[*it]->leaveNode = node;
+    mpiIcommRecords[*it].leaveNode = node;
   }
   
   pendingRequests.clear( );
@@ -622,22 +624,22 @@ EventStream::waitForPendingMPIRequest( uint64_t requestId )
                      "[%u] Finish requests (%p) associated with OTF2 request ID %llu \n",
                      this->id, it->second, requestId);
       
-      if( it->second->requests[0] != MPI_REQUEST_NULL )
+      if( it->second.requests[0] != MPI_REQUEST_NULL )
       {
-        MPI_CHECK( MPI_Wait( &(it->second->requests[0]), MPI_STATUS_IGNORE ) );
+        MPI_CHECK( MPI_Wait( &(it->second.requests[0]), MPI_STATUS_IGNORE ) );
       }
 
-      if( it->second->requests[1] != MPI_REQUEST_NULL )
+      if( it->second.requests[1] != MPI_REQUEST_NULL )
       {
-        MPI_CHECK( MPI_Wait( &(it->second->requests[1]), MPI_STATUS_IGNORE ) );
+        MPI_CHECK( MPI_Wait( &(it->second.requests[1]), MPI_STATUS_IGNORE ) );
       }
 
       // invalidate node-specific data
-      it->second->leaveNode->setData(NULL);
+      it->second.leaveNode->setData(NULL);
       
       // delete allocated memory
-      delete it->second;
-      it->second = 0;
+      //delete it->second;
+      //it->second = 0;
       
       mpiIcommRecords.erase( it );
 
@@ -670,29 +672,29 @@ EventStream::waitForPendingMPIRequests( GraphNode* node )
 
   while ( it != mpiIcommRecords.end( ) )
   {
-    if ( it->second->leaveNode == node )
+    if ( it->second.leaveNode == node )
     {
       UTILS_DBG_MSG( DEBUG_MPI_ICOMM,
                      "[%u] Finish requests (%p) associated with OTF2 request ID "
                      "%llu (in waitForPendingMPIRequests())\n",
                      this->id, it->second, it->second->requestId);
       
-      if( it->second->requests[0] != MPI_REQUEST_NULL )
+      if( it->second.requests[0] != MPI_REQUEST_NULL )
       {
-        MPI_CHECK( MPI_Wait( &(it->second->requests[0]), MPI_STATUS_IGNORE ) );
+        MPI_CHECK( MPI_Wait( &(it->second.requests[0]), MPI_STATUS_IGNORE ) );
       }
 
-      if( it->second->requests[1] != MPI_REQUEST_NULL )
+      if( it->second.requests[1] != MPI_REQUEST_NULL )
       {
-        MPI_CHECK( MPI_Wait( &(it->second->requests[1]), MPI_STATUS_IGNORE ) );
+        MPI_CHECK( MPI_Wait( &(it->second.requests[1]), MPI_STATUS_IGNORE ) );
       }
 
       // invalidate node-specific data
-      it->second->leaveNode->setData( NULL );
+      it->second.leaveNode->setData( NULL );
       
       // delete allocated memory
-      delete it->second;
-      it->second = 0;
+      //delete it->second;
+      //it->second = 0;
       
       mpiIcommRecords.erase( it++ );
     }
@@ -723,20 +725,20 @@ EventStream::waitForAllPendingMPIRequests( )
 
   for (; it != mpiIcommRecords.end( ); ++it )
   {
-    MPI_Request request = it->second->requests[0];
+    MPI_Request request = it->second.requests[0];
     
     if( MPI_REQUEST_NULL != request )
       MPI_CHECK( MPI_Wait( &request, MPI_STATUS_IGNORE ) );
     
-    request = it->second->requests[1];
+    request = it->second.requests[1];
     
     if( MPI_REQUEST_NULL != request )
       MPI_CHECK( MPI_Wait( &request, MPI_STATUS_IGNORE ) );
     
     // invalidate node-specific data
-    it->second->leaveNode->setData( NULL );
-    delete it->second; 
-    it->second = 0;
+    it->second.leaveNode->setData( NULL );
+    //delete it->second; 
+    //it->second = 0;
   }
 
   // clear the map of pending non-blocking MPI operations
@@ -761,11 +763,11 @@ EventStream::testAllPendingMPIRequests( )
     MPI_Status status;
     int finished[2] = {0,0};
 
-    if( MPI_REQUEST_NULL != it->second->requests[0] )
-      MPI_CHECK( MPI_Test( &(it->second->requests[0]), &(finished[0]), &status ) );
+    if( MPI_REQUEST_NULL != it->second.requests[0] )
+      MPI_CHECK( MPI_Test( &(it->second.requests[0]), &(finished[0]), &status ) );
     
-    if( MPI_REQUEST_NULL != it->second->requests[1] )
-      MPI_CHECK( MPI_Test( &(it->second->requests[1]), &(finished[1]), &status ) );
+    if( MPI_REQUEST_NULL != it->second.requests[1] )
+      MPI_CHECK( MPI_Test( &(it->second.requests[1]), &(finished[1]), &status ) );
     
     //if both MPI_Irecv and MPI_Isend are finished, we can delete the record
     if( finished[0] && finished[1] )
@@ -775,23 +777,23 @@ EventStream::testAllPendingMPIRequests( )
                                       " %llu in testAllPendingMPIRequests()\n", 
                                       this->id,
                                       (void *) it->second,
-                                      it->second->requestId);
+                                      it->second.requestId);
       
       // invalidate node-specific data
-      it->second->leaveNode->setData( NULL );
+      it->second.leaveNode->setData( NULL );
       
-      delete it->second;
-      it->second = NULL;
+      //delete it->second;
+      //it->second = NULL;
       
       mpiIcommRecords.erase(it++);
     }
     else
     {
       if( finished[0] )
-        it->second->requests[0] = MPI_REQUEST_NULL;
+        it->second.requests[0] = MPI_REQUEST_NULL;
     
       if( finished[1] )
-        it->second->requests[1] = MPI_REQUEST_NULL;
+        it->second.requests[1] = MPI_REQUEST_NULL;
       
       ++it;
     }

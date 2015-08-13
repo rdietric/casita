@@ -57,15 +57,11 @@ namespace casita
 
         const int BUFFER_SIZE = 8;
         uint64_t  sendBuffer[BUFFER_SIZE], recvBuffer[BUFFER_SIZE];
-        /* uint64_t *sendBfr64 = (uint64_t*) sendBuffer; */
-        /* uint64_t *recvBfr64 = (uint64_t*) recvBuffer; */
 
         uint64_t  myStartTime = sendRecv.first->getTime( );
         uint64_t  myEndTime   = sendRecv.second->getTime( );
 
         /* prepare send buffer */
-        /* memcpy(sendBfr64 + 0, &myStartTime, sizeof (uint64_t)); */
-        /* memcpy(sendBfr64 + 1, &myEndTime, sizeof (uint64_t)); */
         sendBuffer[0] = myStartTime;
         sendBuffer[1] = myEndTime;
         sendBuffer[2] = sendRecv.first->getId( );
@@ -89,9 +85,7 @@ namespace casita
                                  MPI_COMM_WORLD, &status ) );
 
         /* evaluate receive buffer */
-        uint64_t otherStartTime = recvBuffer[0];         /*
-                                                          *recvBfr64[0];
-                                                          **/
+        uint64_t otherStartTime = recvBuffer[0]; 
         uint64_t otherEnterId   = recvBuffer[2];
         uint64_t otherLeaveId   = recvBuffer[3];
 
@@ -129,7 +123,7 @@ namespace casita
                                  MPI_UNSIGNED_LONG_LONG, partnerMPIRankSend, 0,
                                  MPI_COMM_WORLD, &status ) );
 
-        otherStartTime = recvBuffer[0];         /* recvBfr64[0]; */
+        otherStartTime = recvBuffer[0]; 
         otherEnterId   = recvBuffer[2];
         otherLeaveId   = recvBuffer[3];
 
