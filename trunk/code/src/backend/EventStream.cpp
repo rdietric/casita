@@ -390,12 +390,21 @@ EventStream::setPendingMPIRecord( MPIType  mpiType,
   mpiCommRecords.push_back( record );
 }
 
-// This seems to create a memory leak!
+/**
+ * Consume the pending (blocking) MPI records an retrieve a copy of the list.
+ * The list should be cleared, when it is not needed any more.
+ * 
+ * @return a copy of all pending (blocking) MPI records
+ */
 EventStream::MPICommRecordList
 EventStream::getPendingMPIRecords( )
 {
+  // create a copy of the current pending records
   MPICommRecordList copyList;
   copyList.assign( mpiCommRecords.begin( ), mpiCommRecords.end( ) );
+  // the list is cleared in AnalysisParadigmMPI::handlePostLeave())
+  
+  // clear the pending list
   mpiCommRecords.clear( );
   return copyList;
 }

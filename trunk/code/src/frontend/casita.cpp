@@ -25,6 +25,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>       /* clock_t, clock, CLOCKS_PER_SEC */
 
 #include "common.hpp"
 #include "Parser.hpp"
@@ -57,6 +58,8 @@ main( int argc, char** argv )
     ProgramOptions& options = Parser::getInstance( ).getProgramOptions( );
 
     Runner* runner          = new Runner( mpiRank, mpiSize );
+    
+    clock_t timestamp = clock();
 
     // read the OTF2 trace and generate a graph
     runner->readOTF( );
@@ -106,6 +109,10 @@ main( int argc, char** argv )
     }
 
     delete runner;
+    
+    timestamp = clock() - timestamp;
+    
+    UTILS_MSG( mpiRank == 0, "CASITA analysis took %f seconds.\n", ( (float) timestamp ) / CLOCKS_PER_SEC );
   }
   catch( RTException e )
   {

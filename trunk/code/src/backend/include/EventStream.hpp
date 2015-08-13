@@ -159,6 +159,12 @@ namespace casita
      void
      setPendingMPIRecord( MPIType mpiType, uint64_t partnerId, uint64_t rootId );
 
+     /**
+      * Consume the pending (blocking) MPI records an retrieve a copy of the list.
+      * The list should be cleared, when it is not needed any more.
+      * 
+      * @return a copy of all pending (blocking) MPI records
+      */
      EventStream::MPICommRecordList
      getPendingMPIRecords( );
      
