@@ -73,8 +73,8 @@ namespace casita
      } MPIIcommRecord;
      
      /**< Map of OTF2 request IDs (key) and the corresponding record data */
-     //typedef std::map< uint64_t, MPIIcommRecord > MPIIcommRecordMap;
-     typedef std::map< uint64_t, MPIIcommRecord * > MPIIcommRecordMap;
+     typedef std::map< uint64_t, MPIIcommRecord > MPIIcommRecordMap;
+     //typedef std::map< uint64_t, MPIIcommRecord * > MPIIcommRecordMap;
 
      typedef std::vector< GraphNode* > SortedGraphNodeList;
 

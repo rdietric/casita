@@ -47,12 +47,10 @@ namespace casita
         // wait or test for pending non-blocking MPI communication
         if ( node->isMPIFinalize() )
         {
-          //std::cerr << "isMPIFinalize waitForAllPendingMPIRequests" << std::endl;
           analysis->getCommon()->getStream( node->getStreamId() )->waitForAllPendingMPIRequests();
         }
         else if ( !node->isMPIInit() )
         {
-          //std::cerr << "Collective testAllPendingMPIRequests" << std::endl;
           analysis->getCommon()->getStream( node->getStreamId() )->testAllPendingMPIRequests();
         }
 
@@ -73,11 +71,12 @@ namespace casita
         const uint32_t BUFFER_SIZE = 5;
         uint64_t sendBuffer[BUFFER_SIZE];
 
+        // receive buffer has to be dynamically allocated as it depends on the
+        // number of processes in this group
         uint32_t recvBufferSize    = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
         uint64_t *recvBuffer       = new uint64_t[recvBufferSize];
         
-        if(recvBuffer == NULL)
-          std::cerr << "Could not allocate uint64_t[] " << std::endl;
+        UTILS_ASSERT( recvBuffer != NULL, "Could not allocate uint64_t[]!\n");
         
         memset( recvBuffer, 0, recvBufferSize * sizeof( uint64_t ) );
 

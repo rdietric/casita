@@ -62,7 +62,7 @@ namespace casita
         uint64_t   recvEndTime         = recv.second->getTime( );
 
         
-        // TODO: MPI_Irecv should be always blocking
+        // TODO: MPI_Recv should be always blocking
         // check for MPI_ISEND as partner and skip analysis
         if ( buffer[CASITA_MPI_P2P_BUF_SIZE - 1] != MPI_ISEND )
         {

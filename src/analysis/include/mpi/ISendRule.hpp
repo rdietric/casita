@@ -57,16 +57,13 @@ namespace casita
                 (EventStream::MPIIcommRecord* ) node->getData( );
         
         // check if the record has been invalidated/deleted
-        if( NULL == record )
-        {
-          std::cerr << "[" << node->getStreamId( ) << "] Isend rule: Invalid record data." 
-                    << std::endl;
-        }
+        UTILS_MSG( NULL == record, "[%u] MPI_Isend rule: Invalid record data.",
+                                   node->getStreamId( ) );
         
         uint64_t *buffer = record->sendBuffer;
         
-        buffer[0] = 0; // start time is not relevant //valgrind: invalid write of size 8
-        buffer[1] = 0; // leave time is not relevant //valgrind: invalid write of size 8
+        buffer[0] = 0; // start time is not relevant 
+        buffer[1] = 0; // leave time is not relevant 
         buffer[2] = send.first->getId( );  // send start node
         buffer[3] = send.second->getId( ); // send leave node
         buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_ISEND; //send.second->getType( );
@@ -77,24 +74,20 @@ namespace casita
 
         // replay the MPI_Isend and provide the receiver with local information
         // a blocking MPI_Recv can distribute blame then
-        MPI_Request request_send;
         MPI_CHECK( MPI_Isend( buffer, CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
-                              partnerMPIRank, 0, MPI_COMM_WORLD, &request_send ) );
-        record->requests[0] = request_send;
+                              partnerMPIRank, 0, MPI_COMM_WORLD, &(record->requests[0]) ) );
         
         // MPI_Isend would like to know if partner is an MPI_Irecv or MPI_Recv
         // for the latter we need the dependency edge
         // MPI_Irecv does not know if the partner is an MPI_Isend or MPI_Send.
 
         // MPI_Irecv to have a matching partner for MPI_[I]Send rule
-        MPI_Request request_recv;;
         MPI_CHECK( MPI_Irecv( record->recvBuffer, CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
                               partnerMPIRank, 42, MPI_COMM_WORLD, 
-                              &request_recv ) ); //Valgrind: Invalid write of size 2
+                              &(record->requests[1]) ) );
         
-        record->requests[1] = request_recv;
         /*
         std::cerr << "[" << node->getStreamId( ) << "] ISendRule - record data after Icomm:" 
                   << " node adress: "     << record->leaveNode
@@ -103,26 +96,24 @@ namespace casita
                   << " OTF2 request ID: " << record->requestId
                   << std::endl;
         */
+        
         // collect pending MPI operations
         int finished = 0;
-        MPI_Status status;
-
-        MPI_CHECK( MPI_Test(&(record->requests[0]), &finished, &status) );
+        MPI_CHECK( MPI_Test(&(record->requests[0]), &finished, MPI_STATUS_IGNORE ) );
         if(finished)
         {
+          // TODO: should be done by the MPI implementation
           record->requests[0] = MPI_REQUEST_NULL; 
         }
 
         finished = 0;
-        MPI_CHECK( MPI_Test(&(record->requests[1]), &finished, &status) ); 
+        MPI_CHECK( MPI_Test(&(record->requests[1]), &finished, MPI_STATUS_IGNORE ) ); 
         if(finished)
         {
+          // TODO: should be done by the MPI implementation
           record->requests[1] = MPI_REQUEST_NULL; 
           
           /* if receive finished, we can use the buffer
-          std::cerr << "[" << node->getStreamId( ) 
-                  << "] ISendRule - Receive with "
-                  << partnerProcessId << " finished already!" << std::endl;
           
           if(record->recvBuffer[CASITA_MPI_P2P_BUF_SIZE - 1] & MPI_RECV )
           {

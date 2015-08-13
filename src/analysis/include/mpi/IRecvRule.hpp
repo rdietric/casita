@@ -65,13 +65,11 @@ namespace casita
           commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
 
         // replay MPI_Irecv (receive buffer is never read as data are first valid in MPI_Wait[all])
-        MPI_Request request_recv;
         MPI_CHECK( MPI_Irecv( record->recvBuffer, 
                               CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
                               partnerMPIRank, 0, MPI_COMM_WORLD, 
-                              &request_recv ) );
-        record->requests[0] = request_recv;
+                              &(record->requests[0]) ) );
         
         // send information to communication partner
         // the blocking MPI_Recv can evaluate them and e.g. stop wait state analysis
@@ -82,33 +80,27 @@ namespace casita
 
         // Send indicator that this is an MPI_Irecv
         // use another tag to not mix up with replayed communication
-        MPI_Request request_send;
         MPI_CHECK( MPI_Isend( buffer_send, 
                               CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
                               partnerMPIRank,
-                              42, MPI_COMM_WORLD, &request_send ) );
-        record->requests[1] = request_send;
+                              42, MPI_COMM_WORLD, &(record->requests[1]) ) );
 
         // collect pending non-blocking MPI operations
         int finished = 0;
-        MPI_Status status;
 
-        MPI_Test(&request_recv, &finished, &status);
+        MPI_Test(&(record->requests[0]), &finished, MPI_STATUS_IGNORE);
         if(finished)
         {
-          // TODO: check if necessary!!!
-          //std::cerr << "[" << node->getStreamId( ) << "] record->requests[0] = "
-          //          << record->requests[0] << " MPI_REQUEST_NULL=" << MPI_REQUEST_NULL << std::endl;
+          // TODO: should be done by the MPI implementation
           record->requests[0] = MPI_REQUEST_NULL;
         }
 
         finished = 0;
-        MPI_Test(&request_send, &finished, &status);
+        MPI_Test(&(record->requests[1]), &finished, MPI_STATUS_IGNORE);
         if(finished)
         {
-          //std::cerr << "[" << node->getStreamId( ) << "] record->requests[0] = "
-          //          << record->requests[0] << " MPI_REQUEST_NULL=" << MPI_REQUEST_NULL << std::endl;
+          // TODO: should be done by the MPI implementation
           record->requests[1] = MPI_REQUEST_NULL;
         }
 
