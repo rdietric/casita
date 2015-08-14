@@ -172,12 +172,12 @@ void
 OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
                                uint32_t numStreams )
 {
-  boost::filesystem::path boost_path     = otfFilename;
+  boost::filesystem::path boost_path     = boost::filesystem::system_complete(otfFilename);
   boost::filesystem::path boost_filename = otfFilename;
 
   outputFilename = boost::filesystem::change_extension(
     boost_filename.filename( ), "" ).string( );
-  pathToFile     = boost_path.remove_filename( ).string( );
+  pathToFile     = boost_path.parent_path().string();
 
   UTILS_MSG( mpiRank == 0, "[%u] FILENAME: '%s' PATH: '%s'",
                  mpiRank, outputFilename.c_str( ), pathToFile.c_str( ) );
