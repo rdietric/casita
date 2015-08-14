@@ -132,7 +132,18 @@ namespace casita
           {
             Edge* allToOneRecordEdge = commonAnalysis->getEdge(
               allToOne.first, allToOne.second );
-            allToOneRecordEdge->makeBlocking( );
+            
+            if ( allToOneRecordEdge )
+            {
+              allToOneRecordEdge->makeBlocking( );
+            }
+            else
+            {
+              std::cerr << "[" << node->getStreamId( ) 
+                        << "] OneToAllRule: Record edge not found. CPA might fail!" 
+                        << std::endl;
+            }
+            
             allToOne.second->setCounter(
               commonAnalysis->getCtrTable( ).getCtrId( CTR_WAITSTATE ),
               total_waiting_time );

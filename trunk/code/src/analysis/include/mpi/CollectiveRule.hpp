@@ -133,7 +133,17 @@ namespace casita
            
           Edge* collRecordEdge = commonAnalysis->getEdge( coll.first,
                                                           coll.second );
-          collRecordEdge->makeBlocking( );
+          
+          if ( collRecordEdge )
+          {
+            collRecordEdge->makeBlocking( );
+          }
+          else
+          {
+            std::cerr << "[" << node->getStreamId( ) 
+                      << "] CollectiveRule: Record edge not found. CPA might fail!" 
+                      << std::endl;
+          }
           
           // set the wait state counter for this blocking region
           coll.second->setCounter( commonAnalysis->getCtrTable( ).getCtrId(

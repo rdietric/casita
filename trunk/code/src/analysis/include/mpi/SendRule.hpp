@@ -109,14 +109,14 @@ namespace casita
           {
             Edge* sendRecordEdge = commonAnalysis->getEdge( send.first,
                                                             send.second );
-            if(sendRecordEdge)
+            if ( sendRecordEdge )
             {
               sendRecordEdge->makeBlocking( );
             }
             else
             {
               std::cerr << "[" << node->getStreamId( ) 
-                        << "] SendRule: enter - leave edge not found. CPA might fail!" 
+                        << "] SendRule: Record edge not found. CPA might fail!" 
                         << std::endl;
             }
             

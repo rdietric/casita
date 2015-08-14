@@ -72,7 +72,18 @@ namespace casita
           {
             Edge* recvRecordEdge = commonAnalysis->getEdge( recv.first,
                                                             recv.second );
-            recvRecordEdge->makeBlocking( );
+            
+            if ( recvRecordEdge )
+            {
+              recvRecordEdge->makeBlocking( );
+            }
+            else
+            {
+              std::cerr << "[" << node->getStreamId( ) 
+                        << "] RecvRule: Record edge not found. CPA might fail!" 
+                        << std::endl;
+            }
+            
             recv.second->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                        CTR_WAITSTATE ), sendStartTime -
                                      recvStartTime );
