@@ -86,7 +86,7 @@ namespace casita
       writeProcess( uint64_t                          processId,
                     EventStream::SortedGraphNodeList* nodes,
                     GraphNode*                        pLastGraphNode,
-                    bool                              verbose,
+                    int                               verbose,
                     CounterTable*                     ctrTable,
                     Graph*                            graph,
                     bool                              isHost );

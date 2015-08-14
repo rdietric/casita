@@ -469,17 +469,26 @@ namespace casita
        return stream.str( );
      }
 
+     /**
+      * Compare nodes.
+      * 
+      * @param n1 first input node
+      * @param n2 second input node
+      * 
+      * @return true, if the first input node is less/before the second one.
+      */
      static bool
      compareLess( const Node* n1, const Node* n2 )
-     {
+     {    
        uint64_t time1 = n1->getTime( );
        uint64_t time2 = n2->getTime( );
 
+       // the trivial and most frequent case: nodes have different time stamps
        if ( time1 != time2 )
        {
          return time1 < time2;
        }
-       else
+       else // nodes have equal time stamps
        {
          int type1 = n1->getType( );
          int type2 = n2->getType( );
@@ -487,6 +496,7 @@ namespace casita
          NodeRecordType recordType1 = n1->getRecordType( );
          NodeRecordType recordType2 = n2->getRecordType( );
 
+         // decide on atomic property of a node (first node in the list is atomic)
          if ( recordType1 == RECORD_ATOMIC && recordType2 != RECORD_ATOMIC )
          {
            return true;
@@ -500,16 +510,17 @@ namespace casita
          Paradigm paradigm1 = n1->getParadigm( );
          Paradigm paradigm2 = n2->getParadigm( );
 
-         /**\todo fix me*/
+         // decide on the paradigm according to the defined enum type 
+         // \todo fix me
          if ( paradigm1 != paradigm2 )
          {
            return paradigm1 < paradigm2;
          }
 
-         /* nodes from same or different streams */
+         // nodes from same stream (same paradigm, same time stamp)
          if ( n1->getStreamId( ) == n2->getStreamId( ) )
          {
-           /* nodes from same or different functions */
+           // nodes with the same function name or ID
            if ( ( ( n1->getFunctionId( ) > 0 ) &&
                   ( n2->getFunctionId( ) > 0 ) &&
                   ( n1->getFunctionId( ) == n2->getFunctionId( ) ) ) ||
@@ -518,10 +529,15 @@ namespace casita
            {
              /* Caution: this branch used to do the opposite
               * we changed it to this case because we need to process
-              * omp barriers that might be right after each other
+              * OpenMP barriers that might be right after each other
               * In this case they would be identical and the first leave and
               * second enter have the same timestamp
               */
+             
+             // as we sequentially read events per stream, this should work for 
+             // correct OTF2 traces (use OTF2 sequence of events)
+             return ( n1->id < n2->id );
+             /*
              if ( ( recordType1 == RECORD_LEAVE ) &&
                   ( recordType2 == RECORD_ENTER ) )
              {
@@ -532,7 +548,7 @@ namespace casita
                   ( recordType2 == RECORD_LEAVE ) )
              {
                return false;
-             }
+             }*/
            }
            else
            {
@@ -578,6 +594,7 @@ namespace casita
            }
          }
 
+         // finally decide on the stream ID
          return n1->getStreamId( ) > n2->getStreamId( );
        }
      }

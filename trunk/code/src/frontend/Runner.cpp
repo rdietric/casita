@@ -307,7 +307,15 @@ Runner::computeCriticalPath( )
   {
     /* better reverse replay strategy */
     MPIAnalysis::CriticalSectionsList sectionsList;
+    
+    // Perform MPI revers-replay using blocking edges; create a list of sections
+    UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+               "[0] Start MPI revers-replay ..." );
     reverseReplayMPICriticalPath( sectionsList );
+    
+    // detect the critical path within all sections individually
+    UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+               "[0] Start critical-path detection for sections ..." );
     getCriticalLocalSections( sectionsList.data( ),
                               sectionsList.size( ), criticalNodes, sectionsMap );
   }
@@ -315,7 +323,7 @@ Runner::computeCriticalPath( )
   {
     /* compute local critical path on root, only */
     UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-               "[%u] Single process: defaulting to CUDA/OMP only mode", mpiRank );
+               "[0] Single process: defaulting to CUDA/OMP only mode" );
 
     Graph& subGraph = analysis.getGraph( );
 
@@ -1031,10 +1039,12 @@ Runner::runAnalysis( Paradigm                          paradigm,
 
     analysis.applyRules( node, paradigm, options.verbose >= VERBOSE_BASIC );
 
-    if ( ( mpiRank == 0 ) && ( ctr - last_ctr > num_nodes / 10 ) )
+    // print process every 5 percent (TODO: depending on number of events per paradigm)
+    if ( ( mpiRank == 0 ) && options.verbose >= VERBOSE_BASIC &&
+         ( ctr - last_ctr > num_nodes / 20 ) )
     {
-      UTILS_MSG( options.verbose >= VERBOSE_BASIC, "[%u] %lu%% ", mpiRank,
-                     (size_t)( 100.0 * (double)ctr / (double)num_nodes ) );
+      UTILS_MSG( true, "[%u] %lu%% ", mpiRank,
+                 (size_t)( 100.0 * (double)ctr / (double)num_nodes ) );
       fflush( NULL );
       last_ctr = ctr;
     }

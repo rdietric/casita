@@ -16,12 +16,11 @@
  *
  */
 
+#include <limits>
+
 #include "EventStream.hpp"
 #include "utils/ErrorUtils.hpp"
 
-
-
-//#define UINT64_MAX 0xFFFFFFFFFFFFFFFF
 
 using namespace casita;
 
@@ -36,8 +35,8 @@ EventStream::EventStream( uint64_t          id,
   streamType( eventStreamType ),
   remoteStream( remoteStream ),
   lastNode( NULL ),
-  pendingMPIRequestId( UINT64_MAX ),
-  mpiIsendPartner( UINT64_MAX )
+  pendingMPIRequestId( std::numeric_limits< uint64_t >::max( ) ),
+  mpiIsendPartner( std::numeric_limits< uint64_t >::max( ) )
 {
   for ( size_t i = 0; i < NODE_PARADIGM_COUNT; ++i )
   {
@@ -813,8 +812,12 @@ EventStream::walkBackward( GraphNode*         node,
   }
 
   SortedGraphNodeList::const_reverse_iterator iter = findNode( node );
-  UTILS_ASSERT( *iter == node, "no %s in stream %lu",
-                node->getUniqueName( ).c_str( ), node->getStreamId( ) );
+  //SortedGraphNodeList::const_reverse_iterator iter = 
+  //  find( nodes.rbegin(), nodes.rend(), node );
+  
+  UTILS_ASSERT( *iter == node, "no %s in stream %lu (find returned %s)",
+                node->getUniqueName( ).c_str( ), node->getStreamId( ), 
+                (*iter)->getUniqueName().c_str( ) );
 
   for (; iter != nodes.rend( ); ++iter )
   {
@@ -855,28 +858,35 @@ EventStream::walkForward( GraphNode*         node,
   return result;
 }
 
+// TODO: This function might not be correct implemented.
 EventStream::SortedGraphNodeList::const_reverse_iterator
 EventStream::findNode( GraphNode* node ) const
 {
+  // the vector is empty
   if ( nodes.size( ) == 0 )
   {
     return nodes.rend( );
   }
 
+  // there is only one node in the vector
   if ( nodes.size( ) == 1 )
   {
     return nodes.rbegin( );
   }
 
+  // set start boundaries for the search
   size_t indexMin = 0;
   size_t indexMax = nodes.size( ) - 1;
 
+  // do a binary search
   do
   {
     size_t index = indexMax - ( indexMax - indexMin ) / 2;
 
     UTILS_ASSERT( index < nodes.size( ), "index %lu indexMax %lu indexMin %lu", index, indexMax, indexMin );
 
+    // if we found the node at index ('middle' element)
+    // for uneven elements, index points on the element after the half
     if ( nodes[index] == node )
     {
       return nodes.rbegin( ) + ( nodes.size( ) - index - 1 );
@@ -887,17 +897,21 @@ EventStream::findNode( GraphNode* node ) const
       return nodes.rend( );
     }
 
+    // use the sorted property of the list to halve the search space
+    // if node is before (less) than the node at current index
+    // nodes are not the same
     if ( Node::compareLess( node, nodes[index] ) )
     {
-      /* left side */
+      // left side
       indexMax = index - 1;
     }
     else
     {
-      /* right side */
+      // right side
       indexMin = index + 1;
     }
 
+    // if node could not be found
     if ( indexMin > indexMax )
     {
       break;
@@ -906,6 +920,7 @@ EventStream::findNode( GraphNode* node ) const
   }
   while ( true );
 
+  // return iterator to first element, if node could not be found
   return nodes.rend( );
 }
 

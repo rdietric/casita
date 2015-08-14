@@ -109,7 +109,17 @@ namespace casita
           {
             Edge* sendRecordEdge = commonAnalysis->getEdge( send.first,
                                                             send.second );
-            sendRecordEdge->makeBlocking( );
+            if(sendRecordEdge)
+            {
+              sendRecordEdge->makeBlocking( );
+            }
+            else
+            {
+              std::cerr << "[" << node->getStreamId( ) 
+                        << "] SendRule: enter - leave edge not found. CPA might fail!" 
+                        << std::endl;
+            }
+            
             send.second->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                        CTR_WAITSTATE ),
                                      recvStartTime - sendStartTime );
