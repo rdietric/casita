@@ -280,6 +280,7 @@ GraphEngine::newEdge( GraphNode* n1, GraphNode* n2, int properties,
 Edge*
 GraphEngine::getEdge( GraphNode* source, GraphNode* target )
 {
+  // iterate over outgoing edges of source node
   const Graph::EdgeList& edgeList = getOutEdges( source );
   for ( Graph::EdgeList::const_iterator iter = edgeList.begin( );
         iter != edgeList.end( ); ++iter )
@@ -289,6 +290,18 @@ GraphEngine::getEdge( GraphNode* source, GraphNode* target )
       return *iter;
     }
   }
+  
+  /* ??? TODO: iterate over ingoing edges of target node
+  edgeList = getInEdges( target );
+  for ( Graph::EdgeList::const_iterator iter = edgeList.begin( );
+        iter != edgeList.end( ); ++iter )
+  {
+    if ( ( *iter )->getStartNode( ) == source )
+    {
+      return *iter;
+    }
+  }*/
+  
   return NULL;
 }
 

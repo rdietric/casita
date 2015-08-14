@@ -96,7 +96,18 @@ namespace casita
           {
             Edge* sendRecordEdge = commonAnalysis->getEdge( sendRecv.first,
                                                             sendRecv.second );
-            sendRecordEdge->makeBlocking( );
+            
+            if ( sendRecordEdge )
+            {
+              sendRecordEdge->makeBlocking( );
+            }
+            else
+            {
+              std::cerr << "[" << node->getStreamId( ) 
+                        << "] SendRecvRule: Record edge not found. CPA might fail!" 
+                        << std::endl;
+            }
+
             sendRecv.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                            CTR_WAITSTATE ),
                                          otherStartTime - myStartTime );
@@ -132,7 +143,17 @@ namespace casita
         {
           Edge* recvRecordEdge = commonAnalysis->getEdge( sendRecv.first,
                                                           sendRecv.second );
-          recvRecordEdge->makeBlocking( );
+          if ( recvRecordEdge )
+          {
+            recvRecordEdge->makeBlocking( );
+          }
+          else
+          {
+            std::cerr << "[" << node->getStreamId( ) 
+                      << "] SendRecvRule: Record edge not found. CPA might fail!" 
+                      << std::endl;
+          }
+          
           sendRecv.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                          CTR_WAITSTATE ),
                                        otherStartTime - myStartTime );
