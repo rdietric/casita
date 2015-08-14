@@ -449,7 +449,7 @@ EventStream::saveMPIIrecvRequest( uint64_t requestId )
 void
 EventStream::addPendingMPIIrecvNode( GraphNode* node )
 {
-    UTILS_ASSERT( pendingMPIRequestId != UINT64_MAX,
+    UTILS_ASSERT( pendingMPIRequestId != std::numeric_limits< uint64_t >::max( ),
                   "MPI_Irecv request ID invalid! Trace file might be corrupted!");
     
     MPIIcommRecord record;
@@ -475,7 +475,7 @@ EventStream::addPendingMPIIrecvNode( GraphNode* node )
     //node->setData( record );
     
     //invalidate request ID variable
-    pendingMPIRequestId = UINT64_MAX;
+    pendingMPIRequestId = std::numeric_limits< uint64_t >::max( );
 }
 
 /**
@@ -524,7 +524,7 @@ EventStream::handleMPIIsendEventData( uint64_t requestId,
 void
 EventStream::setMPIIsendNodeData( GraphNode* node )
 {
-  UTILS_ASSERT( pendingMPIRequestId != UINT64_MAX && mpiIsendPartner != UINT64_MAX, 
+  UTILS_ASSERT( pendingMPIRequestId != std::numeric_limits< uint64_t >::max( ) && mpiIsendPartner != std::numeric_limits< uint64_t >::max( ), 
                 "MPI request or MPI partner ID is invalid!");
  
   // add new record to map
@@ -551,8 +551,8 @@ EventStream::setMPIIsendNodeData( GraphNode* node )
   node->setReferencedStreamId( mpiIsendPartner ); 
   
   //invalidate temporary stored request and partner ID
-  pendingMPIRequestId = UINT64_MAX;
-  mpiIsendPartner = UINT64_MAX;
+  pendingMPIRequestId = std::numeric_limits< uint64_t >::max( );
+  mpiIsendPartner = std::numeric_limits< uint64_t >::max( );
 }
 
 /**
