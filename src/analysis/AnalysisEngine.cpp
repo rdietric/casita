@@ -343,7 +343,7 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
                                               std::string origFilename,
                                               bool        writeToFile,
                                               bool        ignoreAsyncMpi,
-                                              bool        verbose )
+                                              int         verbose )
 {
   EventStreamGroup::EventStreamList allStreams;
   getStreams( allStreams );

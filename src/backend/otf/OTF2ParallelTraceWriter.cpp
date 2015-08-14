@@ -237,7 +237,7 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
 
   MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
-  /* open event to start creating event files for each location */
+  // open event files files for each location
   if ( writeToFile )
   {
     OTF2_Archive_OpenEvtFiles( archive );
@@ -470,18 +470,18 @@ void
 OTF2ParallelTraceWriter::writeProcess( uint64_t                          processId,
                                        EventStream::SortedGraphNodeList* nodes,
                                        GraphNode*                        pLastGraphNode,
-                                       bool                              verbose,
+                                       int                               verbose,
                                        CounterTable*                     ctrTable,
                                        Graph*                            graph,
                                        bool                              isHost )
 {
   assert( nodes );
 
-  for ( EventStream::SortedGraphNodeList::iterator iter = nodes->begin( );
+  /*for ( EventStream::SortedGraphNodeList::iterator iter = nodes->begin( );
         iter != nodes->end( ); iter++ )
   {
-    /* std::cout << "[ " << mpiRank << "] " << (*iter)->getUniqueName() << std::endl; */
-  }
+    std::cout << "[ " << mpiRank << "] " << (*iter)->getUniqueName() << std::endl;
+  }*/
 
   processNodes    = nodes;
   currentNodeIter = processNodes->begin( );
@@ -490,15 +490,17 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
   {
     currentNodeIter = ++processNodes->begin( );
   }
-  this->verbose   = verbose;
+  this->verbose   = verbose >= VERBOSE_ANNOY;
   this->graph     = graph;
   cTable          = ctrTable;
   processOnCriticalPath[processId] = false;
 
-  UTILS_MSG( verbose, "[%u] Start writing for process %lu", mpiRank, processId );
+  UTILS_MSG( verbose >= VERBOSE_ANNOY, "[%u] Start writing for process %lu", mpiRank, processId );
 
   if ( isFirstProcess )
   {
+    UTILS_MSG( verbose >= VERBOSE_BASIC &&  mpiRank == 0, 
+               "[0] Write OTF2 trace file with CASITA counters.\n");
     OTF2_Reader_OpenEvtFiles( reader );
     OTF2_Reader_OpenDefFiles( reader );
     isFirstProcess = false;
@@ -526,7 +528,6 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
     event_callbacks, &otf2CallbackComm_MpiCollectiveEnd );
   OTF2_EvtReaderCallbacks_SetMpiRecvCallback( event_callbacks, &otf2Callback_MpiRecv );
   OTF2_EvtReaderCallbacks_SetMpiSendCallback( event_callbacks, &otf2Callback_MpiSend );
-  // TODO: This seems to break something
   OTF2_EvtReaderCallbacks_SetMpiIrecvRequestCallback( event_callbacks, &otf2Callback_MpiIrecvRequest );
   OTF2_EvtReaderCallbacks_SetMpiIrecvCallback( event_callbacks, &otf2Callback_MpiIrecv );
   OTF2_EvtReaderCallbacks_SetMpiIsendCallback( event_callbacks, &otf2Callback_MpiIsend );

@@ -94,7 +94,7 @@ main( int argc, char** argv )
       options.filename,
       options.createOTF,
       options.ignoreAsyncMpi,
-      options.verbose >= VERBOSE_ANNOY );
+      options.verbose );
 
     /* if selected as parameter, the summary statistics are merged and printed */
     if ( options.mergeActivities )

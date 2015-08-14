@@ -152,7 +152,7 @@ namespace casita
                                    std::string origFilename,
                                    bool        writeToFile,
                                    bool        ignoreAsyncMpi,
-                                   bool        verbose );
+                                   int         verbose );
 
      io::IParallelTraceWriter::ActivityGroupMap*
      getActivityGroupMap( );
