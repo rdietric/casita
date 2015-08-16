@@ -22,13 +22,13 @@
 #include <iostream>
 #include <stdlib.h>
 #include <inttypes.h>
+#include <unistd.h> //for getcwd
 
 /* following adjustments necessary to use MPI_Collectives with OTF2 */
 #define OTF2_MPI_UINT64_T MPI_UNSIGNED_LONG
 #define OTF2_MPI_INT64_T MPI_LONG
 
 #include <otf2/OTF2_MPI_Collectives.h>
-#include <boost/filesystem.hpp>
 #include <map>
 
 #include "graph/EventNode.hpp"
@@ -181,25 +181,28 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
 
   UTILS_MSG( mpiRank == 0, "[%u] FILENAME: '%s' PATH: '%s'",
                  mpiRank, outputFilename.c_str( ), pathToFile.c_str( ) );
-
+ 
+ 
   if ( writeToFile )
   {
+ 
     if ( mpiRank == 0 )
     {
       /* remove trace dir */
-      if ( boost::filesystem::exists( pathToFile + std::string( "/" ) +
-                                      outputFilename ) )
+      if (!access( (pathToFile + outputFilename).c_str(),0))  //test if dir  exists
       {
-        boost::filesystem::remove_all( pathToFile + std::string(
-                                         "/" ) + outputFilename );
+	std::string remove_dir = std::string("rm -r  ") + pathToFile +  outputFilename;
+        system(remove_dir.c_str());
       }
 
       /* remove trace files */
-      if ( boost::filesystem::exists( otfFilename ) )
+      if (!access(otfFilename.c_str(),0) ) // test if file exists
       {
-        boost::filesystem::remove( otfFilename );
-        boost::filesystem::remove(
-          boost::filesystem::change_extension( otfFilename, "def" ) );
+	std::string remove_file = std::string("rm ") + otfFilename;
+        system(remove_file.c_str());
+	remove_file = std::string("rm ") + pathToFile + outputFilename + std::string(".def");
+        system(remove_file.c_str());
+
       }
     }
 
