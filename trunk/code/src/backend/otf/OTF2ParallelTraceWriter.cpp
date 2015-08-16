@@ -172,12 +172,15 @@ void
 OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
                                uint32_t numStreams )
 {
-  boost::filesystem::path boost_path     = boost::filesystem::system_complete(otfFilename);
-  boost::filesystem::path boost_filename = otfFilename;
+  int startFilename = otfFilename.find_last_of("/")+1;
+  int endFilename = otfFilename.find_last_of(".");
+  int lenName = endFilename - startFilename;
+  std::string outputFilename = otfFilename.substr(startFilename, lenName);
 
-  outputFilename = boost::filesystem::change_extension(
-    boost_filename.filename( ), "" ).string( );
-  pathToFile     = boost_path.parent_path().string();
+  char cwd[200];
+  getcwd(cwd,200);
+  std::string pathToFile = std::string(cwd) + std::string("/")+ otfFilename.substr(0,startFilename);
+  std::string filePath     = std::string(cwd) + std::string("/") + otfFilename;
 
   UTILS_MSG( mpiRank == 0, "[%u] FILENAME: '%s' PATH: '%s'",
                  mpiRank, outputFilename.c_str( ), pathToFile.c_str( ) );
@@ -205,6 +208,7 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
 
       }
     }
+
 
     MPI_Barrier( MPI_COMM_WORLD );
 
