@@ -12,17 +12,26 @@
 
 #pragma once
 
-#include <boost/program_options/options_description.hpp>
+// #include <boost/program_options/options_description.hpp>
 
 #include <string>
 #include <stdexcept>
 #include <vector>
+#include <map>
 #include <stdint.h>
 #include <list>
 
 namespace casita
 {
- namespace po = boost::program_options;
+
+  
+  enum OptionPrefix 
+    {
+      INPUT , OUTPUT , HELP,VERBOSE
+    };
+
+  typedef std::map < std::string, char* >  OptionsMap;
+  typedef std::map < std::string, OptionPrefix > OptionPrefixMap;
 
  typedef struct
  {
@@ -43,8 +52,6 @@ namespace casita
    public:
      static Parser&
      getInstance( );
-     
-     static int getVerboseLevel( );
 
      bool
      init( int argc, char** argv ) throw ( std::runtime_error );
@@ -52,15 +59,26 @@ namespace casita
      ProgramOptions&
      getProgramOptions( );
 
+     bool
+     setProgramOptions(int argc, char** argv);
+     
+     void
+     printHelp();
+
+   OptionsMap optionsMap;
+   OptionPrefixMap optionPrefixMap;
+
    private:
      Parser( );
 
+   
      Parser( Parser& cc );
 
      bool
      endsWith( std::string const& str, std::string const& ext );
 
      ProgramOptions options;
+
  };
 
 }
