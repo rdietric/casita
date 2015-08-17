@@ -176,11 +176,16 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
   int endFilename = otfFilename.find_last_of(".");
   int lenName = endFilename - startFilename;
   std::string outputFilename = otfFilename.substr(startFilename, lenName);
-
+  std::string pathToFile;
   char cwd[200];
   getcwd(cwd,200);
-  std::string pathToFile = std::string(cwd) + std::string("/")+ otfFilename.substr(0,startFilename);
-  std::string filePath     = std::string(cwd) + std::string("/") + otfFilename;
+  std::cout << std::string(cwd).substr(0,1).compare("/") << "kkd " << std::endl;
+  if ( std::string(cwd).substr(0,1).compare("/") == 0){ // absolut Path
+    pathToFile = otfFilename.substr(0,startFilename);
+  }
+  else{               // relative Path
+    pathToFile  = std::string(cwd) + std::string("/")+ otfFilename.substr(0,startFilename);
+  }
 
   UTILS_MSG( mpiRank == 0, "[%u] FILENAME: '%s' PATH: '%s'",
                  mpiRank, outputFilename.c_str( ), pathToFile.c_str( ) );
