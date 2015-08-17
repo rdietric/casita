@@ -12,7 +12,6 @@
 
 #pragma once
 
-// #include <boost/program_options/options_description.hpp>
 
 #include <string>
 #include <stdexcept>
@@ -27,7 +26,7 @@ namespace casita
   
   enum OptionPrefix 
     {
-      INPUT , OUTPUT , HELP,VERBOSE
+      INPUT , OUTPUT , HELP, VERBOSE
     };
 
   typedef std::map < std::string, char* >  OptionsMap;

@@ -19,7 +19,6 @@
 #include <fstream>
 #include <vector>
 #include <stdlib.h>
-#include <unistd.h> //for getcwd, access
 #include "Parser.hpp"
 
 namespace casita
@@ -79,7 +78,11 @@ namespace casita
    optionPrefixMap["-v"] = VERBOSE;
    optionPrefixMap["--verbose"] = VERBOSE;
 
-   
+   std::string opt1 = std::string(argv[1]);
+
+
+
+
    if (argc > 2 && argc%2 == 1)
      {
        
@@ -87,17 +90,21 @@ namespace casita
 	 optionsMap[ argv[i]] = argv[i+1];
        }
      }
-       
-   else if (argc == 2 && endsWith( std::string(argv[1]) ,".otf2")){
-     optionsMap["-i"]= argv[1];
-   }
-       
-   else {
-     printHelp();
+   
+   else if ((opt1.compare("-h") == 0) || (opt1.compare("--help") == 0)){
+     //printHelp()
      return false;
    }
 
-   std::string filePath;
+   else if (argc == 2 ){
+     optionsMap["-i"]= argv[1];
+   }
+         
+   else {
+     //printHelp();
+     return false;
+   }
+
 
    for (OptionsMap::iterator it=optionsMap.begin();it != optionsMap.end();it++)
      
@@ -120,7 +127,7 @@ namespace casita
 	   break;
 
 	 case HELP:
-	   printHelp();
+	   // printHelp();
 	   return false;
 	 }
      }
