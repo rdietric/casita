@@ -47,14 +47,17 @@ namespace casita
         /* get the complete execution */
         GraphNode::GraphNodePair send  = node->getGraphPair( );
         
-        /* send */
-        uint64_t  sendStartTime        = send.first->getTime( );
-        uint64_t  sendEndTime          = send.second->getTime( );
+        // send
+        uint64_t  sendStartTime = send.first->getTime( );
+        uint64_t  sendEndTime   = send.second->getTime( );
 
-        //uint64_t partnerProcessId = node->getReferencedStreamId( );
+        // allocated in class AnalysisParadigmMPI, still used in CPA later
         uint64_t* data = (uint64_t*)( node->getData( ) );
         uint64_t partnerProcessId = *data;
-        //delete data; // allocated in class AnalysisParadigmMPI, still used in CPA later
+        
+        // set referenced stream field and delete allocated memory of data field
+        node->setReferencedStreamId( partnerProcessId );
+        delete data;
         
         node->setReferencedStreamId( partnerProcessId ); // for debugging in CP analysis
         uint32_t  partnerMPIRank  =
