@@ -234,15 +234,16 @@ MPIAnalysis::getMpiPartnersRank( GraphNode* node )
     node = node->getGraphPair( ).second;
   }
 
-  if ( node->isMPIRecv( ) /*|| node->isMPIISend( ) || node->isMPIIRecv( )*/ )
+  if ( node->isMPIRecv( ) || node->isMPISend( ) /*|| 
+       node->isMPIISend( ) || node->isMPIIRecv( )*/ )
   {
     partners.insert( getMPIRank( node->getReferencedStreamId( ) ) );
   }
 
-  if ( node->isMPISend( ) )
+  /*if ( node->isMPISend( ) )
   {
     partners.insert( getMPIRank( *( (uint64_t*)( node->getData( ) ) ) ) );
-  }
+  }*/
 
   if ( node->isMPICollective( ) || node->isMPIOneToAll( ) ||
        node->isMPIAllToOne( ) )
