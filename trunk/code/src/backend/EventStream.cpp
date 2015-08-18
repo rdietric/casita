@@ -235,11 +235,13 @@ EventStream::insertGraphNode( GraphNode*                  node,
                               GraphNode::ParadigmNodeMap& predNodes,
                               GraphNode::ParadigmNodeMap& nextNodes )
 {
+  // set the last-node field
   if ( !lastNode || Node::compareLess( lastNode, node ) )
   {
     lastNode = node;
   }
 
+  // add the node to the sorted nodes list
   SortedGraphNodeList::iterator result = nodes.end( );
   for ( SortedGraphNodeList::iterator iter = nodes.begin( );
         iter != nodes.end( ); ++iter )
@@ -247,12 +249,14 @@ EventStream::insertGraphNode( GraphNode*                  node,
     SortedGraphNodeList::iterator next = iter;
     ++next;
 
+    // if next is end of list, then push the node at the end of the vector
     if ( next == nodes.end( ) )
-    {
+    {      
       nodes.push_back( node );
       break;
     }
 
+    // current node is "before" the next element
     if ( Node::compareLess( node, *next ) )
     {
       result = nodes.insert( next, node );
@@ -524,7 +528,8 @@ EventStream::handleMPIIsendEventData( uint64_t requestId,
 void
 EventStream::setMPIIsendNodeData( GraphNode* node )
 {
-  UTILS_ASSERT( pendingMPIRequestId != std::numeric_limits< uint64_t >::max( ) && mpiIsendPartner != std::numeric_limits< uint64_t >::max( ), 
+  UTILS_ASSERT( pendingMPIRequestId != std::numeric_limits< uint64_t >::max( ) 
+                 && mpiIsendPartner != std::numeric_limits< uint64_t >::max( ), 
                 "MPI request or MPI partner ID is invalid!");
  
   // add new record to map
@@ -812,12 +817,20 @@ EventStream::walkBackward( GraphNode*         node,
   }
 
   SortedGraphNodeList::const_reverse_iterator iter = findNode( node );
-  //SortedGraphNodeList::const_reverse_iterator iter = 
-  //  find( nodes.rbegin(), nodes.rend(), node );
   
-  UTILS_ASSERT( *iter == node, "no %s in stream %lu (find returned %s)",
-                node->getUniqueName( ).c_str( ), node->getStreamId( ), 
-                (*iter)->getUniqueName().c_str( ) );
+  // print a warning if the node could not be found and use a sequential search
+  if ( *iter != node ) 
+  {
+    UTILS_MSG( Parser::getVerboseLevel() == VERBOSE_BASIC, 
+               "Binary search did not find %s in stream %lu. "
+               "Perform sequential search for convenience ...", 
+               node->getUniqueName( ).c_str( ), node->getStreamId( ) );
+    iter = find( nodes.rbegin(), nodes.rend(), node );
+  }
+  
+  // make sure that we found a node
+  UTILS_ASSERT( *iter == node, "no %s in stream %lu",
+                node->getUniqueName( ).c_str( ), node->getStreamId( ) );
 
   for (; iter != nodes.rend( ); ++iter )
   {
@@ -877,10 +890,18 @@ EventStream::findNode( GraphNode* node ) const
   // set start boundaries for the search
   size_t indexMin = 0;
   size_t indexMax = nodes.size( ) - 1;
+  
+  size_t indexPrevMin = indexMin;
+  size_t indexPrevMax = indexMax;
+  
+  size_t indexPrev = 0;
+  size_t indexPrev2 = 0;
 
   // do a binary search
   do
   {
+    indexPrev2 = indexPrev;
+    indexPrev = indexPrevMax - ( indexPrevMax - indexPrevMin ) / 2;
     size_t index = indexMax - ( indexMax - indexMin ) / 2;
 
     UTILS_ASSERT( index < nodes.size( ), "index %lu indexMax %lu indexMin %lu", index, indexMax, indexMin );
@@ -892,9 +913,35 @@ EventStream::findNode( GraphNode* node ) const
       return nodes.rbegin( ) + ( nodes.size( ) - index - 1 );
     }
 
+    // indexMin == indexMax == index
+    // only the nodes[index] element was left, which did not match
+    // we can leave the loop
     if ( indexMin == indexMax )
     {
-      return nodes.rend( );
+      std::cerr << "Stream " << node->getStreamId() << " Looking for node " 
+                << node->getUniqueName( ) << " - Wrong node found! Index (" 
+                << index << ") node on break: "
+                << nodes[index]->getUniqueName( ) << std::endl;
+
+      std::cerr << "Node sequence:" << std::endl;
+      for(size_t i = index - 3; i < index + 4; i++)
+      {
+        if( nodes[i] )
+          std::cerr << nodes[i]->getUniqueName( ) << std::endl;
+      }
+      
+      std::cerr << " Previous compare node [" << indexPrevMin << ":" << indexPrevMax 
+                << "]:" << nodes[indexPrev]->getUniqueName( )
+                << " with result: " << Node::compareLess( node, nodes[indexPrev] ) 
+                << std::endl;
+      
+      std::cerr << " Pre-Previous compare node: " << nodes[indexPrev2]->getUniqueName( )
+                << " with result: " << Node::compareLess( node, nodes[indexPrev2] ) 
+                << std::endl;
+      //std::cerr << "return nodes.rbegin( ) = " << nodes.rbegin( ) << std::endl;
+      //std::cerr << "return nodes.rend( ) = " << nodes.rend( ) << std::endl;
+      
+      break;
     }
 
     // use the sorted property of the list to halve the search space
@@ -903,11 +950,13 @@ EventStream::findNode( GraphNode* node ) const
     if ( Node::compareLess( node, nodes[index] ) )
     {
       // left side
+      indexPrevMax = indexMax;
       indexMax = index - 1;
     }
     else
     {
       // right side
+      indexPrevMin = indexMin;
       indexMin = index + 1;
     }
 

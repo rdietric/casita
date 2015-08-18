@@ -310,7 +310,8 @@ Runner::computeCriticalPath( )
     
     // Perform MPI revers-replay using blocking edges; create a list of sections
     UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-               "[0] Start MPI revers-replay ..." );
+               "[0] Start MPI revers-replay %s ...",
+               (options.criticalPathSecureMPI) ? "(with slave feedback)" : "" );
     reverseReplayMPICriticalPath( sectionsList );
     
     // detect the critical path within all sections individually
@@ -682,9 +683,11 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
 {
   const uint32_t NO_MSG         = 0;
   const uint32_t PATH_FOUND_MSG = 1;
-  const size_t   BUFFER_SIZE    = 3;
+  
+  // we need an additional buffer entry for master/slave feedback communication
+  const size_t   BUFFER_SIZE    = ( options.criticalPathSecureMPI ) ? 4 : 3;
 
-  /* decide on globally last MPI node to start with */
+  // decide on global last MPI node to start with
   GraphNode*     currentNode    = NULL;
   GraphNode*     lastNode       = NULL;
   GraphNode*     sectionEndNode = NULL;
@@ -774,7 +777,7 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
           
           // Communicate with all slaves to find new master.
           // Make sure that not all ranks are slave then!
-          //bool foundNewMaster = false;
+          sendBfr[BUFFER_SIZE - 1] = 0; // we did not find a master yet
           for ( std::set< uint32_t >::const_iterator iter = mpiPartnerRanks.begin( );
                 iter != mpiPartnerRanks.end( ); ++iter )
           {
@@ -801,42 +804,32 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
             //TODO: MPI_Bcast( sendBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, mpiRank, comm) 
             MPI_CHECK( MPI_Send( sendBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                                  commMpiRank, 0, MPI_COMM_WORLD ) );
-            /*
-            // make sure that we found a new master
-            MPI_Status status;
-            MPI_CHECK( MPI_Recv( recvBfr, 1, MPI_UNSIGNED_LONG_LONG,
-                                 commMpiRank, 42, MPI_COMM_WORLD, &status ) );
             
-            if( recvBfr[0] )
+            // if no master has been found yet, receive from next slave
+            if ( options.criticalPathSecureMPI && 
+                 sendBfr[BUFFER_SIZE - 1] == 0 )
             {
-              std::cerr << "[" << mpiRank << "] Rank " << commMpiRank
-                      << " will be the new master." << std::endl;
-              
-              if( foundNewMaster )
+              MPI_CHECK( MPI_Recv( recvBfr, 1, MPI_UNSIGNED_LONG_LONG,
+                                   commMpiRank, 42, MPI_COMM_WORLD, 
+                                   MPI_STATUS_IGNORE ) );
+            
+              // if we found a new master
+              if( recvBfr[0] )
               {
-                std::cerr << "[" << mpiRank << "] More than one new master found!!!" << std::endl;
+                UTILS_MSG( options.verbose == VERBOSE_ALL,
+                           "[%u] Rank %u will be the new master.", 
+                           mpiRank, commMpiRank); 
+                
+                sendBfr[BUFFER_SIZE - 1] = 1;
               }
-              
-              foundNewMaster = true;
             }
-
-            //foundNewMaster |= (bool)recvBfr[0];
-            */
           }
-          
-          //foundNewMaster = true;
           
           // free the set
           mpiPartnerRanks.clear();
                     
-          // continue main loop as slave, but only if a master has been found
-          //if ( foundNewMaster )
-          {
-            // make myself a new slave
-            isMaster = false;
-            sectionEndNode = NULL;
-          }
-          /*else
+          // if no new master has been found, continue main loop as master
+          if ( options.criticalPathSecureMPI && sendBfr[BUFFER_SIZE - 1] == 0 )
           {
             // this should not happen, but we do not want to abort here
             
@@ -845,9 +838,15 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
             currentNode = activityEdge->getStartNode( );
             
             UTILS_MSG( true , "[%u] No new master could be found! "
-                                  "Continuing on node %s ", mpiRank, 
-                           currentNode->getUniqueName( ).c_str( ) );
-          }*/
+                              "Continuing on node %s ", mpiRank, 
+                              currentNode->getUniqueName( ).c_str( ) );
+          }
+          else // continue main loop as slave
+          {
+            // make myself a new slave
+            isMaster = false;
+            sectionEndNode = NULL;
+          }
         }
         else
         {
@@ -951,16 +950,19 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
       MPIAnalysis::MPIEdge mpiEdge;
       bool haveEdge = analysis.getMPIAnalysis( ).getRemoteMPIEdge( 
                                   (uint32_t)recvBfr[0], recvBfr[1], mpiEdge );
-/*
-      //send information back to current master, if this rank has an edge
-      int mpiMaster = analysis.getMPIAnalysis().getMPIRank( recvBfr[1] );
-      sendBfr[0] = haveEdge;
-      //std::cerr << "[" << mpiRank << "] Slave sends to " << mpiMaster 
-      //          << " has Edge: " << haveEdge << std::endl;
-      MPI_CHECK( MPI_Send( sendBfr, 1, MPI_UNSIGNED_LONG_LONG,
-                           mpiMaster,
-                           42, MPI_COMM_WORLD ) );
-      */
+
+      // if we did not find a new master yet, send back whether we are the new master
+      if ( options.criticalPathSecureMPI && recvBfr[BUFFER_SIZE - 1] == 0 )
+      {
+        //send information back to current master, if this rank has an edge
+        int mpiMaster = analysis.getMPIAnalysis().getMPIRank( recvBfr[1] );
+        sendBfr[0] = haveEdge;
+        //std::cerr << "[" << mpiRank << "] Slave sends to " << mpiMaster 
+        //          << " has Edge: " << haveEdge << std::endl;
+        MPI_CHECK( MPI_Send( sendBfr, 1, MPI_UNSIGNED_LONG_LONG,
+                             mpiMaster,
+                             42, MPI_COMM_WORLD ) );
+      }
       
       if ( haveEdge )
       {

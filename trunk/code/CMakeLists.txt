@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8.5)
 PROJECT(casita)
 
 # SET helper pathes to find libraries and packages
-SET(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/" "$ENV{MPI_ROOT}" "$ENV{OTF2_ROOT}")
+SET(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/" "$ENV{MPI_ROOT}" "$ENV{BOOST_ROOT}" "$ENV{OTF2_ROOT}")
 
 # install prefix
 IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -79,6 +79,12 @@ ENDIF(PROJ_OTF2_DIR)
 IF(NOT OTF_FOUND)
     MESSAGE(FATAL_ERROR "No supported OTF version found, cannot continue!")
 ENDIF(NOT OTF_FOUND)
+
+
+# include Boost
+FIND_PACKAGE(Boost REQUIRED COMPONENTS program_options regex filesystem system)
+INCLUDE_DIRECTORIES(SYSTEM ${Boost_INCLUDE_DIRS})
+SET(LIBS ${LIBS} ${Boost_LIBRARIES})
 
 # own includes
 INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/src/backend/include" 

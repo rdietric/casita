@@ -50,11 +50,8 @@ main( int argc, char** argv )
 
   if ( !Parser::getInstance( ).init( argc, argv ) )
   {
-    if (mpiRank == 0){
-      Parser::getInstance().printHelp();
-    }
     MPI_Finalize();
-    return 0;
+    return -1;
   }
 
   try

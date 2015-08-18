@@ -13,17 +13,21 @@
  *
  */
 
-
 #include <iostream>
 #include <sstream>
 #include <fstream>
 #include <vector>
-#include <stdlib.h>
+
 #include "Parser.hpp"
+
+#include <boost/program_options.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/cmdline.hpp>
+#include <boost/program_options/variables_map.hpp>
 
 namespace casita
 {
-
+ namespace po = boost::program_options;
 
  Parser::Parser( )
  {
@@ -49,100 +53,39 @@ namespace casita
    }
  }
 
+ template < class T >
+ bool
+ from_string( T& t,
+              const std::string& s,
+              std::ios_base& ( *f )( std::ios_base & ) )
+ {
+   std::istringstream iss( s );
+   if ( ( iss >> f >> t ).fail( ) )
+   {
+     throw std::invalid_argument( "conversion invalid!" );
+   }
+
+   return true;
+ }
+
  Parser&
  Parser::getInstance( )
  {
    static Parser instance;
    return instance;
  }
-
- void
- Parser::printHelp(){
-   std::cout << "Usage: casita <otf-file> [options]\n" << std::endl;
-   std::cout << "  -h [--help]           print help message" << std::endl;
-   std::cout << "  -i [--input]   arg    input OTF file" << std::endl;
-   std::cout << "  -o [--output]  arg    output OTF file" << std::endl;
-   std::cout << "  -v [--verbose] arg    verbosity level\n" << std::endl;
- }
-
-
- bool
- Parser::setProgramOptions(int argc, char** argv){
-  
-   optionPrefixMap["-i"] = INPUT;
-   optionPrefixMap["--input"] = INPUT;
-   optionPrefixMap["-o"] = OUTPUT;
-   optionPrefixMap["--output"] = OUTPUT;
-   optionPrefixMap["-h"] = HELP;
-   optionPrefixMap["--help"]=HELP;
-   optionPrefixMap["-v"] = VERBOSE;
-   optionPrefixMap["--verbose"] = VERBOSE;
-
-   std::string opt1 = std::string(argv[1]);
-
-
-
-
-   if (argc > 2 && argc%2 == 1)
-     {
-       
-       for (int i = 1;i < argc;i += 2){
-	 optionsMap[ argv[i]] = argv[i+1];
-       }
-     }
-   
-   else if ((opt1.compare("-h") == 0) || (opt1.compare("--help") == 0)){
-     //printHelp()
-     return false;
-   }
-
-   else if (argc == 2 ){
-     optionsMap["-i"]= argv[1];
-   }
-         
-   else {
-     //printHelp();
-     return false;
-   }
-
-
-   for (OptionsMap::iterator it=optionsMap.begin();it != optionsMap.end();it++)
-     
-     {
-       switch(optionPrefixMap[it->first])
-	 {
-       
-	 case INPUT:
-	   options.filename = it->second;
-	   break;
-       
-	 case OUTPUT:
-	   options.outOtfFile = it->second;
-	   options.createOTF = true;
-
-	   break;
-
-	 case VERBOSE:
-	   options.verbose = atoi(it->second);
-	   break;
-
-	 case HELP:
-	   // printHelp();
-	   return false;
-	 }
-     }
-     
-   return true;
- }
-
  
-
+ int
+ Parser::getVerboseLevel( )
+ {
+   return Parser::getInstance().options.verbose;
+ }
 
  bool
  Parser::init( int argc, char** argv ) throw ( std::runtime_error )
  {
+   // default values
    bool noSummary = false;
-   bool noHelp = true;
 
    options.createOTF         = false;
    options.eventsProcessed   = 0;
@@ -151,21 +94,92 @@ namespace casita
    options.noErrors          = false;
    options.outOtfFile        = "";
    options.printCriticalPath = false;
+   options.criticalPathSecureMPI = false;
    options.verbose           = 0;
    options.ignoreAsyncMpi    = false;
- 
+
    try
+   {
+     /* add help message as options description */
+     std::stringstream desc_stream;
+     desc_stream << "Usage: casita <otf-file> [options]" << std::endl;
+     po::options_description desc( desc_stream.str( ) );
+
+     /* add standard options */
+     desc.add_options( )
+       ( "help,h", "print help message" )
+
+       ( "input,i", po::value< std::string >( &options.filename ),
+       "input OTF file" )
+       ( "output,o", po::value< std::string >( &options.outOtfFile ),
+       "output OTF file" )
+       ( "no-summary", po::value< bool >( &noSummary )->zero_tokens( ),
+       "do not aggregate statistics to summary" )
+       ( "path,p", po::value< bool >( &options.printCriticalPath )->zero_tokens( ),
+       "print critical paths" )
+       ( "verbose,v", po::value< int >( &options.verbose ),
+       "verbosity level" )
+       ( "no-errors", po::value< bool >( &options.noErrors ),
+       "ignore non-fatal analysis errors" )
+       ( "ignore-async-mpi", po::value< bool >( &options.ignoreAsyncMpi )->zero_tokens( ),
+       "treat async MPI calls as CPU functions" )
+       ( "secure-mpi-cpa", po::value< bool >( &options.criticalPathSecureMPI )->zero_tokens( ),
+       "Securely perform MPI critical-path analysis" )
+     ;
+
+     po::positional_options_description pos_options_descr;
+     pos_options_descr.add( "input", 1 );
+
+     /* parse command line options and config file and store values in vm */
+     po::variables_map vm;
+     po::store( po::command_line_parser( argc, argv ).options(
+                  desc ).positional( pos_options_descr ).run( ), vm );
+
+     po::notify( vm );
+
+     // print help message and quit simulation
+     if ( vm.count( "help" ) )
      {
-       noHelp = setProgramOptions(argc,argv);
-     }
-   catch (...)
-     {
+       std::cout << desc << "\n";
        return false;
      }
-    
-   return noHelp;
-     
+
+     if ( vm.count( "output" ) )
+     {
+       options.createOTF = true;
+     }
+
+     if ( vm.count( "input" ) != 1 )
+     {
+       std::cerr << "Please specify exactly one input OTF file." << std::endl;
+       std::cerr << desc << "\n";
+       return false;
+     }
+     else
+     {
+       if ( endsWith( options.filename, ".otf2" ) )
+       {
+#if ( ENABLE_OTF2 != 1 )
+         std::cerr << "OTF2 not supported" << std::endl;
+         return false;
+#endif
+       }
+     }
+
+     if ( noSummary )
+     {
+       options.mergeActivities = false;
+     }
+
+   }
+   catch( boost::program_options::error& e )
+   {
+     std::cerr << e.what( ) << std::endl;
+     return false;
+   }
+   return true;
  }
+
  ProgramOptions&
  Parser::getProgramOptions( )
  {
