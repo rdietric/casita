@@ -37,7 +37,7 @@ sub test_trace
     my $nprocs = $1;
     my $trace_name = $2;
     #print "Executing 'mpirun -n $nprocs casita ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2 --verbose=1'\n";
-    my @output = qx(mpirun -n $nprocs casita -i ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2 --verbose 1 2>&1);
+    my @output = qx(mpirun -n $nprocs casita ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2 --verbose=1 2>&1);
     my $status = $? >> 8;
 
     if (not ($status == 0))

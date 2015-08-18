@@ -655,6 +655,12 @@ GraphEngine::addCPUEvent( uint64_t time, uint64_t stream )
   return;
 }
 
+/**
+ * Adds a node to the graph. Also adds edges.
+ * 
+ * @param node
+ * @param stream
+ */
 void
 GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 {
@@ -665,6 +671,8 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   if ( !stream->getLastNode( ) ||
        Node::compareLess( stream->getLastNode( ), node ) )
   {
+    // if the last node in the list is "less" than the current, 
+    // push it at the end of the vector
     stream->addGraphNode( node, &predNodeMap );
   }
   else

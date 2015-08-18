@@ -22,13 +22,13 @@
 #include <iostream>
 #include <stdlib.h>
 #include <inttypes.h>
-#include <unistd.h> //for getcwd
 
 /* following adjustments necessary to use MPI_Collectives with OTF2 */
 #define OTF2_MPI_UINT64_T MPI_UNSIGNED_LONG
 #define OTF2_MPI_INT64_T MPI_LONG
 
 #include <otf2/OTF2_MPI_Collectives.h>
+#include <boost/filesystem.hpp>
 #include <map>
 
 #include "graph/EventNode.hpp"
@@ -172,48 +172,36 @@ void
 OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
                                uint32_t numStreams )
 {
-  int startFilename = otfFilename.find_last_of("/")+1;
-  int endFilename = otfFilename.find_last_of(".");
-  int lenName = endFilename - startFilename;
-  std::string outputFilename = otfFilename.substr(startFilename, lenName);
-  std::string pathToFile;
-  char cwd[200];
-  getcwd(cwd,200);
-  std::cout << std::string(cwd).substr(0,1).compare("/") << "kkd " << std::endl;
-  if ( std::string(cwd).substr(0,1).compare("/") == 0){ // absolut Path
-    pathToFile = otfFilename.substr(0,startFilename);
-  }
-  else{               // relative Path
-    pathToFile  = std::string(cwd) + std::string("/")+ otfFilename.substr(0,startFilename);
-  }
+  boost::filesystem::path boost_path     = boost::filesystem::system_complete(otfFilename);
+  boost::filesystem::path boost_filename = otfFilename;
+
+  outputFilename = boost::filesystem::change_extension(
+    boost_filename.filename( ), "" ).string( );
+  pathToFile     = boost_path.parent_path().string();
 
   UTILS_MSG( mpiRank == 0, "[%u] FILENAME: '%s' PATH: '%s'",
                  mpiRank, outputFilename.c_str( ), pathToFile.c_str( ) );
- 
- 
+
   if ( writeToFile )
   {
- 
     if ( mpiRank == 0 )
     {
       /* remove trace dir */
-      if (!access( (pathToFile + outputFilename).c_str(),0))  //test if dir  exists
+      if ( boost::filesystem::exists( pathToFile + std::string( "/" ) +
+                                      outputFilename ) )
       {
-	std::string remove_dir = std::string("rm -r  ") + pathToFile +  outputFilename;
-        system(remove_dir.c_str());
+        boost::filesystem::remove_all( pathToFile + std::string(
+                                         "/" ) + outputFilename );
       }
 
       /* remove trace files */
-      if (!access(otfFilename.c_str(),0) ) // test if file exists
+      if ( boost::filesystem::exists( otfFilename ) )
       {
-	std::string remove_file = std::string("rm ") + otfFilename;
-        system(remove_file.c_str());
-	remove_file = std::string("rm ") + pathToFile + outputFilename + std::string(".def");
-        system(remove_file.c_str());
-
+        boost::filesystem::remove( otfFilename );
+        boost::filesystem::remove(
+          boost::filesystem::change_extension( otfFilename, "def" ) );
       }
     }
-
 
     MPI_Barrier( MPI_COMM_WORLD );
 

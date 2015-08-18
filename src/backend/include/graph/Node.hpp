@@ -518,26 +518,32 @@ namespace casita
          }
 
          // nodes from same stream (same paradigm, same time stamp)
+         // Example: compare MPI_Recv.leave.1560.1600813.1021.0 & 
+         //                  MPI_Recv.enter.1559.1600813.1021.166
+         // At node creation (first insertion) the function ID is 0.
          if ( n1->getStreamId( ) == n2->getStreamId( ) )
          {
+           // as we sequentially read events per stream, this should work for 
+           // correct OTF2 traces (use OTF2 sequence of events)
+           return ( n1->getId() < n2->getId() );
+           
+           /*
+           std::cerr << "Compare " << n1->getUniqueName() << "."<< n1->getFunctionId() << " & " 
+                     << n2->getUniqueName() << "."<< n2->getFunctionId() << std::endl;
+           
            // nodes with the same function name or ID
            if ( ( ( n1->getFunctionId( ) > 0 ) &&
                   ( n2->getFunctionId( ) > 0 ) &&
                   ( n1->getFunctionId( ) == n2->getFunctionId( ) ) ) ||
-                ( ( n1->getFunctionId( ) == n2->getFunctionId( ) ) &&
+                ( ( n1->getFunctionId( ) == n2->getFunctionId( ) ) && 
                   strcmp( n1->getName( ), n2->getName( ) ) == 0 ) )
-           {
+           {*/
              /* Caution: this branch used to do the opposite
               * we changed it to this case because we need to process
               * OpenMP barriers that might be right after each other
               * In this case they would be identical and the first leave and
               * second enter have the same timestamp
-              */
-             
-             // as we sequentially read events per stream, this should work for 
-             // correct OTF2 traces (use OTF2 sequence of events)
-             return ( n1->id < n2->id );
-             /*
+
              if ( ( recordType1 == RECORD_LEAVE ) &&
                   ( recordType2 == RECORD_ENTER ) )
              {
@@ -548,9 +554,9 @@ namespace casita
                   ( recordType2 == RECORD_LEAVE ) )
              {
                return false;
-             }*/
+             }
            }
-           else
+           else // for different functions, the leave is before enter???
            {
              if ( ( recordType1 == RECORD_LEAVE ) &&
                   ( recordType2 == RECORD_ENTER ) )
@@ -563,7 +569,7 @@ namespace casita
              {
                return false;
              }
-           }
+           }*/
          }
          else
          {
