@@ -58,6 +58,7 @@ sub test_trace
 
     # check that a optimization report is found
     my @profile = grep (/(\w+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)%\s+(\d+\.\d+)%\s+(\d+\.\d+)/, @output);
+    
     if (not ($#profile + 1 > 0))
     {
         print "@output \n\n";
@@ -72,6 +73,7 @@ sub test_trace
     foreach (@output)
     {
         my $oline = $_;
+        
         if ($oline =~ /(\w+)\s+(\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)%\s+(\d+\.\d+)%\s+(\d+\.\d+)/)
         {
             my $fname  = $1;
@@ -146,6 +148,16 @@ sub test_trace
     # run otf2-print on trace
     if ($num_args > 3 && length $otf2_print > 0)
     {
+        # check trace file size
+        my $otf2_size = qx(du -s ${full_trace_dir});
+        if ( $otf2_size =~ m/^(\d+)*/ ) {
+          if( $1 > 300000 ){
+            print "Input trace ($1 K) is too large  for validation check!\n";
+            return 0;
+          }
+        }
+        
+    
         my @otf2_output = qx($otf2_print $tmp_dir/${trace_name}.otf2 2>&1);
         my $otf2_status = $? >> 8;
         if (not ($otf2_status == 0))
