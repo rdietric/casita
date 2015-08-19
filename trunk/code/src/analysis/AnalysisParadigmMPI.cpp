@@ -113,13 +113,13 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
 
       case EventStream::MPI_ONEANDALL:
         node->setReferencedStreamId( iter->partnerId );
-        tmpId  = new uint64_t; // TODO: is this free'd?
+        tmpId  = new uint64_t; // \TODO: this is never deleted
         *tmpId = iter->rootId;
         node->setData( tmpId ); 
         break;
 
       case EventStream::MPI_SEND:
-        tmpId  = new uint64_t; // TODO: is this free'd? still needed in CPA
+        tmpId  = new uint64_t; // \TODO: not deleted in case of MPI_Sendrecv
         *tmpId = iter->partnerId;
         node->setData( tmpId );
         break;

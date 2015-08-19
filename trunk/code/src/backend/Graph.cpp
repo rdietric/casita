@@ -50,8 +50,11 @@ Graph::~Graph( )
       delete*eIter;
     }
   }
+  
+  // clear all node vectors
   outEdges.clear( );
   inEdges.clear( );
+  nodes.clear( );
 }
 
 void
@@ -180,6 +183,12 @@ Graph::getNodes( ) const
   return nodes;
 }
 
+/**
+ * Generates a sub graph for the given paradigm (including node and edge list).
+ * 
+ * @param paradigm
+ * @return 
+ */
 Graph*
 Graph::getSubGraph( Paradigm paradigm )
 {
