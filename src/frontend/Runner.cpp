@@ -700,6 +700,8 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
     sectionEndNode = currentNode;
   }
 
+  // mpiGraph is an allocated graph object with a vector of all nodes of the 
+  // given paradigm (\TODO this might be extremely memory intensive)
   Graph*   mpiGraph = analysis.getGraph( PARADIGM_MPI );
   uint32_t cpCtrId  = analysis.getCtrTable( ).getCtrId( CTR_CRITICALPATH );
   uint64_t sendBfr[BUFFER_SIZE];
@@ -987,6 +989,9 @@ Runner::reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& section
       }
     }
   }
+  
+  // allocated before this loop and not bound to any other object
+  delete mpiGraph;
 
   MPI_Barrier( MPI_COMM_WORLD );
 }
