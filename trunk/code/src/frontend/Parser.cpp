@@ -122,7 +122,7 @@ namespace casita
        ( "no-errors", po::value< bool >( &options.noErrors ),
        "ignore non-fatal analysis errors" )
        ( "ignore-async-mpi", po::value< bool >( &options.ignoreAsyncMpi )->zero_tokens( ),
-       "treat async MPI calls as CPU functions" )
+       "treat non-blocking MPI functions as CPU functions" )
        ( "secure-mpi-cpa", po::value< bool >( &options.criticalPathSecureMPI )->zero_tokens( ),
        "Securely perform MPI critical-path analysis" )
      ;

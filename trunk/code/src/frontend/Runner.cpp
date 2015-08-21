@@ -142,7 +142,7 @@ Runner::readOTF( )
              "[%u] Reading events", mpiRank );
 
   // use a global event reader that triggers the registered callbacks
-  traceReader->readEvents( );
+  traceReader->readEvents( options.ignoreAsyncMpi );
   traceReader->close( );
   delete traceReader;
 }
