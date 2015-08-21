@@ -102,10 +102,10 @@ namespace casita
       close( )                                 = 0;
 
       virtual void
-      readEvents( )                            = 0;
+      readEvents( bool ignoreAsyncMPI )        = 0;
 
       virtual void
-      readEventsForProcess( uint64_t id )      = 0;
+      readEventsForProcess( uint64_t id, bool ignoreAsyncMPI ) = 0;
 
       virtual void
       readDefinitions( )                       = 0;
@@ -123,7 +123,7 @@ namespace casita
       getProcessName( uint64_t id )            = 0;
 
       virtual std::vector< uint32_t >
-      getKeys( const std::string keyName ) = 0;
+      getKeys( const std::string keyName )     = 0;
 
       virtual int32_t
       getFirstKey( const std::string keyName ) = 0;

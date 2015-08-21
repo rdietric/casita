@@ -91,10 +91,10 @@ namespace casita
       close( );
 
       void
-      readEvents( );
+      readEvents( bool ignoreAsyncMPI );
 
       void
-      readEventsForProcess( uint64_t id );
+      readEventsForProcess( uint64_t id, bool ignoreAsyncMPI );
 
       void
       readDefinitions( );

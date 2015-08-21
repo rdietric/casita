@@ -164,7 +164,7 @@ OTF2TraceReader::close( )
 }
 
 void
-OTF2TraceReader::readEvents( )
+OTF2TraceReader::readEvents( bool ignoreAsyncMPI )
 {
   // processNameTokenMap is initialized during traceReader->readDefinitions( );
   for ( IdNameTokenMap::const_iterator iter = processNameTokenMap.begin( );
@@ -214,10 +214,19 @@ OTF2TraceReader::readEvents( )
     event_callbacks,
     &
     OTF2_GlobalEvtReaderCallback_ThreadJoin );
-  OTF2_GlobalEvtReaderCallbacks_SetMpiIrecvRequestCallback( event_callbacks, &otf2Callback_MpiIRecvRequest );
-  OTF2_GlobalEvtReaderCallbacks_SetMpiIrecvCallback( event_callbacks, &otf2Callback_MpiIRecv );
-  OTF2_GlobalEvtReaderCallbacks_SetMpiIsendCallback( event_callbacks, &otf2Callback_MpiISend );
-  OTF2_GlobalEvtReaderCallbacks_SetMpiIsendCompleteCallback( event_callbacks, &otf2Callback_MpiISendComplete );
+  
+  if ( !ignoreAsyncMPI )
+  {
+    OTF2_GlobalEvtReaderCallbacks_SetMpiIrecvRequestCallback( event_callbacks, 
+                                                &otf2Callback_MpiIRecvRequest );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiIrecvCallback( event_callbacks, 
+                                                       &otf2Callback_MpiIRecv );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiIsendCallback( event_callbacks, 
+                                                       &otf2Callback_MpiISend );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiIsendCompleteCallback( event_callbacks, 
+                                               &otf2Callback_MpiISendComplete );
+  }
+  
   OTF2_Reader_RegisterGlobalEvtCallbacks( reader,
                                           global_evt_reader,
                                           event_callbacks,
@@ -242,7 +251,7 @@ OTF2TraceReader::readEvents( )
 
 // not used
 void
-OTF2TraceReader::readEventsForProcess( uint64_t id )
+OTF2TraceReader::readEventsForProcess( uint64_t id, bool ignoreAsyncMPI )
 {
   OTF2_Reader_SelectLocation( reader, id );
 
@@ -281,9 +290,19 @@ OTF2TraceReader::readEventsForProcess( uint64_t id )
     event_callbacks,
     &
     OTF2_GlobalEvtReaderCallback_ThreadJoin );
-  OTF2_GlobalEvtReaderCallbacks_SetMpiIrecvRequestCallback( event_callbacks, &otf2Callback_MpiIRecvRequest );
-  OTF2_GlobalEvtReaderCallbacks_SetMpiIrecvCallback( event_callbacks, &otf2Callback_MpiIRecv );
-  OTF2_GlobalEvtReaderCallbacks_SetMpiIsendCallback( event_callbacks, &otf2Callback_MpiISend );
+  
+  if ( !ignoreAsyncMPI )
+  {
+    OTF2_GlobalEvtReaderCallbacks_SetMpiIrecvRequestCallback( event_callbacks, 
+                                                &otf2Callback_MpiIRecvRequest );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiIrecvCallback( event_callbacks, 
+                                                       &otf2Callback_MpiIRecv );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiIsendCallback( event_callbacks, 
+                                                       &otf2Callback_MpiISend );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiIsendCompleteCallback( event_callbacks, 
+                                               &otf2Callback_MpiISendComplete );
+  }
+  
   OTF2_Reader_RegisterGlobalEvtCallbacks( reader,
                                           global_evt_reader,
                                           event_callbacks,
@@ -361,7 +380,7 @@ OTF2TraceReader::readDefinitions( )
                                         &definitions_read );
 
   UTILS_MSG( mpiRank == 0, "[%u] Read %lu definitions in Phase 1",
-                 mpiRank, definitions_read );
+             mpiRank, definitions_read );
 
   close( );
 
