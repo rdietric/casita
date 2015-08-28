@@ -62,7 +62,7 @@ namespace casita
         node->setReferencedStreamId( partnerProcessId ); // for debugging in CP analysis
         uint32_t  partnerMPIRank  =
           commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
-
+        std::cout << "send rule partner rank " << partnerMPIRank << std::endl;
         // replay MPI_Send
         uint64_t buffer[CASITA_MPI_P2P_BUF_SIZE];
         
