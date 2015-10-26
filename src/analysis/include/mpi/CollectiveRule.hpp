@@ -146,6 +146,7 @@ namespace casita
           }
           
           // set the wait state counter for this blocking region
+          // waiting time = last enter time - this ranks enter time
           coll.second->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                      CTR_WAITSTATE ),
                                    lastEnterTime - collStartTime );

@@ -38,11 +38,18 @@ namespace casita
    public:
 
      Runner( int mpiRank, int mpiSize );
+     
      virtual
      ~Runner( );
+     
+     void
+     startAnalysisRun( );
 
      void
-     readOTF( );
+     processTrace( ITraceReader* traceReader );
+     
+     void
+     writeTrace( );
 
      void
      runAnalysis( Paradigm paradigm, EventStream::SortedGraphNodeList& allNodes );
@@ -72,6 +79,9 @@ namespace casita
      ProgramOptions& options;
      CallbackHandler callbacks;
      uint64_t globalLengthCP;
+     
+     /* some internal analysis helper functions */
+     
 
      /* critical path */
      void
@@ -79,12 +89,10 @@ namespace casita
                             GraphNode*                        end,
                             EventStream::SortedGraphNodeList& cpNodes,
                             Graph&                            subGraph );
-
+     
      void
-     getCriticalLocalSections( MPIAnalysis::CriticalPathSection* sections,
-                               uint32_t                          numSections,
-                               EventStream::SortedGraphNodeList& gpuNodes,
-                               MPIAnalysis::CriticalSectionsMap& sectionsMap );
+     getCriticalLocalNodes( MPIAnalysis::CriticalSectionsList& sections,
+                            EventStream::SortedGraphNodeList& localNodes );
 
      void
      findLastMpiNode( GraphNode** node );

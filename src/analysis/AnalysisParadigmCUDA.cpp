@@ -45,9 +45,11 @@ AnalysisParadigmCUDA::AnalysisParadigmCUDA( AnalysisEngine* analysisEngine ) :
   IAnalysisParadigm( analysisEngine )
 {
   addRule( new KernelLaunchRule( 9 ) );
-  addRule( new BlameSyncRule( 1 ) );
-  addRule( new BlameKernelRule( 1 ) );
-  addRule( new LateSyncRule( 1 ) );
+  //\todo: check priority for the following three rules triggered on cudaSync
+  // they all clear the list of pending kernels when finished
+  addRule( new BlameKernelRule( 2 ) ); // triggered on cudaSync
+  addRule( new BlameSyncRule( 1 ) );   // triggered on cudaSync
+  addRule( new LateSyncRule( 1 ) );    // triggered on cudaSync
   addRule( new EventLaunchRule( 1 ) );
   addRule( new EventSyncRule( 1 ) );
   addRule( new EventQueryRule( 1 ) );
@@ -100,14 +102,12 @@ AnalysisParadigmCUDA::handleKeyValuesEnter( ITraceReader*  reader,
                                             IKeyValueList* list )
 {
   uint64_t refValue     = 0;
-  int32_t  streamRefKey = -1;
+  int32_t  streamRefKey = reader->getFirstKey( SCOREP_CUPTI_CUDA_STREAMREF_KEY );
 
-  streamRefKey = reader->getFirstKey( VT_CUPTI_CUDA_STREAMREF_KEY );
-  /* give it another try, maybe it was scorep, not vt */
-  if ( streamRefKey < 0 )
-  {
-    streamRefKey = reader->getFirstKey( SCOREP_CUPTI_CUDA_STREAMREF_KEY );
-  }
+//  if( streamRefKey > -1 && list->getLocationRef( (uint32_t)streamRefKey,
+//                             &refValue ) != IKeyValueList::KV_SUCCESS ){
+//    std::cerr << "CUDA::handleKeyValuesEnter streamRefKey: " << streamRefKey << std::endl;
+//  }
 
   if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
        list->getLocationRef( (uint32_t)streamRefKey,
@@ -124,14 +124,12 @@ AnalysisParadigmCUDA::handleKeyValuesLeave( ITraceReader*  reader,
                                             IKeyValueList* list )
 {
   uint64_t refValue     = 0;
-  int32_t  streamRefKey = -1;
-
-  streamRefKey = reader->getFirstKey( VT_CUPTI_CUDA_STREAMREF_KEY );
-  /* give it another try, maybe it was scorep, not vt */
-  if ( streamRefKey < 0 )
-  {
-    streamRefKey = reader->getFirstKey( SCOREP_CUPTI_CUDA_STREAMREF_KEY );
-  }
+  int32_t  streamRefKey = reader->getFirstKey( SCOREP_CUPTI_CUDA_STREAMREF_KEY );
+  
+//  if( streamRefKey > -1 && list->getLocationRef( (uint32_t)streamRefKey,
+//                             &refValue ) != IKeyValueList::KV_SUCCESS ){
+//    std::cerr << "CUDA::handleKeyValuesLeave streamRefKey: " << streamRefKey << std::endl;
+//  }
 
   if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
        list->getLocationRef( (uint32_t)streamRefKey,

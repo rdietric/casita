@@ -52,6 +52,7 @@ AnalysisParadigmMPI::AnalysisParadigmMPI( AnalysisEngine* analysisEngine,
     addRule( new ISendRule( 1 ) );
     addRule( new WaitAllRule( 1 ) );
     addRule( new WaitRule( 1 ) );
+    //addRule( new TestRule( 1 ) );
   }
 }
 
@@ -88,6 +89,10 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
     stream->addPendingMPIIrecvNode( node );
     return;
   }
+  /*else if ( node->isMPITest() )
+  {
+    return;
+  }*/
   else if( node->isMPIWait() )
   {
     stream->setMPIWaitNodeData( node );

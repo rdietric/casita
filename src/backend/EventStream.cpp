@@ -213,7 +213,11 @@ EventStream::addGraphNode( GraphNode*                  node,
 
   if ( nodeParadigm == PARADIGM_MPI )
   {
+    // \todo Why the last local compute node and not the last local MPI node???
     GraphNode* lastLocalCompute = getLastNode( );
+    
+    // \todo: link is not correctly set
+    //std::cerr << "XXXXXLeft  " << lastLocalCompute->getUniqueName() << " <- " << node->getUniqueName() << std::endl;
     node->setLinkLeft( lastLocalCompute );
     unlinkedMPINodes.push_back( node );
   }
@@ -224,6 +228,7 @@ EventStream::addGraphNode( GraphNode*                  node,
             unlinkedMPINodes.begin( );
           iter != unlinkedMPINodes.end( ); ++iter )
     {
+      //std::cerr << "XXXXXRight  " << ( *iter )->getUniqueName() << " -> " << node->getUniqueName() << std::endl;
       ( *iter )->setLinkRight( node );
     }
     unlinkedMPINodes.clear( );
@@ -341,9 +346,24 @@ EventStream::getNodes( )
 }
 
 void
+EventStream::clearNodes( )
+{
+  // clear the nodes list (do not delete the nodes themselves)
+  nodes.clear( );
+  
+  // set the first and last Node to NULL
+  for ( size_t i = 0; i < NODE_PARADIGM_COUNT; ++i )
+  {
+    graphData[i].firstNode = NULL;
+    graphData[i].lastNode  = NULL;
+  }
+}
+
+void
 EventStream::addPendingKernel( GraphNode* kernelLeave )
 {
   pendingKernels.push_back( kernelLeave );
+  //std::cerr << "["<< this->id << "] Add pending kernel: " << kernelLeave->getUniqueName() << std::endl;
 }
 
 GraphNode*
@@ -387,7 +407,7 @@ EventStream::setPendingMPIRecord( MPIType  mpiType,
 {
   MPICommRecord record;
   record.mpiType   = mpiType;
-  record.partnerId = partnerId;
+  record.partnerId = partnerId; // the communicator for collectives
   record.rootId    = rootId;
 
   mpiCommRecords.push_back( record );
@@ -561,10 +581,19 @@ EventStream::setMPIIsendNodeData( GraphNode* node )
 }
 
 /**
+ * Sets node-specific data for the given MPI_Test leave node.
+ * ??? Consumes the pending OTF2 request ID ???
+ * 
+ * @param node the graph node of the MPI_Test leave record
+ */
+//void
+//EventStream::setMPITestNodeData( GraphNode* node )
+
+/**
  * Sets node-specific data for the given MPI_Wait leave node.
  * Consumes the pending OTF2 request ID.
  * 
- * @param node the graph node of the MPI_Isend leave record
+ * @param node the graph node of the MPI_Wait leave record
  */
 void
 EventStream::setMPIWaitNodeData( GraphNode* node )
@@ -604,6 +633,17 @@ EventStream::setMPIWaitallNodeData( GraphNode* node )
   }
   
   pendingRequests.clear( );
+}
+
+/**
+ * Return whether we have pending MPI requests or not.
+ * 
+ * @return true, if we have pending MPI requests in the list.
+ */
+bool
+EventStream::havePendingMPIRequests( )
+{
+  return !(mpiIcommRecords.empty());
 }
 
 /**
@@ -681,7 +721,7 @@ EventStream::waitForPendingMPIRequests( GraphNode* node )
       UTILS_DBG_MSG( DEBUG_MPI_ICOMM,
                      "[%u] Finish requests (%p) associated with OTF2 request ID "
                      "%llu (in waitForPendingMPIRequests())\n",
-                     this->id, it->second, it->second->requestId);
+                     this->id, it->second, it->second.requestId);
       
       if( it->second.requests[0] != MPI_REQUEST_NULL )
       {
@@ -779,9 +819,7 @@ EventStream::testAllPendingMPIRequests( )
       
       UTILS_DBG_MSG( DEBUG_MPI_ICOMM, "[%u] Finished requests (%p) with OTF2 request ID"
                                       " %llu in testAllPendingMPIRequests()\n", 
-                                      this->id,
-                                      (void *) it->second,
-                                      it->second.requestId);
+                                      this->id, it->second, it->second.requestId);
       
       // invalidate node-specific data
       it->second.leaveNode->setData( NULL );
@@ -821,7 +859,7 @@ EventStream::walkBackward( GraphNode*         node,
   // print a warning if the node could not be found and use a sequential search
   if ( *iter != node ) 
   {
-    UTILS_MSG( Parser::getVerboseLevel() == VERBOSE_BASIC, 
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
                "Binary search did not find %s in stream %lu. "
                "Perform sequential search for convenience ...", 
                node->getUniqueName( ).c_str( ), node->getStreamId( ) );
@@ -979,4 +1017,61 @@ EventStream::addNodeInternal( SortedGraphNodeList& nodes, GraphNode* node )
   nodes.push_back( node );
 
   lastNode = node;
+}
+
+/**
+ * Reset stream internal data structures.
+ * The routine does not touch the list of nodes!!!
+ */
+void
+EventStream::reset( )
+{
+  if( !(this->pendingKernels.empty()) )
+  {
+    UTILS_MSG( true, "[%u] Clear list of pending kernels (%lu)!", 
+                     this->id, this->pendingKernels.size() );
+    this->pendingKernels.clear();
+  }
+  
+  //\todo nodes // currently handled in GraphEngine::createIntermediateBegin( )
+  //\todo reset graphData //currently handled GraphEngine::createIntermediateBegin( )
+  
+  // clear list of unlinked MPI nodes (print to stderr before), the last node is always unlinked!
+  if( unlinkedMPINodes.size() > 1 )
+  {
+    UTILS_MSG( true, "[%u] Clear list of unlinked MPI nodes (%lu)!", 
+                     this->id, this->unlinkedMPINodes.size() );
+    
+    for ( SortedGraphNodeList::const_iterator iter =
+            unlinkedMPINodes.begin( ); iter != unlinkedMPINodes.end( ); ++iter )
+    {
+      UTILS_MSG( true, "[%u]   %s", 
+                       this->id, ( *iter )->getUniqueName().c_str() );
+    }
+    
+    unlinkedMPINodes.clear();
+  }
+  
+  // clear list of pending MPI blocking communication records
+  mpiCommRecords.clear();
+  
+  // reset temporary values for non-blocking MPI communication
+  pendingMPIRequestId = std::numeric_limits< uint64_t >::max( );
+  mpiIsendPartner = std::numeric_limits< uint64_t >::max( );
+    
+  // reset list of pending request IDs (non-blocking MPI)
+  if( !(pendingRequests.empty()) )
+  {
+    UTILS_MSG( true, "[%u] Clear list of pending OTF2 requests (%lu)!", 
+                     this->id, this->pendingRequests.size() );
+    pendingRequests.clear();
+  }
+  
+  // clear list of pending non-blocking MPI communication records
+  if( !(mpiIcommRecords.empty()) )
+  {
+    UTILS_MSG( true, "[%u] Clear list of pending non-blocking MPI communication records (%lu)!", 
+                     this->id, this->mpiIcommRecords.size() );
+    mpiIcommRecords.clear();
+  }
 }

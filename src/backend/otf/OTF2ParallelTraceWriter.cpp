@@ -179,8 +179,7 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
     boost_filename.filename( ), "" ).string( );
   pathToFile     = boost_path.parent_path().string();
 
-  UTILS_MSG( mpiRank == 0, "[%u] FILENAME: '%s' PATH: '%s'",
-                 mpiRank, outputFilename.c_str( ), pathToFile.c_str( ) );
+  UTILS_MSG( mpiRank == 0 && verbose, "[0] PATH: '%s'", pathToFile.c_str( ) );
 
   if ( writeToFile )
   {
@@ -270,6 +269,24 @@ OTF2ParallelTraceWriter::close( )
 
     OTF2_Reader_Close( reader );
   }
+}
+
+void
+OTF2ParallelTraceWriter::reset()
+{
+  //\todo: check
+  //idStringMap.clear();
+  
+  processNodes = NULL;
+  graph = NULL;
+  cTable = NULL;
+  
+  //\todo: should be empty ... check that
+  //activityStack.clear();
+  
+  // clear the list of open edges
+  //\todo: should be empty ... check that
+  openEdges.clear();
 }
 
 /**
@@ -459,46 +476,22 @@ OTF2ParallelTraceWriter::writeDefCounter( uint32_t        otfId,
  * events and counter values from analysis.
  *
  * @param processId         Id of the event stream to be analyzed
- * @param nodes             list of all nodes in this event stream
- * @param pLastGraphNode    Pointer to the last node in the call graph
  * @param verbose           Verbose output
  * @param ctrTable          CounterTable for counters to be written
  * @param graph             Pointer to internal built graph
  * @param isHost            Is this stream a host stream? Necessary since host streams have one additional node at the beginning
  */
 void
-OTF2ParallelTraceWriter::writeProcess( uint64_t                          processId,
-                                       EventStream::SortedGraphNodeList* nodes,
-                                       GraphNode*                        pLastGraphNode,
-                                       int                               verbose,
-                                       CounterTable*                     ctrTable,
-                                       Graph*                            graph,
-                                       bool                              isHost )
+OTF2ParallelTraceWriter::setupEventReader( uint64_t      processId,
+                                           int           verbose )
 {
-  assert( nodes );
-
-  /*for ( EventStream::SortedGraphNodeList::iterator iter = nodes->begin( );
-        iter != nodes->end( ); iter++ )
-  {
-    std::cout << "[ " << mpiRank << "] " << (*iter)->getUniqueName() << std::endl;
-  }*/
-
-  processNodes    = nodes;
-  currentNodeIter = processNodes->begin( );
-  /* set current node behind first node on host processes since first node is an additional start node */
-  if ( isHost )
-  {
-    currentNodeIter = ++processNodes->begin( );
-  }
   this->verbose   = verbose >= VERBOSE_ANNOY;
-  this->graph     = graph;
-  cTable          = ctrTable;
-  processOnCriticalPath[processId] = false;
 
   UTILS_MSG( verbose >= VERBOSE_ANNOY, "[%u] Start writing for process %lu", mpiRank, processId );
 
   if ( isFirstProcess )
   {
+    // \todo: only once!
     UTILS_MSG( verbose >= VERBOSE_BASIC &&  mpiRank == 0, 
                "[0] Write OTF2 trace file with CASITA counters.\n");
     OTF2_Reader_OpenEvtFiles( reader );
@@ -506,12 +499,13 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
     isFirstProcess = false;
   }
 
+  // \todo: only once!
   OTF2_DefReader* def_reader = OTF2_Reader_GetDefReader( reader, processId );
   uint64_t def_reads         = 0;
   OTF2_Reader_ReadAllLocalDefinitions( reader, def_reader, &def_reads );
   OTF2_Reader_CloseDefReader( reader, def_reader );
 
-  OTF2_Reader_GetEvtReader( reader, processId );
+  //OTF2_Reader_GetEvtReader( reader, processId );
 
   OTF2_EvtReader* evt_reader = OTF2_Reader_GetEvtReader( reader, processId );
 
@@ -547,16 +541,73 @@ OTF2ParallelTraceWriter::writeProcess( uint64_t                          process
 
   OTF2_Reader_RegisterEvtCallbacks( reader, evt_reader, event_callbacks, this );
   OTF2_EvtReaderCallbacks_Delete( event_callbacks );
+}
 
-  uint64_t events_read = 0;
 
-  /* returns 0 if successfull, >0 otherwise */
-  if ( OTF2_Reader_ReadAllLocalEvents( reader, evt_reader, &events_read ) )
+/**
+ * Read all events from original trace for this stream and combine them with the
+ * events and counter values from analysis.
+ *
+ * @param stream    event stream to process
+ * @param ctrTable  CounterTable for counters to be written
+ * @param graph     Pointer to internal built graph
+ * @param isHost    
+ * 
+ * @return true, if more events are available for reading. otherwise false
+ */
+bool
+OTF2ParallelTraceWriter::writeStream( EventStream*  stream,
+                                      CounterTable* ctrTable,
+                                      Graph*        graph,
+                                      uint64_t*     events_read )
+{
+  processNodes    = &(stream->getNodes());
+  assert( processNodes );
+  
+  currentNodeIter = processNodes->begin( );
+  
+  // set current node behind first node on host processes since first node is 
+  // an additional start node
+  if ( stream->isHostStream() )
   {
-    throw RTException( "Failed to read OTF2 events" );
+    currentNodeIter = ++processNodes->begin( );
+    
+    // the following node is for MPI streams the atomic node of the MPI
+    // collective (previously the leave node), which we do not want to write
+    if( (*currentNodeIter)->isAtomic() )
+    {
+      //std::cerr << "Skipping atomic event for writing: " 
+      //          << (*currentNodeIter)->getUniqueName() << std::endl;
+      ++currentNodeIter;
+    }
+  }
+
+  this->graph     = graph;
+  cTable          = ctrTable;
+  processOnCriticalPath[stream->getId()] = false;
+  
+  OTF2_EvtReader* evt_reader = OTF2_Reader_GetEvtReader( reader, stream->getId() );
+  
+  // we only know the number of global events to read, 
+  // therefore check for a global collective again
+
+  // returns 0 if successful, >0 otherwise
+  OTF2_ErrorCode otf2_error = 
+             OTF2_Reader_ReadAllLocalEvents( reader, evt_reader, events_read );
+  
+  if ( OTF2_SUCCESS != otf2_error )
+  {
+    if( OTF2_ERROR_INTERRUPTED_BY_CALLBACK == otf2_error )
+    {
+      return true;
+    }
+    else
+      throw RTException( "Failed to read OTF2 events %llu", *events_read );
   }
 
   OTF2_Reader_CloseEvtReader( reader, evt_reader );
+  
+  return false;
 }
 
 /**
@@ -640,7 +691,9 @@ OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
   uint64_t totalBlame = 0;
   uint64_t timeDiff   = event.time - lastEventTime[event.location];
 
-  /* iterate over all open edges (if any) and calculate blame. */
+  // iterate over all open edges (if any) and calculate blame
+  // \todo: sanity check for open edges
+  //std::cerr << "[" << mpiRank << "] Compute blame on OpenEdges: " << openEdges.size() << std::endl;
   for ( OpenEdgesList::iterator edgeIter = openEdges.begin( );
         edgeIter != openEdges.end( ); )
   {
@@ -648,6 +701,9 @@ OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
     OpenEdgesList::iterator nextIter    = ++edgeIter;
 
     Edge* edge = *currentIter;
+    
+    //std::cerr << "startnode: " << edge->getStartNode()->getUniqueName();
+    //std::cerr << " -> endnode: " << edge->getEndNode()->getUniqueName() << std::endl;
 
     if ( ( edge->getDuration( ) > 0 ) &&
          ( edge->getEndNode( )->getTime( ) + timerOffset > event.time ) )
@@ -740,11 +796,34 @@ OTF2ParallelTraceWriter::writeEvent( OTF2Event event, CounterMap& counters )
  *
  * @param event
  * @param eventName
+ * 
+ * @return a pointer to the GraphNode object of the given event
  */
 void
-OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, const std::string eventName )
+OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, 
+                                           const std::string eventName )
 {
-  /* test if this is an internal node or a CPU event */
+  // if we are after the end of the node list
+//  if ( currentNodeIter != processNodes->end( ) )
+//  {
+//    GraphNode* leaveNode = *currentNodeIter;
+//    // if we have read a global blocking collective, we can start the analysis
+//    if ( leaveNode->isLeave() && leaveNode->isMPICollective( ) && 
+//         !(leaveNode->isMPIInit( )) && !(leaveNode->isMPIFinalize( )))
+//    {
+//      const uint32_t mpiGroupId = leaveNode->getReferencedStreamId( );
+//      const MPIAnalysis::MPICommGroup& mpiCommGroup =
+//        analysis.getMPIAnalysis( ).getMPICommGroup( mpiGroupId ); 
+//
+//      // if the collective is global
+//      if ( mpiCommGroup.procs.size( ) == analysis.getMPISize() )
+//      {
+//        return true;
+//      }
+//    }
+//  }
+  
+  // test if this is an internal node or a CPU event
   FunctionDescriptor desc;
   const bool isDeviceStream   = deviceStreamMap[event.location];
   const bool mapsInternalNode = FunctionTable::getAPIFunctionType(
@@ -753,28 +832,30 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, const std::string ev
   /* non-internal counter values for this event */
   CounterMap tmpCounters;
 
+  // if this is a node we are using for analysis
   if ( mapsInternalNode )
   {
-
+    //std::cerr << "[" << mpiRank << "] Process internal node Event: " 
+    //            << eventName << " " << event.location << " " << event.time << std::endl;
+    
+    // if we are after the end of the node list
     if ( currentNodeIter == processNodes->end( ) )
     {
-      std::cout << "[" << mpiRank << "] That was strange... " << eventName
-                << " " << event.location << " " << event.time
-                << std::endl;
+      std::cerr << "[" << mpiRank << "] OTF2 writer: More events than nodes! " 
+                << eventName << " " << event.location << " " << event.time << std::endl;
     }
     else
     {
-      /* std::cout << "[" << mpiRank << "] process " << eventName << " and " << (*currentNodeIter)->getUniqueName() <<
-       * std::endl; */
-
       GraphNode* currentNode = *currentNodeIter;
 
+      // \todo: fails because of wrong current node (intermediateBegin)
       UTILS_ASSERT( currentNode->getFunctionId( ) == event.regionRef,
-                    " [%u] RegionRef doesnt fit for %s and %s, %u != %u \n", mpiRank,
-                    eventName.c_str( ), currentNode->getUniqueName( ).c_str( ),
+                    " [%u] RegionRef doesn't fit for %s and %s, %u != %u \n", 
+                    mpiRank, eventName.c_str( ), 
+                    currentNode->getUniqueName( ).c_str( ),
                     currentNode->getFunctionId( ), event.regionRef );
 
-      /* model forkjoin nodes as the currently running activity */
+      // model fork/join nodes as the currently running activity
       if ( currentNode->isOMPForkJoinRegion( ) )
       {
         UTILS_ASSERT( activityStack[event.location].size( ) > 0,
@@ -791,7 +872,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, const std::string ev
         event.regionRef = newRegionRef;
       }
 
-      /* preprocess current internal node */
+      // preprocess current internal node
       if ( graph->hasOutEdges( currentNode ) )
       {
         const Graph::EdgeList& edges = graph->getOutEdges( currentNode );
@@ -802,6 +883,11 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, const std::string ev
           if ( edge->getCPUBlame( ) > 0 )
           {
             openEdges.push_back( edge );
+            
+            //std::cerr << "[" << mpiRank << "] add open edges for node: " << currentNode->getUniqueName() << std::endl;
+            
+            //std::cerr << "add open edges -- startnode: " << edge->getStartNode()->getUniqueName();
+            //std::cerr << " -> endnode: " << edge->getEndNode()->getUniqueName() << std::endl;
           }
         }
       }
@@ -824,10 +910,19 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, const std::string ev
     }
   }
   else
-  {
-    /* compute counters for that event */
+  {  // this is a CPU or unknown event
+    
+    //std::cerr << "[" << mpiRank << "] Process unspecific Event: " 
+    //            << eventName << " " << event.location << " " << event.time << std::endl;
+    
+    
+    // compute counters for that event, if we still have internal nodes following
     if ( currentNodeIter != processNodes->end( ) )
     {
+      /*std::cerr << "[" << mpiRank << "] Process unspecific Event: " 
+                << eventName << " " << event.location << " " << event.time 
+                << "with current node: " << (*currentNodeIter)->getUniqueName() << std::endl;
+      */
       const uint32_t ctrIdBlame     = cTable->getCtrId( CTR_BLAME );
       const uint32_t ctrIdWaitState = cTable->getCtrId( CTR_WAITSTATE );
       const uint32_t ctrIdCritPath  = cTable->getCtrId( CTR_CRITICALPATH );
@@ -839,12 +934,12 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, const std::string ev
       /* compute blame ctr */
       tmpCounters[ctrIdBlame]     = computeCPUEventBlame( event );
 
-      /* compute waiting time ctr */
+      // non-paradigm events cannot be wait states
       tmpCounters[ctrIdWaitState] = 0;
     }
   }
 
-  /* write event with counters */
+  // write event with counters
   if ( writeToFile )
   {
     writeEvent( event, tmpCounters );
@@ -856,7 +951,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, const std::string ev
   /* set last event time for all event types */
   lastEventTime[event.location] = event.time;
 
-  /* update activity stack */
+  // update activity stack
   switch ( event.type )
   {
     case OTF2_EVT_ENTER:
@@ -1446,7 +1541,17 @@ OTF2ParallelTraceWriter::otf2CallbackLeave( OTF2_LocationRef    location,
   event.time      = time;
   event.type      = OTF2_EVT_LEAVE;
 
+  //std::cerr << "TW: Handle leave: " << tw->getRegionName( region ) << std::endl;
+
   tw->processNextEvent( event, tw->getRegionName( region ) );
+  
+  // interrupt reading, if we processed the last node in our internal vector
+  // AND its last node is not an MPI_Finalize
+  if ( tw->currentNodeIter == tw->processNodes->end( ) && 
+       !( tw->processNodes->back()->isMPIFinalize() ) )
+  {
+    return OTF2_CALLBACK_INTERRUPT;
+  }
 
   return OTF2_CALLBACK_SUCCESS;
 }

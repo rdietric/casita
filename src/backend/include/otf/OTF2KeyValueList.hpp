@@ -54,9 +54,17 @@ namespace casita
       KeyValueResult
       getLocationRef( uint32_t key, uint64_t* value )
       {
-        return ( OTF2_AttributeList_GetLocationRef( list, key,
-                                                    value ) == OTF2_SUCCESS ) ?
-               KV_SUCCESS : KV_ERROR;
+        if( OTF2_AttributeList_TestAttributeByID(list, key) )
+        {
+          OTF2_ErrorCode otf2error = 
+                OTF2_AttributeList_GetLocationRef( list, key, value );
+          
+          return ( otf2error == OTF2_SUCCESS ) ? KV_SUCCESS : KV_ERROR;
+        }
+        else
+        {
+          return KV_ERROR;
+        }
       }
 
       KeyValueResult

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -25,7 +25,7 @@ MPIAnalysis::MPIAnalysis( uint32_t mpiRank, uint32_t mpiSize ) :
   mpiRank( mpiRank ),
   mpiSize( mpiSize )
 {
-
+  globalCollectiveCounter = 0;
 }
 
 MPIAnalysis::~MPIAnalysis( )
@@ -213,10 +213,14 @@ MPIAnalysis::getRemoteNodeInfo( GraphNode* localNode, bool* valid )
   }
 }
 
+/**
+ * Reset structures that are local to an interval in the trace.
+ */
 void
 MPIAnalysis::reset( )
 {
   reverseRemoteNodeMap.clear( );
+  remoteMpiEdgeMap.clear( );
 }
 
 std::set< uint32_t >

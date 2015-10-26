@@ -56,14 +56,16 @@ namespace casita
 
         if ( !launchEnterEvent )
         {
-          throw RTException( "Found kernel %s without matching kernel launch",
+          ErrorUtils::getInstance( ).throwError( "Found kernel %s without matching kernel launch",
                              node->getUniqueName( ).c_str( ) );
+          
+          return false;
         }
 
         launchEnterEvent->setLink( kernel.first );
         kernel.first->setLink( launchEnterEvent );
 
-        /* add pending kernel */
+        // add pending kernel
         commonAnalysis->getStream( kernelProcessId )->addPendingKernel(
           kernel.second );
 

@@ -15,6 +15,9 @@
 #include "graph/GraphNode.hpp"
 #include "BlameDistribution.hpp"
 
+#define CASITA_MPI_REPLAY_TAG 17
+#define CASITA_MPI_REVERS_REPLAY_TAG 18
+
 namespace casita
 {
  namespace mpi

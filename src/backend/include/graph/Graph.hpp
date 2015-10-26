@@ -35,6 +35,12 @@ namespace casita
      Graph( bool isSubGraph );
      virtual
      ~Graph( );
+     
+     /**
+      * Clear all lists in this graph object and deallocate/delete edges.
+      */
+     void
+     cleanup( bool deleteEdges );
 
      void
      addNode( GraphNode* node );

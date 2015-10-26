@@ -14,6 +14,7 @@
 
 #include "Parser.hpp"
 #include "AnalysisEngine.hpp"
+
 #include "otf/ITraceReader.hpp"
 #include "otf/IKeyValueList.hpp"
 
@@ -70,7 +71,7 @@ namespace casita
                             uint64_t           streamId,
                             io::IKeyValueList* list );
 
-     static void
+     static bool
      handleLeave( io::ITraceReader*  reader,
                   uint64_t           time,
                   uint32_t           functionId,

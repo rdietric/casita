@@ -32,9 +32,9 @@ namespace casita
    bool        mergeActivities;
    bool        noErrors;
    bool        ignoreAsyncMpi;
+   uint32_t    analysisInterval;
    int         verbose;
-   int         eventsProcessed;
-   int         memLimit;
+   //int         memLimit;
    std::string outOtfFile;
    std::string filename;
  } ProgramOptions;

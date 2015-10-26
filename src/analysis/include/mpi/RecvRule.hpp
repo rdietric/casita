@@ -54,7 +54,9 @@ namespace casita
         MPI_CHECK( MPI_Recv( buffer, 
                              CASITA_MPI_P2P_BUF_SIZE, 
                              CASITA_MPI_P2P_ELEMENT_TYPE,
-                             partnerMPIRank, 0, MPI_COMM_WORLD, &status ) );
+                             partnerMPIRank, 
+                             CASITA_MPI_REPLAY_TAG, 
+                             MPI_COMM_WORLD, &status ) );
         
         GraphNode::GraphNodePair& recv = node->getGraphPair( );
         uint64_t   sendStartTime       = buffer[0];  
@@ -123,7 +125,8 @@ namespace casita
                              CASITA_MPI_P2P_BUF_SIZE, 
                              CASITA_MPI_P2P_ELEMENT_TYPE,
                              partnerMPIRank,
-                             42, MPI_COMM_WORLD ) );
+                             CASITA_MPI_REVERS_REPLAY_TAG, 
+                             MPI_COMM_WORLD ) );
 
         return true;
       }

@@ -40,7 +40,7 @@ namespace casita
         {
           return false;
         }
-
+        
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
         /* get the complete execution */
@@ -76,11 +76,10 @@ namespace casita
 
             GraphNode::GraphNodePair& kernel = kernelLeave->getGraphPair( );
 
-            if ( ( isFirstKernel &&
-                   ( sync.first->getTime( ) < kernel.second->getTime( ) ) ) ||
-                 ( !isFirstKernel &&
-                   ( sync.first->getTime( ) < kernel.second->getTime( ) ) ) )
-            {
+            // if sync start time < kernel end time
+            // TODO: what if other kernels are concurrently executed during the sync?
+            if ( sync.first->getTime( ) < kernel.second->getTime( ) )
+            {              
               if ( isFirstKernel )
               {
                 commonAnalysis->newEdge( kernel.second,
@@ -90,7 +89,7 @@ namespace casita
 
               commonAnalysis->getEdge( sync.first, sync.second )->makeBlocking( );
 
-              /* set counters */
+              // set counters
               sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                          CTR_WAITSTATE ),
                                        std::min( sync.second->getTime( ),

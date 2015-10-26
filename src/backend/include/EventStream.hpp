@@ -143,6 +143,9 @@ namespace casita
 
      EventStream::SortedGraphNodeList&
      getNodes( );
+     
+     void
+     clearNodes( );
 
      void
      addPendingKernel( GraphNode* kernelLeave );
@@ -246,6 +249,14 @@ namespace casita
       */
      void
      setMPIWaitallNodeData( GraphNode* node );
+     
+     /**
+      * Return whether we have pending MPI requests or not.
+      * 
+      * @return true, if we have pending MPI requests in the list.
+      */
+     bool
+     havePendingMPIRequests( );
 
      /**
       * Safely complete MPI request that are associated with the request ID.
@@ -298,6 +309,9 @@ namespace casita
 
      bool
      walkForward( GraphNode* node, StreamWalkCallback callback, void* userData );
+     
+     void
+     reset( );
 
    private:
      uint64_t            id;
@@ -333,7 +347,6 @@ namespace casita
 
      void
      addNodeInternal( SortedGraphNodeList& nodes, GraphNode* node );
-
  };
 
 }

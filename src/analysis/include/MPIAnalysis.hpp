@@ -28,6 +28,9 @@ namespace casita
  class MPIAnalysis
  {
    public:
+     
+     // counts the number of global MPI collectives
+     uint32_t globalCollectiveCounter;
 
      typedef struct
      {
