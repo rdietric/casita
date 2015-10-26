@@ -413,7 +413,8 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
       mpiAnalysis.getMPISize( ),
       origFilename.c_str( ),
       writeToFile,
-      ignoreAsyncMpi );
+      ignoreAsyncMpi,
+      verbose );
 
     if ( !writeToFile )
     {
@@ -455,7 +456,7 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
     writer->writeDefProcess( p->getId( ), p->getParentId( ), p->getName( ),
                              this->streamTypeToGroup( p->getStreamType( ) ) );
     
-    writer->setupEventReader( ( *pIter )->getId( ), verbose );
+    writer->setupEventReader( ( *pIter )->getId( ) );
   }
   
   // clear list that has been created in this function

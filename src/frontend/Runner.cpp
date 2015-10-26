@@ -111,7 +111,7 @@ Runner::startAnalysisRun( )
 
   traceReader->open( options.filename, 10 );
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-             "[0] Reading definitions" );
+             "[0] Reading definitions ... " );
   
   // read the OTF2 definitions and initialize some maps and variables of the trace reader
   if( false == traceReader->readDefinitions( ) )
