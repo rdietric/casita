@@ -91,12 +91,15 @@ namespace casita
       close( );
 
       void
-      readEvents( bool ignoreAsyncMPI );
+      setupEventReader( bool ignoreAsyncMPI );
+      
+      bool
+      readEvents( uint64_t *num_events_read );
 
       void
       readEventsForProcess( uint64_t id, bool ignoreAsyncMPI );
 
-      void
+      bool
       readDefinitions( );
 
       void
@@ -292,7 +295,7 @@ namespace casita
                                                     uint64_t timerResolution,
                                                     uint64_t globalOffset,
                                                     uint64_t traceLength );
-
+/*
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_LocationGroup( void*                 userData,
                                                   OTF2_LocationGroupRef self,
@@ -301,7 +304,7 @@ namespace casita
                                                   locationGroupType,
                                                   OTF2_SystemTreeNodeRef
                                                   systemTreeParent );
-
+*/
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_Location( void*             userData,
                                              OTF2_LocationRef  self,

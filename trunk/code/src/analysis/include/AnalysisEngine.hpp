@@ -48,6 +48,15 @@ namespace casita
 
      MPIAnalysis&
      getMPIAnalysis( );
+     
+     void
+     checkPendingMPIRequests( );
+     
+     bool 
+     haveParadigm( Paradigm paradigm );
+     
+     void
+     setParadigmFound( Paradigm paradigm );
 
      static bool
      getFunctionType( uint32_t            id,
@@ -118,19 +127,26 @@ namespace casita
 
      void
      reset( );
-
+     
      void
-     saveParallelEventGroupToFile( std::string filename,
-                                   std::string origFilename,
-                                   bool        writeToFile,
-                                   bool        ignoreAsyncMpi,
-                                   int         verbose );
+     writeOTF2Definitions( std::string filename,
+                           std::string origFilename,
+                           bool        writeToFile,
+                           bool        ignoreAsyncMpi,
+                           int         verbose );
+
+     bool
+     writeOTF2EventStreams( int verbose );
 
      io::IParallelTraceWriter::ActivityGroupMap*
      getActivityGroupMap( );
 
      double
      getRealTime( uint64_t t );
+     
+     void
+     runAnalysis( Paradigm paradigm, EventStream::SortedGraphNodeList& allNodes, 
+                  bool verbose );
 
    private:
      MPIAnalysis mpiAnalysis;
@@ -144,6 +160,10 @@ namespace casita
      std::map< uint32_t, std::string > functionMap;
      uint32_t maxFunctionId;
      uint32_t waitStateFuncId;
+     
+     // available analysis paradigms (identified during reading the trace)
+     bool foundCUDA;
+     bool foundOMP;
  };
 
 }

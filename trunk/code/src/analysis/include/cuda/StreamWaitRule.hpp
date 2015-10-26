@@ -44,7 +44,7 @@ namespace casita
 
         /* applied at streamWaitEvent leave */
         if ( node->isEventNode( ) && node->isCUDAStreamWaitEvent( ) )
-        {
+        {          
           uint64_t referencedDevWaitProc = node->getReferencedStreamId( );
           if ( !referencedDevWaitProc )
           {
@@ -103,8 +103,10 @@ namespace casita
             (GraphNode*)waitingKernel.first->getLink( );
           if ( !waitingKernelLaunchEnter )
           {
-            throw RTException( "Kernel %s has no matching kernel launch",
+            ErrorUtils::getInstance( ).throwError( "Kernel %s has no matching kernel launch",
                                waitingKernel.first->getUniqueName( ).c_str( ) );
+            
+            return false;
           }
 
           /* We have to manage all streamWaitEvents that may reference

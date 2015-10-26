@@ -36,19 +36,49 @@ Graph::Graph( bool subGraph )
 
 Graph::~Graph( )
 {
-  if ( isSubGraph )
-  {
-    return;
-  }
+  //if ( isSubGraph )
+  //  std::cerr << "subgraph destructor does not delete edges, but the vectors" << std::endl;
+  
+  cleanup( !isSubGraph );
+}
 
-  for ( NodeEdges::const_iterator iter = outEdges.begin( );
+/**
+ * Clear all lists in this graph object and deallocate/delete edges. 
+ * Nodes are not deleted.
+ */
+void
+Graph::cleanup( bool deleteEdges )
+{
+  //std::cerr << "Cleanup graph -- delete edges: " << deleteEdges << std::endl;
+  
+  // iterate over the out-edge lists of all node entries
+  for ( NodeEdges::iterator iter = outEdges.begin( );
         iter != outEdges.end( ); ++iter )
   {
-    for ( EdgeList::const_iterator eIter = iter->second.begin( );
-          eIter != iter->second.end( ); ++eIter )
-    {
-      delete*eIter;
+    if( deleteEdges ){
+      // delete the edges for this node (which are in the list)
+      for ( EdgeList::const_iterator eIter = iter->second.begin( );
+            eIter != iter->second.end( ); ++eIter )
+      {
+        if(*eIter)
+        {
+          //std::cerr << "Remove edge: " << (*eIter)->getStartNode()->getUniqueName() << " to "
+          //          << (*eIter)->getEndNode()->getUniqueName() << std::endl;
+          delete *eIter;
+        }
+      }
     }
+    
+    // clear the edge list itself
+    iter->second.clear();
+  }
+  
+  // iterate over the in-edge lists of all node entries
+  for ( NodeEdges::iterator iter = inEdges.begin( );
+        iter != inEdges.end( ); ++iter )
+  {
+    // clear the edge list itself
+    iter->second.clear();
   }
   
   // clear all node vectors
@@ -66,17 +96,36 @@ Graph::addNode( GraphNode* node )
 void
 Graph::addEdge( Edge* edge )
 {
-  /* std::cout << "Added Edge " << edge->getStartNode()->getUniqueName() << " to " */
-  /*      << edge->getEndNode()->getUniqueName() << std::endl; */
+  //std::cerr << "Added Edge " << edge->getStartNode()->getUniqueName() << " to "
+  //          << edge->getEndNode()->getUniqueName() << std::endl;
   inEdges[edge->getEndNode( )].push_back( edge );
   outEdges[edge->getStartNode( )].push_back( edge );
+
+/*  
+  if(edge->getEndNode( )->getId() == 9)
+  {
+    std::cerr  << "[" << edge->getEndNode( )->getStreamId() << "]" << edge->getEndNode( )->getUniqueName() << " has inEdges? ";
+    std::cerr << hasInEdges( edge->getEndNode( ) ) << std::endl;
+  }
+  
+  if( edge->getStartNode( )->getId() == 9 )
+  {
+    std::cerr  << "[" << edge->getStartNode( )->getStreamId() << "]" << edge->getStartNode( )->getUniqueName() << " has inEdges? ";
+    std::cerr << hasInEdges( edge->getStartNode( ) ) << std::endl;
+  }*/
 }
 
+/**
+ * Removes the given edge from the list of in and out edges.
+ */
 void
 Graph::removeEdge( Edge* edge )
 {
   GraphNode* start     = edge->getStartNode( );
   GraphNode* end       = edge->getEndNode( );
+  
+  //std::cerr << "Remove edge: " << edge->getStartNode()->getUniqueName() << " to "
+  //          << edge->getEndNode()->getUniqueName() << std::endl;
 
   EdgeList&  out_edges = outEdges[start];
   EdgeList&  in_edges  = inEdges[end];
@@ -185,13 +234,15 @@ Graph::getNodes( ) const
 
 /**
  * Generates a sub graph for the given paradigm (including node and edge list).
+ * Node and edge lists are newly generated.
  * 
  * @param paradigm
- * @return 
+ * @return the sub graph for the given paradigm
  */
 Graph*
 Graph::getSubGraph( Paradigm paradigm )
 {
+  // make sure to deallocate the graph
   Graph* subGraph = new Graph( true );
 
   for ( NodeList::const_iterator iter = nodes.begin( );
@@ -199,6 +250,7 @@ Graph::getSubGraph( Paradigm paradigm )
   {
     GraphNode* node = *iter;
 
+    // add only nodes of the given paradigm
     if ( !node->hasParadigm( paradigm ) )
     {
       continue;
@@ -216,7 +268,7 @@ Graph::getSubGraph( Paradigm paradigm )
 
         if ( edge->hasEdgeType( paradigm ) )
         {
-          subGraph->addEdge( *eIter );
+          subGraph->addEdge( edge );
         }
       }
     }

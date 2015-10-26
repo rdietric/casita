@@ -74,6 +74,9 @@ namespace casita
 
       void
       close( );
+      
+      void
+      reset( );
 
       void
       writeDefProcess( uint64_t id, uint64_t parentId,
@@ -81,15 +84,16 @@ namespace casita
 
       void
       writeDefCounter( uint32_t id, const char* name, OTF2_MetricMode metricMode );
-
+      
       void
-      writeProcess( uint64_t                          processId,
-                    EventStream::SortedGraphNodeList* nodes,
-                    GraphNode*                        pLastGraphNode,
-                    int                               verbose,
-                    CounterTable*                     ctrTable,
-                    Graph*                            graph,
-                    bool                              isHost );
+      setupEventReader( uint64_t streamId,
+                        int      verbose );
+      
+      bool
+      writeStream(  EventStream*   stream,
+                    CounterTable*  ctrTable,
+                    Graph*         graph,
+                    uint64_t*      events_read );
 
       std::string
       getRegionName( const OTF2_RegionRef regionRef ) const;

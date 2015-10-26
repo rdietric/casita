@@ -125,7 +125,7 @@ namespace casita
 // debugging
 #if defined(DEBUG) && defined(DEBUG_LEVEL)
 
-// debug MPI non-blocking communication (cmake .. -DDEBUG_LEVEL=2)
+// debug MPI non-blocking communication (cmake .. -DDEBUG_LEVEL=1)
 #if (DEBUG_LEVEL == 1)
   #define DEBUG_MPI_ICOMM 1
 #else

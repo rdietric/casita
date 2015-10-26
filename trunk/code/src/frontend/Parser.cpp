@@ -88,7 +88,6 @@ namespace casita
    bool noSummary = false;
 
    options.createOTF         = false;
-   options.eventsProcessed   = 0;
    options.filename          = "";
    options.mergeActivities   = true;
    options.noErrors          = false;
@@ -97,6 +96,7 @@ namespace casita
    options.criticalPathSecureMPI = false;
    options.verbose           = 0;
    options.ignoreAsyncMpi    = false;
+   options.analysisInterval  = 0;
 
    try
    {
@@ -110,21 +110,25 @@ namespace casita
        ( "help,h", "print help message" )
 
        ( "input,i", po::value< std::string >( &options.filename ),
-       "input OTF file" )
+       "input OTF2 trace file" )
        ( "output,o", po::value< std::string >( &options.outOtfFile ),
-       "output OTF file" )
+       "output OTF2 trace file" )
        ( "no-summary", po::value< bool >( &noSummary )->zero_tokens( ),
        "do not aggregate statistics to summary" )
        ( "path,p", po::value< bool >( &options.printCriticalPath )->zero_tokens( ),
        "print critical paths" )
        ( "verbose,v", po::value< int >( &options.verbose ),
        "verbosity level" )
-       ( "no-errors", po::value< bool >( &options.noErrors ),
+       ( "no-errors", po::value< bool >( &options.noErrors )->zero_tokens( ),
        "ignore non-fatal analysis errors" )
-       ( "ignore-async-mpi", po::value< bool >( &options.ignoreAsyncMpi )->zero_tokens( ),
-       "treat non-blocking MPI functions as CPU functions" )
+       ( "ignore-nb-mpi", po::value< bool >( &options.ignoreAsyncMpi )->zero_tokens( ),
+       "Treat non-blocking MPI functions as CPU functions." )
        ( "secure-mpi-cpa", po::value< bool >( &options.criticalPathSecureMPI )->zero_tokens( ),
-       "Securely perform MPI critical-path analysis" )
+       "Perform MPI critical-path analysis with slave feedback to ensure that a master has been found. "
+       "(Avoids a potential deadlock situation, when no master has been found.)" )
+       ( "interval-analysis,c", po::value< uint32_t >( &options.analysisInterval )->implicit_value( 50 ),
+       "Run analysis in intervals (between global collectives) to reduce memory footprint. "
+       "The optional value sets the number of pending graph nodes before an analysis run is started." )
      ;
 
      po::positional_options_description pos_options_descr;

@@ -36,12 +36,16 @@ using namespace casita::io;
 
 AnalysisEngine::AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize ) :
   mpiAnalysis( mpiRank, mpiSize ),
+  writer( NULL ),
   maxFunctionId( 0 ),
   //pendingMPICommForWaitAll( 0 ),
-  waitStateFuncId( 0 )
+  waitStateFuncId( 0 ),
+  foundCUDA( false ),
+  foundOMP( false )
 {
   // add analysis paradigms
-  // TODO: does the sequence matter?
+  // \todo: only if paradigm found
+  // \todo: Where deleted?
   addAnalysisParadigm( new cuda::AnalysisParadigmCUDA( this ) );
   addAnalysisParadigm( new omp::AnalysisParadigmOMP( this ) );
   addAnalysisParadigm( new mpi::AnalysisParadigmMPI( this, mpiRank, mpiSize ) );
@@ -77,6 +81,42 @@ MPIAnalysis&
 AnalysisEngine::getMPIAnalysis( )
 {
   return mpiAnalysis;
+}
+
+//\todo: not implemented for OMP and MPI
+void 
+AnalysisEngine::setParadigmFound( Paradigm paradigm )
+{
+  if ( paradigm == PARADIGM_CUDA )
+  {
+    foundCUDA = true;
+  }
+  else if( paradigm == PARADIGM_OMP )
+  {
+    foundOMP = true;
+  }
+}
+
+bool 
+AnalysisEngine::haveParadigm( Paradigm paradigm )
+{
+  //\todo: check not implemented
+  if( paradigm == PARADIGM_MPI )
+  {
+    return true;
+  }
+  else if( paradigm == PARADIGM_OMP )
+  {
+    return foundOMP;
+  }
+  else if ( paradigm == PARADIGM_CUDA )
+  {
+    return foundCUDA;
+  }
+  else
+  {
+    return false;
+  }
 }
 
 bool
@@ -308,6 +348,7 @@ AnalysisEngine::getActivityGroupMap( )
 {
   if ( !writer )
   {
+    std::cerr << "WWWWriter is NULL" << std::endl;
     return NULL;
   }
   else
@@ -322,6 +363,9 @@ AnalysisEngine::getRealTime( uint64_t t )
   return (double)t / (double)getTimerResolution( );
 }
 
+/**
+ * Sort the streams by stream id, but with host streams first.
+ */
 static bool
 streamSort( EventStream* p1, EventStream* p2 )
 {
@@ -338,14 +382,24 @@ streamSort( EventStream* p1, EventStream* p2 )
   return p1->getId( ) <= p2->getId( );
 }
 
+/**
+ * Write OTF2 output trace definitions. Should be called only once per rank.
+ * 
+ * @param filename
+ * @param origFilename
+ * @param writeToFile
+ * @param ignoreAsyncMpi
+ */
 void
-AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
-                                              std::string origFilename,
-                                              bool        writeToFile,
-                                              bool        ignoreAsyncMpi,
-                                              int         verbose )
+AnalysisEngine::writeOTF2Definitions( std::string filename,
+                                      std::string origFilename,
+                                      bool        writeToFile,
+                                      bool        ignoreAsyncMpi,
+                                      int         verbose)
 {
   EventStreamGroup::EventStreamList allStreams;
+  
+  // \todo why not getLocalStreams( allStreams ) ?
   getStreams( allStreams );
 
   std::sort( allStreams.begin( ), allStreams.end( ), streamSort );
@@ -353,6 +407,7 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
   writer = NULL;
   if ( strstr( origFilename.c_str( ), ".otf2" ) != NULL )
   {
+    // \todo: only the first time
     writer = new OTF2ParallelTraceWriter(
       mpiAnalysis.getMPIRank( ),
       mpiAnalysis.getMPISize( ),
@@ -399,26 +454,89 @@ AnalysisEngine::saveParallelEventGroupToFile( std::string filename,
 
     writer->writeDefProcess( p->getId( ), p->getParentId( ), p->getName( ),
                              this->streamTypeToGroup( p->getStreamType( ) ) );
+    
+    writer->setupEventReader( ( *pIter )->getId( ), verbose );
   }
+  
+  // clear list that has been created in this function
+  allStreams.clear();
+}
+
+/**
+ * Write process events to OTF2 output.
+ */
+bool
+AnalysisEngine::writeOTF2EventStreams( int verbose )
+{
+  assert(writer);
+  
+  // reset "per interval" values in the trace writer
+  writer->reset();
+  
+  bool events_available = false;
+  // \todo: make this a private class member!
+  EventStreamGroup::EventStreamList allStreams;
+  getStreams( allStreams );
+
+  std::sort( allStreams.begin( ), allStreams.end( ), streamSort );
 
   MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
-
+  
+  uint64_t events_read = 0;
+  
   for ( EventStreamGroup::EventStreamList::const_iterator pIter =
           allStreams.begin( ); pIter != allStreams.end( ); ++pIter )
   {
     EventStream* p = *pIter;
 
+    // write only streams that are local to the process 
     if ( p->isRemoteStream( ) )
     {
       continue;
     }
 
-    EventStream::SortedGraphNodeList& nodes = p->getNodes( );
-    GraphNode* pLastGraphNode = p->getLastNode( );
+    // how to interrupt the event reading on e.g. CUDA and OpenMP streams?
+    // >> by time? 
 
-    writer->writeProcess(
-      ( *pIter )->getId( ), &nodes, pLastGraphNode,
-      verbose, &( this->getCtrTable( ) ), &( this->getGraph( ) ), ( *pIter )->isHostStream( ) );
+    uint64_t events_read_per_stream = 0;
+    events_available = writer->writeStream( p, &( this->getCtrTable( ) ), 
+      &( this->getGraph( ) ), &events_read_per_stream );
+    
+    events_read += events_read_per_stream;
   }
+  
+  if( getMPIRank() == 0 && verbose >= VERBOSE_BASIC ){
+    UTILS_MSG( events_available, 
+               "[0] Writer interrupted by callback: Read %lu events", 
+               events_read );
+    
+    UTILS_MSG( !events_available, 
+               "[0] Writer: Read %lu events", 
+               events_read );
+  }
+  
+  // clear list that has been created in this function
+  allStreams.clear();
+  
+  // \todo: delete the graph
+  
+  return events_available;
+}
 
+/**
+ * Check for pending non-blocking MPI.
+ */
+void
+AnalysisEngine::checkPendingMPIRequests( )
+{
+  const EventStreamGroup::EventStreamList& streams = getHostStreams();
+  for ( EventStreamGroup::EventStreamList::const_iterator pIter =
+              streams.begin( ); pIter != streams.end( ); ++pIter )
+  {
+    if( (*pIter)->havePendingMPIRequests( ) )
+    {
+      UTILS_MSG( true, "[%u] There are pending MPI requests on stream %d (%s)!", 
+                       getMPIRank(), (*pIter)->getId( ), (*pIter)->getName( ) );
+    }
+  }
 }

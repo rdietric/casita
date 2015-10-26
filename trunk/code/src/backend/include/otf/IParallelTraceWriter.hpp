@@ -76,15 +76,16 @@ namespace casita
       ~IParallelTraceWriter( )
       {
       }
-
+      
       virtual void
-      writeProcess( uint64_t                          streamId,
-                    EventStream::SortedGraphNodeList* nodes,
-                    GraphNode*                        pLastGraphNode,
-                    int                               verbose,
-                    CounterTable*                     ctrTable,
-                    Graph*                            graph,
-                    bool                              isHost ) = 0;
+      setupEventReader( uint64_t streamId,
+                        int      verbose ) = 0;
+      
+      virtual bool
+      writeStream(  EventStream*   stream,
+                    CounterTable*  ctrTable,
+                    Graph*         graph,
+                    uint64_t*      events_read ) = 0;
 
       ActivityGroupMap*
       getActivityGroupMap( )

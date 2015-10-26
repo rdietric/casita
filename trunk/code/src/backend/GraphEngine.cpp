@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -59,7 +59,7 @@ GraphEngine::newEventStream( uint64_t                     id,
                              uint64_t                     parentId,
                              const std::string            name,
                              EventStream::EventStreamType streamType,
-                             Paradigm                     paradigm,
+                             /*Paradigm                     paradigm,*/
                              bool                         remoteStream )
 {
   EventStream* p = new EventStream( id,
@@ -270,8 +270,8 @@ GraphEngine::newEdge( GraphNode* n1, GraphNode* n2, int properties,
 
   Edge* e = new Edge( n1, n2,
                       n2->getTime( ) - n1->getTime( ), properties, paradigm );
-  /* std::cout << "Add Edge " << n1->getUniqueName() << " to " */
-  /*        << n2->getUniqueName() << std::endl; */
+  //std::cerr << "[" << n1->getStreamId() << "] Add Edge " << n1->getUniqueName() 
+  //          << " to " << n2->getUniqueName() << std::endl;
   graph.addEdge( e );
 
   return e;
@@ -449,8 +449,83 @@ GraphEngine::getAllNodes( EventStream::SortedGraphNodeList& allNodes ) const
                        p->getNodes( ).end( ) );
     }
   }
+  
+  streams.clear();
 
   std::sort( allNodes.begin( ), allNodes.end( ), Node::compareLess );
+}
+
+void 
+GraphEngine::createIntermediateBegin( )
+{
+  // clean all lists in the graph and delete edges, node objects are deleted via the streams
+  this->graph.cleanup( true );
+  
+  EventStreamGroup::EventStreamList streams;
+  getStreams( streams );
+
+  for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin( );
+        iter != streams.end( ); ++iter )
+  {
+    EventStream* p = *iter;
+    EventStream::SortedGraphNodeList& nodes = p->getNodes();
+    
+    GraphNode* startNode = nodes.front();
+    
+    // todo check for > 1
+    if ( nodes.size( ) > 0 )
+    {      
+      //do not remove the last node (last collective leave)
+      nodes.pop_back();
+      
+      EventStream::SortedGraphNodeList::const_iterator it = nodes.begin();
+      
+      // keep the first node (stream begin node)
+      ++it;
+      
+      // delete all remaining nodes
+      for (; it != nodes.end( ); ++it )
+      {
+        //std::cerr << "[" << p->getId() << "] delete " << (*it)->getUniqueName() << std::endl;
+        delete( *it );
+      }
+
+      //check stream (e.g. pending MPI and other members)
+      // \todo
+    }
+    
+    // clean up stream internal data, keep graphData (first and last node)
+    p->reset();
+
+    if ( p->getStreamType() == EventStream::ES_HOST )
+    {
+      GraphNode* lastNode = p->getLastNode();
+
+      // set the stream's last node to type atomic (the collective end node)
+      lastNode->setRecordType( RECORD_ATOMIC );
+      
+      // clear the nodes vector and reset first and last node of the stream
+      p->clearNodes();
+      
+      // add node to event stream
+      p->addGraphNode( startNode, NULL );
+      p->addGraphNode( lastNode, NULL );
+      
+      // add the stream's start node and previously end node to the empty graph
+      graph.addNode(startNode);
+      graph.addNode(lastNode);
+      
+      // create and add a new edge (with paradigm MPI) between the above added nodes
+      Paradigm paradigm_mpi = PARADIGM_MPI;
+      newEdge( startNode, lastNode, EDGE_NONE, &paradigm_mpi );
+      
+      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+                 "[%llu] Created intermediate start node: %s",
+                 p->getId(), lastNode->getUniqueName( ).c_str() );
+    }
+  }
+  
+  streams.clear();
 }
 
 CounterTable&
@@ -520,6 +595,8 @@ GraphEngine::resetCounters( )
       ( *nIter )->removeCounters( );
     }
   }
+  
+  streams.clear();
 }
 
 uint64_t
@@ -623,6 +700,8 @@ GraphEngine::runSanityCheck( uint32_t mpiRank )
       }
     }
   }
+  
+  streams.clear();
 }
 
 ITraceWriter::ProcessGroup
@@ -671,6 +750,8 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   if ( !stream->getLastNode( ) ||
        Node::compareLess( stream->getLastNode( ), node ) )
   {
+    //std::cerr << "last node: ";
+    //std::cerr << stream->getLastNode( )->getUniqueName() << std::endl;
     // if the last node in the list is "less" than the current, 
     // push it at the end of the vector
     stream->addGraphNode( node, &predNodeMap );
@@ -734,6 +815,8 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
                                                   predPnmIter->second ) ) )
     {
       directPredecessor = predPnmIter->second;
+      //std::cerr << "directPredecessor found: ";
+      //std::cerr << directPredecessor->getUniqueName() << std::endl;
     }
 
     if ( nextPnmIter != nextNodeMap.end( ) && ( !directSuccessor ||
@@ -777,6 +860,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
         /* link to this predecessor */
         Edge* temp = newEdge( pred, node, edgeProp, &paradigm );
+        //sanityCheckEdge( temp, stream->getId() );
 
         UTILS_ASSERT( !( cpuData.numberOfEvents && ( cpuData.startTime > cpuData.endTime ) ),
                       "Violation of time order for CPU events at '%s' (%",
@@ -815,6 +899,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
              * nodes */
             /* before enter nodes from the same function */
             newEdge( node, succ, EDGE_NONE, &paradigm );
+            //sanityCheckEdge( temp, stream->getId() );
 
             if ( directSuccessor == succ )
             {
@@ -837,8 +922,9 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
         }
       }
 
-      /* link to direct predecessor */
+      // link to direct predecessor
       Edge* temp = newEdge( directPredecessor, node, edgeProp, &predParadigm );
+      //sanityCheckEdge( temp, stream->getId() );
 
       UTILS_ASSERT( !( cpuData.numberOfEvents && ( cpuData.startTime > cpuData.endTime ) ),
                     "Violation of time order for CPU events at '%s'",
@@ -863,6 +949,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
         /* link to direct successor */
         newEdge( node, directSuccessor, EDGE_NONE, &succParadigm );
+        //sanityCheckEdge( temp, stream->getId() );
       }
 
     }

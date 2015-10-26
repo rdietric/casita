@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.8.5)
 
 PROJECT(casita)
 
+SET(PROJECT_VERSION 1.2)
+
 # SET helper pathes to find libraries and packages
 SET(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/" "$ENV{MPI_ROOT}" "$ENV{BOOST_ROOT}" "$ENV{OTF2_ROOT}")
 
@@ -11,6 +13,7 @@ IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 ENDIF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT) 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -g -Wall -Wno-pmf-conversions -Wno-deprecated")
 
+################################# DEBUGGING ####################################
 # enable release build
 OPTION(RELEASE "Disable all debug asserts" OFF)
 IF(NOT RELEASE)
@@ -24,25 +27,29 @@ ELSE()
 	  SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -Werror")
 ENDIF(NOT RELEASE)
 
-# enable release build
-SET(DEBUG_LEVEL CACHE STRING "DOCUMENTATION")
+# enable debugging categories
+SET(DEBUG_LEVEL CACHE STRING "Debugging Category (0=no, 1=nbMPI, 2=CPA)")
 #OPTION(DEBUG "Disable all debug asserts" OFF)
-IF(DEBUG_LEVEL)
-    #TODO check variable such that it makes sense
-    #-EMPTY? => 2
-    #-!NUM
+IF(DEBUG_LEVEL GREATER 0  AND DEBUG_LEVEL LESS 3 )
+    #check variable such that it makes sense
+    IF( DEBUG_LEVEL EQUAL 1 )
+      MESSAGE( "... for non-blocking MPI analysis" )
+    ENDIF( )
+    
+    IF( DEBUG_LEVEL EQUAL 2 )
+      MESSAGE( "... for critical-path analysis" )
+    ENDIF( )
+
     SET(FLAGS_TO_USE CMAKE_CXX_FLAGS)
     IF(CMAKE_BUILD_TYPE)
       STRING(TOUPPER ${CMAKE_BUILD_TYPE} TEMP)
       SET(FLAGS_TO_USE "${FLAGS_TO_USE}_${TEMP}")
-      MESSAGE("${FLAGS_TO_USE} ${TEMP}")
+      #MESSAGE("${FLAGS_TO_USE} ${TEMP}")
     ENDIF()
     SET(${FLAGS_TO_USE} "${${FLAGS_TO_USE}} -DDEBUG_LEVEL=${DEBUG_LEVEL}")
-    #SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g" FORCE)
-    #SET(CMAKE_BUILD_TYPE Debug FORCE)
-    #ADD_DEFINITIONS(-DDEBUG=${DEBUG})
-    message("building debug with flags ${${FLAGS_TO_USE}}")
+    message("... with debug flags ${${FLAGS_TO_USE}}")
 ENDIF()
+################################################################################
 
 # enable gprof
 OPTION(GPROF "enable gprof" OFF)
@@ -103,3 +110,15 @@ ADD_EXECUTABLE(casita ${SRCFILES_BACKEND}
 TARGET_LINK_LIBRARIES(casita ${LIBS})
 
 INSTALL(TARGETS casita RUNTIME DESTINATION bin)
+
+# Make distribution package
+SET(CPACK_GENERATOR "TGZ")
+SET(CPACK_SOURCE_GENERATOR "TGZ")
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Critical path AnalySIs Tool for heterogeneous Applications")
+SET(CPACK_PACKAGE_VENDOR "TU Dresden, ZIH with GWT-TUD GmbH")
+SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING")
+set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${PROJECT_VERSION}")
+set(CPACK_SOURCE_IGNORE_FILES "/BUILD/;/tests/;/.svn/;svn-commit*;~$;${CPACK_SOURCE_IGNORE_FILES}")
+INCLUDE(CPack)
+
+add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)

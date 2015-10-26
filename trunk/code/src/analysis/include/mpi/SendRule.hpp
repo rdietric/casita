@@ -75,7 +75,7 @@ namespace casita
                              CASITA_MPI_P2P_BUF_SIZE, 
                              CASITA_MPI_P2P_ELEMENT_TYPE,
                              partnerMPIRank,
-                             0, MPI_COMM_WORLD ) );
+                             CASITA_MPI_REPLAY_TAG, MPI_COMM_WORLD ) );
         
         // receive the communication partner start time to compute wait states
         // use another tag to not mix up with replayed communication
@@ -85,7 +85,7 @@ namespace casita
                              CASITA_MPI_P2P_BUF_SIZE, 
                              CASITA_MPI_P2P_ELEMENT_TYPE,
                              partnerMPIRank,
-                             42, MPI_COMM_WORLD, &status ) );
+                             CASITA_MPI_REVERS_REPLAY_TAG, MPI_COMM_WORLD, &status ) );
         recvStartTime = buffer[0];
         
         

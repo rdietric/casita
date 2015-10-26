@@ -68,7 +68,9 @@ namespace casita
         MPI_CHECK( MPI_Irecv( record->recvBuffer, 
                               CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
-                              partnerMPIRank, 0, MPI_COMM_WORLD, 
+                              partnerMPIRank, 
+                              CASITA_MPI_REPLAY_TAG, 
+                              MPI_COMM_WORLD, 
                               &(record->requests[0]) ) );
         
         // send information to communication partner
@@ -84,7 +86,8 @@ namespace casita
                               CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
                               partnerMPIRank,
-                              42, MPI_COMM_WORLD, &(record->requests[1]) ) );
+                              CASITA_MPI_REVERS_REPLAY_TAG, 
+                              MPI_COMM_WORLD, &(record->requests[1]) ) );
 
         // collect pending non-blocking MPI operations
         int finished = 0;

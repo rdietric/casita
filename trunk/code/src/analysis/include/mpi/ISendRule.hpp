@@ -76,7 +76,7 @@ namespace casita
         // a blocking MPI_Recv can distribute blame then
         MPI_CHECK( MPI_Isend( buffer, CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
-                              partnerMPIRank, 0, MPI_COMM_WORLD, &(record->requests[0]) ) );
+                              partnerMPIRank, CASITA_MPI_REPLAY_TAG, MPI_COMM_WORLD, &(record->requests[0]) ) );
         
         // MPI_Isend would like to know if partner is an MPI_Irecv or MPI_Recv
         // for the latter we need the dependency edge
@@ -85,7 +85,8 @@ namespace casita
         // MPI_Irecv to have a matching partner for MPI_[I]Send rule
         MPI_CHECK( MPI_Irecv( record->recvBuffer, CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
-                              partnerMPIRank, 42, MPI_COMM_WORLD, 
+                              partnerMPIRank, CASITA_MPI_REVERS_REPLAY_TAG, 
+                              MPI_COMM_WORLD, 
                               &(record->requests[1]) ) );
         
         /*

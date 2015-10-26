@@ -133,12 +133,14 @@ CallbackHandler::handleDefProcess( ITraceReader*  reader,
   if ( isCUDANull )
   {
     streamType = EventStream::ES_DEVICE_NULL;
+    analysis.setParadigmFound( PARADIGM_CUDA );
   }
   else
   {
     if ( isCUDA )
     {
       streamType = EventStream::ES_DEVICE;
+      analysis.setParadigmFound( PARADIGM_CUDA );
     }
 
     if ( strstr( name, "MIC" ) )
@@ -151,7 +153,9 @@ CallbackHandler::handleDefProcess( ITraceReader*  reader,
                  "  [%u] Found stream %s (%lu) with type %u, stream %u",
                  analysis.getMPIRank( ), name, streamId, streamType, stream );
 
-  analysis.newEventStream( streamId, parentId, name, streamType, PARADIGM_CUDA );
+  analysis.newEventStream( streamId, parentId, name, streamType /*, PARADIGM_CUDA*/ );
+  
+  //\todo: check for OpenMP paradigm
 }
 
 void
@@ -163,6 +167,8 @@ CallbackHandler::handleDefFunction( ITraceReader* reader,
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
   handler->getAnalysis( ).addFunction( functionId, name );
+  
+  //\todo: check for MPI paradigm
 }
 
 void
@@ -174,7 +180,6 @@ CallbackHandler::handleEnter( ITraceReader*  reader,
 {
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
   AnalysisEngine&  analysis = handler->getAnalysis( );
-  ProgramOptions&  options  = handler->getOptions( );
 
   EventStream*     stream   = analysis.getStream( streamId );
   if ( !stream )
@@ -187,6 +192,12 @@ CallbackHandler::handleEnter( ITraceReader*  reader,
   FunctionDescriptor functionType;
   AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType,
                                    handler->getOptions( ).ignoreAsyncMpi );
+  
+  // check for function with the OpenMP paradigm
+  if ( functionType.paradigm == PARADIGM_OMP )
+  {
+    analysis.haveParadigm( PARADIGM_OMP );
+  }
 
   // for CPU functions no graph node is created
   // only start time, end time and number of CPU events between nodes is stored
@@ -224,10 +235,19 @@ CallbackHandler::handleEnter( ITraceReader*  reader,
   analysis.handlePostEnter( enterNode );
 
   handler->printNode( enterNode, stream );
-  options.eventsProcessed++;
 }
 
-void
+/**
+ * 
+ * @param reader
+ * @param time
+ * @param functionId
+ * @param streamId
+ * @param list
+ * 
+ * @return true, if it is a global collective leave event
+ */
+bool
 CallbackHandler::handleLeave( ITraceReader*  reader,
                               uint64_t       time,
                               uint32_t       functionId,
@@ -252,9 +272,9 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
 
   if ( functionType.paradigm == PARADIGM_CPU )
   {
-    /* std::cout << " skipping " << funcName << std::endl; */
+    //std::cout << " skipping " << funcName << std::endl;
     analysis.addCPUEvent( time, streamId );
-    return;
+    return false;
   }
 
   GraphNode* leaveNode = NULL;
@@ -306,8 +326,29 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
   // additional handling for special nodes (e.g. MPI communication)
   analysis.handlePostLeave( leaveNode );
 
+  // for debugging
   handler->printNode( leaveNode, stream );
-  options.eventsProcessed++;
+  
+  
+  // if analysis should be run in intervals (between global collectives)
+  if ( options.analysisInterval &&
+      // if we have read a global blocking collective, we can start the analysis
+       ( leaveNode->isMPICollective( ) /*|| leaveNode->isMPIAllToOne() || leaveNode->isMPIOneToAll()*/ ) &&
+       !( leaveNode->isMPIInit( ) ) && !( leaveNode->isMPIFinalize( ) ) )
+  {
+    const uint32_t mpiGroupId = leaveNode->getReferencedStreamId( );
+    const MPIAnalysis::MPICommGroup& mpiCommGroup =
+      analysis.getMPIAnalysis( ).getMPICommGroup( mpiGroupId ); 
+
+    // if the collective is global (collective group size == number of analysis ranks)
+    if ( mpiCommGroup.procs.size( ) == analysis.getMPISize() )
+    {
+      analysis.getMPIAnalysis().globalCollectiveCounter++;
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 /**
@@ -316,7 +357,7 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
  * @param reader
  * @param mpiType
  * @param streamId
- * @param partnerId
+ * @param partnerId the communication partner or the communicator for collectives
  * @param root
  * @param tag
  */
@@ -349,14 +390,14 @@ CallbackHandler::handleMPIComm( ITraceReader* reader,
     case io::MPI_ONEANDALL:
       pMPIType = EventStream::MPI_ONEANDALL;
       break;
-    default: throw RTException( "Unknown cdm::io::MPIType %u", mpiType );
+    default: throw RTException( "Unknown io::MPIType %u", mpiType );
   }
 
   UTILS_MSG( handler->getOptions( ).verbose > VERBOSE_ALL,
-                 " [%u] mpi record, [%lu > %lu], type %u, tag %u",
-                 analysis.getMPIRank( ),
-                 streamId, partnerId,
-                 pMPIType, tag );
+             " [%u] mpi record, [%lu > %lu], type %u, tag %u",
+             analysis.getMPIRank( ),
+             streamId, partnerId,
+             pMPIType, tag );
 
   stream->setPendingMPIRecord( pMPIType, partnerId, root );
 }

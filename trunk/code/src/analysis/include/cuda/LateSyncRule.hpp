@@ -125,7 +125,7 @@ namespace casita
                                    sync.second->getTime( ) -
                                    sync.first->getTime( ) );
 
-            deviceProcess->clearPendingKernels( );
+            deviceProcess->clearPendingKernels( );            
             ruleResult = true;
           }
         }

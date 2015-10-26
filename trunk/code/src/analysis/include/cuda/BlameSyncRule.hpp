@@ -52,6 +52,7 @@ namespace casita
         EventStreamGroup::EventStreamList deviceStreams;
         commonAnalysis->getAllDeviceStreams( deviceStreams );
 
+        // for all device streams
         for ( EventStreamGroup::EventStreamList::const_iterator pIter =
                 deviceStreams.begin( );
               pIter != deviceStreams.end( ); ++pIter )
@@ -72,6 +73,9 @@ namespace casita
 
           GraphNode::GraphNodePair& kernel = kernelLeave->getGraphPair( );
 
+          // Blame the sync if it is noticeably longer executed after the kernels end
+          // if (sync starts before kernel ends)
+          // AND (sync end time - kernel end time) > sync delta
           if ( ( sync.first->getTime( ) < kernel.second->getTime( ) ) &&
                ( sync.second->getTime( ) - kernel.second->getTime( ) >
                  syncDeltaTicks ) )
@@ -116,7 +120,7 @@ namespace casita
                                      waitLeave,
                                      EDGE_CAUSES_WAITSTATE );
 
-            /* set counters */
+            // set counters
             sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                        CTR_BLAME ),
                                      sync.second->getTime( ) -

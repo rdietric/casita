@@ -104,7 +104,7 @@ namespace casita
                      uint64_t                     parentId,
                      const std::string            name,
                      EventStream::EventStreamType streamType,
-                     Paradigm                     paradigm,
+                     /*Paradigm                     paradigm,*/
                      bool                         remoteStream = false );
 
      Edge*
@@ -174,6 +174,9 @@ namespace casita
 
      void
      getAllNodes( EventStream::SortedGraphNodeList& allNodes ) const;
+     
+     void
+     createIntermediateBegin( );
 
      /* timings */
      void

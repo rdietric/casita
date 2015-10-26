@@ -163,8 +163,13 @@ OTF2TraceReader::close( )
   OTF2_CHECK( OTF2_Reader_Close( reader ) );
 }
 
+/**
+ * Setup the reader. Read local definitions and register callbacks.
+ * 
+ * @param ignoreAsyncMPI if true, do not register for non-blocking MPI
+ */
 void
-OTF2TraceReader::readEvents( bool ignoreAsyncMPI )
+OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
 {
   // processNameTokenMap is initialized during traceReader->readDefinitions( );
   for ( IdNameTokenMap::const_iterator iter = processNameTokenMap.begin( );
@@ -232,24 +237,54 @@ OTF2TraceReader::readEvents( bool ignoreAsyncMPI )
                                           event_callbacks,
                                           this );
   OTF2_GlobalEvtReaderCallbacks_Delete( event_callbacks );
+}
 
-  uint64_t events_read = 0;
+/**
+ * Read OTF2 events.
+ * 
+ * @return true, if more events are available to read.
+ */
+bool
+OTF2TraceReader::readEvents( uint64_t *events_read )
+{
+  OTF2_GlobalEvtReader* global_evt_reader        =
+    OTF2_Reader_GetGlobalEvtReader( reader );
+  
+  //uint64_t events_read = 0;
 
-  /* returns 0 if successfull, >0 otherwise */
-  if ( OTF2_Reader_ReadAllGlobalEvents( reader, global_evt_reader, &events_read ) )
+  // returns 0 if successful, >0 otherwise
+  OTF2_ErrorCode otf2_error = 
+    OTF2_Reader_ReadAllGlobalEvents( reader, global_evt_reader, events_read );
+  if ( OTF2_SUCCESS != otf2_error )
   {
-    throw RTException( "Failed to read OTF2 events" );
+    if( OTF2_ERROR_INTERRUPTED_BY_CALLBACK == otf2_error )
+    {
+      UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+                 "[0] Reader interrupted by callback. Read %lu events", 
+                 *events_read );
+      
+      return true;
+    }
+    else
+      throw RTException( "Failed to read OTF2 events" );
   }
 
-  UTILS_MSG( mpiRank == 0, "[%u] Read %lu events", mpiRank, events_read );
+  UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+             "[0] Read %lu events", *events_read );
 
   OTF2_Reader_CloseGlobalEvtReader( reader, global_evt_reader );
 
   OTF2_Reader_CloseEvtFiles( reader );
-
+  
+  return false;
 }
 
-// not used
+/**
+ * Unused
+ * 
+ * @param id
+ * @param ignoreAsyncMPI
+ */
 void
 OTF2TraceReader::readEventsForProcess( uint64_t id, bool ignoreAsyncMPI )
 {
@@ -311,7 +346,7 @@ OTF2TraceReader::readEventsForProcess( uint64_t id, bool ignoreAsyncMPI )
 
   uint64_t events_read = 0;
 
-  /* returns 0 if successfull, >0 otherwise */
+  /* returns 0 if successful, >0 otherwise */
   if ( OTF2_Reader_ReadAllGlobalEvents( reader, global_evt_reader, &events_read ) )
   {
     throw RTException( "Failed to read OTF2 events" );
@@ -323,7 +358,7 @@ OTF2TraceReader::readEventsForProcess( uint64_t id, bool ignoreAsyncMPI )
 
 }
 
-void
+bool
 OTF2TraceReader::readDefinitions( )
 {
   OTF2_GlobalDefReader* global_def_reader =
@@ -338,34 +373,37 @@ OTF2TraceReader::readDefinitions( )
   /* Phase 1 -> read string definitions and Groups */
   OTF2_GlobalDefReaderCallbacks_SetAttributeCallback(
     global_def_callbacks,
-    &
-    OTF2_GlobalDefReaderCallback_Attribute );
+    &OTF2_GlobalDefReaderCallback_Attribute );
+  
   OTF2_GlobalDefReaderCallbacks_SetStringCallback(
     global_def_callbacks,
-    &
-    OTF2_GlobalDefReaderCallback_String );
+    &OTF2_GlobalDefReaderCallback_String );
+  
   OTF2_GlobalDefReaderCallbacks_SetClockPropertiesCallback(
     global_def_callbacks,
-    &
-    OTF2_GlobalDefReaderCallback_ClockProperties );
+    &OTF2_GlobalDefReaderCallback_ClockProperties );
+  
   OTF2_GlobalDefReaderCallbacks_SetLocationCallback(
     global_def_callbacks,
-    &
-    OTF2_GlobalDefReaderCallback_Location );
+    &OTF2_GlobalDefReaderCallback_Location );
+/*
+  OTF2_GlobalDefReaderCallbacks_SetLocationGroupCallback(
+    global_def_callbacks,
+    OTF2_GlobalDefReaderCallback_LocationGroup );
+*/
   OTF2_GlobalDefReaderCallbacks_SetGroupCallback(
     global_def_callbacks,
-    &
-    OTF2_GlobalDefReaderCallback_Group );
+    &OTF2_GlobalDefReaderCallback_Group );
+  
   OTF2_GlobalDefReaderCallbacks_SetCommCallback(
     global_def_callbacks,
-    &
-    OTF2_GlobalDefReaderCallback_Comm );
+    &OTF2_GlobalDefReaderCallback_Comm );
+  
   OTF2_GlobalDefReaderCallbacks_SetRegionCallback(
     global_def_callbacks,
-    &
-    OTF2_GlobalDefReaderCallback_Region );
+    &OTF2_GlobalDefReaderCallback_Region );
 
-  /* register callbacks */
+  // register callbacks
   OTF2_Reader_RegisterGlobalDefCallbacks( reader,
                                           global_def_reader,
                                           global_def_callbacks,
@@ -379,10 +417,19 @@ OTF2TraceReader::readDefinitions( )
                                         global_def_reader,
                                         &definitions_read );
 
-  UTILS_MSG( mpiRank == 0, "[%u] Read %lu definitions in Phase 1",
-             mpiRank, definitions_read );
+  UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+             "[0] Read %lu definitions in Phase 1", definitions_read );
 
   close( );
+  
+  if ( ( processRankMap.size() == 0 && mpiSize > 1 ) || 
+       ( processRankMap.size() && (mpiSize != processRankMap.size() ) ) )
+  {
+    UTILS_MSG( true, "[%u] CASITA has to be run with %zu MPI process(es)!",
+               mpiRank, processRankMap.size() == 0 ? 1 : processRankMap.size() );
+    
+    return false;
+  }
 
   open( baseFilename.c_str( ), 10 );
 
@@ -413,13 +460,16 @@ OTF2TraceReader::readDefinitions( )
                                         global_def_reader,
                                         &definitions_read );
 
-  UTILS_MSG( mpiRank == 0, "[%u] Read %lu definitions in Phase 2", mpiRank, definitions_read );
+  UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+             "[0] Read %lu definitions in Phase 2", definitions_read );
 
   /* add forkjoin "region" to support internal OMP-fork/join model */
   uint32_t stringSize = definitionTokenStringMap.size( );
   definitionTokenStringMap[stringSize] = OTF2_OMP_FORKJOIN_INTERNAL;
   ompForkJoinRef = functionNameTokenMap.size( );
   functionNameTokenMap[ompForkJoinRef] = stringSize;
+  
+  return true;
 }
 
 OTF2_CallbackCode
@@ -492,7 +542,26 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location( void*            userDat
 
   return OTF2_CALLBACK_SUCCESS;
 }
+/*
+OTF2_CallbackCode
+OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationGroup( 
+                                void*                  userData,
+                                OTF2_LocationGroupRef  self,
+                                OTF2_StringRef         name,
+                                OTF2_LocationGroupType locationGroupType,
+                                OTF2_SystemTreeNodeRef systemTreeParent)
+{
+  OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+  int phase           = tr->getProcessingPhase( );
 
+  if ( phase == 1 && locationGroupType == OTF2_LOCATION_GROUP_TYPE_PROCESS )
+  {
+    //tr->
+  }
+
+  return OTF2_CALLBACK_SUCCESS;
+}
+*/
 OTF2_CallbackCode
 OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
                                                      OTF2_GroupRef   self,
@@ -504,6 +573,9 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
                                                      const uint64_t* members )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+  
+  //if( name != OTF2_UNDEFINED_STRING )
+  //  std::cerr << "OTF2 Group: " << tr->getDefinitionTokenStringMap( )[name] << std::endl;
 
   uint64_t* myMembers = new uint64_t[numberOfMembers];
   for ( uint32_t i = 0; i < numberOfMembers; i++ )
@@ -679,8 +751,11 @@ OTF2TraceReader::otf2CallbackLeave( OTF2_LocationRef    location,
     OTF2KeyValueList& kvList = tr->getKVList( );
     kvList.setList( attributes );
 
-    tr->handleLeave( tr, time - tr->getTimerOffset( ), region, location,
-                     (IKeyValueList*)&kvList );
+    bool interrupt = tr->handleLeave( tr, time - tr->getTimerOffset( ), region, 
+                                      location, (IKeyValueList*)&kvList );
+    
+    if ( interrupt )
+      return OTF2_CALLBACK_INTERRUPT;
   }
 
   return OTF2_CALLBACK_SUCCESS;

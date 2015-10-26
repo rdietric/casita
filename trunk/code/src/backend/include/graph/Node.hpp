@@ -85,7 +85,8 @@ namespace casita
    MPI_ALLTOONE           = ( 1 << 10 ),
    MPI_ISEND = ( 1 << 11 ),
    MPI_IRECV = ( 1 << 12 ),
-   MPI_WAITALL = ( 1 << 13 )
+   MPI_WAITALL = ( 1 << 13 ),
+   MPI_TEST = ( 1 << 14 )
  };
 
  enum NodeTypeOMP
@@ -159,8 +160,7 @@ namespace casita
 
  static const char   NAME_WAITSTATE[]     = "WaitState";
  static const char   NAME_MPI_INIT[]      = "MPI_Init";
- static const char   NAME_MPI_FINALIZE[]  =
-   "MPI_Finalize";
+ static const char   NAME_MPI_FINALIZE[]  = "MPI_Finalize";
 
  class Node
  {
@@ -330,6 +330,13 @@ namespace casita
      {
 
        return isMPI( ) && ( nodeType & MPI_ISEND );
+     }
+     
+     bool
+     isMPITest( ) const
+     {
+
+       return isMPI( ) && ( nodeType & MPI_TEST );
      }
 
      bool
@@ -705,6 +712,11 @@ namespace casita
      getRecordType( ) const
      {
        return recordType;
+     }
+     
+     void setRecordType( NodeRecordType type )
+     {
+       recordType = type;
      }
 
      Paradigm

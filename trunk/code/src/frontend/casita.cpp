@@ -50,7 +50,7 @@ main( int argc, char** argv )
 
   if ( !Parser::getInstance( ).init( argc, argv ) )
   {
-    MPI_Finalize();
+    MPI_CHECK( MPI_Finalize() );
     return -1;
   }
 
@@ -58,46 +58,14 @@ main( int argc, char** argv )
   {
     ProgramOptions& options = Parser::getInstance( ).getProgramOptions( );
 
-    Runner* runner          = new Runner( mpiRank, mpiSize );
+    Runner* runner = new Runner( mpiRank, mpiSize );
     
     clock_t timestamp = clock();
 
-    // read the OTF2 trace and generate a graph
-    runner->readOTF( );
-
-    EventStream::SortedGraphNodeList allNodes;
-    runner->getAnalysis( ).getAllNodes( allNodes );
-
-    // apply analysis to all nodes of a certain paradigm
-    // create dependency edges, identify wait states, distribute blame
-    runner->runAnalysis( PARADIGM_CUDA, allNodes );
-    runner->runAnalysis( PARADIGM_OMP,  allNodes );
-    runner->runAnalysis( PARADIGM_MPI,  allNodes );
-
-    MPI_Barrier( MPI_COMM_WORLD );
-
-    UTILS_MSG( mpiRank == 0, "[%u] Computing the critical path", mpiRank );
-
-    runner->computeCriticalPath( );
-
-    /* create OTF with wait state, blame and critical path counter */
-    if ( options.createOTF )
-    {
-      MPI_Barrier( MPI_COMM_WORLD );
-      
-      UTILS_MSG( mpiRank == 0, "[%u] Writing result to %s",
-                     mpiRank, options.outOtfFile.c_str( ) );
-    }
-
-    /* Write new OTF2-File with new counter values for CP and critical blame */
-    runner->getAnalysis( ).saveParallelEventGroupToFile(
-      options.outOtfFile,
-      options.filename,
-      options.createOTF,
-      options.ignoreAsyncMpi,
-      options.verbose );
-
-    /* if selected as parameter, the summary statistics are merged and printed */
+    // start the analysis run (read OTF2, generate graph, run paradigm analysis and CPA)
+    runner->startAnalysisRun( );
+    
+    // if selected as parameter, the summary statistics are merged and printed
     if ( options.mergeActivities )
     {
       UTILS_MSG( mpiRank == 0, "[%u] Merging activity statistics...", mpiRank );

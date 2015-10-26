@@ -59,6 +59,9 @@ namespace casita
 
       virtual void
       close( ) = 0;
+      
+      virtual void
+      reset( ) = 0;
 
       virtual void
       writeDefProcess( uint64_t     id,

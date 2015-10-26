@@ -32,7 +32,7 @@ namespace casita
   typedef void ( *HandleEnter )( ITraceReader* reader, uint64_t time,
                                  uint32_t functionId, uint64_t processId,
                                  IKeyValueList* list );
-  typedef void ( *HandleLeave )( ITraceReader* reader, uint64_t time,
+  typedef bool ( *HandleLeave )( ITraceReader* reader, uint64_t time,
                                  uint32_t functionId, uint64_t processId,
                                  IKeyValueList* list );
   typedef void ( *HandleDefProcess )( ITraceReader* reader, uint32_t stream,
@@ -102,12 +102,15 @@ namespace casita
       close( )                                 = 0;
 
       virtual void
-      readEvents( bool ignoreAsyncMPI )        = 0;
+      setupEventReader( bool ignoreAsyncMPI )  = 0;
+      
+      virtual bool
+      readEvents( uint64_t *num_events_read )  = 0;
 
       virtual void
       readEventsForProcess( uint64_t id, bool ignoreAsyncMPI ) = 0;
 
-      virtual void
+      virtual bool
       readDefinitions( )                       = 0;
 
       virtual void
