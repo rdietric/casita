@@ -126,7 +126,7 @@ namespace casita
        ( "secure-mpi-cpa", po::value< bool >( &options.criticalPathSecureMPI )->zero_tokens( ),
        "Perform MPI critical-path analysis with slave feedback to ensure that a master has been found. "
        "(Avoids a potential deadlock situation, when no master has been found.)" )
-       ( "interval-analysis,c", po::value< uint32_t >( &options.analysisInterval )->implicit_value( 50 ),
+       ( "interval-analysis,c", po::value< uint32_t >( &options.analysisInterval )->implicit_value( 64 ),
        "Run analysis in intervals (between global collectives) to reduce memory footprint. "
        "The optional value sets the number of pending graph nodes before an analysis run is started." )
      ;
