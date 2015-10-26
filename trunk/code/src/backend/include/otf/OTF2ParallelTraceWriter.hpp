@@ -64,7 +64,8 @@ namespace casita
                                uint32_t    mpiSize,
                                const char* originalFilename,
                                bool        writeToFile,
-                               bool        ignoreAsyncMpi );
+                               bool        ignoreAsyncMpi,
+                               int         verbose );
       virtual
       ~OTF2ParallelTraceWriter( );
 
@@ -86,8 +87,7 @@ namespace casita
       writeDefCounter( uint32_t id, const char* name, OTF2_MetricMode metricMode );
       
       void
-      setupEventReader( uint64_t streamId,
-                        int      verbose );
+      setupEventReader( uint64_t streamId );
       
       bool
       writeStream(  EventStream*   stream,
@@ -145,7 +145,7 @@ namespace casita
       EventStream::SortedGraphNodeList* processNodes;
       EventStream::SortedGraphNodeList::iterator currentNodeIter;
 
-      bool   verbose;
+      int    verbose;
       bool   isFirstProcess;
       Graph* graph;
       CounterTable*    cTable;

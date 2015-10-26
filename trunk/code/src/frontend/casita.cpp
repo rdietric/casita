@@ -68,9 +68,15 @@ main( int argc, char** argv )
     // if selected as parameter, the summary statistics are merged and printed
     if ( options.mergeActivities )
     {
-      UTILS_MSG( mpiRank == 0, "[%u] Merging activity statistics...", mpiRank );
+      UTILS_MSG( mpiRank == 0, "[0] Merging activity statistics ..." );
+      
+      clock_t ts_merge = clock() - timestamp;
 
       runner->mergeActivityGroups( );
+      
+      ts_merge = clock() - ts_merge;
+    
+      UTILS_MSG( mpiRank == 0, "    ... took %f seconds.", ( (float) ts_merge ) / CLOCKS_PER_SEC );
 
       runner->printAllActivities( );
 

@@ -139,7 +139,8 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t    mpiRank,
                                                   uint32_t    mpiSize,
                                                   const char* originalFilename,
                                                   bool        writeToFile,
-                                                  bool        ignoreAsyncMpi )
+                                                  bool        ignoreAsyncMpi,
+                                                  int         verbose )
   :
     IParallelTraceWriter( mpiRank, mpiSize ),
     writeToFile( writeToFile ),
@@ -148,7 +149,7 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t    mpiRank,
     global_def_writer( NULL ),
     processNodes( NULL ),
     currentNodeIter( NULL ),
-    verbose( false ),
+    verbose( verbose ),
     isFirstProcess( true ),
     graph( NULL ),
     cTable( NULL )
@@ -179,7 +180,8 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
     boost_filename.filename( ), "" ).string( );
   pathToFile     = boost_path.parent_path().string();
 
-  UTILS_MSG( mpiRank == 0 && verbose, "[0] PATH: '%s'", pathToFile.c_str( ) );
+  UTILS_MSG( mpiRank == 0 && verbose >= VERBOSE_BASIC, 
+             "[0] PATH: '%s'", pathToFile.c_str( ) );
 
   if ( writeToFile )
   {
@@ -380,7 +382,7 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions( )
       OTF2_GlobalDefReaderCallback_Region );
   }
 
-  /* register callbacks */
+  // register callbacks
   OTF2_Reader_RegisterGlobalDefCallbacks( reader,
                                           global_def_reader,
                                           global_def_callbacks,
@@ -394,13 +396,12 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions( )
                                         global_def_reader,
                                         &definitions_read );
 
-  UTILS_MSG( mpiRank == 0, "[%u] Read and wrote %lu definitions",
-                 mpiRank, definitions_read );
+  UTILS_MSG( mpiRank == 0 && verbose >= VERBOSE_BASIC, 
+             "[0] Read and wrote %lu definitions", definitions_read );
 
-  /* add forkjoin "region" to support internal OMP-fork/join model
-   * ( OMP-fork/join is a node in casita internally )
-   */
-  uint32_t stringSize       = idStringMap.size( );
+  // add fork/join "region" to support internal OMP-fork/join model
+  // ( OMP-fork/join is a node in CASITA internally )
+  uint32_t stringSize              = idStringMap.size( );
   idStringMap[stringSize]          = OTF2_OMP_FORKJOIN_INTERNAL;
   ompForkJoinRef                   = regionNameIdList.size( );
   regionNameIdList[ompForkJoinRef] = stringSize;
@@ -476,18 +477,12 @@ OTF2ParallelTraceWriter::writeDefCounter( uint32_t        otfId,
  * events and counter values from analysis.
  *
  * @param processId         Id of the event stream to be analyzed
- * @param verbose           Verbose output
- * @param ctrTable          CounterTable for counters to be written
- * @param graph             Pointer to internal built graph
- * @param isHost            Is this stream a host stream? Necessary since host streams have one additional node at the beginning
  */
 void
-OTF2ParallelTraceWriter::setupEventReader( uint64_t      processId,
-                                           int           verbose )
+OTF2ParallelTraceWriter::setupEventReader( uint64_t processId )
 {
-  this->verbose   = verbose >= VERBOSE_ANNOY;
-
-  UTILS_MSG( verbose >= VERBOSE_ANNOY, "[%u] Start writing for process %lu", mpiRank, processId );
+  UTILS_MSG( verbose >= VERBOSE_ANNOY, "[%u] Start writing for process %lu", 
+                                       mpiRank, processId );
 
   if ( isFirstProcess )
   {

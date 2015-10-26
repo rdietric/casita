@@ -78,8 +78,7 @@ namespace casita
       }
       
       virtual void
-      setupEventReader( uint64_t streamId,
-                        int      verbose ) = 0;
+      setupEventReader( uint64_t streamId ) = 0;
       
       virtual bool
       writeStream(  EventStream*   stream,
