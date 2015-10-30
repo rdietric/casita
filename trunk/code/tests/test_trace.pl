@@ -48,7 +48,7 @@ sub test_trace
     }
 
     # test that reading OTF2 trace succeeded
-    my @running_analysis = grep (/\[(\d+)\] Running analysis/, @output);
+    my @running_analysis = grep (/Running analysis/, @output);
     if (not ($#running_analysis + 1 >= 1))
     {
         print "@output \n\n";

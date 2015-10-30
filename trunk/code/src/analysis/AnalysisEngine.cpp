@@ -49,6 +49,9 @@ AnalysisEngine::AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize ) :
   addAnalysisParadigm( new cuda::AnalysisParadigmCUDA( this ) );
   addAnalysisParadigm( new omp::AnalysisParadigmOMP( this ) );
   addAnalysisParadigm( new mpi::AnalysisParadigmMPI( this, mpiRank, mpiSize ) );
+  
+  criticalLocalStartEndTime.first = 0;
+  criticalLocalStartEndTime.second = 0;
 }
 
 AnalysisEngine::~AnalysisEngine( )
@@ -286,6 +289,12 @@ AnalysisEngine::getLastLeave( uint64_t timestamp, uint64_t streamId ) const
   }
 
   return NULL;
+}
+
+std::pair< uint64_t, uint64_t >&
+AnalysisEngine::getLocalCriticalStartEndTime()
+{
+  return criticalLocalStartEndTime;
 }
 
 GraphNode*

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -13,10 +13,7 @@
  * - Initialize communication
  * - Parse command line options
  * - Create runner
- * - trigger reading of trace file
- * - trigger analysis for different paradigms
- * - trigger computation of critical path
- * - trigger creation of output OTF file
+ * - trigger the analysis
  * - trigger display and calculation of summary
  *
  */
@@ -46,7 +43,7 @@ main( int argc, char** argv )
   MPI_CHECK( MPI_Comm_rank( MPI_COMM_WORLD, &mpiRank ) );
   MPI_CHECK( MPI_Comm_size( MPI_COMM_WORLD, &mpiSize ) );
 
-  UTILS_MSG( mpiRank == 0, "[%u] Running with %d analysis processes", mpiRank, mpiSize );
+  UTILS_MSG( mpiRank == 0, "Running with %d analysis processes", mpiSize );
 
   if ( !Parser::getInstance( ).init( argc, argv ) )
   {
@@ -56,19 +53,19 @@ main( int argc, char** argv )
 
   try
   {
+    clock_t timestamp = clock();
+    
     ProgramOptions& options = Parser::getInstance( ).getProgramOptions( );
 
     Runner* runner = new Runner( mpiRank, mpiSize );
     
-    clock_t timestamp = clock();
-
     // start the analysis run (read OTF2, generate graph, run paradigm analysis and CPA)
     runner->startAnalysisRun( );
     
     // if selected as parameter, the summary statistics are merged and printed
     if ( options.mergeActivities )
     {
-      UTILS_MSG( mpiRank == 0, "[0] Merging activity statistics ..." );
+      UTILS_MSG_NOBR( mpiRank == 0, "Generate optimization rating:" );
       
       clock_t ts_merge = clock() - timestamp;
 
@@ -76,7 +73,7 @@ main( int argc, char** argv )
       
       ts_merge = clock() - ts_merge;
     
-      UTILS_MSG( mpiRank == 0, "    ... took %f seconds.", ( (float) ts_merge ) / CLOCKS_PER_SEC );
+      UTILS_MSG( mpiRank == 0, " (%f sec)", ( (float) ts_merge ) / CLOCKS_PER_SEC );
 
       runner->printAllActivities( );
 

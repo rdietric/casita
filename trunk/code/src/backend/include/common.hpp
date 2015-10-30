@@ -19,9 +19,12 @@
 #include <stdexcept>
 
 #define VERBOSE_NONE  0
-#define VERBOSE_BASIC 1
-#define VERBOSE_ALL   2
-#define VERBOSE_ANNOY 3
+#define VERBOSE_TIME  1
+#define VERBOSE_BASIC 2
+#define VERBOSE_SOME  3
+#define VERBOSE_ALL   4
+#define VERBOSE_ANNOY 5
+
 
 #define OTF2_OMP_FORKJOIN_INTERNAL "__ompforkjoin__internal"
 
