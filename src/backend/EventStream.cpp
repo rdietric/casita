@@ -170,6 +170,8 @@ void
 EventStream::addGraphNode( GraphNode*                  node,
                            GraphNode::ParadigmNodeMap* predNodes )
 {
+  GraphNode* lastLocalNode = getLastNode( );
+  
   GraphNode* oldNode[NODE_PARADIGM_COUNT];
   for ( size_t i = 0; i < NODE_PARADIGM_COUNT; ++i )
   {
@@ -213,15 +215,18 @@ EventStream::addGraphNode( GraphNode*                  node,
 
   if ( nodeParadigm == PARADIGM_MPI )
   {
-    // \todo Why the last local compute node and not the last local MPI node???
-    GraphNode* lastLocalCompute = getLastNode( );
+    // \todo: This was probably wrong. Therefore, took the last node before changing the graph data.
+    //GraphNode* lastLocalCompute = getLastNode( );
+
+    //std::cerr << "[" << this->id << "] " << node->getUniqueName() 
+    //          << "setLinkLeft: " << lastLocalNode->getUniqueName() << std::endl;
+    node->setLinkLeft( lastLocalNode );
     
-    // \todo: link is not correctly set
-    //std::cerr << "XXXXXLeft  " << lastLocalCompute->getUniqueName() << " <- " << node->getUniqueName() << std::endl;
-    node->setLinkLeft( lastLocalCompute );
+    // save MPI nodes as they do not have a right link yet
     unlinkedMPINodes.push_back( node );
   }
 
+  
   if ( node->isEnter( ) )
   {
     for ( SortedGraphNodeList::const_iterator iter =

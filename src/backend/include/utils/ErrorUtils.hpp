@@ -80,6 +80,20 @@ namespace casita
 
        fprintf( stderr, "%s\n", msg );
      }
+     
+     void
+     outputMessageNoLineBreak( const char* fmt, ... )
+     {
+       va_list      argp;
+       const size_t MAX_LEN = 512;
+       char msg[MAX_LEN];
+
+       va_start( argp, fmt );
+       vsnprintf( msg, MAX_LEN, fmt, argp );
+       va_end( argp );
+
+       fprintf( stderr, "%s", msg );
+     }
 
      void
      setNoExceptions( )
@@ -120,6 +134,11 @@ namespace casita
 #define UTILS_MSG( cond, fmt, ... ) \
   if ( cond ) { \
     ErrorUtils::getInstance( ).outputMessage( fmt, ## __VA_ARGS__ ); \
+  }
+ 
+#define UTILS_MSG_NOBR( cond, fmt, ... ) \
+  if ( cond ) { \
+    ErrorUtils::getInstance( ).outputMessageNoLineBreak( fmt, ## __VA_ARGS__ ); \
   }
 
 // debugging

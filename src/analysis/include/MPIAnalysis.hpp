@@ -67,14 +67,15 @@ namespace casita
 
      typedef struct
      {
-       /* uint64_t prevStreamID; */
+       //uint64_t prevStreamID;
        uint64_t streamID;
-       /* uint64_t nextStreamID; */
+       /* uint64_t nextStreamID;
        uint32_t nodeStartID;
-       uint32_t nodeEndID;
+       uint32_t nodeEndID;*/
+       GraphNode* startNode;
+       GraphNode* endNode;
      } CriticalPathSection;
 
-     typedef std::map< GraphNode*, CriticalPathSection > CriticalSectionsMap;
      typedef std::vector< CriticalPathSection > CriticalSectionsList;
 
      typedef std::map< uint64_t, MPIEdge > MPIIdEdgeMap;

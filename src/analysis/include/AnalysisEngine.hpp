@@ -124,6 +124,9 @@ namespace casita
 
      GraphNode*
      getLastLeave( uint64_t timestamp, uint64_t streamId ) const;
+     
+     std::pair< uint64_t, uint64_t >&
+     getLocalCriticalStartEndTime( );
 
      void
      reset( );
@@ -160,6 +163,8 @@ namespace casita
      std::map< uint32_t, std::string > functionMap;
      uint32_t maxFunctionId;
      uint32_t waitStateFuncId;
+     
+     std::pair< uint64_t, uint64_t > criticalLocalStartEndTime;
      
      // available analysis paradigms (identified during reading the trace)
      bool foundCUDA;

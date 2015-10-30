@@ -44,9 +44,6 @@ namespace casita
      
      void
      startAnalysisRun( );
-
-     void
-     processTrace( ITraceReader* traceReader );
      
      void
      writeTrace( );
@@ -56,12 +53,16 @@ namespace casita
 
      void
      computeCriticalPath( );
+     
 
      ProgramOptions&
      getOptions( );
 
      AnalysisEngine&
      getAnalysis( );
+     
+     void
+     findGlobalLengthCP( );
 
      uint64_t
      getGlobalLengthCP( );
@@ -80,8 +81,13 @@ namespace casita
      CallbackHandler callbacks;
      uint64_t globalLengthCP;
      
-     /* some internal analysis helper functions */
-     
+     /**
+      * The function that triggers trace reading, analysis and writing.
+      * 
+      * @param traceReader
+      */
+     void
+     processTrace( ITraceReader* traceReader );
 
      /* critical path */
      void
@@ -94,11 +100,15 @@ namespace casita
      getCriticalLocalNodes( MPIAnalysis::CriticalSectionsList& sections,
                             EventStream::SortedGraphNodeList& localNodes );
 
-     void
+     int
      findLastMpiNode( GraphNode** node );
 
      void
-     reverseReplayMPICriticalPath( MPIAnalysis::CriticalSectionsList& sectionsList );
+     detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsList,
+                               EventStream::SortedGraphNodeList& localNodes);
+     
+     void
+     detectCriticalPathMPIReversReplay( MPIAnalysis::CriticalSectionsList& sectionsList );
 
  };
 
