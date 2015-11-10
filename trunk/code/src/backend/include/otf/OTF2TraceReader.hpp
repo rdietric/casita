@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -129,6 +129,12 @@ namespace casita
       std::string
       getKeyName( uint32_t id );
 
+      /**
+       * Get the name of the function by its OTF2 region id (reference).
+       * 
+       * @param id OTF2 region ID (reference)
+       * @return string object containing the name of the function
+       */
       std::string
       getFunctionName( uint32_t id );
 
@@ -470,7 +476,11 @@ namespace casita
       NameTokenMap     nameKeysMap;
       TokenNameMap     kNameMap;
       IdNameTokenMap   processNameTokenMap;
-      TokenTokenMap    functionNameTokenMap;
+      
+      // stores the OTF2 region ref as key with the OTF2 string ref as value
+      TokenTokenMap    functionNameTokenMap; 
+      
+      // stores an OTF2 string ref as key with the char* as value
       TokenNameMap     definitionTokenStringMap;
       GroupIdGroupMap  groupMap;
 

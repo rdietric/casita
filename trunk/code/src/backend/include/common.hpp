@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -17,6 +17,10 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdexcept>
+
+// the following definition and include is needed for the printf PRIu64 macro
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 
 #define VERBOSE_NONE  0
 #define VERBOSE_TIME  1

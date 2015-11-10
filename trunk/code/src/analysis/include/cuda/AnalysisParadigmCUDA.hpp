@@ -66,16 +66,16 @@ namespace casita
       setLastEventLaunch( EventNode* eventLaunchLeave );
 
       EventNode*
-      consumeLastEventLaunchLeave( uint32_t eventId );
+      consumeLastEventLaunchLeave( uint64_t eventId );
 
       EventNode*
-      getLastEventLaunchLeave( uint32_t eventId ) const;
+      getEventRecordLeave( uint64_t eventId ) const;
 
       void
-      setEventProcessId( uint32_t eventId, uint64_t streamId );
+      setEventProcessId( uint64_t eventId, uint64_t streamId );
 
       uint64_t
-      getEventProcessId( uint32_t eventId ) const;
+      getEventProcessId( uint64_t eventId ) const;
 
       void
       addPendingKernelLaunch( GraphNode* launch );
@@ -96,7 +96,7 @@ namespace casita
       linkEventQuery( EventNode* eventQueryLeave );
 
       void
-      removeEventQuery( uint32_t eventId );
+      removeEventQuery( uint64_t eventId );
 
       GraphNode*
       getLastLaunchLeave( uint64_t timestamp, uint64_t deviceStreamId ) const;

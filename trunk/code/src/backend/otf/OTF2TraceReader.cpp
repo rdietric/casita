@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -16,7 +16,7 @@
 
 #include <stdexcept>
 #include <stack>
-#include <cstring>
+#include <string>
 #include <iostream>
 #include <list>
 #include <algorithm>
@@ -361,9 +361,8 @@ OTF2TraceReader::readEventsForProcess( uint64_t id, bool ignoreAsyncMPI )
 bool
 OTF2TraceReader::readDefinitions( )
 {
-  OTF2_GlobalDefReader* global_def_reader =
-    OTF2_Reader_GetGlobalDefReader(
-      reader );
+  OTF2_GlobalDefReader* global_def_reader = 
+    OTF2_Reader_GetGlobalDefReader( reader );
 
   OTF2_GlobalDefReaderCallbacks* global_def_callbacks =
     OTF2_GlobalDefReaderCallbacks_New( );
@@ -433,8 +432,8 @@ OTF2TraceReader::readDefinitions( )
 
   open( baseFilename.c_str( ), 10 );
 
+  // read definitions (part 2)
   processingPhase      = 2;
-  /* read definitions (part 2) */
   global_def_reader    = OTF2_Reader_GetGlobalDefReader( reader );
 
   global_def_callbacks = OTF2_GlobalDefReaderCallbacks_New( );
@@ -656,8 +655,9 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_String( void*          userData,
 {
 
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+  //\todo: change to char* ?
   uint32_t max_length = 1000;
-  std::string      str( string, strnlen( string, max_length ) );
+  std::string str( string, strnlen( string, max_length ) );
   tr->getDefinitionTokenStringMap( )[self] = str;
 
   return OTF2_CALLBACK_SUCCESS;
@@ -681,13 +681,14 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Region( void*          userData,
                                                       uint32_t       endLineNumber )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
-  /* Locations are processes */
+
+  // locations are processes
   tr->getFunctionNameTokenMap( )[self] = name;
 
   if ( tr->handleDefFunction )
   {
-    tr->handleDefFunction( tr, 0, self, tr->getFunctionName(
-                             self ).c_str( ), paradigm );
+    tr->handleDefFunction( tr, 0, self, tr->getFunctionName( self ).c_str(), 
+                           paradigm );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -697,8 +698,7 @@ OTF2_CallbackCode
 OTF2TraceReader::OTF2_GlobalDefReaderCallback_Attribute( void*             userData,
                                                          OTF2_AttributeRef self,
                                                          OTF2_StringRef    name,
-                                                         OTF2_StringRef
-                                                         description,
+                                                         OTF2_StringRef    description,
                                                          OTF2_Type         type )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
@@ -1021,6 +1021,12 @@ OTF2TraceReader::getMPISize( )
   return mpiSize;
 }
 
+/**
+ * Translate the OTF2 string reference to a string object.
+ * 
+ * @param id OTF2 string reference
+ * @return string object the OTF2 string reference refers to
+ */
 std::string
 OTF2TraceReader::getKeyName( uint32_t id )
 {
@@ -1032,13 +1038,23 @@ OTF2TraceReader::getKeyName( uint32_t id )
   }
   else
   {
+    UTILS_MSG( true, "Could not translate OTF2 string reference %u to string "
+                     "object!", id );
     return "(unknown)";
   }
 }
 
+/**
+* Get the name of the function by its OTF2 region id (reference).
+* 
+* @param id OTF2 region ID (reference)
+* @return string object containing the name of the function
+*/
 std::string
 OTF2TraceReader::getFunctionName( uint32_t id )
 {
+  // use the OTF2 region reference/ID to get the OTF2 string reference and 
+  // translate it to a string with getKeyName  
   return getKeyName( getFunctionNameTokenMap( )[id] );
 }
 

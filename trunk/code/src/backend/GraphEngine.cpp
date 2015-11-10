@@ -235,7 +235,7 @@ GraphEngine::newGraphNode( uint64_t          time,
 EventNode*
 GraphEngine::newEventNode( uint64_t                      time,
                            uint64_t                      streamId,
-                           uint32_t                      eventId,
+                           uint64_t                      eventId,
                            EventNode::FunctionResultType fResult,
                            const std::string             name,
                            Paradigm                      paradigm,
@@ -987,7 +987,7 @@ GraphEngine::addNewGraphNode( uint64_t       time,
 
 EventNode*
 GraphEngine::addNewEventNode( uint64_t                      time,
-                              uint32_t                      eventId,
+                              uint64_t                      eventId,
                               EventNode::FunctionResultType fResult,
                               EventStream*                  stream,
                               const char*                   name,

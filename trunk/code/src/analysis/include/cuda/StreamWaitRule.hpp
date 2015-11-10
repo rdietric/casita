@@ -54,16 +54,15 @@ namespace casita
           }
 
           EventNode* swEventNode         = (EventNode*)node;
-          swEventNode->setLink( analysis->getLastEventLaunchLeave( swEventNode
-                                                                   ->
-                                                                   getEventId( ) ) );
+          swEventNode->setLink( analysis->getEventRecordLeave( 
+                                  swEventNode->getEventId( ) ) );
 
           uint64_t   eventProcessId      = analysis->getEventProcessId(
             swEventNode->getEventId( ) );
           if ( !eventProcessId )
           {
             throw RTException(
-                    "Could not find device stream ID for event %u from %s",
+                    "Could not find device stream ID for event %" PRIu64 " from %s",
                     swEventNode->getEventId( ),
                     swEventNode->getUniqueName( ).c_str( ) );
           }
@@ -147,7 +146,7 @@ namespace casita
               /*        streamWaitLeave->getEventId()); */
               printf(
 
-                " * Ignoring stream wait event %s without matching event record for event %u\n",
+                " * Ignoring stream wait event %s without matching event record for event %" PRIu64 " \n",
                 streamWaitLeave->getUniqueName( ).c_str( ),
                 streamWaitLeave->getEventId( ) );
               break;
@@ -177,18 +176,14 @@ namespace casita
               ErrorUtils::getInstance( ).throwError(
 
                 "Depending kernel %s (%f) started before kernel from %s (%f) started"
-                " (event id = %u, recorded at %f, streamWaitEvent %s)",
-                node->getUniqueName( ).
-                c_str( ),
+                " (event id = %" PRIu64 ", recorded at %f, streamWaitEvent %s)",
+                node->getUniqueName( ).c_str( ),
                 commonAnalysis->getRealTime( node->getTime( ) ),
-                launchLeave->getUniqueName(
-                                          ).c_str( ),
+                launchLeave->getUniqueName( ).c_str( ),
                 commonAnalysis->getRealTime( launchLeave->getTime( ) ),
                 streamWaitLeave->getEventId( ),
-                commonAnalysis->getRealTime(
-                  eventLaunchLeave->getTime( ) ),
-                streamWaitLeave->
-                getUniqueName( ).c_str( ) );
+                commonAnalysis->getRealTime( eventLaunchLeave->getTime( ) ),
+                streamWaitLeave->getUniqueName( ).c_str( ) );
               return false;
             }
 
@@ -199,11 +194,9 @@ namespace casita
               ErrorUtils::getInstance( ).throwError(
 
                 "Depending kernel %s (%f) started before kernel from %s (%f) finished",
-                node->getUniqueName( ).
-                c_str( ),
+                node->getUniqueName( ).c_str( ),
                 commonAnalysis->getRealTime( node->getTime( ) ),
-                launchLeave->getUniqueName(
-                                          ).c_str( ),
+                launchLeave->getUniqueName( ).c_str( ),
                 commonAnalysis->getRealTime( launchLeave->getTime( ) ) );
               return false;
             }
@@ -295,14 +288,10 @@ namespace casita
               {
                 ErrorUtils::getInstance( ).throwError(
                   "Did not find expected edge [%s (p %u), %s (p %u)]",
-                  lastLeaveNode->
-                  getUniqueName( ).c_str( ),
-                  lastLeaveNode->
-                  getStreamId( ),
-                  waitingKernel.first->
-                  getUniqueName( ).c_str( ),
-                  waitingKernel.first->
-                  getStreamId( ) );
+                  lastLeaveNode->getUniqueName( ).c_str( ),
+                  lastLeaveNode->getStreamId( ),
+                  waitingKernel.first->getUniqueName( ).c_str( ),
+                  waitingKernel.first->getStreamId( ) );
                 return false;
               }
 
