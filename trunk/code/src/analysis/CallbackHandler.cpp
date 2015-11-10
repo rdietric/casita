@@ -105,6 +105,21 @@ CallbackHandler::readKeyVal( ITraceReader*  reader,
   return keyVal;
 }
 
+uint64_t
+CallbackHandler::readKeyValUInt64( ITraceReader*  reader,
+                             const char*    keyName,
+                             IKeyValueList* list )
+{
+  uint64_t keyVal = 0;
+  int32_t  key    = reader->getFirstKey( keyName );
+  if ( key > -1 && list )
+  {
+    list->getUInt64( (uint32_t)key, &keyVal );
+  }
+
+  return keyVal;
+}
+
 void
 CallbackHandler::handleProcessMPIMapping( ITraceReader* reader,
                                           uint64_t      streamId,
@@ -283,7 +298,7 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
   GraphNode* leaveNode = NULL;
   if ( Node::isCUDAEventType( functionType.paradigm, functionType.type ) )
   {
-    uint64_t eventId  = readKeyVal( reader, SCOREP_CUPTI_CUDA_EVENTREF_KEY, list );
+    uint64_t eventId  = readKeyValUInt64( reader, SCOREP_CUPTI_CUDA_EVENTREF_KEY, list );
     uint32_t cuResult = readKeyVal( reader, SCOREP_CUPTI_CUDA_CURESULT_KEY, list );
     EventNode::FunctionResultType fResult = EventNode::FR_UNKNOWN;
     if ( cuResult == CUDA_SUCCESS )
