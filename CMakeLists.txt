@@ -5,7 +5,7 @@ PROJECT(casita)
 SET(PROJECT_VERSION 1.2)
 
 # SET helper pathes to find libraries and packages
-SET(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/" "$ENV{MPI_ROOT}" "$ENV{BOOST_ROOT}" "$ENV{OTF2_ROOT}")
+SET(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/" "$ENV{MPI_ROOT}" "$ENV{BOOST_ROOT}" "$ENV{SCOREP_ROOT}" "$ENV{OTF2_ROOT}")
 
 # install prefix
 IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
