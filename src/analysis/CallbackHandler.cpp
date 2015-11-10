@@ -80,7 +80,7 @@ CallbackHandler::printNode( GraphNode* node, EventStream* stream )
 
     if ( node->isLeave( ) && node->isEventNode( ) )
     {
-      fprintf( stderr, ", event = %u, result = %u",
+      fprintf( stderr, ", event = %" PRIu64 ", result = %u",
                ( (EventNode*)node )->getEventId( ),
                ( (EventNode*)node )->getFunctionResult( ) );
     }
@@ -187,7 +187,9 @@ CallbackHandler::handleEnter( ITraceReader*  reader,
     throw RTException( "Process %lu not found.", streamId );
   }
 
-  const char* funcName      = reader->getFunctionName( functionId ).c_str( );
+  //const char* funcName = analysis.getFunctionName(functionId);
+  std::string funcStr = reader->getFunctionName( functionId );
+  const char* funcName = funcStr.c_str();
 
   FunctionDescriptor functionType;
   AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType,
@@ -196,7 +198,7 @@ CallbackHandler::handleEnter( ITraceReader*  reader,
   // check for function with the OpenMP paradigm
   if ( functionType.paradigm == PARADIGM_OMP )
   {
-    analysis.haveParadigm( PARADIGM_OMP );
+    analysis.setParadigmFound( PARADIGM_OMP );
   }
 
   // for CPU functions no graph node is created
@@ -264,7 +266,8 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
     throw RTException( "Process %lu not found", streamId );
   }
 
-  const char* funcName      = reader->getFunctionName( functionId ).c_str( );
+  std::string funcStr = reader->getFunctionName( functionId );
+  const char* funcName = funcStr.c_str(); //analysis.getFunctionName( functionId );
 
   FunctionDescriptor functionType;
   AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType,
@@ -280,14 +283,8 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
   GraphNode* leaveNode = NULL;
   if ( Node::isCUDAEventType( functionType.paradigm, functionType.type ) )
   {
-    uint32_t eventId  = readKeyVal(
-      reader,
-      SCOREP_CUPTI_CUDA_EVENTREF_KEY,
-      list );
-    uint32_t cuResult = readKeyVal(
-      reader,
-      SCOREP_CUPTI_CUDA_CURESULT_KEY,
-      list );
+    uint64_t eventId  = readKeyVal( reader, SCOREP_CUPTI_CUDA_EVENTREF_KEY, list );
+    uint32_t cuResult = readKeyVal( reader, SCOREP_CUPTI_CUDA_CURESULT_KEY, list );
     EventNode::FunctionResultType fResult = EventNode::FR_UNKNOWN;
     if ( cuResult == CUDA_SUCCESS )
     {

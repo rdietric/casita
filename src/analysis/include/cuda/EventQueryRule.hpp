@@ -66,17 +66,17 @@ namespace casita
         if ( !refDeviceProcessId )
         {
           ErrorUtils::getInstance( ).throwFatalError(
-            "Could not find device stream ID for event %u from %s",
+            "Could not find device stream ID for event %" PRIu64 " from %s",
             evQueryLeave->getEventId( ),
             evQueryLeave->getUniqueName( ).c_str( ) );
         }
 
         /* get the first kernel launch before eventLaunch/enter */
-        EventNode* eventLaunchLeave  = analysis->getLastEventLaunchLeave(
+        EventNode* eventLaunchLeave  = analysis->getEventRecordLeave(
           evQueryLeave->getEventId( ) );
         if ( !eventLaunchLeave )
         {
-          throw RTException( "Could not find event record for event %u",
+          throw RTException( "Could not find event record for event %" PRIu64,
                              evQueryLeave->getEventId( ) );
         }
 

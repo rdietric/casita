@@ -124,7 +124,7 @@ namespace casita
      EventNode*
      newEventNode( uint64_t                      time,
                    uint64_t                      streamId,
-                   uint32_t                      eventId,
+                   uint64_t                      eventId,
                    EventNode::FunctionResultType fResult,
                    const std::string             name,
                    Paradigm                      paradigm,
@@ -141,7 +141,7 @@ namespace casita
 
      EventNode*
      addNewEventNode( uint64_t                      time,
-                      uint32_t                      eventId,
+                      uint64_t                      eventId,
                       EventNode::FunctionResultType fResult,
                       EventStream*                  stream,
                       const char*                   name,

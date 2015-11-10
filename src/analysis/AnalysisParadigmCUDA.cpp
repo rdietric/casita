@@ -147,7 +147,7 @@ AnalysisParadigmCUDA::setLastEventLaunch( EventNode* eventLaunchLeave )
 }
 
 EventNode*
-AnalysisParadigmCUDA::consumeLastEventLaunchLeave( uint32_t eventId )
+AnalysisParadigmCUDA::consumeLastEventLaunchLeave( uint64_t eventId )
 {
   IdEventNodeMap::iterator iter = eventLaunchMap.find( eventId );
   if ( iter != eventLaunchMap.end( ) )
@@ -163,7 +163,7 @@ AnalysisParadigmCUDA::consumeLastEventLaunchLeave( uint32_t eventId )
 }
 
 EventNode*
-AnalysisParadigmCUDA::getLastEventLaunchLeave( uint32_t eventId ) const
+AnalysisParadigmCUDA::getEventRecordLeave( uint64_t eventId ) const
 {
   IdEventNodeMap::const_iterator iter = eventLaunchMap.find( eventId );
   if ( iter != eventLaunchMap.end( ) )
@@ -177,13 +177,13 @@ AnalysisParadigmCUDA::getLastEventLaunchLeave( uint32_t eventId ) const
 }
 
 void
-AnalysisParadigmCUDA::setEventProcessId( uint32_t eventId, uint64_t streamId )
+AnalysisParadigmCUDA::setEventProcessId( uint64_t eventId, uint64_t streamId )
 {
   eventProcessMap[eventId] = streamId;
 }
 
 uint64_t
-AnalysisParadigmCUDA::getEventProcessId( uint32_t eventId ) const
+AnalysisParadigmCUDA::getEventProcessId( uint64_t eventId ) const
 {
   IdIdMap::const_iterator iter = eventProcessMap.find( eventId );
   if ( iter != eventProcessMap.end( ) )
@@ -384,17 +384,19 @@ AnalysisParadigmCUDA::linkEventQuery( EventNode* eventQueryLeave )
 }
 
 void
-AnalysisParadigmCUDA::removeEventQuery( uint32_t eventId )
+AnalysisParadigmCUDA::removeEventQuery( uint64_t eventId )
 {
   eventQueryMap.erase( eventId );
 }
 
+/** 
+ * Find last kernel launch (leave record) which launched on deviceProcId and 
+ * happened before timestamp.
+ */
 GraphNode*
 AnalysisParadigmCUDA::getLastLaunchLeave( uint64_t timestamp,
                                           uint64_t deviceStreamId ) const
 {
-  /* find last kernel launch (leave record) which launched on */
-  /* deviceProcId and happened before timestamp */
   GraphNode* lastLaunchLeave = NULL;
 
   for ( IdNodeListMap::const_iterator listIter =

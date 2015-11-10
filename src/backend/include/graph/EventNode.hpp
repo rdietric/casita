@@ -33,7 +33,7 @@ namespace casita
        FR_SUCCESS = 1
      };
 
-     EventNode( uint64_t time, uint64_t streamId, uint32_t eventId,
+     EventNode( uint64_t time, uint64_t streamId, uint64_t eventId,
                 FunctionResultType fResult, const std::string name,
                 Paradigm paradigm, NodeRecordType recordType, int nodeType ) :
        GraphNode( time, streamId, name, paradigm, recordType, nodeType ),
@@ -42,7 +42,7 @@ namespace casita
      {
      }
 
-     uint32_t
+     uint64_t
      getEventId( ) const
      {
        return eventId;
@@ -61,7 +61,7 @@ namespace casita
      }
 
    protected:
-     uint32_t eventId;
+     uint64_t eventId;
      FunctionResultType fResult;
  };
 
