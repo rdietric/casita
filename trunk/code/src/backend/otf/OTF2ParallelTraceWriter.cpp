@@ -315,52 +315,40 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions( )
   {
     OTF2_GlobalDefReaderCallbacks_SetAttributeCallback(
       global_def_callbacks,
-      &
-      OTF2_GlobalDefReaderCallback_Attribute );
+      &OTF2_GlobalDefReaderCallback_Attribute );
     OTF2_GlobalDefReaderCallbacks_SetStringCallback(
       global_def_callbacks,
-      &
-      OTF2_GlobalDefReaderCallback_String );
+      &OTF2_GlobalDefReaderCallback_String );
     OTF2_GlobalDefReaderCallbacks_SetClockPropertiesCallback(
       global_def_callbacks,
-      &
-      OTF2_GlobalDefReaderCallback_ClockProperties );
+      &OTF2_GlobalDefReaderCallback_ClockProperties );
     OTF2_GlobalDefReaderCallbacks_SetLocationCallback(
       global_def_callbacks,
-      &
-      OTF2_GlobalDefReaderCallback_Location );
+      &OTF2_GlobalDefReaderCallback_Location );
     OTF2_GlobalDefReaderCallbacks_SetGroupCallback(
       global_def_callbacks,
-      &
-      OTF2_GlobalDefReaderCallback_Group );
+      &OTF2_GlobalDefReaderCallback_Group );
     OTF2_GlobalDefReaderCallbacks_SetLocationGroupCallback(
       global_def_callbacks,
-      &
-      OTF2_GlobalDefReaderCallback_LocationGroup );
+      &OTF2_GlobalDefReaderCallback_LocationGroup );
     OTF2_GlobalDefReaderCallbacks_SetCommCallback(
       global_def_callbacks,
-      &
-      OTF2_GlobalDefReaderCallback_Comm );
+      &OTF2_GlobalDefReaderCallback_Comm );
     OTF2_GlobalDefReaderCallbacks_SetRegionCallback(
       global_def_callbacks,
-      &
-      OTF2_GlobalDefReaderCallback_Region );
+      &OTF2_GlobalDefReaderCallback_Region );
     OTF2_GlobalDefReaderCallbacks_SetSystemTreeNodeCallback(
       global_def_callbacks,
-      &
-      OTF2_GlobalDefReaderCallback_SystemTreeNode );
+      &OTF2_GlobalDefReaderCallback_SystemTreeNode );
     OTF2_GlobalDefReaderCallbacks_SetSystemTreeNodePropertyCallback(
       global_def_callbacks,
-      &
-      OTF2_GlobalDefReaderCallback_SystemTreeNodeProperty );
+      &OTF2_GlobalDefReaderCallback_SystemTreeNodeProperty );
     OTF2_GlobalDefReaderCallbacks_SetSystemTreeNodeDomainCallback(
       global_def_callbacks,
-      &
-      OTF2_GlobalDefReaderCallback_SystemTreeNodeDomain );
+      &OTF2_GlobalDefReaderCallback_SystemTreeNodeDomain );
     OTF2_GlobalDefReaderCallbacks_SetRmaWinCallback(
       global_def_callbacks,
-      &
-      OTF2_GlobalDefReaderCallback_RmaWin );
+      &OTF2_GlobalDefReaderCallback_RmaWin );
   }
   else
   {
@@ -1153,22 +1141,21 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_SystemTreeNode( void* user
 }
 
 OTF2_CallbackCode
-OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_SystemTreeNodeProperty( void* userData,
-                                                                              OTF2_SystemTreeNodeRef
-                                                                              systemTreeNode,
-                                                                              OTF2_StringRef
-                                                                              name,
-                                                                              OTF2_StringRef
-                                                                              value )
+OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_SystemTreeNodeProperty( 
+                                        void*                  userData,
+                                        OTF2_SystemTreeNodeRef systemTreeNode,
+                                        OTF2_StringRef         name,
+                                        OTF2_Type              type,
+                                        OTF2_AttributeValue    value )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
   if ( tw->writeToFile )
   {
-    OTF2_CHECK( OTF2_GlobalDefWriter_WriteSystemTreeNodeProperty( tw->
-                                                                  global_def_writer,
+    OTF2_CHECK( OTF2_GlobalDefWriter_WriteSystemTreeNodeProperty( tw->global_def_writer,
                                                                   systemTreeNode,
-                                                                  name, value ) );
+                                                                  name, type,
+                                                                  value ) );
   }
 
   return OTF2_CALLBACK_SUCCESS;

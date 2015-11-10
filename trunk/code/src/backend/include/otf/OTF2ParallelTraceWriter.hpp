@@ -276,11 +276,12 @@ namespace casita
                                                    parent );
 
       static OTF2_CallbackCode
-      OTF2_GlobalDefReaderCallback_SystemTreeNodeProperty( void*          userData,
-                                                           OTF2_SystemTreeNodeRef
-                                                           systemTreeNode,
-                                                           OTF2_StringRef name,
-                                                           OTF2_StringRef value );
+      OTF2_GlobalDefReaderCallback_SystemTreeNodeProperty( 
+                                          void*                  userData,
+                                          OTF2_SystemTreeNodeRef systemTreeNode,
+                                          OTF2_StringRef         name,
+                                          OTF2_Type              type,
+                                          OTF2_AttributeValue    value );
 
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_SystemTreeNodeDomain( void* userData,
