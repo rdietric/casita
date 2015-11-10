@@ -131,6 +131,19 @@ namespace casita
      static uint32_t
      readKeyVal( io::ITraceReader* reader, const char* keyName,
                  io::IKeyValueList* list );
+     
+     /**
+      * Get an uint64_t type attribute (or key-value) from the given key value list.
+      * 
+      * @param reader the trace reader
+      * @param keyName the name of the attribute
+      * @param list the attribute list
+      * 
+      * @return the uint64_t type attribute
+      */
+     static uint64_t
+     readKeyValUInt64( io::ITraceReader* reader, const char* keyName,
+                 io::IKeyValueList* list );
 
  };
 
