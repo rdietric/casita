@@ -120,6 +120,9 @@ namespace casita
 
      bool
      isRemoteStream( ) const;
+     
+     std::pair< uint64_t, uint64_t >&
+     getPeriod( );
 
      GraphNode*
      getLastNode( ) const;
@@ -319,11 +322,17 @@ namespace casita
      const std::string   name;
      EventStreamType     streamType;
      bool                remoteStream;
+     
+     // first enter and last leave time
+     std::pair< uint64_t, uint64_t > streamPeriod;
 
      SortedGraphNodeList pendingKernels;    /* list of unsynchronized
                                              * kernels (leave records) */
 
+     // pointer to the last node (paradigm independent) of the analysis interval
      GraphNode*          lastNode;
+     
+     // first and last node of the analysis interval (for each paradigm)
      GraphData           graphData[NODE_PARADIGM_COUNT];
      SortedGraphNodeList nodes;
      SortedGraphNodeList unlinkedMPINodes;

@@ -301,7 +301,7 @@ OTF2TraceReader::readEventsForProcess( uint64_t id, bool ignoreAsyncMPI )
 
   OTF2_GlobalEvtReader* global_evt_reader        =
     OTF2_Reader_GetGlobalEvtReader(
-      reader );
+      reader );  
 
   OTF2_GlobalEvtReaderCallbacks* event_callbacks =
     OTF2_GlobalEvtReaderCallbacks_New( );
@@ -490,14 +490,13 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_ClockProperties( void* userData,
 }
 
 OTF2_CallbackCode
-OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location( void*            userData,
-                                                        OTF2_LocationRef self,
-                                                        OTF2_StringRef   name,
-                                                        OTF2_LocationType
-                                                        locationType,
-                                                        uint64_t         numberOfEvents,
-                                                        OTF2_LocationGroupRef
-                                                        locationGroup )
+OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location( 
+                                          void*                 userData,
+                                          OTF2_LocationRef      self,
+                                          OTF2_StringRef        name,
+                                          OTF2_LocationType     locationType,
+                                          uint64_t              numberOfEvents,
+                                          OTF2_LocationGroupRef locationGroup )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
   int phase           = tr->getProcessingPhase( );
@@ -515,8 +514,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location( void*            userDat
       tr->handleProcessMPIMapping( tr, self, locationGroup );
     }
 
-    /* skip all processes but the mapping MPI master process and its
-     * children */
+    // skip all processes but the mapping MPI master process and its children
     if ( tr->getMPISize( ) > 1 )
     {
       if ( self != tr->getMPIProcessId( ) &&
