@@ -56,6 +56,19 @@ Runner::Runner( int mpiRank, int mpiSize ) :
                "Enabled verbose output for error utils\n" );
     ErrorUtils::getInstance( ).setVerbose( );
   }
+  
+  if ( options.mergeActivities ) 
+  {
+    // critical path start stream and first critical node time
+    criticalPathStart.first = std::numeric_limits< uint64_t >::max( );
+    criticalPathStart.second = std::numeric_limits< uint64_t >::max( );
+    
+    // critical path end stream and last critical node time
+    criticalPathEnd.first = std::numeric_limits< uint64_t >::max( );
+    criticalPathEnd.second = 0; 
+  }
+  
+ 
 }
 
 Runner::~Runner( )
@@ -267,15 +280,15 @@ Runner::processTrace( ITraceReader* traceReader )
       runAnalysis( PARADIGM_OMP, allNodes );
       time_analysis_omp += clock() - time_tmp;
     }
-    
-    
-    time_tmp = clock( );
-    
+
     //\todo: implement check for MPI paradigm
-    runAnalysis( PARADIGM_MPI,  allNodes );
-    
-    time_analysis_mpi += clock() - time_tmp;
-    
+    if ( mpiSize > 1 )
+    {
+      time_tmp = clock( );
+      runAnalysis( PARADIGM_MPI,  allNodes );
+      time_analysis_mpi += clock() - time_tmp;
+    }
+      
     // \todo: to run the CPA we need all nodes on all processes to be analyzed?
     MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
@@ -301,7 +314,7 @@ Runner::processTrace( ITraceReader* traceReader )
     // write OTF2 definitions for this MPI rank (only once)
     if( !otf2_def_written )
     {
-      // the following function also reads the OTF2 again and computes blame for CPU functions
+      // write the OTF2 output trace definitions and setup the OTF2 input reader
       analysis.writeOTF2Definitions( options.outOtfFile,
                                      options.filename,
                                      options.createOTF, // let the trace writer know if it should write an OTF output
@@ -318,6 +331,7 @@ Runner::processTrace( ITraceReader* traceReader )
       MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
     }
 
+    // writes the OTF2 event streams and computes blame for CPU functions
     if( analysis.writeOTF2EventStreams( options.verbose ) == false && events_available )
     {
       UTILS_MSG( true, "[%u] Reader and writer are not synchronous! Aborting ...", 
@@ -357,7 +371,7 @@ Runner::processTrace( ITraceReader* traceReader )
                "[0] Trace reading (and graph construction) took %f seconds.", 
                ( (float) time_events_read ) / CLOCKS_PER_SEC );
 
-    UTILS_MSG( options.verbose >= VERBOSE_TIME, 
+    UTILS_MSG( options.verbose >= VERBOSE_TIME && mpiSize > 1, 
                "[0] MPI analysis took %f seconds.", 
                ( (float) time_analysis_mpi ) / CLOCKS_PER_SEC );
 
@@ -397,23 +411,36 @@ Runner::mergeActivityGroups( )
   uint64_t globalBlame    = 0;
   uint64_t lengthCritPath =
     analysis.getLastGraphNode( PARADIGM_COMPUTE_LOCAL )->getTime( ) -
-    analysis.getSourceNode( )->getTime( );
+    analysis.getSourceNode( )->getTime( ); // the source node has time "0"
+  
+  //\todo: use global length of the critical path! Do not use source node, 
+  //       but first real node. Do not use local last graph node, but global
+  
+  /*UTILS_MSG( true, "CP length (%llu - %llu) = %llu", 
+             analysis.getLastGraphNode( PARADIGM_COMPUTE_LOCAL )->getTime( ),
+             analysis.getSourceNode( )->getTime( ),
+             lengthCritPath );*/
 
-  /* compute some final metrics */
+  // compute total process-local blame and process-local CP fraction of activity groups
   for ( IParallelTraceWriter::ActivityGroupMap::iterator groupIter =
-          activityGroupMap->begin( ); groupIter != activityGroupMap->end( ); )
+          activityGroupMap->begin( ); groupIter != activityGroupMap->end( ); 
+        ++groupIter )
   {
-    std::map< uint32_t,
-              IParallelTraceWriter::ActivityGroup >::iterator iter = groupIter;
+    //IParallelTraceWriter::ActivityGroupMap::iterator iter = groupIter;
+    //UTILS_MSG( true, "Group ID %u", groupIter->second.functionId);
+    
+    // set the local CP fraction for this activity type
     groupIter->second.fractionCP =
       (double)( groupIter->second.totalDurationOnCP ) / (double)lengthCritPath;
+    
+    // add the activity groups blame to the total global blame
     globalBlame += groupIter->second.totalBlame;
-    groupIter = ++iter;
+    
+    //groupIter = ++iter;
   }
 
-  // ************* phase 2: MPI all-reduce *************** //
-  
-  //const int MPI_NUM_TAG   = 21;
+  // ************* Phase 2: MPI all-reduce *************** //
+
   const int MPI_ENTRIES_TAG = 22;
   
   // send/receive groups to master/from other MPI streams
@@ -447,7 +474,7 @@ Runner::mergeActivityGroups( )
                    MPI_ENTRIES_TAG,
                    MPI_COMM_WORLD, MPI_STATUS_IGNORE ) );
 
-        /* combine with own activity groups */
+        // combine with own activity groups and generate a global metrics
         IParallelTraceWriter::ActivityGroupMap::iterator groupIter;
         for ( uint32_t i = 0; i < numEntries; ++i )
         {
@@ -482,14 +509,20 @@ Runner::mergeActivityGroups( )
       }
     }
 
+    // for all activity groups: set the global CP fraction
     for ( IParallelTraceWriter::ActivityGroupMap::iterator groupIter =
             activityGroupMap->begin( );
           groupIter != activityGroupMap->end( ); ++groupIter )
     {
-      std::map< uint32_t,
-                IParallelTraceWriter::ActivityGroup >::iterator iter =
-        groupIter;
-      groupIter->second.fractionCP /= (double)( iter->second.numUnifyStreams );
+      // if we have at least two streams combined
+      if( groupIter->second.numUnifyStreams > 1 )
+        groupIter->second.fractionCP /= (double)( groupIter->second.numUnifyStreams );
+      
+      //UTILS_MSG(true, "CP fraction (%s): %lf", 
+      //          callbacks.getAnalysis().getFunctionName(groupIter->first), 
+      //          groupIter->second.fractionCP);
+      
+      
       if ( globalBlame > 0 )
       {
         groupIter->second.fractionBlame =
@@ -507,8 +540,6 @@ Runner::mergeActivityGroups( )
     uint32_t numEntries = activityGroupMap->size( );
 
     // send number of entries to root rank
-    //MPI_CHECK( MPI_Send( &numEntries, 1, MPI_UNSIGNED, 0, 
-    //                     MPI_NUM_TAG, MPI_COMM_WORLD ) );
     uint32_t numEntriesRecv; // is ignored for the sender
     MPI_CHECK( MPI_Gather( &numEntries, 1, MPI_UNSIGNED, 
                            &numEntriesRecv, 1, MPI_UNSIGNED, 
@@ -546,6 +577,7 @@ Runner::mergeActivityGroups( )
  * If there's only one process, the longest path is calculated serially.
  * (One process can have multiple event streams)
  * 
+ * This function is called for every analysis interval.
  * 
  */
 void
@@ -589,75 +621,57 @@ Runner::computeCriticalPath( )
     
     subGraph.cleanup( true );
   }
+  
+  if ( criticalNodes.size( ) == 0 )
+    return;
 
   // compute the time-on-critical-path counter
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
              "[0] Set time-on-critical-path for nodes" );
-
+  
+  // set all critical path counter to '1' for all critical nodes
+  // AND find the timely first and the last critical node
   const uint32_t cpCtrId = analysis.getCtrTable( ).getCtrId( CTR_CRITICALPATH );
   for ( EventStream::SortedGraphNodeList::const_iterator iter = criticalNodes.begin( );
         iter != criticalNodes.end( ); ++iter )
   {
-    ( *iter )->setCounter( cpCtrId, 1 );
-  }
-  
-  // compute the global length of the critical path based on the first and 
-  // the last global critical nodes
-  if ( options.mergeActivities )
-  {
-    UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-               "Calculate first and last local critical node" );
-
-    // compute total program runtime, i.e. total length of the critical path
-    if ( criticalNodes.size( ) > 0 )
+    GraphNode* currentNode = ( *iter );
+    currentNode->setCounter( cpCtrId, 1 );
+    
+    // to compute the global length of the critical path:
+    // get the time and stream ID of the "timely" first and last process-local critical-node
+    if ( options.mergeActivities ) // this is the default
     {
-      // get the current first and last local critical node
-      //GraphNode::GraphNodePair *startEndPair = analysis.getLocalCriticalStartEnd( );
-      std::pair< uint64_t, uint64_t >& startEndTime = analysis.getLocalCriticalStartEndTime( );
+      uint64_t currentTime = currentNode->getTime();
 
-      // get the first and the last local critical node (as the list is not sorted)
-      for ( EventStream::SortedGraphNodeList::const_iterator iter =
-              criticalNodes.begin( ); iter != criticalNodes.end( ); ++iter )
+      if( currentTime == 0 )
+        continue;
+
+      //\todo: clean up this exception! maybe  not needed any more
+      if( currentNode->isMPIInit() && currentNode->isLeave() ){
+        currentTime = currentNode->getPartner()->getTime();
+      }
+
+      if ( currentTime < criticalPathStart.second )
       {
-        /*GraphNode* currentEvent = *iter;
+        criticalPathStart.second = currentTime;
+        criticalPathStart.first = currentNode->getStreamId( );
+      }
 
-        if ( startEndPair->first == NULL || 
-             Node::compareLess( currentEvent, startEndPair->first ) )
-        {
-          startEndPair->first = currentEvent;
-        }
-
-        if ( NULL == startEndPair->second || 
-            Node::compareLess( startEndPair->second, currentEvent ) )
-        {
-          startEndPair->second = currentEvent;
-        }*/
-        
-        uint64_t currentTime = (*iter)->getTime();
-        
-        //\todo: clean up this exception!
-        if( (*iter)->isMPIInit() && (*iter)->isLeave() ){
-          currentTime = (*iter)->getPartner()->getTime();
-        }
-        
-        if ( startEndTime.first == 0 || ( currentTime < startEndTime.first ) )
-        {
-          startEndTime.first = currentTime;
-        }
-
-        if ( 0 == startEndTime.second || ( startEndTime.second < currentTime ) )
-        {
-          startEndTime.second = currentTime;
-        }
+      if ( criticalPathEnd.second < currentTime )
+      {
+        criticalPathEnd.second = currentTime;
+        criticalPathEnd.first = currentNode->getStreamId( );
       }
     }
-    
+  }
+  
+  if ( options.mergeActivities && mpiSize > 1 )
+  {
     //\todo: check if needed
     MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
   }
 }
-
-
 
 /**
  * Determine the global length of the critical path by reducing the first and 
@@ -669,37 +683,17 @@ Runner::findGlobalLengthCP( )
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
              "Determine total length of critical path" );
   
-  /*GraphNode::GraphNodePair *startEndPair = analysis.getLocalCriticalStartEnd( );
-      
-  GraphNode* firstNode = startEndPair->first;
-  GraphNode* lastNode  = startEndPair->second;
+  uint64_t firstTime = 
+    analysis.getStream( criticalPathStart.first )->getPeriod().first;
+  uint64_t lastTime  = 
+    analysis.getStream( criticalPathEnd.first )->getPeriod().second;
 
-  if( !firstNode || !lastNode )
-  {
-    UTILS_MSG( true,"[%d] Failed to get first and last local CP node", mpiRank );
-    return;
-  }
-  
-  // set the first and the last local time stamps
-  firstTimestamp = firstNode->getTime( );
-
-  // if the first node is the MPI_Init leave, use the enter node time
-  if ( firstNode->isMPIInit( ) && firstNode->isLeave( ) )
-  {
-    firstTimestamp = firstNode->getPartner( )->getTime( );
-  }
-  lastTimestamp  = lastNode->getTime( );*/
-  
-  std::pair< uint64_t, uint64_t >& startEndTime = analysis.getLocalCriticalStartEndTime( );
-  
-  uint64_t firstTime = startEndTime.first;
-  uint64_t lastTime  = startEndTime.second;
   
   if( 0 == firstTime || 0 == lastTime )
   {
     UTILS_MSG( true,"[%d] Process is not on the critical path?", mpiRank );
-    firstTime = analysis.getLastGraphNode( )->getTime( );
-    lastTime  = 0;
+    firstTime = 0;
+    lastTime  = analysis.getLastGraphNode( )->getTime( );
   }
     
   // get the global first and last timestamps
@@ -722,7 +716,7 @@ Runner::findGlobalLengthCP( )
   // compute the total length of the critical path
   globalLengthCP = lastTime - firstTime;
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-             "Critical path length = %f",
+             "Critical path length = %f sec",
              analysis.getRealTime( globalLengthCP ) );
 }
 
@@ -1453,6 +1447,13 @@ Runner::printAllActivities( )
     std::set< IParallelTraceWriter::ActivityGroup,
               IParallelTraceWriter::ActivityGroupCompare > sortedActivityGroups;
 
+    if( globalLengthCP == 0 )
+    {
+      UTILS_MSG( true, "Global critical path length is 0. Skipping output ..." );
+      return;
+    }
+      
+    // for all activity groups
     for ( IParallelTraceWriter::ActivityGroupMap::iterator iter =
             activityGroupMap->begin( );
           iter != activityGroupMap->end( ); ++iter )

@@ -49,8 +49,6 @@ namespace casita
      } EdgeCPUData;
 
      std::map< uint64_t, EdgeCPUData > cpuDataPerProcess;
-     
-     GraphNode::GraphNodePair criticalLocalStartEnd;
 
    public:
      typedef std::map< uint64_t, EventStream* > EventStreamMap;
@@ -173,9 +171,6 @@ namespace casita
 
      GraphNode*
      getLastGraphNode( Paradigm paradigm ) const;
-     
-     GraphNode::GraphNodePair*
-     getLocalCriticalStartEnd( );
 
      void
      getAllNodes( EventStream::SortedGraphNodeList& allNodes ) const;

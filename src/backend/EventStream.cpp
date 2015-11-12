@@ -43,6 +43,10 @@ EventStream::EventStream( uint64_t          id,
     graphData[i].firstNode = NULL;
     graphData[i].lastNode  = NULL;
   }
+  
+  // set the initial values for first enter and last leave
+  streamPeriod.first = std::numeric_limits< uint64_t >::max( );
+  streamPeriod.second = 0;
 }
 
 EventStream::~EventStream( )
@@ -102,9 +106,21 @@ EventStream::isRemoteStream( ) const
   return remoteStream;
 }
 
+/**
+ * Get the stream's first enter and last leave time stamps
+ * 
+ * @return a pair the first enter and last leave time stamp
+ */
+std::pair< uint64_t, uint64_t >&
+EventStream::getPeriod()
+{
+  return streamPeriod;
+}
+
 GraphNode*
 EventStream::getLastNode( ) const
 {
+  //\todo: use lastNode ???
   return getLastNode( PARADIGM_ALL );
 }
 
@@ -362,6 +378,8 @@ EventStream::clearNodes( )
     graphData[i].firstNode = NULL;
     graphData[i].lastNode  = NULL;
   }
+  
+  lastNode = NULL;
 }
 
 void

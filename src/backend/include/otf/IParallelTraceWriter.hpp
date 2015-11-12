@@ -41,6 +41,7 @@ namespace casita
         uint64_t lastEnterTime;
       } ActivityGroup;
 
+      // key: OTF2 region reference, value: activity group
       typedef std::map< uint32_t, ActivityGroup > ActivityGroupMap;
 
       typedef struct
@@ -94,6 +95,8 @@ namespace casita
 
     protected:
       uint32_t mpiRank, mpiSize;
+      
+      // maps OTF2 region references to activity groups to collect a global profile
       ActivityGroupMap activityGroupMap;
 
     private:

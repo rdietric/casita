@@ -201,6 +201,9 @@ CallbackHandler::handleEnter( ITraceReader*  reader,
   {
     throw RTException( "Process %lu not found.", streamId );
   }
+  
+  if( stream->getPeriod().first > time )
+    stream->getPeriod().first = time;
 
   //const char* funcName = analysis.getFunctionName(functionId);
   std::string funcStr = reader->getFunctionName( functionId );
@@ -280,6 +283,10 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
   {
     throw RTException( "Process %lu not found", streamId );
   }
+  
+  // save the time stamp of the last leave event
+  if( stream->getPeriod().second < time )
+    stream->getPeriod().second = time;
 
   std::string funcStr = reader->getFunctionName( functionId );
   const char* funcName = funcStr.c_str(); //analysis.getFunctionName( functionId );

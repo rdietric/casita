@@ -143,7 +143,7 @@ namespace casita
       */
      static uint64_t
      readKeyValUInt64( io::ITraceReader* reader, const char* keyName,
-                 io::IKeyValueList* list );
+                       io::IKeyValueList* list );
 
  };
 

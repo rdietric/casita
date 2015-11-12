@@ -43,9 +43,6 @@ GraphEngine::GraphEngine( ) :
   {
     ctrTable.addDefaultCounter( ctrTable.getNewCtrId( ), (CounterType)i );
   }
-  
-  criticalLocalStartEnd.first = NULL;
-  criticalLocalStartEnd.second = NULL;
 }
 
 GraphEngine::~GraphEngine( )
@@ -436,12 +433,6 @@ GraphEngine::getLastGraphNode( Paradigm paradigm ) const
   streams.clear();
 
   return lastNode;
-}
-
-GraphNode::GraphNodePair*
-GraphEngine::getLocalCriticalStartEnd( ) 
-{
-  return &criticalLocalStartEnd;
 }
 
 void
