@@ -811,8 +811,8 @@ OTF2ParallelTraceWriter::writeAttributes( OTF2Event event, CounterMap& counters 
       OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
                                          ctrId, 1, &type, &value ) );
       
-      UTILS_MSG(true, "leave: %s ->%lu (%lu)", 
-                getRegionName(event.regionRef).c_str(), value.unsigned_int, ctrId );
+      //UTILS_MSG(true, "leave: %s ->%lu (%lu)", 
+      //          getRegionName(event.regionRef).c_str(), value.unsigned_int, ctrId );
     }
   }
 }
@@ -1017,14 +1017,14 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         }
       }
       
-      if( currentNode->isCUDASync() ){
+      /*if( currentNode->isCUDASync() ){
         UTILS_MSG(true, "%s wait ctr: %llu (== %llu ?)", currentNode->getUniqueName().c_str(), 
                   currentNode->getCounter(cTable->getCtrId( CTR_WAITSTATE ), NULL ),
                   tmpCounters[cTable->getCtrId( CTR_WAITSTATE )] );
         UTILS_MSG(true, "%s CP ctr: %llu (== %llu ?)", currentNode->getUniqueName().c_str(), 
                   currentNode->getCounter(cTable->getCtrId( CTR_CRITICALPATH ), NULL ),
                   tmpCounters[cTable->getCtrId( CTR_CRITICALPATH )] );
-      }
+      }*/
 
       ++currentNodeIter;
     }
