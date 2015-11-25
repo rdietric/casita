@@ -465,6 +465,10 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
 
 /**
  * Write process events to OTF2 output.
+ * 
+ * @param verbose verbose level
+ * 
+ * @return true, if events are available, otherwise false
  */
 bool
 AnalysisEngine::writeOTF2EventStreams( int verbose )

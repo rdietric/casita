@@ -100,7 +100,7 @@ namespace casita
 
      edge->addCPUBlame( cpuBlame );
      
-     // was is das für ne leiche?
+     /*
      if ( cpuBlame > 0 && false )
      {
        std::cout << "Write cpuBlame " << cpuBlame << " (of " << totalBlame
@@ -114,7 +114,7 @@ namespace casita
                  << " " << edge->getNumberOfCPUNodes( ) << " Nodes ("
                  << edge->getCPUNodesStartTime( ) << " - "
                  << edge->getCPUNodesEndTime( ) << ")" << std::endl;
-     }
+     }*/
 
      if ( ratioBlame > 0 )
      {

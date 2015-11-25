@@ -96,8 +96,9 @@ namespace casita
                             barrier.first->getUniqueName( ).c_str( ),
                             barrier.second->getUniqueName( ).c_str( ) );
 
-              /* make this barrier a blocking waitstate */
+              /* make this barrier a blocking wait state */
               barrierEdge->makeBlocking( );
+              //\TODO: write wait state and blame on barrier enter node
               barrier.second->setCounter( ctrIdWaitState,
                                           maxEnterTimeNode->getTime( ) -
                                           barrier.first->getTime( ) );

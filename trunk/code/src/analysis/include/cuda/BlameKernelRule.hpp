@@ -35,7 +35,7 @@ namespace casita
       bool
       apply( AnalysisParadigmCUDA* analysis, GraphNode* node )
       {
-        /* applied at sync */
+        // applied at sync
         if ( !node->isCUDASync( ) || !node->isLeave( ) )
         {
           return false;
@@ -79,7 +79,7 @@ namespace casita
             // if sync start time < kernel end time
             // TODO: what if other kernels are concurrently executed during the sync?
             if ( sync.first->getTime( ) < kernel.second->getTime( ) )
-            {              
+            {
               if ( isFirstKernel )
               {
                 commonAnalysis->newEdge( kernel.second,
@@ -89,13 +89,15 @@ namespace casita
 
               commonAnalysis->getEdge( sync.first, sync.second )->makeBlocking( );
 
-              // set counters
+              // set counters (to sync leave node)
+              //\todo: set counters of enter nodes
               sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                          CTR_WAITSTATE ),
                                        std::min( sync.second->getTime( ),
                                                  kernel.second->getTime( ) ) -
                                        std::max( sync.first->getTime( ),
                                                  kernel.first->getTime( ) ) );
+              
               kernel.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                            CTR_BLAME ),
                                          std::min( sync.second->getTime( ),
