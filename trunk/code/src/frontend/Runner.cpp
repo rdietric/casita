@@ -67,8 +67,6 @@ Runner::Runner( int mpiRank, int mpiSize ) :
     criticalPathEnd.first = std::numeric_limits< uint64_t >::max( );
     criticalPathEnd.second = 0; 
   }
-  
- 
 }
 
 Runner::~Runner( )
@@ -623,8 +621,10 @@ Runner::computeCriticalPath( )
   }
   
   if ( criticalNodes.size( ) == 0 )
+  {
     return;
-
+  }
+    
   // compute the time-on-critical-path counter
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
              "[0] Set time-on-critical-path for nodes" );
@@ -665,12 +665,6 @@ Runner::computeCriticalPath( )
       }
     }
   }
-  
-  if ( options.mergeActivities && mpiSize > 1 )
-  {
-    //\todo: check if needed
-    MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
-  }
 }
 
 /**
@@ -683,17 +677,23 @@ Runner::findGlobalLengthCP( )
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
              "Determine total length of critical path" );
   
-  uint64_t firstTime = 
-    analysis.getStream( criticalPathStart.first )->getPeriod().first;
-  uint64_t lastTime  = 
-    analysis.getStream( criticalPathEnd.first )->getPeriod().second;
+  // set initial values to extrema if process has no critical stream
+  uint64_t firstTime = std::numeric_limits< uint64_t >::max( );
+  uint64_t lastTime  = 0;
 
-  
-  if( 0 == firstTime || 0 == lastTime )
+  // check for the availability of critical streams, before getting the period
+  if( criticalPathStart.first != std::numeric_limits< uint64_t >::max( ) && 
+      criticalPathEnd.first != std::numeric_limits< uint64_t >::max( ) &&
+      analysis.getStream( criticalPathStart.first ) && 
+      analysis.getStream( criticalPathEnd.first ) )
+  {
+    firstTime = analysis.getStream( criticalPathStart.first )->getPeriod().first;
+    lastTime  = analysis.getStream( criticalPathEnd.first )->getPeriod().second;
+  }
+
+  if( std::numeric_limits< uint64_t >::max( ) == firstTime || 0 == lastTime )
   {
     UTILS_MSG( true,"[%d] Process is not on the critical path?", mpiRank );
-    firstTime = 0;
-    lastTime  = analysis.getLastGraphNode( )->getTime( );
   }
     
   // get the global first and last timestamps
