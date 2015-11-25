@@ -134,7 +134,8 @@ namespace casita
               commonAnalysis->getEdge(
                 prevQuery.first, prevQuery.second )->makeBlocking( );
 
-              /* set counters */
+              // set counters
+              //\todo: write counters to enter nodes
               prevQuery.second->incCounter(
                 commonAnalysis->getCtrTable( ).getCtrId( CTR_WAITSTATE ),
                 prevQuery.second->getTime( ) - prevQuery.first->getTime( ) );

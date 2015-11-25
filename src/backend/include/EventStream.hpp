@@ -323,8 +323,8 @@ namespace casita
      EventStreamType     streamType;
      bool                remoteStream;
      
-     // first enter and last leave time
-     std::pair< uint64_t, uint64_t > streamPeriod;
+     //!< first enter and last leave time
+     std::pair< uint64_t, uint64_t > streamPeriod; 
 
      SortedGraphNodeList pendingKernels;    /* list of unsynchronized
                                              * kernels (leave records) */

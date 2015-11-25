@@ -115,7 +115,8 @@ namespace casita
               commonAnalysis->newEdge( kernelLeave, sync.first );
             }
 
-            /* set counters */
+            // set counters
+            //\todo: write counters to enter node
             sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                        CTR_BLAME ),
                                      sync.second->getTime( ) -

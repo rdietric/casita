@@ -108,6 +108,7 @@ namespace casita
                         << std::endl;
             }
 
+            //\todo: write counter to enter node
             sendRecv.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                            CTR_WAITSTATE ),
                                          otherStartTime - myStartTime );
@@ -154,6 +155,7 @@ namespace casita
                       << std::endl;
           }
           
+          //\todo: write counter to enter node
           sendRecv.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                          CTR_WAITSTATE ),
                                        otherStartTime - myStartTime );

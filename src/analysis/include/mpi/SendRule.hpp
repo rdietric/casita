@@ -123,6 +123,7 @@ namespace casita
                         << std::endl;
             }
             
+            //\todo: write counter to enter node
             send.second->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                        CTR_WAITSTATE ),
                                      recvStartTime - sendStartTime );

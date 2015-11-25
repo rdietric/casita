@@ -223,6 +223,7 @@ namespace casita
                  syncKernelLeave->getTime( ) )
             {
               /* set counters */
+              // \todo: write counters to enter node
               syncKernelLeave->incCounter(
                 commonAnalysis->getCtrTable( ).getCtrId(
                   CTR_BLAME ),
@@ -276,9 +277,8 @@ namespace casita
               }
             }
 
-            /* add wait state if a preceeding leave node in this stream
-             * has been found */
-            /* which ends earlier than the current kernel started */
+            /* add wait state if a preceeding leave node in this stream has
+             * been found which ends earlier than the current kernel started */
             if ( lastLeaveNode &&
                  ( waitStateEnterTime < waitingKernel.first->getTime( ) ) )
             {
@@ -311,6 +311,7 @@ namespace casita
               commonAnalysis->newEdge( waitLeave, waitingKernel.first );
 
               /* set counters */
+              //\todo: write counters to enter node
               waitLeave->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                        CTR_WAITSTATE ),
                                      1 );

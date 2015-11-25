@@ -156,6 +156,7 @@ namespace casita
                         << std::endl;
             }
             
+            //\todo: write counter to enter event
             oneToAll.second->setCounter(
               commonAnalysis->getCtrTable( ).getCtrId( CTR_WAITSTATE ),
               rootEnterTime - oneToAllStartTime );

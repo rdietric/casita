@@ -128,6 +128,7 @@ namespace casita
               commonAnalysis->getEdge( *current_iter,
                                        *next_iter )->makeBlocking( );
 
+              //\todo: write counter to enter event
               ( *next_iter )->setCounter( ctrIdWaitState,
                                           ( *next_iter )->getTime( ) -
                                           ( *current_iter )->getTime( ) );

@@ -158,7 +158,8 @@ namespace casita
           {
             commonAnalysis->getEdge( sync.first, sync.second )->makeBlocking( );
 
-            /* set counters */
+            // set counters
+            //\todo: write counters to enter nodes
             sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                        CTR_WAITSTATE ),
                                      sync.second->getTime( ) -

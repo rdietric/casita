@@ -281,7 +281,7 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
   EventStream*     stream   = handler->getAnalysis( ).getStream( streamId );
   if ( !stream )
   {
-    throw RTException( "Process %lu not found", streamId );
+    throw RTException( "Stream %" PRIu64 " not found!", streamId );
   }
   
   // save the time stamp of the last leave event
@@ -350,7 +350,7 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
   
   
   // if analysis should be run in intervals (between global collectives)
-  if ( options.analysisInterval &&
+  if ( analysis.getMPISize() > 1 && options.analysisInterval &&
       // if we have read a global blocking collective, we can start the analysis
        ( leaveNode->isMPICollective( ) /*|| leaveNode->isMPIAllToOne() || leaveNode->isMPIOneToAll()*/ ) &&
        !( leaveNode->isMPIInit( ) ) && !( leaveNode->isMPIFinalize( ) ) )

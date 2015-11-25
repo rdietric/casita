@@ -121,6 +121,7 @@ namespace casita
 
       std::map< uint32_t, const char* > idStringMap;
 
+      // < counter ID, counter value >
       typedef std::map< uint32_t, uint64_t > CounterMap;
       typedef std::map< uint64_t, std::stack< uint32_t > > ActivityStackMap;
       typedef std::map< uint64_t, uint64_t > TimeMap;
@@ -137,18 +138,30 @@ namespace casita
       computeCPUEventBlame( OTF2Event event );
 
       void
-      writeEvent( OTF2Event event, CounterMap& counters );
+      writeEvent( OTF2Event event );
+      
+      void
+      writeAttributes( OTF2Event event, CounterMap& counters );
+      
+      void
+      writeCounters( OTF2Event event, CounterMap& counters );
 
       void
       processNextEvent( OTF2Event event, const std::string eventName );
 
       EventStream::SortedGraphNodeList* processNodes;
       EventStream::SortedGraphNodeList::iterator currentNodeIter;
+      EventStream* currentStream;
 
       int    verbose;
       bool   isFirstProcess;
       Graph* graph;
-      CounterTable*    cTable;
+      
+      
+      CounterTable* cTable; //!< pointer to the table of available counters
+      
+      //!< save last counter values to avoid writing of unused counter records
+      CounterMap lastCounterValues;
 
       /* Keep track of activity stack per process. */
       ActivityStackMap activityStack;

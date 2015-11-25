@@ -121,6 +121,7 @@ namespace casita
                                      EDGE_CAUSES_WAITSTATE );
 
             // set counters
+            //\todo: write counters to enter nodes
             sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
                                        CTR_BLAME ),
                                      sync.second->getTime( ) -
