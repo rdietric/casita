@@ -399,7 +399,7 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
 {
   EventStreamGroup::EventStreamList allStreams;
   
-  // \todo why not getLocalStreams( allStreams ) ?
+  //\todo why not getLocalStreams( allStreams ) ?
   getStreams( allStreams );
 
   std::sort( allStreams.begin( ), allStreams.end( ), streamSort );

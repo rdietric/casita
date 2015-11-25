@@ -204,7 +204,7 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles,
       }
     }
 
-    MPI_Barrier( MPI_COMM_WORLD );
+    MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
     /* open new otf2 file */
     archive = OTF2_Archive_Open( pathToFile.c_str( ),

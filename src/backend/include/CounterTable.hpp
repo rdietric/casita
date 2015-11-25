@@ -52,7 +52,7 @@ namespace casita
    { CTR_WAITSTATE, "Waiting Time", true, false, 0,
      OTF2_METRIC_ABSOLUTE_LAST },
    { CTR_CRITICALPATH, "Critical Path", true, false, 0,
-     OTF2_METRIC_ABSOLUTE_NEXT },
+     OTF2_METRIC_ABSOLUTE_LAST },
    { CTR_OMP_REGION_ID, "OpenMP 4.0 Region ID", true, true, 0,
      OTF2_METRIC_ABSOLUTE_POINT },
    { CTR_OMP_PARENT_REGION_ID, "OpenMP 4.0 Parent Region ID", true, true, 0,
