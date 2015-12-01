@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014,
+ * Copyright (c) 2014-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -51,12 +51,9 @@ namespace casita
 
         if ( node->isEnter( ) )
         {
-          /* enter */
-          const uint32_t ompRegionCtrId =
-            commonAnalysis->getCtrTable( ).getCtrId( CTR_OMP_REGION_ID );
-
+          // enter
           bool     valid = false;
-          uint64_t matchingId           = node->getCounter( ompRegionCtrId, &valid );
+          uint64_t matchingId           = node->getCounter( OMP_REGION_ID, &valid );
           if ( !valid )
           {
             ErrorUtils::getInstance( ).throwError(
@@ -72,12 +69,12 @@ namespace casita
         }
         else
         {
-          /* leave */
-          GraphNode*     enterEvent     = node->getPartner( );
-          const uint32_t ompRegionCtrId =
-            commonAnalysis->getCtrTable( ).getCtrId( CTR_OMP_REGION_ID );
-          bool     valid = false;
-          uint64_t matchingId           = enterEvent->getCounter( ompRegionCtrId, &valid );
+          // leave
+          GraphNode* enterEvent  = node->getPartner( );
+          
+          bool valid = false;
+          
+          uint64_t matchingId    = enterEvent->getCounter( OMP_REGION_ID, &valid );
           if ( !valid )
           {
             ErrorUtils::getInstance( ).throwError(
@@ -118,10 +115,9 @@ namespace casita
           /* no wait states for single-stream barriers */
           if ( numLeaveNodesInList == 1 )
           {
-            /* ignore this non-blocking barrier for blame distribution */
-            uint64_t ignoreCtrId = commonAnalysis->getCtrTable( ).getCtrId( CTR_OMP_IGNORE_BARRIER );
-            tmpBarrierList.front( )->setCounter( ignoreCtrId, 1 );
-            tmpBarrierList.back( )->setCounter( ignoreCtrId, 1 );
+            // ignore this non-blocking barrier for blame distribution
+            tmpBarrierList.front( )->setCounter( OMP_IGNORE_BARRIER, 1 );
+            tmpBarrierList.back( )->setCounter( OMP_IGNORE_BARRIER, 1 );
 
             analysis->clearBarrierEventList( true, NULL, matchingId );
             return false;
@@ -136,8 +132,6 @@ namespace casita
           /* keep enter event with max enter timestamp */
           GraphNode* maxEnterTimeNode = *iter;
           uint64_t   blame = 0;
-
-          uint32_t   ctrIdWaitState   = commonAnalysis->getCtrTable( ).getCtrId( CTR_WAITSTATE );
 
           /* find last barrierEnter */
           for (; iter != tmpBarrierList.end( ); ++iter )
@@ -160,7 +154,7 @@ namespace casita
                                                            barrier.second );
               /* make this barrier a blocking waitstate */
               barrierEdge->makeBlocking( );
-              barrier.first->setCounter( ctrIdWaitState,
+              barrier.first->setCounter( WAITING_TIME,
                                          maxEnterTimeNode->getTime( ) -
                                          barrier.first->getTime( ) );
 

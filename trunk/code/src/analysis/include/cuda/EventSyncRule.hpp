@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -160,13 +160,11 @@ namespace casita
 
             // set counters
             //\todo: write counters to enter nodes
-            sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                       CTR_WAITSTATE ),
+            sync.second->incCounter( WAITING_TIME,
                                      sync.second->getTime( ) -
                                      std::max( sync.first->getTime( ),
                                                kernelEnter->getTime( ) ) );
-            kernelLeave->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                       CTR_BLAME ),
+            kernelLeave->incCounter( BLAME,
                                      sync.second->getTime( ) -
                                      std::max( sync.first->getTime( ),
                                                kernelEnter->getTime( ) ) );

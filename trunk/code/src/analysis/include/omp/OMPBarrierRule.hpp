@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -62,19 +62,15 @@ namespace casita
           analysis->getBarrierEventList( false );
 
         GraphNode::GraphNodeList::const_iterator iter    = barrierList.begin( );
-        GraphNode* maxEnterTimeNode = *iter;                               /* keep enter
-                                                      * event with max
-                                                      * enter
-                                                      * timestamp */
+        
+        /* keep enter event with max enter timestamp */
+        GraphNode* maxEnterTimeNode = *iter;                               
 
         uint64_t   blame = 0;
 
         /* check if all barriers were passed */
         if ( streams.size( ) == barrierList.size( ) )
         {
-          uint32_t ctrIdWaitState = commonAnalysis->getCtrTable( ).getCtrId(
-            CTR_WAITSTATE );
-
           /* find last barrierEnter */
           for (; iter != barrierList.end( ); ++iter )
           {
@@ -99,7 +95,7 @@ namespace casita
               /* make this barrier a blocking wait state */
               barrierEdge->makeBlocking( );
               //\TODO: write wait state and blame on barrier enter node
-              barrier.second->setCounter( ctrIdWaitState,
+              barrier.second->setCounter( WAITING_TIME,
                                           maxEnterTimeNode->getTime( ) -
                                           barrier.first->getTime( ) );
 

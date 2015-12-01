@@ -24,6 +24,8 @@
 #include <assert.h>
 #include <stdint.h>
 
+#include "AnalysisMetric.hpp"
+
 namespace casita
 {
  typedef uint32_t NodeId;
@@ -789,29 +791,29 @@ namespace casita
      }
 
      void
-     setCounter( uint32_t ctrId, uint64_t value )
+     setCounter( MetricType metric, uint64_t value )
      {
-       counters[ctrId] = value;
+       counters[metric] = value;
      }
 
      void
-     incCounter( uint32_t ctrId, uint64_t value )
+     incCounter( MetricType metric, uint64_t value )
      {
-       if ( counters.find( ctrId ) != counters.end( ) )
+       if ( counters.find( metric ) != counters.end( ) )
        {
-         counters[ctrId] += value;
+         counters[metric] += value;
        }
        else
        {
-         counters[ctrId] = value;
+         counters[metric] = value;
        }
      }
 
      uint64_t
-     getCounter( uint32_t ctrId, bool* valid ) const
+     getCounter( MetricType metric, bool* valid ) const
      {
-       std::map< uint32_t, uint64_t >::const_iterator iter =
-         counters.find( ctrId );
+       std::map< MetricType, uint64_t >::const_iterator iter =
+         counters.find( metric );
        if ( iter == counters.end( ) )
        {
          if ( valid )
@@ -830,9 +832,9 @@ namespace casita
      }
 
      void
-     removeCounter( uint32_t ctrId )
+     removeCounter( MetricType metric )
      {
-       counters.erase( ctrId );
+       counters.erase( metric );
      }
 
      void
@@ -863,7 +865,9 @@ namespace casita
       */
      
      uint64_t referencedStream;
-     std::map< uint32_t, uint64_t > counters;
+     
+     //!< metric type, counter value
+     std::map< MetricType, uint64_t > counters;
  };
 
  typedef struct

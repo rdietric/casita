@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -46,9 +46,9 @@ namespace casita
   typedef void ( *HandleDefFunction )( ITraceReader* reader, uint64_t streamId,
                                        uint32_t functionId, const char* name,
                                        uint32_t functionGroupId );
-  typedef void ( *HandleDefKeyValue )( ITraceReader* reader, uint64_t streamId,
-                                       uint32_t key, const char* name,
-                                       const char* description );
+  typedef void ( *HandleDefAttribute )( ITraceReader* reader, uint64_t streamId,
+                                        uint32_t key, const char* name,
+                                        const char* description );
   typedef void ( *HandleMPIComm )( ITraceReader* reader, MPIType mpiType,
                                    uint64_t processId, uint64_t partnerId,
                                    uint32_t root, uint32_t tag );
@@ -79,7 +79,7 @@ namespace casita
         handleLeave( NULL ),
         handleDefProcess( NULL ),
         handleDefFunction( NULL ),
-        handleDefKeyValue( NULL ),
+        handleDefAttribute( NULL ),
         handleProcessMPIMapping( NULL ),
         handleMPIComm( NULL ),
         handleMPICommGroup( NULL ),
@@ -144,7 +144,7 @@ namespace casita
       HandleLeave             handleLeave;
       HandleDefProcess        handleDefProcess;
       HandleDefFunction       handleDefFunction;
-      HandleDefKeyValue       handleDefKeyValue;
+      HandleDefAttribute      handleDefAttribute;
       HandleProcessMPIMapping handleProcessMPIMapping;
       HandleMPIComm           handleMPIComm;
       HandleMPICommGroup      handleMPICommGroup;

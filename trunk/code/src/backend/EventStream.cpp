@@ -893,8 +893,11 @@ EventStream::walkBackward( GraphNode*         node,
   UTILS_ASSERT( *iter == node, "no %s in stream %lu",
                 node->getUniqueName( ).c_str( ), node->getStreamId( ) );
 
+  // iterate backwards over the list of nodes
   for (; iter != nodes.rend( ); ++iter )
   {
+    // stop iterating (and adding nodes to the list and increasing waiting time) 
+    // when e.g. MPI leave node found
     result = callback( userData, *iter );
     if ( result == false )
     {

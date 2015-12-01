@@ -164,7 +164,7 @@ OTF2TraceReader::close( )
 }
 
 /**
- * Setup the reader. Read local definitions and register callbacks.
+ * Setup the reader. Read local definitions and register for event callbacks.
  * 
  * @param ignoreAsyncMPI if true, do not register for non-blocking MPI
  */
@@ -358,6 +358,11 @@ OTF2TraceReader::readEventsForProcess( uint64_t id, bool ignoreAsyncMPI )
 
 }
 
+/**
+ * Read all global definitions.
+ * 
+ * @return true, if successful
+ */
 bool
 OTF2TraceReader::readDefinitions( )
 {
@@ -410,8 +415,8 @@ OTF2TraceReader::readDefinitions( )
 
   OTF2_GlobalDefReaderCallbacks_Delete( global_def_callbacks );
 
+  // read definitions
   uint64_t definitions_read = 0;
-  /* read definitions */
   OTF2_Reader_ReadAllGlobalDefinitions( reader,
                                         global_def_reader,
                                         &definitions_read );
@@ -665,15 +670,11 @@ OTF2_CallbackCode
 OTF2TraceReader::OTF2_GlobalDefReaderCallback_Region( void*          userData,
                                                       OTF2_RegionRef self,
                                                       OTF2_StringRef name,
-                                                      OTF2_StringRef
-                                                      cannonicalName,
-                                                      OTF2_StringRef
-                                                      description,
-                                                      OTF2_RegionRole
-                                                      regionRole,
+                                                      OTF2_StringRef cannonicalName,
+                                                      OTF2_StringRef description,
+                                                      OTF2_RegionRole regionRole,
                                                       OTF2_Paradigm  paradigm,
-                                                      OTF2_RegionFlag
-                                                      regionFlags,
+                                                      OTF2_RegionFlag regionFlags,
                                                       OTF2_StringRef sourceFile,
                                                       uint32_t       beginLineNumber,
                                                       uint32_t       endLineNumber )
@@ -704,9 +705,9 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Attribute( void*             userD
   tr->getNameKeysMap( ).insert( std::make_pair( s, self ) );
   tr->getKeyNameMap( ).insert( std::make_pair( self, s ) );
 
-  if ( tr->handleDefKeyValue )
+  if ( tr->handleDefAttribute )
   {
-    tr->handleDefKeyValue( tr, 0, self, s.c_str( ), tr->getKeyName(
+    tr->handleDefAttribute( tr, 0, self, s.c_str( ), tr->getKeyName(
                              description ).c_str( ) );
   }
 

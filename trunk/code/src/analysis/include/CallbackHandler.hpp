@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -59,17 +59,17 @@ namespace casita
                         uint32_t          functionId,
                         const char*       name,
                         uint32_t          functionGroupId );
+     
+     static void
+     handleDefAttribute( io::ITraceReader* reader,
+                         uint64_t          streamId,
+                         uint32_t          key, 
+                         const char*       name,
+                         const char*       description );
 
      static void
      handleEnter( io::ITraceReader* reader, uint64_t time, uint32_t functionId,
                   uint64_t streamId, io::IKeyValueList* list );
-
-     static void
-     handleAdditionalEnter( io::ITraceReader*  reader,
-                            uint64_t           time,
-                            uint64_t           functionId,
-                            uint64_t           streamId,
-                            io::IKeyValueList* list );
 
      static bool
      handleLeave( io::ITraceReader*  reader,

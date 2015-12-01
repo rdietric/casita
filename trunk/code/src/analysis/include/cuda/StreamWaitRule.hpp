@@ -74,7 +74,7 @@ namespace casita
           }
           else
           {
-            /* found unnecessary streamWaitEvent call */
+            /* \todo: found unnecessary streamWaitEvent call */
             /* we could blame this here */
             /* UTILS_DBG_MSG(" * Ignoring unnecessary stream wait event node
              * %s", eNode->getUniqueName().c_str()); */
@@ -144,11 +144,10 @@ namespace casita
               /* throw RTException("Found no event record for event
                * %u", */
               /*        streamWaitLeave->getEventId()); */
-              printf(
-
-                " * Ignoring stream wait event %s without matching event record for event %" PRIu64 " \n",
-                streamWaitLeave->getUniqueName( ).c_str( ),
-                streamWaitLeave->getEventId( ) );
+              UTILS_MSG( true,  " * Ignoring stream wait event %s without "
+                                "matching event record for event %" PRIu64 " \n",
+                                streamWaitLeave->getUniqueName( ).c_str( ),
+                                streamWaitLeave->getEventId( ) );
               break;
             }
 
@@ -174,7 +173,6 @@ namespace casita
             if ( !syncKernelEnter )
             {
               ErrorUtils::getInstance( ).throwError(
-
                 "Depending kernel %s (%f) started before kernel from %s (%f) started"
                 " (event id = %" PRIu64 ", recorded at %f, streamWaitEvent %s)",
                 node->getUniqueName( ).c_str( ),
@@ -192,7 +190,6 @@ namespace casita
             if ( !syncKernelLeave )
             {
               ErrorUtils::getInstance( ).throwError(
-
                 "Depending kernel %s (%f) started before kernel from %s (%f) finished",
                 node->getUniqueName( ).c_str( ),
                 commonAnalysis->getRealTime( node->getTime( ) ),
@@ -224,11 +221,9 @@ namespace casita
             {
               /* set counters */
               // \todo: write counters to enter node
-              syncKernelLeave->incCounter(
-                commonAnalysis->getCtrTable( ).getCtrId(
-                  CTR_BLAME ),
-                syncKernelLeave->getTime( ) -
-                waitingKernelLaunchEnter->getTime( ) );
+              //syncKernelEnter
+              syncKernelLeave->incCounter( BLAME,
+                syncKernelLeave->getTime( ) - waitingKernelLaunchEnter->getTime( ) );
 
               waitStateEnterTime = std::min( waitStateEnterTime,
                                              waitingKernelLaunchEnter->getTime( ) );
@@ -312,9 +307,8 @@ namespace casita
 
               /* set counters */
               //\todo: write counters to enter node
-              waitLeave->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                       CTR_WAITSTATE ),
-                                     1 );
+              //waitEnter
+              waitLeave->setCounter( WAITING_TIME, 1 );
 
               /* add dependency to all sync kernel leave nodes */
               /* (some dependencies can become reverse edges during

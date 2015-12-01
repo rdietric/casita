@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -184,6 +184,19 @@ CallbackHandler::handleDefFunction( ITraceReader* reader,
   handler->getAnalysis( ).addFunction( functionId, name );
   
   //\todo: check for MPI paradigm
+}
+
+void
+CallbackHandler::handleDefAttribute( ITraceReader* reader,
+                                     uint64_t      streamId,
+                                     uint32_t      attributeId, 
+                                     const char*   name,
+                                     const char*   description )
+{
+  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
+  
+  // add attribute ID
+  handler->getAnalysis( ).getCtrTable().addAttributeId( attributeId );
 }
 
 void

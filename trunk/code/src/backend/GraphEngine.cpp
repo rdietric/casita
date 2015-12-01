@@ -39,10 +39,6 @@ GraphEngine::GraphEngine( ) :
                                    RECORD_ATOMIC,
                                    MISC_PROCESS );
 
-  for ( size_t i = 0; i < CTR_NUM_DEFAULT_CTRS; ++i )
-  {
-    ctrTable.addDefaultCounter( ctrTable.getNewCtrId( ), (CounterType)i );
-  }
 }
 
 GraphEngine::~GraphEngine( )
@@ -530,7 +526,7 @@ GraphEngine::createIntermediateBegin( )
   streams.clear();
 }
 
-CounterTable&
+AnalysisMetric&
 GraphEngine::getCtrTable( )
 {
   return ctrTable;

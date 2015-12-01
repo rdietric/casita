@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -136,11 +136,9 @@ namespace casita
 
               // set counters
               //\todo: write counters to enter nodes
-              prevQuery.second->incCounter(
-                commonAnalysis->getCtrTable( ).getCtrId( CTR_WAITSTATE ),
+              prevQuery.second->incCounter( WAITING_TIME,
                 prevQuery.second->getTime( ) - prevQuery.first->getTime( ) );
-              kernel.second->incCounter(
-                commonAnalysis->getCtrTable( ).getCtrId( CTR_BLAME ),
+              kernel.second->incCounter( BLAME,
                 prevQuery.second->getTime( ) - prevQuery.first->getTime( ) );
 
               /* add a blocking dependency, so it cannot be used */

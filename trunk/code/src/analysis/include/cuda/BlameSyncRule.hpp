@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -19,6 +19,13 @@ namespace casita
 {
  namespace cuda
  {
+   
+  /*
+   * This rule handles the rare case when a CUDA synchronization shall be blamed.
+   * This may happen, when the synchronization executes more than a "delta" 
+   * longer after the synchronizing kernel finished execution. This can also be 
+   * caused by a CUDA communication.
+   */
   class BlameSyncRule :
     public ICUDARule
   {
@@ -45,9 +52,10 @@ namespace casita
         /* get the complete execution */
         GraphNode::GraphNodePair& sync = node->getGraphPair( );
 
-        uint64_t syncDeltaTicks        = commonAnalysis->getDeltaTicks( );
+        uint64_t syncDeltaTicks = commonAnalysis->getDeltaTicks( );
 
-        bool     ruleResult = false;
+        bool ruleResult = false;
+        
         /* find all referenced (device) streams */
         EventStreamGroup::EventStreamList deviceStreams;
         commonAnalysis->getAllDeviceStreams( deviceStreams );
@@ -57,7 +65,7 @@ namespace casita
                 deviceStreams.begin( );
               pIter != deviceStreams.end( ); ++pIter )
         {
-          EventStream* deviceProcess       = *pIter;
+          EventStream* deviceProcess = *pIter;
 
           if ( !sync.first->referencesStream( deviceProcess->getId( ) ) )
           {
@@ -65,7 +73,7 @@ namespace casita
           }
 
           /* test that there is a pending kernel (leave) */
-          GraphNode* kernelLeave           = deviceProcess->getPendingKernel( );
+          GraphNode* kernelLeave = deviceProcess->getPendingKernel( );
           if ( !kernelLeave )
           {
             break;
@@ -80,18 +88,25 @@ namespace casita
                ( sync.second->getTime( ) - kernel.second->getTime( ) >
                  syncDeltaTicks ) )
           {
+            // get the last leave node before the synchronization end
             GraphNode* lastLeaveNode = commonAnalysis->getLastLeave(
               sync.second->getTime( ), deviceProcess->getId( ) );
-            GraphNode* waitLeave     = NULL;
+            
+            // leave node of the wait state
+            // potentially a leave node before the sync end with the same end time as the sync end
+            GraphNode* waitLeave = NULL;
 
+            // if the last leave node is a wait state
             if ( lastLeaveNode && lastLeaveNode->isWaitstate( ) )
             {
+              // if the last leave node has the same time stamp as the sync end 
               if ( lastLeaveNode->getTime( ) == sync.second->getTime( ) )
               {
                 waitLeave = lastLeaveNode;
               }
               else
               {
+                // insert a new synthetic graph node for the wait state enter
                 commonAnalysis->addNewGraphNode(
                   std::max( lastLeaveNode->getTime( ),
                             kernel.second->getTime( ) ),
@@ -102,12 +117,15 @@ namespace casita
             }
             else
             {
+              // if last leave node is not a wait state
+              // insert a new synthetic graph node for the wait state enter
               commonAnalysis->addNewGraphNode(
                 kernel.second->getTime( ),
                 deviceProcess, NAME_WAITSTATE,
                 PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE );
             }
 
+            // make sure that we have a wait leave 
             if ( !waitLeave )
             {
               waitLeave = commonAnalysis->addNewGraphNode(
@@ -116,18 +134,18 @@ namespace casita
                 PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE );
             }
 
+            // create edge between sync end and wait leave
             commonAnalysis->newEdge( sync.second,
                                      waitLeave,
                                      EDGE_CAUSES_WAITSTATE );
 
             // set counters
             //\todo: write counters to enter nodes
-            sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                       CTR_BLAME ),
+            sync.second->incCounter( BLAME,
                                      sync.second->getTime( ) -
                                      kernel.second->getTime( ) );
-            waitLeave->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                     CTR_WAITSTATE ),
+            //waitLeave->getPartner()->
+            waitLeave->incCounter( WAITING_TIME,
                                    sync.second->getTime( ) -
                                    kernel.second->getTime( ) );
 

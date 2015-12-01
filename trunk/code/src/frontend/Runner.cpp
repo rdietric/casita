@@ -111,6 +111,7 @@ Runner::startAnalysisRun( )
   // set the OTF2 callback handlers
   traceReader->handleDefProcess        = CallbackHandler::handleDefProcess;
   traceReader->handleDefFunction       = CallbackHandler::handleDefFunction;
+  traceReader->handleDefAttribute      = CallbackHandler::handleDefAttribute;
   traceReader->handleEnter             = CallbackHandler::handleEnter;
   traceReader->handleLeave             = CallbackHandler::handleLeave;
   traceReader->handleProcessMPIMapping = CallbackHandler::handleProcessMPIMapping;
@@ -631,12 +632,11 @@ Runner::computeCriticalPath( )
   
   // set all critical path counter to '1' for all critical nodes
   // AND find the timely first and the last critical node
-  const uint32_t cpCtrId = analysis.getCtrTable( ).getCtrId( CTR_CRITICALPATH );
   for ( EventStream::SortedGraphNodeList::const_iterator iter = criticalNodes.begin( );
         iter != criticalNodes.end( ); ++iter )
   {
     GraphNode* currentNode = ( *iter );
-    currentNode->setCounter( cpCtrId, 1 );
+    currentNode->setCounter( CRITICAL_PATH, 1 );
     
     // to compute the global length of the critical path:
     // get the time and stream ID of the "timely" first and last process-local critical-node
@@ -942,7 +942,7 @@ Runner::findLastMpiNode( GraphNode** node )
   
   if ( lastMpiRank == mpiRank )
   {
-    myLastMpiNode->setCounter( analysis.getCtrTable( ).getCtrId( CTR_CRITICALPATH ), 1 );
+    myLastMpiNode->setCounter( CRITICAL_PATH, 1 );
 
     UTILS_DBG_MSG( DEBUG_CPA_MPI,
                "[%u] critical path reverse replay starts at node %s (%f)",
@@ -996,7 +996,6 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
   // mpiGraph is an allocated graph object with a vector of all nodes of the 
   // given paradigm (\TODO this might be extremely memory intensive)
   Graph*   mpiGraph = analysis.getGraph( PARADIGM_MPI );
-  uint32_t cpCtrId  = analysis.getCtrTable( ).getCtrId( CTR_CRITICALPATH );
   
   uint64_t *sendBfr = new uint64_t[BUFFER_SIZE];
   uint64_t *recvBfr = new uint64_t[BUFFER_SIZE];
@@ -1048,7 +1047,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
             section.endNode     = sectionEndNode;
             sectionsList.push_back( section );
 
-            currentNode->setCounter( cpCtrId, 1 );
+            currentNode->setCounter( CRITICAL_PATH, 1 );
           }
           
           // communicate with slaves to decide on new master
@@ -1132,7 +1131,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
           {
             // this should not happen, but we do not want to abort here
             
-            currentNode->setCounter( cpCtrId, 1 );
+            currentNode->setCounter( CRITICAL_PATH, 1 );
             lastNode    = currentNode;
             currentNode = activityEdge->getStartNode( );
             
@@ -1149,7 +1148,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
         }
         else
         {
-          currentNode->setCounter( cpCtrId, 1 );
+          currentNode->setCounter( CRITICAL_PATH, 1 );
           lastNode    = currentNode;
           currentNode = activityEdge->getStartNode( );
           // continue main loop as master
@@ -1171,7 +1170,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
             sectionsList.push_back( section );
           }
           
-          currentNode->setCounter( cpCtrId, 1 );
+          currentNode->setCounter( CRITICAL_PATH, 1 );
 
           // notify all slaves that we are done
           UTILS_MSG( options.verbose >= VERBOSE_BASIC && !options.analysisInterval, 
@@ -1215,7 +1214,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
           Edge* intraEdge = *iter;
           if ( intraEdge->isIntraStreamEdge( ) )
           {
-            currentNode->setCounter( cpCtrId, 1 );
+            currentNode->setCounter( CRITICAL_PATH, 1 );
             lastNode         = currentNode;
             currentNode      = intraEdge->getStartNode( );
             foundPredecessor = true;
@@ -1323,7 +1322,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
         
         //this rank is the new master
         isMaster       = true;
-        slaveActivity.second->setCounter( cpCtrId, 1 );
+        slaveActivity.second->setCounter( CRITICAL_PATH, 1 );
         lastNode       = slaveActivity.second;
         currentNode    = slaveActivity.first;
 
