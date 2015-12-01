@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -18,7 +18,7 @@
 #include <stack>
 #include <list>
 #include <string>
-#include "CounterTable.hpp"
+#include "AnalysisMetric.hpp"
 #include "otf/IParallelTraceWriter.hpp"
 #include "OTF2TraceReader.hpp"
 
@@ -60,18 +60,18 @@ namespace casita
     public:
       bool writeToFile;
 
-      OTF2ParallelTraceWriter( uint32_t    mpiRank,
-                               uint32_t    mpiSize,
-                               const char* originalFilename,
-                               bool        writeToFile,
-                               bool        ignoreAsyncMpi,
-                               int         verbose );
+      OTF2ParallelTraceWriter( uint32_t        mpiRank,
+                               uint32_t        mpiSize,
+                               const char*     originalFilename,
+                               bool            writeToFile,
+                               AnalysisMetric* metrics,
+                               bool            ignoreAsyncMpi,
+                               int             verbose );
       virtual
       ~OTF2ParallelTraceWriter( );
 
       void
-      open( const std::string otfFilename, uint32_t maxFiles,
-            uint32_t numStreams );
+      open( const std::string otfFilename, uint32_t maxFiles );
 
       void
       close( );
@@ -82,16 +82,27 @@ namespace casita
       void
       writeDefProcess( uint64_t id, uint64_t parentId,
                        const char* name, ProcessGroup pg );
+      
+      /**
+       * Write definitions for self-defined (analysis) metrics to output trace file.
+       */
+      void
+      writeAnalysisMetricDefinitions( void );
 
       void
       writeDefCounter( uint32_t id, const char* name, OTF2_MetricMode metricMode );
+      
+      void
+      writeDefAttribute( uint32_t id, const char* name );
+      
+      void
+      setupAttributeList( void );
       
       void
       setupEventReader( uint64_t streamId );
       
       bool
       writeStream(  EventStream*   stream,
-                    CounterTable*  ctrTable,
                     Graph*         graph,
                     uint64_t*      events_read );
 
@@ -99,13 +110,25 @@ namespace casita
       getRegionName( const OTF2_RegionRef regionRef ) const;
 
     private:
-      bool          ignoreAsyncMpi;
-      uint64_t      timerResolution;
-      uint64_t      timerOffset;
-      /* counter to assign ids to stringdefinitions */
+      
+      //!< pointer to the table of available counters
+      AnalysisMetric* cTable; 
+      
+      bool ignoreAsyncMpi;
+      int  verbose;
+      
+      uint64_t timerResolution;
+      uint64_t timerOffset;
+      
+      //!< counter to assign IDs to string definitions
       uint64_t      counterForStringDefinitions;
-      /* counter to assign ids to MetricInstances */
-      uint64_t      counterForMetricInstanceId;
+      
+      //!< counter to assign IDs to MetricInstances
+      //uint64_t      counterForMetricInstanceId;
+      
+      //!< counter to assign IDs to attribute types
+      uint64_t      counterForAttributeId;
+      
       /** regionReference for internal Fork/Join */
       uint32_t      ompForkJoinRef;
 
@@ -116,14 +139,20 @@ namespace casita
       OTF2_GlobalDefWriter* global_def_writer;
       OTF2_Archive* archive;
       OTF2_Reader*  reader;
+      OTF2_AttributeList* attributes;
 
-      MPI_Comm      commGroup;
+      MPI_Comm commGroup;
 
       std::map< uint32_t, const char* > idStringMap;
 
-      // < counter ID, counter value >
-      typedef std::map< uint32_t, uint64_t > CounterMap;
-      typedef std::map< uint64_t, std::stack< uint32_t > > ActivityStackMap;
+      //!< < metric ID, metric value >
+      typedef std::map< MetricType, uint64_t > CounterMap;
+      
+      //!< < event location, stack of counter values >
+      typedef std::map< uint64_t, std::stack< CounterMap* > > CounterStackMap;
+      
+      //!< < event location, stack of region references >
+      typedef std::map< uint64_t, std::stack< OTF2_RegionRef > > ActivityStackMap;
       typedef std::map< uint64_t, uint64_t > TimeMap;
       typedef std::list< Edge* > OpenEdgesList;
       typedef std::map< uint64_t, bool > BooleanMap;
@@ -136,15 +165,12 @@ namespace casita
 
       uint64_t
       computeCPUEventBlame( OTF2Event event );
-
-      void
-      writeEvent( OTF2Event event );
       
       void
-      writeAttributes( OTF2Event event, CounterMap& counters );
+      writeEventsWithAttributes( OTF2Event event, CounterMap& counters );
       
       void
-      writeCounters( OTF2Event event, CounterMap& counters );
+      writeEventsWithCounters( OTF2Event event, CounterMap& counters, bool writeEvents );
 
       void
       processNextEvent( OTF2Event event, const std::string eventName );
@@ -153,21 +179,22 @@ namespace casita
       EventStream::SortedGraphNodeList::iterator currentNodeIter;
       EventStream* currentStream;
 
-      int    verbose;
       bool   isFirstProcess;
       Graph* graph;
       
-      
-      CounterTable* cTable; //!< pointer to the table of available counters
-      
       //!< save last counter values to avoid writing of unused counter records
       CounterMap lastCounterValues;
+      
+      //!< activity value stack map < event.location, stack of CounterMaps >
+      CounterStackMap leaveCounterStack;
+      size_t counterVectorMax;
 
-      /* Keep track of activity stack per process. */
+      //!< Keep track of activity stack per process.
       ActivityStackMap activityStack;
-      /* Store last event time per process. Necessary to calculate
-       * counter values correctly. */
+      
+      //!< Store last event time per process (necessary to calculate metric values correctly)
       TimeMap lastEventTime;
+      
       /* Keep track of edges that exist between past and future nodes.
        * Necessary to distribute correct blame to CPU nodes.
        * When processing internal nodes, all out-edges are opened.
@@ -175,6 +202,7 @@ namespace casita
        * distributed to CPU nodes between internal nodes.
        */
       OpenEdgesList openEdges;
+      
       /* Keep track if process is currently on critical path
        * -> necessary to write counter values correctly */
       BooleanMap    processOnCriticalPath;

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -102,10 +102,9 @@ namespace casita
           }
         }
 
+        // root computes total waiting time and creates dependency edges
         if ( node->getStreamId( ) == rootId )
         {
-          /* root computes its waiting time and creates dependency
-           * edges */
           uint64_t total_waiting_time = 0;
           for ( size_t i = 0; i < recvBufferSize; i += BUFFER_SIZE )
           {
@@ -116,6 +115,7 @@ namespace casita
               total_waiting_time += enterTime - allToOneStartTime;
             }
 
+            // last entering process is not waiting
             if ( lastEnterProcessId == recvBuffer[i + 4] )
             {
               commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
@@ -145,9 +145,7 @@ namespace casita
             }
             
             //\todo: write counter to enter event
-            allToOne.second->setCounter(
-              commonAnalysis->getCtrTable( ).getCtrId( CTR_WAITSTATE ),
-              total_waiting_time );
+            allToOne.second->setCounter( WAITING_TIME, total_waiting_time );
           }
         }
 

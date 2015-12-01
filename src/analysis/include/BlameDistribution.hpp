@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -24,6 +24,16 @@ namespace casita
    AnalysisEngine*          analysis;
  } StreamWalkInfo;
 
+ /**
+  * Distribute the blame by walking backwards from the given node.
+  * Blame is assigned to all nodes in the blame interval and to edges between 
+  * the nodes to blame CPU functions later.
+  * 
+  * @param analysis pointer to analysis engine
+  * @param node start node of the stream walk back
+  * @param totalBlame blame to be distributed
+  * @param callback 
+  */
  static void
  distributeBlame( AnalysisEngine*                 analysis,
                   GraphNode*                      node,
@@ -35,7 +45,7 @@ namespace casita
      return;
    }
 
-   /* walk backwards from node using callback */
+   // walk backwards from node using callback
    StreamWalkInfo walkListAndWaitTime;
    walkListAndWaitTime.waitStateTime = 0;
    walkListAndWaitTime.analysis      = analysis;
@@ -51,50 +61,49 @@ namespace casita
                                             node->getUniqueName( ).c_str( ) );
    }
 
-   GraphNode* start             = walkList.front( );
-   GraphNode* end               = walkList.back( );
-   if ( false )
+   GraphNode* start = walkList.front( );
+   
+   /*if ( false )
    {
-     std::cout << "[" << analysis->getMPIRank( ) << "]Walking: " <<
+     GraphNode* end   = walkList.back( );
+     std::cout << "[" << analysis->getMPIRank( ) << "] Walking: " <<
      start->getUniqueName( )
                << " to " << end->getUniqueName( ) << " node " <<
      node->getUniqueName( ) << " Blame: " <<
      totalBlame << std::endl;
-   }
+   }*/
 
-   uint64_t       totalWalkTime = walkList.front( )->getTime( ) -
-                                  walkList.back( )->getTime( );
-   GraphNode*     lastWalkNode  = walkList.front( );
+   uint64_t   totalWalkTime = walkList.front( )->getTime( ) 
+                            - walkList.back( )->getTime( );
+   GraphNode* lastWalkNode  = walkList.front( );
 
-   const uint32_t waitCtrId     = analysis->getCtrTable( ).getCtrId( CTR_WAITSTATE );
-   const uint32_t blameCtrId    = analysis->getCtrTable( ).getCtrId( CTR_BLAME );
-
+   // if the start node has no caller, hence is first on the stack
    if ( start->getCaller( ) == NULL )
    {
-     start->setCounter( blameCtrId, 0 );
+     start->setCounter( BLAME, 0 );
    }
 
+   // iterate over the walk list
    for ( GraphNode::GraphNodeList::const_iterator iter = ( ++walkList.begin( ) );
          iter != walkList.end( ); ++iter )
    {
-     GraphNode*     currentWalkNode    = *iter;
-     Edge*          edge = analysis->getEdge( currentWalkNode,
-                                              lastWalkNode );
-     uint64_t       cpuTimeDiff        = lastWalkNode->getTime( ) -
-                                         edge->getCPUNodesStartTime( );
-     uint64_t       timeDiff           = lastWalkNode->getTime( ) -
-                                         currentWalkNode->getTime( )
-                                         - cpuTimeDiff;
+     GraphNode* currentWalkNode = *iter;
+     
+     Edge* edge = analysis->getEdge( currentWalkNode, lastWalkNode );
+     
+     uint64_t cpuTimeDiff = lastWalkNode->getTime( ) 
+                          - edge->getCPUNodesStartTime( );
+     uint64_t timeDiff    = lastWalkNode->getTime( ) 
+                          - currentWalkNode->getTime( ) - cpuTimeDiff;
 
      const uint64_t currentWaitingTime =
-       lastWalkNode->getCounter( waitCtrId, NULL );
+                                   lastWalkNode->getCounter( WAITING_TIME, NULL );
 
-     uint64_t       ratioBlame         = (double)totalBlame *
-                                         (double)( timeDiff -
-                                                   currentWaitingTime ) /
-                                         (double)( totalWalkTime - waitTime );
+     uint64_t ratioBlame = (double)totalBlame 
+                         * (double)( timeDiff - currentWaitingTime ) 
+                         / (double)( totalWalkTime - waitTime );
 
-     uint64_t       cpuBlame           = ( cpuTimeDiff == 0 ) ? 0 : (double)totalBlame *
+     uint64_t cpuBlame   = ( cpuTimeDiff == 0 ) ? 0 : (double)totalBlame *
                                          (double)( cpuTimeDiff ) /
                                          (double)( totalWalkTime - waitTime );
 
@@ -118,7 +127,7 @@ namespace casita
 
      if ( ratioBlame > 0 )
      {
-       lastWalkNode->incCounter( blameCtrId, ratioBlame );
+       lastWalkNode->incCounter( BLAME, ratioBlame );
      }
 
      lastWalkNode = currentWalkNode;

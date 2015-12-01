@@ -28,7 +28,7 @@ namespace casita
   {
     StreamWalkInfo* listAndWaitTime = (StreamWalkInfo*)userData;
     listAndWaitTime->list.push_back( node );
-    listAndWaitTime->waitStateTime += node->getCounter( CTR_WAITSTATE, NULL );
+    listAndWaitTime->waitStateTime += node->getCounter( WAITING_TIME, NULL );
 
     if ( node->isProcess( ) || ( node->isMPI( ) && node->isLeave( ) ) )
     {

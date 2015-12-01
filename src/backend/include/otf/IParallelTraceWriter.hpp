@@ -15,7 +15,7 @@
 #include <string>
 #include <stdint.h>
 #include "graph/Node.hpp"
-#include "CounterTable.hpp"
+#include "AnalysisMetric.hpp"
 #include "ITraceWriter.hpp"
 
 namespace casita
@@ -79,11 +79,13 @@ namespace casita
       }
       
       virtual void
+      setupAttributeList( void ) = 0;
+      
+      virtual void
       setupEventReader( uint64_t streamId ) = 0;
       
       virtual bool
       writeStream(  EventStream*   stream,
-                    CounterTable*  ctrTable,
                     Graph*         graph,
                     uint64_t*      events_read ) = 0;
 

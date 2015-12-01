@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -148,8 +148,7 @@ namespace casita
           // set the wait state counter for this blocking region
           // waiting time = last enter time - this ranks enter time
           //\todo: write counter to enter event
-          coll.second->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                     CTR_WAITSTATE ),
+          coll.second->setCounter( WAITING_TIME,
                                    lastEnterTime - collStartTime );
 
           commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(

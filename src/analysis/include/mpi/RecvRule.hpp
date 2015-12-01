@@ -87,9 +87,8 @@ namespace casita
             }
             
             //\todo: write counter to enter node
-            recv.second->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                       CTR_WAITSTATE ), sendStartTime -
-                                     recvStartTime );
+            recv.second->setCounter( WAITING_TIME, 
+                                     sendStartTime - recvStartTime );
 
 #ifdef MPI_CP_MERGE
             analysis->getMPIAnalysis( ).addMPIEdge( recv.first,

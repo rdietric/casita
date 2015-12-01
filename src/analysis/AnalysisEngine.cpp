@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -40,6 +40,9 @@ AnalysisEngine::AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize ) :
   maxFunctionId( 0 ),
   //pendingMPICommForWaitAll( 0 ),
   waitStateFuncId( 0 ),
+  maxMetricClassId( 0 ),
+  maxMetricMemberId( 0 ),
+  maxAttributeId( 0 ),
   foundCUDA( false ),
   foundOMP( false )
 {
@@ -258,22 +261,32 @@ AnalysisEngine::getNullStream( ) const
   return streamGroup.getNullStream( );
 }
 
+/** Find last leave record on given stream before the given timestamp.
+ * 
+ * @param timestamp
+ * @param streamId
+ * 
+ * @return the graph node
+ */
 GraphNode*
 AnalysisEngine::getLastLeave( uint64_t timestamp, uint64_t streamId ) const
 {
-  /* find last leave record on stream streamId before timestamp */
+  
   EventStream* stream = getStream( streamId );
   if ( !stream )
   {
     return NULL;
   }
 
+  //\todo: Why do we not use our find function and pass a node as input
   EventStream::SortedGraphNodeList& nodes = stream->getNodes( );
   for ( EventStream::SortedGraphNodeList::const_reverse_iterator rIter =
           nodes.rbegin( );
         rIter != nodes.rend( ); ++rIter )
   {
     GraphNode* node = *rIter;
+    
+    // ignore nodes that are not a leave or MPI
     if ( !node->isLeave( ) || node->isMPI( ) )
     {
       continue;
@@ -413,6 +426,7 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
       mpiAnalysis.getMPISize( ),
       origFilename.c_str( ),
       writeToFile,
+      &( this->getCtrTable( ) ),
       ignoreAsyncMpi,
       verbose );
 
@@ -427,18 +441,11 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
     throw RTException( "Could not create trace writer" );
   }
 
-  writer->open( filename.c_str( ), 100, allStreams.size( ) );
-
-  CounterTable::CtrIdSet ctrIdSet = this->ctrTable.getAllCounterIDs( );
-  for ( CounterTable::CtrIdSet::const_iterator ctrIter = ctrIdSet.begin( );
-        ctrIter != ctrIdSet.end( ); ++ctrIter )
-  {
-    CtrTableEntry* entry = this->ctrTable.getCounter( *ctrIter );
-    if ( !entry->isInternal )
-    {
-      writer->writeDefCounter( *ctrIter, entry->name, entry->otfMode );
-    }
-  }
+  writer->open( filename.c_str( ), 100 );
+  
+  writer->writeAnalysisMetricDefinitions( );
+  
+  writer->setupAttributeList( );
 
   MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
@@ -500,12 +507,9 @@ AnalysisEngine::writeOTF2EventStreams( int verbose )
       continue;
     }
 
-    // how to interrupt the event reading on e.g. CUDA and OpenMP streams?
-    // >> by time? 
-
     uint64_t events_read_per_stream = 0;
-    events_available = writer->writeStream( p, &( this->getCtrTable( ) ), 
-      &( this->getGraph( ) ), &events_read_per_stream );
+    events_available = writer->writeStream( p, &( this->getGraph( ) ), 
+                                            &events_read_per_stream );
     
     events_read += events_read_per_stream;
   }

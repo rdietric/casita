@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -67,11 +67,9 @@ namespace casita
 
           if ( kernelLeave && kernelLeave->getTime( ) <= sync.first->getTime( ) )
           {
-            UTILS_MSG( true, "latesync %s", kernelLeave->getUniqueName( ).c_str( ) );
-
             GraphNode* lastLeaveNode = commonAnalysis->getLastLeave(
               sync.second->getTime( ), deviceProcess->getId( ) );
-            GraphNode* waitEnter     = NULL, * waitLeave = NULL;
+            GraphNode* waitEnter = NULL, * waitLeave = NULL;
 
             if ( lastLeaveNode && lastLeaveNode->isWaitstate( ) )
             {
@@ -105,9 +103,13 @@ namespace casita
                 PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE );
             }
 
-            commonAnalysis->newEdge( sync.first,
-                                     waitEnter,
-                                     EDGE_CAUSES_WAITSTATE );
+            if( waitEnter )
+            {
+              commonAnalysis->newEdge( sync.first,
+                                       waitEnter,
+                                       EDGE_CAUSES_WAITSTATE );
+            }
+              
             commonAnalysis->newEdge( sync.second, waitLeave );
 
             if ( sync.first->isCUDAKernel( ) )
@@ -117,12 +119,11 @@ namespace casita
 
             // set counters
             //\todo: write counters to enter node
-            sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                       CTR_BLAME ),
+            sync.second->incCounter( BLAME,
                                      sync.second->getTime( ) -
                                      sync.first->getTime( ) );
-            waitLeave->setCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                     CTR_WAITSTATE ),
+            //waitLeave->getPartner
+            waitLeave->setCounter( WAITING_TIME,
                                    sync.second->getTime( ) -
                                    sync.first->getTime( ) );
 

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -91,15 +91,13 @@ namespace casita
 
               // set counters (to sync leave node)
               //\todo: set counters of enter nodes
-              sync.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                         CTR_WAITSTATE ),
+              sync.second->incCounter( WAITING_TIME,
                                        std::min( sync.second->getTime( ),
                                                  kernel.second->getTime( ) ) -
                                        std::max( sync.first->getTime( ),
                                                  kernel.first->getTime( ) ) );
               
-              kernel.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                           CTR_BLAME ),
+              kernel.second->incCounter( BLAME,
                                          std::min( sync.second->getTime( ),
                                                    kernel.second->getTime( ) ) -
                                          std::max( sync.first->getTime( ),

@@ -24,7 +24,7 @@
 #include "Activity.hpp"
 #include "EventStream.hpp"
 #include "EventStreamGroup.hpp"
-#include "CounterTable.hpp"
+#include "AnalysisMetric.hpp"
 #include "FunctionTable.hpp"
 
 #define SCOREP_CUPTI_CUDA_STREAMREF_KEY "CUDA_STREAM_REF"
@@ -65,7 +65,7 @@ namespace casita
      Graph*
      getGraph( Paradigm paradigm );
 
-     CounterTable&
+     AnalysisMetric&
      getCtrTable( );
 
      virtual void
@@ -199,11 +199,12 @@ namespace casita
      GraphNode* globalSourceNode;
      GraphNodeStackMap pendingGraphNodeStackMap;
 
-     EventStreamMap    streamsMap;
+     EventStreamMap streamsMap;
 
-     CounterTable      ctrTable;
+     // create the only instance of AnalysisMetric
+     AnalysisMetric ctrTable;
 
-     /* query graph objects */
+     // >>> query graph objects <<< //
      bool
      hasInEdges( GraphNode* n );
 

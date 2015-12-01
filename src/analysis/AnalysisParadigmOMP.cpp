@@ -65,8 +65,7 @@ AnalysisParadigmOMP::handlePostLeave( GraphNode* node )
     /* mark this barrier if it has callees */
     if ( !commonAnalysis->getEdge( node->getPartner( ), node ) )
     {
-      uint64_t ignoreCtrId = commonAnalysis->getCtrTable( ).getCtrId( CTR_OMP_IGNORE_BARRIER );
-      node->setCounter( ignoreCtrId, 1 );
+      node->setCounter( OMP_IGNORE_BARRIER, 1 );
     }
   }
 }
@@ -101,9 +100,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( ITraceReader*  reader,
 
       if ( node->isOMPSync( ) )
       {
-        uint32_t ompParentCtrId = commonAnalysis->getCtrTable( ).getCtrId(
-          CTR_OMP_PARENT_REGION_ID );
-        node->setCounter( ompParentCtrId, key_value );
+        node->setCounter( OMP_PARENT_REGION_ID, key_value );
       }
     }
 
@@ -117,9 +114,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( ITraceReader*  reader,
 
       if ( node->isOMPSync( ) )
       {
-        uint32_t ompCtrId = commonAnalysis->getCtrTable( ).getCtrId(
-          CTR_OMP_REGION_ID );
-        node->setCounter( ompCtrId, key_value );
+        node->setCounter( OMP_REGION_ID, key_value );
       }
     }
   }
@@ -190,9 +185,8 @@ AnalysisParadigmOMP::addBarrierEventToList( GraphNode* node,
     leaveNode = node->getPartner( );
   }
 
-  /* only add barrier activities that have no callees*/
-  uint64_t ignoreCtrId = commonAnalysis->getCtrTable( ).getCtrId( CTR_OMP_IGNORE_BARRIER );
-  if ( leaveNode->getCounter( ignoreCtrId, NULL ) )
+  // only add barrier activities that have no callees
+  if ( leaveNode->getCounter( OMP_IGNORE_BARRIER, NULL ) )
   {
     return;
   }

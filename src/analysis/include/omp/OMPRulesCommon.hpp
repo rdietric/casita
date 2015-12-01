@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -26,7 +26,7 @@ namespace casita
     StreamWalkInfo* listAndWaitTime = (StreamWalkInfo*)userData;
 
     listAndWaitTime->list.push_back( node );
-    listAndWaitTime->waitStateTime += node->getCounter( CTR_WAITSTATE, NULL );
+    listAndWaitTime->waitStateTime += node->getCounter( WAITING_TIME, NULL );
 
     if ( listAndWaitTime->list.size( ) > 0 )
     {
@@ -41,10 +41,8 @@ namespace casita
     {
       if ( node->isOMPSync( ) )
       {
-        /* if the barrier is not considered blocking, continue walking */
-        uint64_t ignoreCtrId =
-          listAndWaitTime->analysis->getCtrTable( ).getCtrId( CTR_OMP_IGNORE_BARRIER );
-        if ( node->getCounter( ignoreCtrId, NULL ) )
+        // if the barrier is not considered blocking, continue walking
+        if ( node->getCounter( OMP_IGNORE_BARRIER, NULL ) )
         {
           return true;
         }
@@ -62,7 +60,7 @@ namespace casita
     StreamWalkInfo* listAndWaitTime = (StreamWalkInfo*)userData;
 
     listAndWaitTime->list.push_back( node );
-    listAndWaitTime->waitStateTime += node->getCounter( CTR_WAITSTATE, NULL );
+    listAndWaitTime->waitStateTime += node->getCounter( WAITING_TIME, NULL );
 
     if ( listAndWaitTime->list.size( ) > 0 )
     {

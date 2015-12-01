@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -109,8 +109,7 @@ namespace casita
             }
 
             //\todo: write counter to enter node
-            sendRecv.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                           CTR_WAITSTATE ),
+            sendRecv.second->incCounter( WAITING_TIME,
                                          otherStartTime - myStartTime );
           }
         }
@@ -156,8 +155,7 @@ namespace casita
           }
           
           //\todo: write counter to enter node
-          sendRecv.second->incCounter( commonAnalysis->getCtrTable( ).getCtrId(
-                                         CTR_WAITSTATE ),
+          sendRecv.second->incCounter( WAITING_TIME,
                                        otherStartTime - myStartTime );
         }
 

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -15,7 +15,7 @@
 #include <string>
 #include <stdint.h>
 #include "graph/Node.hpp"
-#include "CounterTable.hpp"
+#include "AnalysisMetric.hpp"
 #include "EventStream.hpp"
 #include "graph/Graph.hpp"
 
@@ -54,8 +54,7 @@ namespace casita
       }
 
       virtual void
-      open( const std::string otfFilename, uint32_t maxFiles,
-            uint32_t numStreams )        = 0;
+      open( const std::string otfFilename, uint32_t maxFiles ) = 0;
 
       virtual void
       close( ) = 0;
@@ -74,6 +73,12 @@ namespace casita
 
       virtual void
       writeDefCounter( uint32_t id, const char* name, OTF2_MetricMode metricMode ) = 0;
+      
+      virtual void
+      writeDefAttribute( uint32_t id, const char* name ) = 0;
+      
+      virtual void
+      writeAnalysisMetricDefinitions( void ) = 0;
 
   };
  }

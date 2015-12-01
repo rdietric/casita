@@ -161,6 +161,13 @@ namespace casita
      uint32_t maxFunctionId;
      uint32_t waitStateFuncId;
      
+     // maximum metric class and member IDs that has been read by the event reader
+     uint32_t maxMetricClassId;
+     uint32_t maxMetricMemberId;
+     
+     // maximum attribute ID that has been read by the event reader
+     uint32_t maxAttributeId;
+     
      // available analysis paradigms (identified during reading the trace)
      bool foundCUDA;
      bool foundOMP;

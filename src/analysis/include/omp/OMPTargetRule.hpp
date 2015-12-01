@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014,
+ * Copyright (c) 2014-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -113,9 +113,6 @@ namespace casita
                                     targetHostWalkCallback,
                                     &waitsStateNodesList );
 
-          uint32_t ctrIdWaitState = commonAnalysis->getCtrTable( ).getCtrId(
-            CTR_WAITSTATE );
-
           for ( GraphNode::GraphNodeList::const_iterator iter =
                   waitsStateNodesList.begin( );
                 iter != waitsStateNodesList.end( ); )
@@ -129,7 +126,7 @@ namespace casita
                                        *next_iter )->makeBlocking( );
 
               //\todo: write counter to enter event
-              ( *next_iter )->setCounter( ctrIdWaitState,
+              ( *next_iter )->setCounter( WAITING_TIME,
                                           ( *next_iter )->getTime( ) -
                                           ( *current_iter )->getTime( ) );
             }
