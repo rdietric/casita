@@ -427,16 +427,18 @@ OTF2ParallelTraceWriter::writeDefProcess( uint64_t id, uint64_t parentId,
 void
 OTF2ParallelTraceWriter::writeAnalysisMetricDefinitions( )
 {
-  if ( mpiRank == 0 && writeToFile )
+  for ( size_t i = 0; i < NUM_DEFAULT_METRICS; ++i )
   {
-    for ( size_t i = 0; i < NUM_DEFAULT_METRICS; ++i )
+    MetricType metric = (MetricType) i;
+    const MetricEntry* entry = cTable->getMetric( metric );
+
+    // ignore internal metrics
+    if ( !(entry->isInternal) )
     {
-      MetricType metric = (MetricType) i;
-      const MetricEntry* entry = cTable->getMetric( metric );
-      
-      // ignore internal metrics
-      if ( !entry->isInternal )
+      // only the root rank writes the global definitions
+      if ( mpiRank == 0 )
       {
+        UTILS_MSG(true, "Write definition: %s", entry->name );
         // write string definition for metric and/or attribute name
         OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( global_def_writer,
                                                       counterForStringDefinitions,
@@ -457,12 +459,12 @@ OTF2ParallelTraceWriter::writeAnalysisMetricDefinitions( )
                                                  counterForStringDefinitions+1,
                                                  OTF2_TYPE_UINT64 ) );
           
-          //cTable->addNewOtf2Id( metric );
         }
         else if( entry->metricMode != METRIC_MODE_UNKNOWN )
         {
           //\todo: this is still wrong as we ignore all metric definitions in the input trace
           uint32_t newCtrMetricId = cTable->newOtf2Id( metric );
+          
           // set default OTF2_MetricMode to unknown, which is invalid
           OTF2_MetricMode otf2MetricMode = METRIC_MODE_UNKNOWN;
           
@@ -499,47 +501,15 @@ OTF2ParallelTraceWriter::writeAnalysisMetricDefinitions( )
         // increase the string definition counter
         counterForStringDefinitions += 2;
       }
+      else
+      {
+        // all processes need to know the OTF2 IDs for the metrics/attributes
+        if( entry->metricMode != METRIC_MODE_UNKNOWN )
+        {
+          cTable->newOtf2Id( metric );
+        }
+      }
     }
-  }
-  
-}
-
-/**
- * Write self-defined metrics/counter to new trace file.
- *
- * @param otfId         ID for counter
- * @param name          Name of counter
- * @param metricMode    Mode for this counter (e.g. Accumulate, absolute, ...)
- */
-void
-OTF2ParallelTraceWriter::writeDefCounter( uint32_t        otfId,
-                                          const char*     name,
-                                          OTF2_MetricMode metricMode )
-{
-  if ( mpiRank == 0 && writeToFile )
-  {
-    uint32_t id = otfId;
-
-    /* 1) write String definition */
-    OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( global_def_writer,
-                                                  counterForStringDefinitions,
-                                                  name ) );
-
-    /* 2) Write metrics member and class definition */
-    OTF2_CHECK( OTF2_GlobalDefWriter_WriteMetricMember( global_def_writer, id,
-                                                        counterForStringDefinitions,
-                                                        counterForStringDefinitions,
-                                                        OTF2_METRIC_TYPE_USER,
-                                                        metricMode,
-                                                        OTF2_TYPE_UINT64,
-                                                        OTF2_BASE_DECIMAL, 0, 0 ) );
-
-    OTF2_CHECK( OTF2_GlobalDefWriter_WriteMetricClass( global_def_writer, id, 1,
-                                                       &id,
-                                                       OTF2_METRIC_ASYNCHRONOUS,
-                                                       OTF2_RECORDER_KIND_ABSTRACT ) );
-
-    counterForStringDefinitions++;
   }
 }
 
@@ -548,34 +518,6 @@ OTF2ParallelTraceWriter::setupAttributeList( void )
 {
   attributes = OTF2_AttributeList_New( );
   
-}
-
-/**
- * Write self-defined metrics as attributes to new trace file.
- *
- * @param otfId  unique ID for the attribute
- * @param name   name of attribute
- */
-void
-OTF2ParallelTraceWriter::writeDefAttribute( uint32_t    attributeId,
-                                            const char* name )
-{
-  if ( mpiRank == 0 && writeToFile )
-  {
-    // write String definition
-    OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( global_def_writer,
-                                                  counterForStringDefinitions,
-                                                  name ) );
-
-    // write attribute definition
-    OTF2_GlobalDefWriter_WriteAttribute( global_def_writer, attributeId, 
-                                         counterForStringDefinitions,
-                                         counterForStringDefinitions,
-                                         OTF2_TYPE_UINT64 );  
-    
-    // increase string definition counter
-    counterForStringDefinitions++;
-  }
 }
 
 /**

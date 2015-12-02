@@ -443,8 +443,11 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
 
   writer->open( filename.c_str( ), 100 );
   
-  writer->writeAnalysisMetricDefinitions( );
-  
+  if( writeToFile )
+  {
+    writer->writeAnalysisMetricDefinitions( );
+  }
+
   writer->setupAttributeList( );
 
   MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );

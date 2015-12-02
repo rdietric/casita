@@ -70,12 +70,6 @@ namespace casita
 
       virtual void
       writeDefFunction( uint64_t id, const char* name, FunctionGroup fg ) = 0;
-
-      virtual void
-      writeDefCounter( uint32_t id, const char* name, OTF2_MetricMode metricMode ) = 0;
-      
-      virtual void
-      writeDefAttribute( uint32_t id, const char* name ) = 0;
       
       virtual void
       writeAnalysisMetricDefinitions( void ) = 0;
