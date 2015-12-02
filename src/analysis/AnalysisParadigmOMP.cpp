@@ -19,10 +19,6 @@
 #include "omp/OMPTargetRule.hpp"
 #include "omp/OMPTargetBarrierRule.hpp"
 
-#define SCOREP_POMP_TARGET_LOCATIONREF_KEY "OMP_TARGET_LOCATION_REF"
-#define SCOREP_POMP_TARGET_REGION_ID_KEY "OMP_TARGET_REGION_ID"
-#define SCOREP_POMP_TARGET_PARENT_REGION_ID_KEY "OMP_TARGET_PARENT_REGION_ID"
-
 using namespace casita;
 using namespace casita::omp;
 using namespace casita::io;
@@ -71,9 +67,9 @@ AnalysisParadigmOMP::handlePostLeave( GraphNode* node )
 }
 
 void
-AnalysisParadigmOMP::handleKeyValuesEnter( ITraceReader*  reader,
-                                           GraphNode*     node,
-                                           IKeyValueList* list )
+AnalysisParadigmOMP::handleKeyValuesEnter( ITraceReader*     reader,
+                                           GraphNode*        node,
+                                           OTF2KeyValueList* list )
 {
   int32_t streamRefKey = -1;
 
@@ -83,10 +79,10 @@ AnalysisParadigmOMP::handleKeyValuesEnter( ITraceReader*  reader,
     uint64_t key_value = 0;
 
     /* parent region id */
-    streamRefKey = reader->getFirstKey( SCOREP_POMP_TARGET_PARENT_REGION_ID_KEY );
+    streamRefKey = reader->getFirstKey( SCOREP_OMP_TARGET_PARENT_REGION_ID );
     if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
          list->getUInt64( (uint32_t)streamRefKey,
-                          &key_value ) == IKeyValueList::KV_SUCCESS )
+                          &key_value ) == OTF2KeyValueList::KV_SUCCESS )
     {
       /* only create intra-device dependency edges for first event on each stream */
       if ( !node->getCaller( ) )
@@ -105,10 +101,10 @@ AnalysisParadigmOMP::handleKeyValuesEnter( ITraceReader*  reader,
     }
 
     /* region id */
-    streamRefKey = reader->getFirstKey( SCOREP_POMP_TARGET_REGION_ID_KEY );
+    streamRefKey = reader->getFirstKey( SCOREP_OMP_TARGET_REGION_ID );
     if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
          list->getUInt64( (uint32_t)streamRefKey,
-                          &key_value ) == IKeyValueList::KV_SUCCESS )
+                          &key_value ) == OTF2KeyValueList::KV_SUCCESS )
     {
       pushOmpTargetRegion( node, key_value );
 
@@ -121,17 +117,17 @@ AnalysisParadigmOMP::handleKeyValuesEnter( ITraceReader*  reader,
 }
 
 void
-AnalysisParadigmOMP::handleKeyValuesLeave( ITraceReader*  reader,
-                                           GraphNode*     node,
-                                           GraphNode*     oldNode,
-                                           IKeyValueList* list )
+AnalysisParadigmOMP::handleKeyValuesLeave( ITraceReader*     reader,
+                                           GraphNode*        node,
+                                           GraphNode*        oldNode,
+                                           OTF2KeyValueList* list )
 {
   uint64_t refValue     = 0;
-  int32_t  streamRefKey = reader->getFirstKey( SCOREP_POMP_TARGET_LOCATIONREF_KEY );
+  int32_t  streamRefKey = reader->getFirstKey( SCOREP_OMP_TARGET_LOCATIONREF );
 
   if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
        list->getLocationRef( (uint32_t)streamRefKey,
-                             &refValue ) == IKeyValueList::KV_SUCCESS )
+                             &refValue ) == OTF2KeyValueList::KV_SUCCESS )
   {
     node->setReferencedStreamId( refValue );
   }

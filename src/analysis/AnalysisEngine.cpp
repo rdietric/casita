@@ -231,9 +231,9 @@ AnalysisEngine::handlePostLeave( GraphNode* node )
 }
 
 void
-AnalysisEngine::handleKeyValuesEnter( ITraceReader*  reader,
-                                      GraphNode*     node,
-                                      IKeyValueList* list )
+AnalysisEngine::handleKeyValuesEnter( ITraceReader*     reader,
+                                      GraphNode*        node,
+                                      OTF2KeyValueList* list )
 {
   for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin( );
         iter != analysisParadigms.end( ); ++iter )
@@ -243,10 +243,10 @@ AnalysisEngine::handleKeyValuesEnter( ITraceReader*  reader,
 }
 
 void
-AnalysisEngine::handleKeyValuesLeave( ITraceReader*  reader,
-                                      GraphNode*     node,
-                                      GraphNode*     oldNode,
-                                      IKeyValueList* list )
+AnalysisEngine::handleKeyValuesLeave( ITraceReader*     reader,
+                                      GraphNode*        node,
+                                      GraphNode*        oldNode,
+                                      OTF2KeyValueList* list )
 {
   for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin( );
         iter != analysisParadigms.end( ); ++iter )

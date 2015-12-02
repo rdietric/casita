@@ -52,15 +52,15 @@ namespace casita
       handlePostLeave( GraphNode* node );
 
       void
-      handleKeyValuesEnter( ITraceReader*  reader,
-                            GraphNode*     node,
-                            IKeyValueList* list );
+      handleKeyValuesEnter( ITraceReader*     reader,
+                            GraphNode*        node,
+                            OTF2KeyValueList* list );
 
       void
-      handleKeyValuesLeave( ITraceReader*  reader,
-                            GraphNode*     node,
-                            GraphNode*     oldNode,
-                            IKeyValueList* list );
+      handleKeyValuesLeave( ITraceReader*     reader,
+                            GraphNode*        node,
+                            GraphNode*        oldNode,
+                            OTF2KeyValueList* list );
 
       void
       setLastEventLaunch( EventNode* eventLaunchLeave );

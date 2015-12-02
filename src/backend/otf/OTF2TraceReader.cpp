@@ -729,7 +729,7 @@ OTF2TraceReader::otf2CallbackEnter( OTF2_LocationRef    location,
     kvList.setList( attributes );
 
     tr->handleEnter( tr, time - tr->getTimerOffset( ), region, location,
-                     (IKeyValueList*)&kvList );
+                     &kvList );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -751,7 +751,7 @@ OTF2TraceReader::otf2CallbackLeave( OTF2_LocationRef    location,
     kvList.setList( attributes );
 
     bool interrupt = tr->handleLeave( tr, time - tr->getTimerOffset( ), region, 
-                                      location, (IKeyValueList*)&kvList );
+                                      location, &kvList );
     
     if ( interrupt )
       return OTF2_CALLBACK_INTERRUPT;

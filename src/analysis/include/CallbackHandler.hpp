@@ -51,7 +51,7 @@ namespace casita
      static void
      handleDefProcess( io::ITraceReader* reader, uint32_t stream,
                        uint64_t streamId, uint64_t parentId, const char* name,
-                       io::IKeyValueList* list, bool isCUDA, bool isCUDANull );
+                       io::OTF2KeyValueList* list, bool isCUDA, bool isCUDANull );
 
      static void
      handleDefFunction( io::ITraceReader* reader,
@@ -69,21 +69,14 @@ namespace casita
 
      static void
      handleEnter( io::ITraceReader* reader, uint64_t time, uint32_t functionId,
-                  uint64_t streamId, io::IKeyValueList* list );
+                  uint64_t streamId, io::OTF2KeyValueList* list );
 
      static bool
      handleLeave( io::ITraceReader*  reader,
                   uint64_t           time,
                   uint32_t           functionId,
                   uint64_t           streamId,
-                  io::IKeyValueList* list );
-
-     static void
-     handleAdditionalLeave( io::ITraceReader*  reader,
-                            uint64_t           time,
-                            uint32_t           functionId,
-                            uint64_t           streamId,
-                            io::IKeyValueList* list );
+                  io::OTF2KeyValueList* list );
 
      static void
      handleMPIComm( io::ITraceReader* reader,
@@ -121,16 +114,16 @@ namespace casita
      /* OTF misc */
      void
      applyStreamRefsEnter( io::ITraceReader* reader, GraphNode* node,
-                           io::IKeyValueList* list, Paradigm paradigm );
+                           io::OTF2KeyValueList* list, Paradigm paradigm );
 
      void
      applyStreamRefsLeave( io::ITraceReader* reader, GraphNode* node,
-                           GraphNode* oldNode, io::IKeyValueList* list,
+                           GraphNode* oldNode, io::OTF2KeyValueList* list,
                            Paradigm paradigm );
 
      static uint32_t
      readKeyVal( io::ITraceReader* reader, const char* keyName,
-                 io::IKeyValueList* list );
+                 io::OTF2KeyValueList* list );
      
      /**
       * Get an uint64_t type attribute (or key-value) from the given key value list.
@@ -143,7 +136,7 @@ namespace casita
       */
      static uint64_t
      readKeyValUInt64( io::ITraceReader* reader, const char* keyName,
-                       io::IKeyValueList* list );
+                       io::OTF2KeyValueList* list );
 
  };
 

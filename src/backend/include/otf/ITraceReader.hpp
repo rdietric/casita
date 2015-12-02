@@ -15,7 +15,7 @@
 #include <string>
 #include <map>
 #include <vector>
-#include "IKeyValueList.hpp"
+#include "OTF2KeyValueList.hpp"
 
 namespace casita
 {
@@ -31,14 +31,14 @@ namespace casita
 
   typedef void ( *HandleEnter )( ITraceReader* reader, uint64_t time,
                                  uint32_t functionId, uint64_t processId,
-                                 IKeyValueList* list );
+                                 OTF2KeyValueList* list );
   typedef bool ( *HandleLeave )( ITraceReader* reader, uint64_t time,
                                  uint32_t functionId, uint64_t processId,
-                                 IKeyValueList* list );
+                                 OTF2KeyValueList* list );
   typedef void ( *HandleDefProcess )( ITraceReader* reader, uint32_t stream,
                                       uint64_t processId, uint64_t parentId,
                                       const char* name,
-                                      IKeyValueList* list, bool isCUDA,
+                                      OTF2KeyValueList* list, bool isCUDA,
                                       bool isCUDANull );
   typedef void ( *HandleProcessMPIMapping )( ITraceReader* reader,
                                              uint64_t      processId,
