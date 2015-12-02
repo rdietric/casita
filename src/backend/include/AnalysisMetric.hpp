@@ -52,10 +52,11 @@ namespace casita
    const char* name;
    const char* description;   
    MetricMode  metricMode;
-   uint32_t    otf2DefId;
    bool        isInternal;
+   uint32_t    otf2DefId;
  } MetricEntry;
  
+ // this table does not define the OTF2 definition ID
  static const MetricEntry METRIC_TABLE[] =
  {
    { BLAME,         "Blame",         

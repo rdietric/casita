@@ -88,12 +88,6 @@ namespace casita
        */
       void
       writeAnalysisMetricDefinitions( void );
-
-      void
-      writeDefCounter( uint32_t id, const char* name, OTF2_MetricMode metricMode );
-      
-      void
-      writeDefAttribute( uint32_t id, const char* name );
       
       void
       setupAttributeList( void );
