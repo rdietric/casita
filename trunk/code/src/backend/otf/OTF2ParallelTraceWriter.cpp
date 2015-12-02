@@ -318,10 +318,9 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions( )
 
   if ( mpiRank == 0 )
   {
-    //\todo: add input attributes 
-    //OTF2_GlobalDefReaderCallbacks_SetAttributeCallback(
-    //  global_def_callbacks,
-    //  &OTF2_GlobalDefReaderCallback_Attribute );
+    OTF2_GlobalDefReaderCallbacks_SetAttributeCallback(
+      global_def_callbacks, &OTF2_GlobalDefReaderCallback_Attribute );
+    
     OTF2_GlobalDefReaderCallbacks_SetStringCallback(
       global_def_callbacks, &OTF2_GlobalDefReaderCallback_String );
     
@@ -854,7 +853,7 @@ OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
  * Write attributes (or metric) values after the given event to new OTF2 file.
  *
  * @param event    event to add attributes
- * @param counters Corresponding counter values.
+ * @param counters map of metric values
  */
 void
 OTF2ParallelTraceWriter::writeEventsWithAttributes( OTF2Event event, CounterMap& counters )
@@ -870,10 +869,11 @@ OTF2ParallelTraceWriter::writeEventsWithAttributes( OTF2Event event, CounterMap&
   {
     const MetricType metricType = iter->first;
     
-    //\todo: skip the critical path counter for now, as it is "cheaper" to 
-    //       write a counter,whenever the critical path changes instead of to 
-    //       every region
+    // skip the critical path attribute, as it is "cheaper" to write a counter, 
+    // whenever the critical path changes instead of to every region
     //if( CRITICAL_PATH == metricType )
+    
+    // ignore all metrics, but attributes
     if( cTable->getMetric( metricType )->metricMode != ATTRIBUTE )
     {
       continue;
@@ -909,8 +909,8 @@ OTF2ParallelTraceWriter::writeEventsWithAttributes( OTF2Event event, CounterMap&
  * Critical path counter implementation is for OTF2_METRIC_ABSOLUTE_NEXT mode.
  * Waiting time and blame counters are OTF2_METRIC_ABSOLUTE_LAST mode.
  *
- * @param event         event to potentially add counter values
- * @param counters      Corresponding counter values.
+ * @param event    event to potentially add counter values
+ * @param counters corresponding metric value map
  */
 void
 OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event, 
@@ -981,6 +981,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
     OTF2_Type        type       = OTF2_TYPE_UINT64;
     OTF2_MetricValue value;
     
+    // write only counters with mode absolute next
     if( metricMode != COUNTER_ABSOLUT_NEXT )
       continue;
     
@@ -1384,10 +1385,8 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Comm( void*          userD
 
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_String( void* userData,
-                                                              OTF2_StringRef
-                                                              self,
-                                                              const char*
-                                                              string )
+                                                              OTF2_StringRef self,
+                                                              const char* string )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
@@ -1512,22 +1511,28 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Region( void* userData,
 }
 
 OTF2_CallbackCode
-OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Attribute( void*     userData,
-                                                                 OTF2_AttributeRef
-                                                                 self,
-                                                                 OTF2_StringRef
-                                                                 name,
-                                                                 OTF2_StringRef
-                                                                 description,
-                                                                 OTF2_Type type )
+OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Attribute( 
+                                                  void*             userData,
+                                                  OTF2_AttributeRef self,
+                                                  OTF2_StringRef    name,
+                                                  OTF2_StringRef    description,
+                                                  OTF2_Type         type )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
   if ( tw->writeToFile )
   {
-    OTF2_CHECK( OTF2_GlobalDefWriter_WriteAttribute( tw->global_def_writer, self,
-                                                     name,
-                                                     description, type ) );
+    // do not write the attribute definitions that are only for CASITA in the trace
+    if ( strcmp(tw->idStringMap[ name ], SCOREP_CUDA_STREAMREF ) != 0 &&
+         strcmp(tw->idStringMap[ name ], SCOREP_CUDA_EVENTREF ) != 0 &&
+         strcmp(tw->idStringMap[ name ], SCOREP_CUDA_CURESULT ) != 0 &&
+         strcmp(tw->idStringMap[ name ], SCOREP_OMP_TARGET_LOCATIONREF ) != 0 &&
+         strcmp(tw->idStringMap[ name ], SCOREP_OMP_TARGET_REGION_ID ) != 0 &&
+         strcmp(tw->idStringMap[ name ], SCOREP_OMP_TARGET_PARENT_REGION_ID ) != 0 )
+    {
+      OTF2_CHECK( OTF2_GlobalDefWriter_WriteAttribute( tw->global_def_writer, self,
+                                                     name, description, type ) );
+    }
   }
   
   // increment attribute counter to append CASITA attributes
@@ -1537,47 +1542,43 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Attribute( void*     userD
 }
 
 OTF2_CallbackCode
-OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_RmaWin( void*        userData,
-                                                              OTF2_RmaWinRef
-                                                              self,
-                                                              OTF2_StringRef
-                                                              name,
-                                                              OTF2_CommRef comm )
+OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_RmaWin( 
+                                                        void*          userData,
+                                                        OTF2_RmaWinRef self,
+                                                        OTF2_StringRef name,
+                                                        OTF2_CommRef   comm )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
   if ( tw->writeToFile )
   {
     OTF2_CHECK( OTF2_GlobalDefWriter_WriteRmaWin( tw->global_def_writer, self,
-                                                  name,
-                                                  comm ) );
+                                                  name, comm ) );
   }
 
   return OTF2_CALLBACK_SUCCESS;
 
 }
 
-/*
- * /////////////////////// Callbacks to re-write enter/leave and communication records of original trace file ///////////////////
- * Every callback has the writer object within @var{userData} and writes record immediately after reading
- * Enter and leave callbacks call "processNextNode()" to write node with metrics
+/******************************************************************************/
+/* Callbacks to re-write enter/leave and communication records of original trace file.
+ * Every callback has the writer object within @var{userData} and writes record 
+ * immediately after reading. Enter and leave callbacks call "processNextNode()" 
+ * to write node with metrics.
  */
+
 OTF2_CallbackCode
-OTF2ParallelTraceWriter::otf2CallbackComm_MpiCollectiveEnd( OTF2_LocationRef locationID,
-                                                            OTF2_TimeStamp   time,
-                                                            uint64_t
-                                                            eventPosition,
-                                                            void*            userData,
-                                                            OTF2_AttributeList*
-                                                            attributeList,
-                                                            OTF2_CollectiveOp
-                                                            collectiveOp,
-                                                            OTF2_CommRef
-                                                            communicator,
-                                                            uint32_t         root,
-                                                            uint64_t         sizeSent,
-                                                            uint64_t
-                                                            sizeReceived )
+OTF2ParallelTraceWriter::otf2CallbackComm_MpiCollectiveEnd( 
+                                              OTF2_LocationRef    locationID,
+                                              OTF2_TimeStamp      time,
+                                              uint64_t            eventPosition,
+                                              void*               userData,
+                                              OTF2_AttributeList* attributeList,
+                                              OTF2_CollectiveOp   collectiveOp,
+                                              OTF2_CommRef        communicator,
+                                              uint32_t            root,
+                                              uint64_t            sizeSent,
+                                              uint64_t            sizeReceived )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 

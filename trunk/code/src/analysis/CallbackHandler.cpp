@@ -93,7 +93,7 @@ CallbackHandler::printNode( GraphNode* node, EventStream* stream )
 uint32_t
 CallbackHandler::readKeyVal( ITraceReader*  reader,
                              const char*    keyName,
-                             IKeyValueList* list )
+                             OTF2KeyValueList* list )
 {
   uint32_t keyVal = 0;
   int32_t  key    = reader->getFirstKey( keyName );
@@ -108,7 +108,7 @@ CallbackHandler::readKeyVal( ITraceReader*  reader,
 uint64_t
 CallbackHandler::readKeyValUInt64( ITraceReader*  reader,
                              const char*    keyName,
-                             IKeyValueList* list )
+                             OTF2KeyValueList* list )
 {
   uint64_t keyVal = 0;
   int32_t  key    = reader->getFirstKey( keyName );
@@ -130,14 +130,14 @@ CallbackHandler::handleProcessMPIMapping( ITraceReader* reader,
 }
 
 void
-CallbackHandler::handleDefProcess( ITraceReader*  reader,
-                                   uint32_t       stream,
-                                   uint64_t       streamId,
-                                   uint64_t       parentId,
-                                   const char*    name,
-                                   IKeyValueList* list,
-                                   bool           isCUDA,
-                                   bool           isCUDANull )
+CallbackHandler::handleDefProcess( ITraceReader*     reader,
+                                   uint32_t          stream,
+                                   uint64_t          streamId,
+                                   uint64_t          parentId,
+                                   const char*       name,
+                                   OTF2KeyValueList* list,
+                                   bool              isCUDA,
+                                   bool              isCUDANull )
 {
   CallbackHandler* handler  =
     (CallbackHandler*)( reader->getUserData( ) );
@@ -204,7 +204,7 @@ CallbackHandler::handleEnter( ITraceReader*  reader,
                               uint64_t       time,
                               uint32_t       functionId,
                               uint64_t       streamId,
-                              IKeyValueList* list )
+                              OTF2KeyValueList* list )
 {
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
   AnalysisEngine&  analysis = handler->getAnalysis( );
@@ -281,11 +281,11 @@ CallbackHandler::handleEnter( ITraceReader*  reader,
  * @return true, if it is a global collective leave event
  */
 bool
-CallbackHandler::handleLeave( ITraceReader*  reader,
-                              uint64_t       time,
-                              uint32_t       functionId,
-                              uint64_t       streamId,
-                              IKeyValueList* list )
+CallbackHandler::handleLeave( ITraceReader*     reader,
+                              uint64_t          time,
+                              uint32_t          functionId,
+                              uint64_t          streamId,
+                              OTF2KeyValueList* list )
 {
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
   AnalysisEngine&  analysis = handler->getAnalysis( );
@@ -318,8 +318,8 @@ CallbackHandler::handleLeave( ITraceReader*  reader,
   GraphNode* leaveNode = NULL;
   if ( Node::isCUDAEventType( functionType.paradigm, functionType.type ) )
   {
-    uint64_t eventId  = readKeyValUInt64( reader, SCOREP_CUPTI_CUDA_EVENTREF_KEY, list );
-    uint32_t cuResult = readKeyVal( reader, SCOREP_CUPTI_CUDA_CURESULT_KEY, list );
+    uint64_t eventId  = readKeyValUInt64( reader, SCOREP_CUDA_EVENTREF, list );
+    uint32_t cuResult = readKeyVal( reader, SCOREP_CUDA_CURESULT, list );
     EventNode::FunctionResultType fResult = EventNode::FR_UNKNOWN;
     if ( cuResult == CUDA_SUCCESS )
     {

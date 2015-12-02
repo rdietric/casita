@@ -27,16 +27,6 @@
 #include "cuda/EventQueryRule.hpp"
 #include "cuda/StreamWaitRule.hpp"
 
-/* shared with VampirTrace */
-#define VT_CUPTI_CUDA_STREAMREF_KEY "CUDA_STREAM_REF_KEY"
-#define VT_CUPTI_CUDA_EVENTREF_KEY "CUDA_EVENT_REF_KEY"
-#define VT_CUPTI_CUDA_CURESULT_KEY "CUDA_DRV_API_RESULT_KEY"
-
-/* shared with Score-P */
-#define SCOREP_CUPTI_CUDA_STREAMREF_KEY "CUDA_STREAM_REF"
-#define SCOREP_CUPTI_CUDA_EVENTREF_KEY "CUDA_EVENT_REF"
-#define SCOREP_CUPTI_CUDA_CURESULT_KEY "CUDA_DRV_API_RESULT"
-
 using namespace casita;
 using namespace casita::cuda;
 using namespace casita::io;
@@ -97,43 +87,43 @@ AnalysisParadigmCUDA::handlePostLeave( GraphNode* node )
 }
 
 void
-AnalysisParadigmCUDA::handleKeyValuesEnter( ITraceReader*  reader,
-                                            GraphNode*     node,
-                                            IKeyValueList* list )
+AnalysisParadigmCUDA::handleKeyValuesEnter( ITraceReader*     reader,
+                                            GraphNode*        node,
+                                            OTF2KeyValueList* list )
 {
   uint64_t refValue     = 0;
-  int32_t  streamRefKey = reader->getFirstKey( SCOREP_CUPTI_CUDA_STREAMREF_KEY );
+  int32_t  streamRefKey = reader->getFirstKey( SCOREP_CUDA_STREAMREF );
 
 //  if( streamRefKey > -1 && list->getLocationRef( (uint32_t)streamRefKey,
-//                             &refValue ) != IKeyValueList::KV_SUCCESS ){
+//                             &refValue ) != OTF2KeyValueList::KV_SUCCESS ){
 //    std::cerr << "CUDA::handleKeyValuesEnter streamRefKey: " << streamRefKey << std::endl;
 //  }
 
   if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
        list->getLocationRef( (uint32_t)streamRefKey,
-                             &refValue ) == IKeyValueList::KV_SUCCESS )
+                             &refValue ) == OTF2KeyValueList::KV_SUCCESS )
   {
     node->setReferencedStreamId( refValue );
   }
 }
 
 void
-AnalysisParadigmCUDA::handleKeyValuesLeave( ITraceReader*  reader,
-                                            GraphNode*     node,
-                                            GraphNode*     oldNode,
-                                            IKeyValueList* list )
+AnalysisParadigmCUDA::handleKeyValuesLeave( ITraceReader*     reader,
+                                            GraphNode*        node,
+                                            GraphNode*        oldNode,
+                                            OTF2KeyValueList* list )
 {
   uint64_t refValue     = 0;
-  int32_t  streamRefKey = reader->getFirstKey( SCOREP_CUPTI_CUDA_STREAMREF_KEY );
+  int32_t  streamRefKey = reader->getFirstKey( SCOREP_CUDA_STREAMREF );
   
 //  if( streamRefKey > -1 && list->getLocationRef( (uint32_t)streamRefKey,
-//                             &refValue ) != IKeyValueList::KV_SUCCESS ){
+//                             &refValue ) != OTF2KeyValueList::KV_SUCCESS ){
 //    std::cerr << "CUDA::handleKeyValuesLeave streamRefKey: " << streamRefKey << std::endl;
 //  }
 
   if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
        list->getLocationRef( (uint32_t)streamRefKey,
-                             &refValue ) == IKeyValueList::KV_SUCCESS )
+                             &refValue ) == OTF2KeyValueList::KV_SUCCESS )
   {
     node->setReferencedStreamId( refValue );
     oldNode->setReferencedStreamId( refValue );

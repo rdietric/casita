@@ -27,10 +27,6 @@
 #include "AnalysisMetric.hpp"
 #include "FunctionTable.hpp"
 
-#define SCOREP_CUPTI_CUDA_STREAMREF_KEY "CUDA_STREAM_REF"
-#define SCOREP_CUPTI_CUDA_EVENTREF_KEY "CUDA_EVENT_REF"
-#define SCOREP_CUPTI_CUDA_CURESULT_KEY "CUDA_DRV_API_RESULT"
-
 #define SYNC_DELTA 500 /* in us */
 
 namespace casita

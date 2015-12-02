@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -13,17 +13,32 @@
 #pragma once
 
 #include <otf2/otf2.h>
-#include "IKeyValueList.hpp"
+
+/******** shared with Score-P ***************/
+// CUDA attributes
+#define SCOREP_CUDA_STREAMREF "CUDA_STREAM_REF"
+#define SCOREP_CUDA_EVENTREF "CUDA_EVENT_REF"
+#define SCOREP_CUDA_CURESULT "CUDA_DRV_API_RESULT"
+
+// OpenMP target attributes
+#define SCOREP_OMP_TARGET_LOCATIONREF "OMP_TARGET_LOCATION_REF"
+#define SCOREP_OMP_TARGET_REGION_ID "OMP_TARGET_REGION_ID"
+#define SCOREP_OMP_TARGET_PARENT_REGION_ID "OMP_TARGET_PARENT_REGION_ID"
 
 namespace casita
 {
  namespace io
  {
 
-  class OTF2KeyValueList :
-    public IKeyValueList
+  class OTF2KeyValueList
   {
     public:
+      
+      enum KeyValueResult
+      {
+        KV_SUCCESS = 0,
+        KV_ERROR   = 1
+      };
 
       OTF2KeyValueList( ) :
         list( NULL )

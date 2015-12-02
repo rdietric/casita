@@ -76,8 +76,6 @@ namespace casita
  class AnalysisMetric
  {
     private:
-      typedef std::map< uint32_t, MetricEntry* > MetricEntryMap;
-      
       //! < key: metric type, value: OTF2 attribute or metric ID/ref
       typedef std::map< MetricType, uint32_t > MetricTypeIdMap;
 
@@ -144,12 +142,6 @@ namespace casita
      }
      
      const MetricIdSet&
-     getAllAttributeIds( ) const
-     {
-       return attributeIds;
-     }
-     
-     const MetricIdSet&
      getAllMetricIds( ) const
      {
        return metricIds;
@@ -205,9 +197,7 @@ namespace casita
      uint32_t        maxCtrId;
      uint32_t        maxAttrId;
      MetricTypeIdMap otf2Ids;
-     //MetricEntryMap metrics;
      MetricIdSet     ctrIDs;
-     MetricIdSet     attributeIds;
      MetricIdSet     metricIds;
  };
 }

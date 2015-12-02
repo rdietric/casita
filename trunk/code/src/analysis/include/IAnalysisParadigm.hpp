@@ -19,7 +19,7 @@
 #include "AbstractRule.hpp"
 #include "graph/GraphNode.hpp"
 #include "graph/EventNode.hpp"
-#include "otf/IKeyValueList.hpp"
+#include "otf/OTF2KeyValueList.hpp"
 #include "otf/ITraceReader.hpp"
 
 using namespace casita::io;
@@ -90,17 +90,17 @@ namespace casita
      }
 
      virtual void
-     handleKeyValuesEnter( ITraceReader*  reader,
-                           GraphNode*     node,
-                           IKeyValueList* list )
+     handleKeyValuesEnter( ITraceReader*     reader,
+                           GraphNode*        node,
+                           OTF2KeyValueList* list )
      {
      }
 
      virtual void
-     handleKeyValuesLeave( ITraceReader*  reader,
-                           GraphNode*     node,
-                           GraphNode*     oldNode,
-                           IKeyValueList* list )
+     handleKeyValuesLeave( ITraceReader*     reader,
+                           GraphNode*        node,
+                           GraphNode*        oldNode,
+                           OTF2KeyValueList* list )
      {
      }
 
