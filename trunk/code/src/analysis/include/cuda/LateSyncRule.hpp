@@ -33,17 +33,16 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmCUDA* analysis, GraphNode* node )
+      apply( AnalysisParadigmCUDA* analysis, GraphNode* syncLeave )
       {
-        if ( !node->isCUDASync( ) || !node->isLeave( ) )
+        if ( !syncLeave->isCUDASync( ) || !syncLeave->isLeave( ) )
         {
           return false;
         }
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        /* get the complete execution */
-        GraphNode::GraphNodePair& sync = node->getGraphPair( );
+        GraphNode* syncEnter = syncLeave->getGraphPair( ).first;
 
         bool ruleResult = false;
         /* find all referenced (device) streams */
@@ -57,7 +56,7 @@ namespace casita
         {
           EventStream* deviceProcess = *pIter;
 
-          if ( !sync.first->referencesStream( deviceProcess->getId( ) ) )
+          if ( !syncEnter->referencesStream( deviceProcess->getId( ) ) )
           {
             continue;
           }
@@ -65,15 +64,15 @@ namespace casita
           /* test that there is a pending kernel leave */
           GraphNode* kernelLeave     = deviceProcess->getPendingKernel( );
 
-          if ( kernelLeave && kernelLeave->getTime( ) <= sync.first->getTime( ) )
+          if ( kernelLeave && kernelLeave->getTime( ) <= syncEnter->getTime( ) )
           {
             GraphNode* lastLeaveNode = commonAnalysis->getLastLeave(
-              sync.second->getTime( ), deviceProcess->getId( ) );
+              syncLeave->getTime( ), deviceProcess->getId( ) );
             GraphNode* waitEnter = NULL, * waitLeave = NULL;
 
             if ( lastLeaveNode && lastLeaveNode->isWaitstate( ) )
             {
-              if ( lastLeaveNode->getTime( ) == sync.second->getTime( ) )
+              if ( lastLeaveNode->getTime( ) == syncLeave->getTime( ) )
               {
                 waitLeave = lastLeaveNode;
               }
@@ -81,7 +80,7 @@ namespace casita
               {
                 waitEnter = commonAnalysis->addNewGraphNode(
                   std::max( lastLeaveNode->getTime( ),
-                            sync.first->getTime( ) ),
+                            syncEnter->getTime( ) ),
                   deviceProcess, NAME_WAITSTATE,
                   PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE );
               }
@@ -90,7 +89,7 @@ namespace casita
             else
             {
               waitEnter = commonAnalysis->addNewGraphNode(
-                sync.first->getTime( ),
+                syncEnter->getTime( ),
                 deviceProcess, NAME_WAITSTATE,
                 PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE );
             }
@@ -98,34 +97,34 @@ namespace casita
             if ( !waitLeave )
             {
               waitLeave = commonAnalysis->addNewGraphNode(
-                sync.second->getTime( ),
+                syncLeave->getTime( ),
                 deviceProcess, NAME_WAITSTATE,
                 PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE );
             }
 
             if( waitEnter )
             {
-              commonAnalysis->newEdge( sync.first,
-                                       waitEnter,
+              commonAnalysis->newEdge( syncEnter, waitEnter,
                                        EDGE_CAUSES_WAITSTATE );
             }
               
-            commonAnalysis->newEdge( sync.second, waitLeave );
+            commonAnalysis->newEdge( syncLeave, waitLeave );
 
-            if ( sync.first->isCUDAKernel( ) )
+            //\todo: is that possible?
+            if ( syncEnter->isCUDAKernel( ) )
             {
-              commonAnalysis->newEdge( kernelLeave, sync.first );
+              commonAnalysis->newEdge( kernelLeave, syncEnter );
+              UTILS_MSG( true, "syncEnter is CUDA kernel!" );
             }
 
             // set counters
-            //\todo: write counters to enter node
-            sync.second->incCounter( BLAME,
-                                     sync.second->getTime( ) -
-                                     sync.first->getTime( ) );
+            syncLeave->incCounter( BLAME,
+                                     syncLeave->getTime( ) -
+                                     syncEnter->getTime( ) );
             //waitLeave->getPartner
             waitLeave->setCounter( WAITING_TIME,
-                                   sync.second->getTime( ) -
-                                   sync.first->getTime( ) );
+                                   syncLeave->getTime( ) -
+                                   syncEnter->getTime( ) );
 
             deviceProcess->clearPendingKernels( );            
             ruleResult = true;

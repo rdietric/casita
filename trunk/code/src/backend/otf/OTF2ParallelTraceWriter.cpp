@@ -438,7 +438,8 @@ OTF2ParallelTraceWriter::writeAnalysisMetricDefinitions( )
       // only the root rank writes the global definitions
       if ( mpiRank == 0 )
       {
-        UTILS_MSG(true, "Write definition: %s", entry->name );
+        //UTILS_MSG(true, "Write definition: %s", entry->name );
+        
         // write string definition for metric and/or attribute name
         OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( global_def_writer,
                                                       counterForStringDefinitions,

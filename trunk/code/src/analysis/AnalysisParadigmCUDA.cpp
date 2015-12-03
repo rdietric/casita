@@ -21,7 +21,7 @@
 #include "cuda/BlameKernelRule.hpp"
 #include "cuda/BlameSyncRule.hpp"
 #include "cuda/LateSyncRule.hpp"
-#include "cuda/KernelLaunchRule.hpp"
+#include "cuda/KernelExecutionRule.hpp"
 #include "cuda/EventLaunchRule.hpp"
 #include "cuda/EventSyncRule.hpp"
 #include "cuda/EventQueryRule.hpp"
@@ -34,7 +34,7 @@ using namespace casita::io;
 AnalysisParadigmCUDA::AnalysisParadigmCUDA( AnalysisEngine* analysisEngine ) :
   IAnalysisParadigm( analysisEngine )
 {
-  addRule( new KernelLaunchRule( 9 ) );
+  addRule( new KernelExecutionRule( 9 ) );
   //\todo: check priority for the following three rules triggered on cudaSync
   // they all clear the list of pending kernels when finished
   addRule( new BlameKernelRule( 2 ) ); // triggered on cudaSync
@@ -107,6 +107,14 @@ AnalysisParadigmCUDA::handleKeyValuesEnter( ITraceReader*     reader,
   }
 }
 
+/**
+ * Set the referenced stream for both given nodes (leave and enter).
+ * 
+ * @param reader
+ * @param node
+ * @param oldNode
+ * @param list
+ */
 void
 AnalysisParadigmCUDA::handleKeyValuesLeave( ITraceReader*     reader,
                                             GraphNode*        node,
@@ -167,6 +175,50 @@ AnalysisParadigmCUDA::getEventRecordLeave( uint64_t eventId ) const
 }
 
 void
+AnalysisParadigmCUDA::printDebugInformation( uint64_t eventId )
+{
+  UTILS_MSG( true, "Passed event id: %llu", eventId );
+  
+  UTILS_MSG( true, "Number of stored event IDs with corresponding last event record leave node: %llu",
+             eventLaunchMap.size() );
+  
+  uint64_t pendingKernelCount = 0;
+  for ( IdNodeListMap::const_iterator mapIter =
+          pendingKernelLaunchMap.begin( );
+        mapIter != pendingKernelLaunchMap.end( ); ++mapIter )
+  {
+    pendingKernelCount += mapIter->second.size();
+    
+    if( mapIter->second.size() )
+    {
+      UTILS_MSG( true, "%llu pending kernel launches on stream %llu",
+                 mapIter->second.size(), mapIter->first );
+      
+      EventStream* evtStream = this->commonAnalysis->getStream( mapIter->first );
+      if( evtStream )
+      {
+        UTILS_MSG( true, "  ... with stream name: %s", evtStream->getName() );
+      }
+      else
+      {
+        UTILS_MSG( true, "  ... with missing stream object" );
+      }
+                 
+    }
+  }
+  UTILS_MSG( true, "%llu pending kernel launches on %llu different device streams",
+             pendingKernelCount, pendingKernelLaunchMap.size() );
+  
+  EventNode* eventRecordLeave = eventLaunchMap[eventId];
+  
+  uint64_t streamId = eventRecordLeave->getStreamId( );
+  
+  UTILS_MSG( true, "Host stream: %llu (%s)",
+             streamId,
+             this->commonAnalysis->getStream( streamId )->getName() );
+}
+
+void
 AnalysisParadigmCUDA::setEventProcessId( uint64_t eventId, uint64_t streamId )
 {
   eventProcessMap[eventId] = streamId;
@@ -186,47 +238,119 @@ AnalysisParadigmCUDA::getEventProcessId( uint64_t eventId ) const
   }
 }
 
+/**
+ * Adds kernel launch event nodes at the end of the list.
+ * 
+ * @param launch a kernel launch leave or enter node
+ */
 void
 AnalysisParadigmCUDA::addPendingKernelLaunch( GraphNode* launch )
 {
-  /* append at tail (FIFO) */
+  // append at tail (FIFO)
   pendingKernelLaunchMap[launch->getReferencedStreamId( )].push_back(
     launch );
 }
 
+/**
+ * Takes the stream ID where the kernel is executed and consumes its
+ * corresponding kernel launch enter event. Consumes the first kernel launch 
+ * enter event in the list of the given stream.
+ * Is triggered by a kernel leave event.
+ * 
+ * @param kernelStreamId stream ID where the kernel is executed
+ */
 GraphNode*
-AnalysisParadigmCUDA::consumePendingKernelLaunch( uint64_t kernelStreamId )
+AnalysisParadigmCUDA::consumeFirstPendingKernelLaunchEnter( uint64_t kernelStreamId )
 {
-  IdNodeListMap::iterator listIter = pendingKernelLaunchMap.find(
-    kernelStreamId );
-  if ( listIter == pendingKernelLaunchMap.end( ) )
+  IdNodeListMap::iterator mapIter = 
+    pendingKernelLaunchMap.find( kernelStreamId );
+  
+  // return NULL, if the element could not be found
+  if ( mapIter == pendingKernelLaunchMap.end( ) )
   {
     return NULL;
   }
 
-  if ( listIter->second.size( ) == 0 )
+  // return NULL, if the list of pending kernel launch events is empty
+  if ( mapIter->second.size( ) == 0 )
   {
     return NULL;
   }
 
-  /* consume from head (FIFO) */
-  /* listIter->second contains enter and leave records */
-  GraphNode::GraphNodeList::iterator launchIter = listIter->second.begin( );
-  while ( ( launchIter != listIter->second.end( ) ) &&
+  ////////////////// consume from head (FIFO) //////////////////
+  
+  // 
+  // listIter->second (launch kernel node list) contains enter and leave records
+  // set iterator to first element which should be a launch enter node
+  GraphNode::GraphNodeList::iterator launchIter = mapIter->second.begin( );
+  
+  // skip leading leave nodes, as only enter nodes are erased
+  while ( ( launchIter != mapIter->second.end( ) ) &&
           ( ( *launchIter )->isLeave( ) ) )
   {
     launchIter++;
-    /* found no enter record */
   }
-  if ( launchIter == listIter->second.end( ) )
+  
+  if ( launchIter == mapIter->second.end( ) )
   {
     return NULL;
   }
 
-  /* erase this enter record */
+  // erase this enter record
   GraphNode* kernelLaunch = *launchIter;
-  listIter->second.erase( launchIter );
+  mapIter->second.erase( launchIter );
+  
   return kernelLaunch;
+}
+
+/** 
+ * Find last kernel launch (leave record) which launched a kernel for the 
+ * given device stream and happened before the given time stamp.
+ * 
+ * @param timestamp 
+ * @param deviceStreamId
+ * 
+ * @return
+ */
+GraphNode*
+AnalysisParadigmCUDA::getLastLaunchLeave( uint64_t timestamp,
+                                          uint64_t deviceStreamId ) const
+{
+  GraphNode* lastLaunchLeave = NULL;
+
+  for ( IdNodeListMap::const_iterator listIter =
+          pendingKernelLaunchMap.begin( );
+        listIter != pendingKernelLaunchMap.end( ); ++listIter )
+  {
+    for ( GraphNode::GraphNodeList::const_reverse_iterator launchIter =
+            listIter->second.rbegin( );
+          launchIter != listIter->second.rend( ); ++launchIter )
+    {
+      GraphNode* gLaunchLeave     = *launchIter;
+
+      if ( gLaunchLeave->isEnter( ) )
+      {
+        continue;
+      }
+
+      uint64_t refDeviceProcessId =
+        gLaunchLeave->getGraphPair( ).first->getReferencedStreamId( );
+
+      // found the last kernel launch (leave) on this stream, break
+      if ( ( refDeviceProcessId == deviceStreamId ) &&
+           ( gLaunchLeave->getTime( ) <= timestamp ) )
+      {
+        // if this is the latest kernel launch leave so far, remember it
+        if ( !lastLaunchLeave ||
+             ( gLaunchLeave->getTime( ) > lastLaunchLeave->getTime( ) ) )
+        {
+          lastLaunchLeave = gLaunchLeave;
+        }
+        break;
+      }
+    }
+  }
+  return lastLaunchLeave;
 }
 
 void
@@ -377,51 +501,4 @@ void
 AnalysisParadigmCUDA::removeEventQuery( uint64_t eventId )
 {
   eventQueryMap.erase( eventId );
-}
-
-/** 
- * Find last kernel launch (leave record) which launched on deviceProcId and 
- * happened before timestamp.
- */
-GraphNode*
-AnalysisParadigmCUDA::getLastLaunchLeave( uint64_t timestamp,
-                                          uint64_t deviceStreamId ) const
-{
-  GraphNode* lastLaunchLeave = NULL;
-
-  for ( IdNodeListMap::const_iterator listIter =
-          pendingKernelLaunchMap.begin( );
-        listIter != pendingKernelLaunchMap.end( ); ++listIter )
-  {
-    for ( GraphNode::GraphNodeList::const_reverse_iterator launchIter =
-            listIter->second.rbegin( );
-          launchIter != listIter->second.rend( ); ++launchIter )
-    {
-      GraphNode* gLaunchLeave     = *launchIter;
-
-      if ( gLaunchLeave->isEnter( ) )
-      {
-        continue;
-      }
-
-      uint64_t refDeviceProcessId =
-        gLaunchLeave->getGraphPair( ).first->getReferencedStreamId( );
-
-      /* found the last kernel launch (leave) on this stream, break
-       **/
-      if ( ( refDeviceProcessId == deviceStreamId ) &&
-           ( gLaunchLeave->getTime( ) <= timestamp ) )
-      {
-        /* if this is the latest kernel launch leave so far, remember
-         * it */
-        if ( !lastLaunchLeave ||
-             ( gLaunchLeave->getTime( ) > lastLaunchLeave->getTime( ) ) )
-        {
-          lastLaunchLeave = gLaunchLeave;
-        }
-        break;
-      }
-    }
-  }
-  return lastLaunchLeave;
 }

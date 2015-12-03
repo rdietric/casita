@@ -33,18 +33,17 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmCUDA* analysis, GraphNode* node )
+      apply( AnalysisParadigmCUDA* analysis, GraphNode* syncLeave )
       {
         // applied at sync
-        if ( !node->isCUDASync( ) || !node->isLeave( ) )
+        if ( !syncLeave->isCUDASync( ) || !syncLeave->isLeave( ) )
         {
           return false;
         }
         
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        /* get the complete execution */
-        GraphNode::GraphNodePair& sync = node->getGraphPair( );
+        GraphNode* syncEnter = syncLeave->getGraphPair( ).first;
 
         /* ignore delta ticks for now until we have a better heuristic */
         /* uint64_t syncDeltaTicks        = commonAnalysis->getDeltaTicks( ); */
@@ -59,7 +58,7 @@ namespace casita
         {
           EventStream* deviceStream = *pIter;
 
-          if ( !sync.first->referencesStream( deviceStream->getId( ) ) )
+          if ( !syncEnter->referencesStream( deviceStream->getId( ) ) )
           {
             continue;
           }
@@ -78,29 +77,28 @@ namespace casita
 
             // if sync start time < kernel end time
             // TODO: what if other kernels are concurrently executed during the sync?
-            if ( sync.first->getTime( ) < kernel.second->getTime( ) )
+            if ( syncEnter->getTime( ) < kernel.second->getTime( ) )
             {
               if ( isFirstKernel )
               {
-                commonAnalysis->newEdge( kernel.second,
-                                         sync.second,
+                commonAnalysis->newEdge( kernel.second, syncLeave,
                                          EDGE_CAUSES_WAITSTATE );
               }
 
-              commonAnalysis->getEdge( sync.first, sync.second )->makeBlocking( );
+              commonAnalysis->getEdge( syncEnter, syncLeave )->makeBlocking( );
 
               // set counters (to sync leave node)
               //\todo: set counters of enter nodes
-              sync.second->incCounter( WAITING_TIME,
-                                       std::min( sync.second->getTime( ),
-                                                 kernel.second->getTime( ) ) -
-                                       std::max( sync.first->getTime( ),
-                                                 kernel.first->getTime( ) ) );
+              syncLeave->incCounter( WAITING_TIME,
+                                     std::min( syncLeave->getTime( ),
+                                               kernel.second->getTime( ) ) -
+                                     std::max( syncEnter->getTime( ),
+                                               kernel.first->getTime( ) ) );
               
               kernel.second->incCounter( BLAME,
-                                         std::min( sync.second->getTime( ),
+                                         std::min( syncLeave->getTime( ),
                                                    kernel.second->getTime( ) ) -
-                                         std::max( sync.first->getTime( ),
+                                         std::max( syncEnter->getTime( ),
                                                    kernel.first->getTime( ) ) );
 
               ruleResult    = true;
