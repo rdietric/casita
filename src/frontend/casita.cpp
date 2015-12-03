@@ -28,6 +28,8 @@
 #include "Parser.hpp"
 #include "Runner.hpp"
 
+#define CASITA_VERSION "1.3"
+
 using namespace casita;
 using namespace casita::io;
 
@@ -43,7 +45,8 @@ main( int argc, char** argv )
   MPI_CHECK( MPI_Comm_rank( MPI_COMM_WORLD, &mpiRank ) );
   MPI_CHECK( MPI_Comm_size( MPI_COMM_WORLD, &mpiSize ) );
 
-  UTILS_MSG( mpiRank == 0, "Running with %d analysis processes", mpiSize );
+  UTILS_MSG( mpiRank == 0, "Running CASITA %s with %d analysis processes", 
+                           CASITA_VERSION, mpiSize );
 
   if ( !Parser::getInstance( ).init( argc, argv ) )
   {

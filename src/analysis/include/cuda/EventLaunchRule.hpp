@@ -33,43 +33,42 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmCUDA* analysis, GraphNode* node )
+      apply( AnalysisParadigmCUDA* analysis, GraphNode* evtRecLeave )
       {
-        if ( !node->isCUDAEventLaunch( ) || !node->isLeave( ) )
+        if ( !evtRecLeave->isCUDAEventLaunch( ) || !evtRecLeave->isLeave( ) )
         {
           return false;
         }
 
         AnalysisEngine* commonAnalysis     = analysis->getCommon( );
 
-        /* get the complete execution */
-        GraphNode::GraphNodePair& evLaunch = node->getGraphPair( );
+        // get the complete execution
+        GraphNode::GraphNodePair& evRecord = evtRecLeave->getGraphPair( );
         EventStream*    refProcess         = commonAnalysis->getStream(
-          node->getReferencedStreamId( ) );
+          evtRecLeave->getReferencedStreamId( ) );
+        
         if ( !refProcess )
         {
           RTException(
             "Event launch %s (%f) does not reference any stream (id = %u)",
-            node->getUniqueName( ).c_str( ),
-            commonAnalysis->getRealTime( node->getTime( ) ),
-            node->getReferencedStreamId( ) );
+            evtRecLeave->getUniqueName( ).c_str( ),
+            commonAnalysis->getRealTime( evtRecLeave->getTime( ) ),
+            evtRecLeave->getReferencedStreamId( ) );
         }
 
         if ( refProcess->isHostStream( ) )
         {
           RTException(
             "Process %s referenced by event launch %s is a host stream",
-            refProcess->getName( ), node->getUniqueName( ).c_str( ) );
+            refProcess->getName( ), evtRecLeave->getUniqueName( ).c_str( ) );
         }
 
         analysis->setEventProcessId(
-          ( (EventNode*)evLaunch.second )->getEventId( ),
-          refProcess->getId( ) );
+          ( (EventNode*)evtRecLeave )->getEventId( ), refProcess->getId( ) );
 
         GraphNode* kernelLaunchLeave = NULL;
 
-        /* if event is on NULL stream, test if any kernel launch can be
-         * found */
+        // if event is on NULL stream, test if any kernel launch can be found
         if ( refProcess->isDeviceNullStream( ) )
         {
           /*Allocation::ProcessList deviceProcs;
@@ -87,22 +86,22 @@ namespace casita
 
           if (kernelLaunchLeave)
           {*/
-          analysis->setLastEventLaunch( (EventNode*)( evLaunch.second ) );
+          analysis->setLastEventLaunch( (EventNode*)( evRecord.second ) );
           return true;
           /* } */
         }
         else
         {
-          /* otherwise, test on its stream only */
+          // otherwise, test on its stream only
           kernelLaunchLeave = analysis->getLastLaunchLeave(
-            evLaunch.first->getTime( ), refProcess->getId( ) );
+            evRecord.first->getTime( ), refProcess->getId( ) );
 
           if ( kernelLaunchLeave )
           {
-            evLaunch.second->setLink( (GraphNode*)kernelLaunchLeave );
+            evRecord.second->setLink( (GraphNode*)kernelLaunchLeave );
           }
 
-          analysis->setLastEventLaunch( (EventNode*)( evLaunch.second ) );
+          analysis->setLastEventLaunch( (EventNode*)( evRecord.second ) );
           return true;
           /* } */
         }

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -44,7 +44,7 @@ namespace casita
 
         /* applied at streamWaitEvent leave */
         if ( node->isEventNode( ) && node->isCUDAStreamWaitEvent( ) )
-        {          
+        {
           uint64_t referencedDevWaitProc = node->getReferencedStreamId( );
           if ( !referencedDevWaitProc )
           {
@@ -85,25 +85,24 @@ namespace casita
         /* ... and applied at kernel leave */
         if ( node->isCUDAKernel( ) )
         {
-          /* get the complete execution of this kernel */
-          GraphNode::GraphNodePair waitingKernel =
-            ( (GraphNode*)node )->getGraphPair( );
+          GraphNode* waitingKernelEnter =
+            ( (GraphNode*)node )->getGraphPair( ).first;
 
           bool ruleMatched = false;
           bool insertWaitState = false;
           std::set< GraphNode* >   processedSyncKernelLeaves;
 
-          uint64_t   waitStateEnterTime          =
-            std::numeric_limits< uint64_t >::max( );
-          GraphNode* lastSyncKernelLeave         = NULL;
+          uint64_t waitStateEnterTime = std::numeric_limits< uint64_t >::max( );
+          
+          GraphNode* lastSyncKernelLeave = NULL;
 
           /* get launch for this (waiting) kernel */
           GraphNode* waitingKernelLaunchEnter    =
-            (GraphNode*)waitingKernel.first->getLink( );
+            (GraphNode*)waitingKernelEnter->getLink( );
           if ( !waitingKernelLaunchEnter )
           {
             ErrorUtils::getInstance( ).throwError( "Kernel %s has no matching kernel launch",
-                               waitingKernel.first->getUniqueName( ).c_str( ) );
+                               waitingKernelEnter->getUniqueName( ).c_str( ) );
             
             return false;
           }
@@ -198,8 +197,7 @@ namespace casita
               return false;
             }
 
-            /* don't add multiple dependencies to the same (syncing)
-             * kernel */
+            // do not add multiple dependencies to the same (sync) kernel
             if ( processedSyncKernelLeaves.find( syncKernelLeave ) !=
                  processedSyncKernelLeaves.end( ) )
             {
@@ -210,7 +208,7 @@ namespace casita
 
             /* add dependency */
             commonAnalysis->newEdge( syncKernelLeave,
-                                     waitingKernel.first,
+                                     waitingKernelEnter,
                                      EDGE_CAUSES_WAITSTATE );
 
             /* insert wait state only if launch of next (waiting)
@@ -275,18 +273,18 @@ namespace casita
             /* add wait state if a preceeding leave node in this stream has
              * been found which ends earlier than the current kernel started */
             if ( lastLeaveNode &&
-                 ( waitStateEnterTime < waitingKernel.first->getTime( ) ) )
+                 ( waitStateEnterTime < waitingKernelEnter->getTime( ) ) )
             {
               Edge* kernelKernelEdge = commonAnalysis->getEdge(
-                lastLeaveNode, waitingKernel.first );
+                lastLeaveNode, waitingKernelEnter );
               if ( !kernelKernelEdge )
               {
                 ErrorUtils::getInstance( ).throwError(
                   "Did not find expected edge [%s (p %u), %s (p %u)]",
                   lastLeaveNode->getUniqueName( ).c_str( ),
                   lastLeaveNode->getStreamId( ),
-                  waitingKernel.first->getUniqueName( ).c_str( ),
-                  waitingKernel.first->getStreamId( ) );
+                  waitingKernelEnter->getUniqueName( ).c_str( ),
+                  waitingKernelEnter->getStreamId( ) );
                 return false;
               }
 
@@ -303,11 +301,9 @@ namespace casita
 
               commonAnalysis->newEdge( lastLeaveNode, waitEnter );
               commonAnalysis->newEdge( waitEnter, waitLeave, EDGE_IS_BLOCKING );
-              commonAnalysis->newEdge( waitLeave, waitingKernel.first );
+              commonAnalysis->newEdge( waitLeave, waitingKernelEnter );
 
-              /* set counters */
-              //\todo: write counters to enter node
-              //waitEnter
+              // set counters
               waitLeave->setCounter( WAITING_TIME, 1 );
 
               /* add dependency to all sync kernel leave nodes */

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014,
+ * Copyright (c) 2014-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -81,7 +81,7 @@ namespace casita
       addPendingKernelLaunch( GraphNode* launch );
 
       GraphNode*
-      consumePendingKernelLaunch( uint64_t kernelStreamId );
+      consumeFirstPendingKernelLaunchEnter( uint64_t kernelStreamId );
 
       void
       addStreamWaitEvent( uint64_t deviceProcId, EventNode* streamWaitLeave );
@@ -100,22 +100,28 @@ namespace casita
 
       GraphNode*
       getLastLaunchLeave( uint64_t timestamp, uint64_t deviceStreamId ) const;
+      
+      void 
+      printDebugInformation( uint64_t eventId );
 
     private:
-      /* maps event ID to (cuEventRecord) leave node */
+      //!< maps event ID to last (cuEventRecord) leave node for this event
       IdEventNodeMap     eventLaunchMap;
 
-      /* maps event ID to (cuEventQuery) leave node */
+      //!< maps event ID to (cuEventQuery) leave node
       IdEventNodeMap     eventQueryMap;
 
-      /* maps (device) stream ID to list of (cuStreamWaitEvent)
-       * leave nodes */
+      //!< maps (device) stream ID to list of (cuStreamWaitEvent) leave nodes
       IdEventsListMap    streamWaitMap;
 
-      /* maps event ID to (device) stream ID */
-      IdIdMap eventProcessMap;
+      //!< maps event ID to (device) stream ID
+      IdIdMap            eventProcessMap;
+      
+      //!< 
       NullStreamWaitList nullStreamWaits;
-      /* Contains a list of nodes for every stream */
+      
+      //!< list of nodes for every (device) stream; 
+      // <stream, list of nodes>
       IdNodeListMap      pendingKernelLaunchMap;
   };
 
