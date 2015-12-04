@@ -409,8 +409,8 @@ Runner::mergeActivityGroups( )
 
   uint64_t globalBlame    = 0;
   uint64_t lengthCritPath =
-    analysis.getLastGraphNode( PARADIGM_COMPUTE_LOCAL )->getTime( ) -
-    analysis.getSourceNode( )->getTime( ); // the source node has time "0"
+    analysis.getLastNode( )->getTime( ) - analysis.getSourceNode( )->getTime( ); 
+    // the source node has time "0"
   
   //\todo: use global length of the critical path! Do not use source node, 
   //       but first real node. Do not use local last graph node, but global
