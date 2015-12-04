@@ -19,6 +19,7 @@
 #include "AbstractRule.hpp"
 #include "graph/GraphNode.hpp"
 #include "graph/EventNode.hpp"
+#include "EventStream.hpp"
 #include "otf/OTF2KeyValueList.hpp"
 #include "otf/ITraceReader.hpp"
 
@@ -107,7 +108,7 @@ namespace casita
    protected:
      AnalysisEngine* commonAnalysis;
      std::vector< AbstractRule* > rules;
-
+     
      static bool
      rulePriorityCompare( AbstractRule* r1, AbstractRule* r2 )
      {

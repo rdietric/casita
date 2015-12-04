@@ -255,6 +255,32 @@ AnalysisEngine::handleKeyValuesLeave( ITraceReader*     reader,
   }
 }
 
+void
+AnalysisEngine::addDeferredNode( GraphNode* node )
+{
+  deferredNodes.push_back( node );
+}
+
+void
+AnalysisEngine::processDeferredNodes( Paradigm paradigm )
+{
+  if( deferredNodes.size() == 0 )
+    return;
+  
+  UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+             "[%u] Processing %lu deferred nodes", 
+             getMPIRank(), deferredNodes.size() );
+  
+  for ( EventStream::SortedGraphNodeList::const_iterator nIter = deferredNodes.begin( );
+        nIter != deferredNodes.end( ); ++nIter )
+  {
+    applyRules( *nIter, paradigm, false );
+  }
+  
+  // clear the deferred nodes after processing them
+  deferredNodes.clear();
+}
+
 EventStream*
 AnalysisEngine::getNullStream( ) const
 {
@@ -511,7 +537,7 @@ AnalysisEngine::writeOTF2EventStreams( int verbose )
     }
 
     uint64_t events_read_per_stream = 0;
-    events_available = writer->writeStream( p, &( this->getGraph( ) ), 
+    events_available |= writer->writeStream( p, &( this->getGraph( ) ), 
                                             &events_read_per_stream );
     
     events_read += events_read_per_stream;

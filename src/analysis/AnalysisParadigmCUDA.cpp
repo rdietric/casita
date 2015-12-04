@@ -138,6 +138,10 @@ AnalysisParadigmCUDA::handleKeyValuesLeave( ITraceReader*     reader,
   }
 }
 
+
+//////////////////////////////////////////////////////////////
+////////////// CUDA rules support functions //////////////////
+
 void
 AnalysisParadigmCUDA::setLastEventLaunch( EventNode* eventLaunchLeave )
 {
