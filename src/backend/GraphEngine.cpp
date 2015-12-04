@@ -340,6 +340,8 @@ GraphEngine::getLastNode( ) const
       }
     }
   }
+  
+  streams.clear();
 
   return lastNode;
 }
@@ -466,17 +468,17 @@ GraphEngine::createIntermediateBegin( )
         iter != streams.end( ); ++iter )
   {
     EventStream* p = *iter;
-    EventStream::SortedGraphNodeList& nodes = p->getNodes();
+    EventStream::SortedGraphNodeList& nodes = p->getNodes( );
     
-    GraphNode* startNode = nodes.front();
+    //GraphNode* startNode = nodes.front( );
     
     // todo check for > 1
     if ( nodes.size( ) > 0 )
     {      
       //do not remove the last node (last collective leave)
-      nodes.pop_back();
+      nodes.pop_back( );
       
-      EventStream::SortedGraphNodeList::const_iterator it = nodes.begin();
+      EventStream::SortedGraphNodeList::const_iterator it = nodes.begin( );
       
       // keep the first node (stream begin node)
       ++it;
@@ -498,29 +500,38 @@ GraphEngine::createIntermediateBegin( )
     // do that for all streams, only the MPI?
     if ( p->getStreamType() == EventStream::ES_HOST )
     {
-      GraphNode* lastNode = p->getLastNode();
+      GraphNode* lastNode = p->getLastNode( );
 
       // set the stream's last node to type atomic (the collective end node)
       lastNode->setRecordType( RECORD_ATOMIC );
+      //lastNode->setParadigm( PARADIGM_ALL );
       
       // clear the nodes vector and reset first and last node of the stream
       p->clearNodes();
       
       // add node to event stream
-      p->addGraphNode( startNode, NULL );
+      //p->addGraphNode( startNode, NULL );
       p->addGraphNode( lastNode, NULL );
       
       // add the stream's start node and previously end node to the empty graph
-      graph.addNode(startNode);
-      graph.addNode(lastNode);
+      //graph.addNode(startNode);
+      graph.addNode( lastNode );
       
       // create and add a new edge (with paradigm MPI) between the above added nodes
-      Paradigm paradigm_mpi = PARADIGM_MPI;
-      newEdge( startNode, lastNode, EDGE_NONE, &paradigm_mpi );
+      //Paradigm paradigm_mpi = PARADIGM_MPI;
+      //newEdge( startNode, lastNode, EDGE_NONE, &paradigm_mpi );
+      newEdge( globalSourceNode, lastNode ); 
       
       UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
                  "[%"PRIu64"] Created intermediate start node: %s",
                  p->getId(), lastNode->getUniqueName( ).c_str() );
+    }
+    else
+    {
+      // clear nodes of device streams
+      p->clearNodes();
+      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+                 "[%"PRIu64"] Cleared nodes list", p->getId() );
     }
   }
   

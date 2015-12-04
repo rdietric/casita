@@ -720,6 +720,12 @@ namespace casita
      {
        recordType = type;
      }
+     
+     void
+     setParadigm( Paradigm p )
+     {
+       paradigm = p;
+     }
 
      Paradigm
      getParadigm( ) const
