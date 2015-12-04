@@ -63,11 +63,11 @@ namespace casita
             continue;
           }
 
-          /* test that there is a pending kernel (leave) */
+          // test that there is a pending kernel (leave)
           bool isFirstKernel        = true;
           while ( true )
           {
-            GraphNode* kernelLeave           = deviceStream->getPendingKernel( );
+            GraphNode* kernelLeave = deviceStream->getPendingKernel( );
             if ( !kernelLeave )
             {
               break;
@@ -76,7 +76,7 @@ namespace casita
             GraphNode::GraphNodePair& kernel = kernelLeave->getGraphPair( );
 
             // if sync start time < kernel end time
-            // TODO: what if other kernels are concurrently executed during the sync?
+            //\todo: What if other kernels are concurrently executed during the sync?
             if ( syncEnter->getTime( ) < kernel.second->getTime( ) )
             {
               if ( isFirstKernel )

@@ -147,6 +147,20 @@ namespace casita
      void
      runAnalysis( Paradigm paradigm, EventStream::SortedGraphNodeList& allNodes, 
                   bool verbose );
+     
+     /**
+      * Add a node to the deferred nodes list that could not be processed.
+      * 
+      * @param node node to be deferred.
+      */
+     void
+     addDeferredNode( GraphNode* node);
+     
+     /**
+      * Process all nodes in the deferred nodes list. 
+      */
+     void
+     processDeferredNodes( Paradigm paradigm );
 
    private:
      MPIAnalysis mpiAnalysis;
@@ -154,6 +168,9 @@ namespace casita
      // map of analysis paradigms
      typedef std::map< Paradigm, IAnalysisParadigm* > AnalysisParadigmsMap;
      AnalysisParadigmsMap      analysisParadigms;
+     
+     //!< defer nodes that could not be processed
+     EventStream::SortedGraphNodeList deferredNodes;
 
      io::IParallelTraceWriter* writer;
      

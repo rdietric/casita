@@ -495,6 +495,7 @@ GraphEngine::createIntermediateBegin( )
     // clean up stream internal data, keep graphData (first and last node)
     p->reset();
 
+    // do that for all streams, only the MPI?
     if ( p->getStreamType() == EventStream::ES_HOST )
     {
       GraphNode* lastNode = p->getLastNode();
@@ -518,7 +519,7 @@ GraphEngine::createIntermediateBegin( )
       newEdge( startNode, lastNode, EDGE_NONE, &paradigm_mpi );
       
       UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-                 "[%llu] Created intermediate start node: %s",
+                 "[%"PRIu64"] Created intermediate start node: %s",
                  p->getId(), lastNode->getUniqueName( ).c_str() );
     }
   }

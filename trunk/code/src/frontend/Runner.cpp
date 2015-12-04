@@ -1384,6 +1384,7 @@ Runner::runAnalysis( Paradigm                          paradigm,
   size_t ctr       = 0, last_ctr = 0;
   size_t num_nodes = allNodes.size( );
 
+  // apply paradigm specific rules
   for ( EventStream::SortedGraphNodeList::const_iterator nIter = allNodes.begin( );
         nIter != allNodes.end( ); ++nIter )
   {
@@ -1411,6 +1412,9 @@ Runner::runAnalysis( Paradigm                          paradigm,
 
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0 && !options.analysisInterval, 
              "[0] 100%%" );
+  
+  // apply rules on pending nodes
+  //analysis.processDeferredNodes( paradigm );
 
 #ifdef DEBUG
   clock_t time_sanity_check = clock();

@@ -165,7 +165,7 @@ CallbackHandler::handleDefProcess( ITraceReader*     reader,
   }
 
   UTILS_MSG( handler->getOptions( ).verbose >= VERBOSE_BASIC,
-                 "  [%u] Found stream %s (%lu) with type %u, stream %u",
+                 "  [%u] Found stream %s (%"PRIu64") with type %u, stream %u",
                  analysis.getMPIRank( ), name, streamId, streamType, stream );
 
   analysis.newEventStream( streamId, parentId, name, streamType /*, PARADIGM_CUDA*/ );

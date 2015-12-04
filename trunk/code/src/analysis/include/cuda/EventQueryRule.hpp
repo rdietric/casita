@@ -33,36 +33,35 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmCUDA* analysis, GraphNode* node )
+      apply( AnalysisParadigmCUDA* analysis, GraphNode* queryLeave )
       {
 
-        if ( !node->isCUDAEventQuery( ) || !node->isLeave( ) )
+        if ( !queryLeave->isCUDAEventQuery( ) || !queryLeave->isLeave( ) )
         {
           return false;
         }
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        EventNode*      evQueryLeave   = (EventNode*)node;
+        EventNode* evQueryLeave   = (EventNode*)queryLeave;
 
-        /* link to previous matching event query */
+        // link to previous matching event query
         analysis->linkEventQuery( evQueryLeave );
 
+        // we can return, if the function result of the event query is unknown
         if ( evQueryLeave->getFunctionResult( ) == EventNode::FR_UNKNOWN )
         {
-          /* nothing to do here */
           return true;
         }
+        
+        // the query was successful -> event finished
 
-        /* get the complete execution */
-        GraphNode::GraphNodePair& evQuery = evQueryLeave->getGraphPair( );
-
-        /* consume mapping for this event ID */
+        // consume mapping for this event ID
         analysis->removeEventQuery( evQueryLeave->getEventId( ) );
 
-        /* get the device stream ID this event is queued on */
-        uint64_t refDeviceProcessId       = analysis->getEventProcessId(
-          evQueryLeave->getEventId( ) );
+        // get the device stream ID this event is queued on
+        uint64_t refDeviceProcessId = analysis->getEventProcessId(
+                                                  evQueryLeave->getEventId( ) );
         if ( !refDeviceProcessId )
         {
           ErrorUtils::getInstance( ).throwFatalError(
@@ -72,6 +71,7 @@ namespace casita
         }
 
         /* get the first kernel launch before eventLaunch/enter */
+        
         EventNode* eventLaunchLeave  = analysis->getEventRecordLeave(
           evQueryLeave->getEventId( ) );
         if ( !eventLaunchLeave )
@@ -93,31 +93,25 @@ namespace casita
           if ( !kernelEnter )
           {
             ErrorUtils::getInstance( ).throwError(
-
               "Event query %s (%f) returns success but kernel from %s (%f) did not finish yet",
-              evQueryLeave->getUniqueName( )
-              .c_str( ),
-              commonAnalysis->getRealTime(
-                evQueryLeave->getTime( ) ),
-              kernelLaunch.first->
-              getUniqueName( ).c_str( ),
-              commonAnalysis->getRealTime(
-                kernelLaunch.first->getTime( ) ) );
+              evQueryLeave->getUniqueName( ).c_str( ),
+              commonAnalysis->getRealTime( evQueryLeave->getTime( ) ),
+              kernelLaunch.first->getUniqueName( ).c_str( ),
+              commonAnalysis->getRealTime( kernelLaunch.first->getTime( ) ) );
             return false;
           }
 
-          GraphNode* kernelLeave          = kernelEnter->getGraphPair( ).second;
-          GraphNode::GraphNodePair kernel = kernelLeave->getGraphPair( );
+          GraphNode* kernelLeave = kernelEnter->getGraphPair( ).second;
 
-          if ( evQuery.second->getTime( ) < kernelLeave->getTime( ) )
+          if ( queryLeave->getTime( ) < kernelLeave->getTime( ) )
           {
             throw RTException( "Incorrect timing between %s and %s\n",
-                               evQuery.second->getUniqueName( ).c_str( ),
+                               queryLeave->getUniqueName( ).c_str( ),
                                kernelLeave->getUniqueName( ).c_str( ) );
           }
 
-          /* walk all event query nodes and make blocking if they */
-          /* depend on the kernel */
+          // process all event query nodes and make blocking if they depend on 
+          // the kernel
           EventNode* firstEventQueryLeave = evQueryLeave;
           while ( true )
           {
@@ -129,20 +123,18 @@ namespace casita
 
             GraphNode::GraphNodePair& prevQuery = prev->getGraphPair( );
 
-            if ( kernel.first->getTime( ) <= prevQuery.first->getTime( ) )
+            if ( kernelEnter->getTime( ) <= prevQuery.first->getTime( ) )
             {
               commonAnalysis->getEdge(
                 prevQuery.first, prevQuery.second )->makeBlocking( );
 
               // set counters
-              //\todo: write counters to enter nodes
               prevQuery.second->incCounter( WAITING_TIME,
                 prevQuery.second->getTime( ) - prevQuery.first->getTime( ) );
-              kernel.second->incCounter( BLAME,
+              kernelLeave->incCounter( BLAME,
                 prevQuery.second->getTime( ) - prevQuery.first->getTime( ) );
 
-              /* add a blocking dependency, so it cannot be used */
-              /* for critical path analysis */
+              // add a blocking dependency, so it cannot be used for critical path analysis
               commonAnalysis->newEdge( kernelLeave,
                                        prevQuery.second,
                                        EDGE_IS_BLOCKING );
@@ -151,8 +143,13 @@ namespace casita
             firstEventQueryLeave = prev;
           }
 
-          /* add kernel/last event query leave dependency */
-          commonAnalysis->newEdge( kernelLeave, evQuery.second );
+          // add kernel/last event query leave dependency
+          commonAnalysis->newEdge( kernelLeave, queryLeave );
+          
+          //commonAnalysis->getStream( kernelEnter->getStreamId() )->consumePendingKernel( );
+          // consume all pending kernels before this kernel
+          commonAnalysis->getStream( kernelLeave->getStreamId() )
+                                         ->consumePendingKernels( kernelLeave );
           return true;
         }
 

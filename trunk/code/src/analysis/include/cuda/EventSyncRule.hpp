@@ -61,9 +61,6 @@ namespace casita
 
         AnalysisEngine* commonAnalysis   = analysis->getCommon( );
 
-        // get the enter and leave event pair
-        GraphNode::GraphNodePair& sync   = syncLeave->getGraphPair( );
-
         // get cuEventRecord leave node
         EventNode* eventRecordLeave = analysis->getEventRecordLeave(
           ( (EventNode*)syncLeave )->getEventId( ) );
@@ -95,13 +92,15 @@ namespace casita
                 (eventRecordLeave->getGraphPair( ).first)->getTime();
 
         bool ruleResult = false;
+        
         for ( EventStreamGroup::EventStreamList::const_iterator iter =
                 deviceProcs.begin( ); iter != deviceProcs.end( ); ++iter )
         {
+          uint64_t strmId = ( *iter )->getId( );
           // get last kernel launch leave node of the given device stream 
           // that started before event record enter time
           GraphNode* kernelLaunchLeave = analysis->getLastLaunchLeave(
-                  eventRecordEnterTime, ( *iter )->getId( ) );
+                  eventRecordEnterTime, strmId );
           if ( !kernelLaunchLeave )
           {
             continue;
@@ -117,29 +116,37 @@ namespace casita
             // probably due to time displacement (inaccuracy in Score-P time conversion)
             
             // analysis->printDebugInformation( ( (EventNode*)syncLeave )->getEventId( ) );
+
+            UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME, 
+              "[%u] Cannot apply rule for %s (%f) on stream %s.\n"
+              "Synchronize returned before kernel %s (%f) on stream "
+              "[%u, %s] finished. Deferring node ...",
+              commonAnalysis->getMPIRank( ),
+              syncLeave->getUniqueName( ).c_str( ),
+              commonAnalysis->getRealTime( syncLeave->getTime( ) ),
+              commonAnalysis->getStream( syncLeave->getStreamId( ) )->getName( ),
+              kernelLaunchEnter->getUniqueName( ).c_str( ),
+              commonAnalysis->getRealTime( kernelLaunchEnter->getTime( ) ),
+              kernelLaunchEnter->getReferencedStreamId( ),
+              commonAnalysis->getStream( 
+                kernelLaunchEnter->getReferencedStreamId( ) )->getName( ) );
             
-            //throw RTException(
-            UTILS_MSG(true, 
-                    "[%u] Event sync %s (%f) on stream %s returned but kernel "
-                    "from %s (%f) on stream [%u, %s] did not start/finish yet",
-                    commonAnalysis->getMPIRank( ),
-                    syncLeave->getUniqueName( ).c_str( ),
-                    commonAnalysis->getRealTime( syncLeave->getTime( ) ),
-                    commonAnalysis->getStream( syncLeave->getStreamId( ) )->getName( ),
-                    kernelLaunchEnter->getUniqueName( ).c_str( ),
-                    commonAnalysis->getRealTime( kernelLaunchEnter->getTime( ) ),
-                    kernelLaunchEnter->getReferencedStreamId( ),
-                    commonAnalysis->getStream( kernelLaunchEnter->
-                                               getReferencedStreamId( ) )->
-                    getName( ) );
+            // Store the node in a pending list and process it later.
+            // Walk forward does not work, because other rules have to be processed first.
             
-            //\todo: store the node in a pending list and process it later
+            // Make sure to defer next KernelExecutionRule as well!!!
+            //\todo: mark the kernelLaunch enter node (set the data field to syncEvtLeave node)
+            kernelLaunchEnter->setData( syncLeave );
             
+            // deferring does not work here
+            //commonAnalysis->addDeferredNode( syncLeave );
+            
+            deviceProcs.clear();
             return false;
           }
 
           GraphNode* kernelLeave = kernelEnter->getGraphPair( ).second;
-          if ( !kernelLeave || kernelLeave->getTime( ) > syncLeave->getTime( ) )
+          if ( !kernelLeave )
           {
             throw RTException(
                     "Event sync %s (%f) returned but kernel from %s (%f) on "
@@ -147,37 +154,50 @@ namespace casita
                     syncLeave->getUniqueName( ).c_str( ),
                     commonAnalysis->getRealTime( syncLeave->getTime( ) ),
                     kernelLaunchEnter->getUniqueName( ).c_str( ),
-                    commonAnalysis->getRealTime( kernelLaunchEnter->
-                                                 getTime( ) ),
+                    commonAnalysis->getRealTime( 
+                      kernelLaunchEnter->getTime( ) ),
                     kernelLaunchEnter->getReferencedStreamId( ),
-                    commonAnalysis->getStream( kernelLaunchEnter->
-                                               getReferencedStreamId( ) )->
-                    getName( ) );
+                    commonAnalysis->getStream( 
+                      kernelLaunchEnter->getReferencedStreamId( ) )->getName( ) 
+                    );
+          }
+          else if ( kernelLeave->getTime( ) > syncLeave->getTime( ) )
+          {
+            UTILS_MSG( true, "Host-Device time displacement: %s > %s (%llu s)",
+                      kernelLeave->getUniqueName( ).c_str( ), 
+                      syncLeave->getUniqueName( ).c_str( ),
+                      commonAnalysis->getRealTime(
+                        kernelLeave->getTime( ) - syncLeave->getTime( ) ) 
+                     );
           }
 
           /* ignore delta ticks for now until we have a better heuristic */
           /* uint64_t syncDeltaTicks = commonAnalysis->getDeltaTicks( ); */
 
+          GraphNode* syncEnter = syncLeave->getPartner();
+        
           // sync enter has to be before kernel leave
-          if ( ( sync.first->getTime( ) < kernelLeave->getTime( ) ) )
+          if ( syncEnter->getTime( ) < kernelLeave->getTime( ) )
           {
-            commonAnalysis->getEdge( sync.first, syncLeave )->makeBlocking( );
+            commonAnalysis->getEdge( syncEnter, syncLeave )->makeBlocking( );
 
             // set counters
-            syncLeave->incCounter( WAITING_TIME,
-                                     syncLeave->getTime( ) -
-                                     std::max( sync.first->getTime( ),
-                                               kernelEnter->getTime( ) ) );
-            kernelLeave->incCounter( BLAME,
-                                     syncLeave->getTime( ) -
-                                     std::max( sync.first->getTime( ),
-                                               kernelEnter->getTime( ) ) );
+            uint64_t value = syncLeave->getTime( ) -
+                     std::max( syncEnter->getTime( ), kernelEnter->getTime( ) );
+            syncLeave->incCounter( WAITING_TIME, value );
+            kernelLeave->incCounter( BLAME, value );
           }
 
-          commonAnalysis->newEdge( kernelLeave,
-                                   syncLeave,
+          commonAnalysis->newEdge( kernelLeave, syncLeave, 
                                    EDGE_CAUSES_WAITSTATE );
           ruleResult = true;
+          
+          // consume a pending kernel
+          //commonAnalysis->getStream( kernelEnter->getStreamId() )->consumePendingKernel( );
+          
+          // clear all pending kernels before that kernel
+          commonAnalysis->getStream( kernelLeave->getStreamId() )
+                                         ->consumePendingKernels( kernelLeave );
         }
         
         // clear list of device processes

@@ -417,6 +417,41 @@ EventStream::consumePendingKernel( )
   return NULL;
 }
 
+/**
+ * Consume all pending kernels before the given node.
+ * 
+ * @kernelLeave the kernel leave node
+ */
+void
+EventStream::consumePendingKernels( GraphNode* kernelLeave )
+{
+  // do nothing, if there are no pending kernels
+  if( pendingKernels.empty() )
+    return;
+  
+  // frequent case: kernel is the last one in the list
+  GraphNode*  lastKernel = pendingKernels.back();
+  if( lastKernel == kernelLeave )
+  {
+    clearPendingKernels( );
+  }
+
+  // erase a range of kernels
+  SortedGraphNodeList::iterator iterBegin = pendingKernels.begin( );
+  SortedGraphNodeList::iterator iter = iterBegin;
+  while( iter != pendingKernels.end() )
+  {
+    if( ( *iter ) == kernelLeave )
+    {
+      break;
+    }
+      
+    ++iter;
+  }
+  
+  pendingKernels.erase( iterBegin, iter );
+}
+
 void
 EventStream::clearPendingKernels( )
 {
@@ -1054,9 +1089,9 @@ EventStream::reset( )
 {
   if( !(this->pendingKernels.empty()) )
   {
-    UTILS_MSG( true, "[%u] Clear list of pending kernels (%lu)!", 
-                     this->id, this->pendingKernels.size() );
-    this->pendingKernels.clear();
+    UTILS_MSG( true, "[%"PRIu64"] Clear list of pending kernels (%lu)!", 
+                     getId(), this->pendingKernels.size() );
+    clearPendingKernels( );
   }
   
   //\todo nodes // currently handled in GraphEngine::createIntermediateBegin( )
@@ -1065,13 +1100,13 @@ EventStream::reset( )
   // clear list of unlinked MPI nodes (print to stderr before), the last node is always unlinked!
   if( unlinkedMPINodes.size() > 1 )
   {
-    UTILS_MSG( true, "[%u] Clear list of unlinked MPI nodes (%lu)!", 
+    UTILS_MSG( true, "[%"PRIu64"] Clear list of unlinked MPI nodes (%lu)!", 
                      this->id, this->unlinkedMPINodes.size() );
     
     for ( SortedGraphNodeList::const_iterator iter =
             unlinkedMPINodes.begin( ); iter != unlinkedMPINodes.end( ); ++iter )
     {
-      UTILS_MSG( true, "[%u]   %s", 
+      UTILS_MSG( true, "[%"PRIu64"]   %s", 
                        this->id, ( *iter )->getUniqueName().c_str() );
     }
     
@@ -1088,7 +1123,7 @@ EventStream::reset( )
   // reset list of pending request IDs (non-blocking MPI)
   if( !(pendingRequests.empty()) )
   {
-    UTILS_MSG( true, "[%u] Clear list of pending OTF2 requests (%lu)!", 
+    UTILS_MSG( true, "[%"PRIu64"] Clear list of pending OTF2 requests (%lu)!", 
                      this->id, this->pendingRequests.size() );
     pendingRequests.clear();
   }
@@ -1096,7 +1131,7 @@ EventStream::reset( )
   // clear list of pending non-blocking MPI communication records
   if( !(mpiIcommRecords.empty()) )
   {
-    UTILS_MSG( true, "[%u] Clear list of pending non-blocking MPI communication records (%lu)!", 
+    UTILS_MSG( true, "[%"PRIu64"] Clear list of pending non-blocking MPI communication records (%lu)!", 
                      this->id, this->mpiIcommRecords.size() );
     mpiIcommRecords.clear();
   }

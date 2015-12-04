@@ -158,6 +158,12 @@ namespace casita
 
      GraphNode*
      consumePendingKernel( );
+     
+     /**
+      * Consume all pending kernels before the given node.
+      */
+     void
+     consumePendingKernels( GraphNode* kernelEnter );
 
      void
      clearPendingKernels( );
@@ -326,13 +332,13 @@ namespace casita
      //!< first enter and last leave time
      std::pair< uint64_t, uint64_t > streamPeriod; 
 
-     SortedGraphNodeList pendingKernels;    /* list of unsynchronized
-                                             * kernels (leave records) */
+     //!< list of unsynchronized kernels (leave nodes only)
+     SortedGraphNodeList pendingKernels;
 
-     // pointer to the last node (paradigm independent) of the analysis interval
+     //!< pointer to the last node (paradigm independent) of the analysis interval
      GraphNode*          lastNode;
      
-     // first and last node of the analysis interval (for each paradigm)
+     //<! first and last node of the analysis interval (for each paradigm)
      GraphData           graphData[NODE_PARADIGM_COUNT];
      SortedGraphNodeList nodes;
      SortedGraphNodeList unlinkedMPINodes;
