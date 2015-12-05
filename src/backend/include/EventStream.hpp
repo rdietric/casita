@@ -343,18 +343,17 @@ namespace casita
      SortedGraphNodeList nodes;
      SortedGraphNodeList unlinkedMPINodes;
 
-     /**< pending blocking MPI communcation records */
+     //!< pending blocking MPI communcation records
      MPICommRecordList   mpiCommRecords;
      
-     /**< pending OTF2 request ID to be consumned by MPI_Isend, MPI_Irecv or 
-          MPI_Wait leave node */
+     //!< pending OTF2 request ID to be consumned by MPI_Isend, MPI_Irecv or MPI_Wait leave node
      uint64_t            pendingMPIRequestId;
      uint64_t            mpiIsendPartner; /**< partner ID of the MPI_Isend */
      
-     /**< Pending OTF2 request IDs (not yet associated to a MPI_Wait[all] leave node */
+     //!< Pending OTF2 request IDs (not yet associated to a MPI_Wait[all] leave node
      MPIIcommRequestList pendingRequests;
      
-     /**< pending non-blocking MPI communication records */
+     //!< pending non-blocking MPI communication records
      MPIIcommRecordMap   mpiIcommRecords;
 
      EventStream::SortedGraphNodeList::const_reverse_iterator

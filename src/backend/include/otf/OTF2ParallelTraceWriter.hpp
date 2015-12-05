@@ -112,6 +112,8 @@ namespace casita
       int  verbose;
       
       uint64_t timerResolution;
+      
+      // 
       uint64_t timerOffset;
       
       //!< counter to assign IDs to string definitions
@@ -179,9 +181,10 @@ namespace casita
       //!< save last counter values to avoid writing of unused counter records
       CounterMap lastCounterValues;
       
+#if defined(BLAME_COUNTER)
       //!< activity value stack map < event.location, stack of CounterMaps >
       CounterStackMap leaveCounterStack;
-      size_t counterVectorMax;
+#endif
 
       //!< Keep track of activity stack per process.
       ActivityStackMap activityStack;

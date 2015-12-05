@@ -450,7 +450,7 @@ GraphEngine::getAllNodes( EventStream::SortedGraphNodeList& allNodes ) const
     }
   }
   
-  streams.clear();
+  streams.clear( );
 
   std::sort( allNodes.begin( ), allNodes.end( ), Node::compareLess );
 }
