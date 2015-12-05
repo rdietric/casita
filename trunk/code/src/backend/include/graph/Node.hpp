@@ -642,6 +642,11 @@ namespace casita
        return id;
      }
 
+     /**
+      * Get the node time stamp. Offset has already been subtracted. 
+      * 
+      * @return time stamp of the node
+      */
      uint64_t
      getTime( ) const
      {

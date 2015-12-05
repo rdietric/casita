@@ -695,6 +695,9 @@ Runner::findGlobalLengthCP( )
   {
     UTILS_MSG( true,"[%d] Process is not on the critical path?", mpiRank );
   }
+  
+  UTILS_MSG( true,
+             "[%d] Last time stamp: %llu", mpiRank, lastTime );
     
   // get the global first and last timestamps
   if ( mpiSize > 1 )
@@ -944,7 +947,8 @@ Runner::findLastMpiNode( GraphNode** node )
   {
     myLastMpiNode->setCounter( CRITICAL_PATH, 1 );
 
-    UTILS_DBG_MSG( DEBUG_CPA_MPI,
+    UTILS_MSG( true,
+    //UTILS_DBG_MSG( DEBUG_CPA_MPI,
                "[%u] critical path reverse replay starts at node %s (%f)",
                mpiRank, myLastMpiNode->getUniqueName( ).c_str( ),
                analysis.getRealTime( myLastMpiNode->getTime( ) ) );
@@ -981,9 +985,9 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
   const size_t   BUFFER_SIZE    = ( options.criticalPathSecureMPI ) ? 4 : 3;
 
   // decide on global last MPI node to start with
-  GraphNode*     currentNode    = NULL;
-  GraphNode*     lastNode       = NULL;
-  GraphNode*     sectionEndNode = NULL;
+  GraphNode* currentNode    = NULL;
+  GraphNode* lastNode       = NULL;
+  GraphNode* sectionEndNode = NULL;
   
   bool isMaster   = false;
   int  masterRank = findLastMpiNode( &currentNode );
