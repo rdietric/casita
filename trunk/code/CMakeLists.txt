@@ -80,9 +80,12 @@ FILE(GLOB SRCFILES_BACKEND_OTF2 "src/backend/otf/OTF2*.cpp")
 #    TARGET_LINK_LIBRARIES(otf2reader ${OTF2_LIBS})
 
 # include Boost
-FIND_PACKAGE(Boost REQUIRED COMPONENTS program_options regex filesystem system)
+FIND_PACKAGE(Boost COMPONENTS program_options regex filesystem system)
 INCLUDE_DIRECTORIES(SYSTEM ${Boost_INCLUDE_DIRS})
 SET(LIBS ${LIBS} ${Boost_LIBRARIES})
+IF(Boost_FOUND)
+  ADD_DEFINITIONS(-DBOOST_AVAILABLE=1)
+ENDIF(Boost_FOUND)
 
 # own includes
 INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/src/backend/include" 
