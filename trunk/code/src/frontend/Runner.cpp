@@ -1475,6 +1475,32 @@ Runner::printAllActivities( )
       sortedActivityGroups.insert( iter->second );
     }
 
+    
+      
+    //Print Summary in CSV file (File has to be declared in this scope for closing it)
+    FILE *summaryFile;
+    if (options.createSummaryFile){
+      
+      UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+                 "[%u] create Summary", mpiRank );
+      std::string otfFilename = options.outOtfFile;
+      int startFilename = otfFilename.find_last_of("/")+1; // if there is no "/" find_last_of() returns -1 
+      int endFilename = otfFilename.find_last_of(".");  
+      int lenName = endFilename - startFilename;
+      std::string Filename = otfFilename.substr(startFilename, lenName) + std::string("Summary") + std::string(".csv");
+      
+
+      summaryFile = fopen(Filename.c_str(),"w");
+      fprintf(summaryFile, "%s;%s;%s;%s;%s;%s;%s\n",
+            "Activity Group",
+            "Instances",
+            "Time [s]",
+            "Time on CP [s]",
+            "Fraction CP [%]",
+            "Fraction Global Blame[%]",
+            "Rating" );
+    }
+    
     const size_t max_ctr = 20;
     size_t ctr           = 0;
     for ( std::set< IParallelTraceWriter::ActivityGroup,
@@ -1494,6 +1520,21 @@ Runner::printAllActivities( )
               100.0 * iter->fractionBlame,
               iter->fractionCP +
               iter->fractionBlame );
+      
+        if (options.createSummaryFile){
+              fprintf(summaryFile, "%s;%u;%f;%f;%f%;%f%;%f\n",
+                      analysis.getFunctionName( iter->functionId ),
+                      iter->numInstances,
+                      analysis.getRealTime( iter->totalDuration ),
+                      analysis.getRealTime( iter->totalDurationOnCP ),
+                      100.0 * iter->fractionCP,
+                      100.0 * iter->fractionBlame,
+                      iter->fractionCP +
+                      iter->fractionBlame );
+        }
+    }
+    if (options.createSummaryFile){
+      fclose(summaryFile);
     }
   }
 }

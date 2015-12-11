@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <stack>
 #include <string>
+#include <cstring>
 #include <iostream>
 #include <list>
 #include <algorithm>

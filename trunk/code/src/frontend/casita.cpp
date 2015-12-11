@@ -47,13 +47,26 @@ main( int argc, char** argv )
 
   UTILS_MSG( mpiRank == 0, "Running CASITA %s with %d analysis processes", 
                            CASITA_VERSION, mpiSize );
-
-  if ( !Parser::getInstance( ).init( argc, argv ) )
+                           
+  #if defined(BOOST_AVAILABLE)  
+  if ( !Parser::getInstance( ).init_with_boost( argc, argv ) )
   {
     MPI_CHECK( MPI_Finalize() );
     return -1;
   }
-
+  #elif !defined(BOOST_AVAILABLE)
+  if ( !Parser::getInstance( ).init_without_boost( argc, argv ) )
+  {
+    if (mpiRank == 0){
+        Parser::getInstance().printHelp();
+    }  
+     
+    MPI_CHECK( MPI_Finalize() );
+    return -1;
+  }
+  #endif
+  
+  
   try
   {
     clock_t timestamp = clock();
