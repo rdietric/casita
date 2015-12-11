@@ -27,8 +27,11 @@
 #define OTF2_MPI_UINT64_T MPI_UNSIGNED_LONG
 #define OTF2_MPI_INT64_T MPI_LONG
 
-#include <otf2/OTF2_MPI_Collectives.h>
+#if defined(BOOST_AVAILABLE) 
 #include <boost/filesystem.hpp>
+#endif
+
+#include <otf2/OTF2_MPI_Collectives.h>
 #include <map>
 
 #include "graph/EventNode.hpp"
@@ -40,6 +43,7 @@
 #include "otf/OTF2TraceReader.hpp"
 #include "otf/OTF2ParallelTraceWriter.hpp"
 #include "GraphEngine.hpp"
+#include <Parser.hpp>
 
 using namespace casita;
 using namespace casita::io;
@@ -174,6 +178,8 @@ OTF2ParallelTraceWriter::~OTF2ParallelTraceWriter( )
 void
 OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles )
 {
+  #if defined(BOOST_AVAILABLE)  
+    
   boost::filesystem::path boost_path     = boost::filesystem::system_complete(otfFilename);
   boost::filesystem::path boost_filename = otfFilename;
 
@@ -183,11 +189,21 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
 
   UTILS_MSG( mpiRank == 0 && verbose >= VERBOSE_BASIC, 
              "[0] PATH: '%s'", pathToFile.c_str( ) );
+  
+  #elif !defined(BOOST_AVAILABLE)
 
+  outputFilename = Parser::getInstance().getOutputFilename();
+  pathToFile = Parser::getInstance().getPathToFile();
+  
+  #endif
+
+  
   if ( writeToFile )
   {
+    #if defined(BOOST_AVAILABLE)
     if ( mpiRank == 0 )
     {
+          
       /* remove trace dir */
       if ( boost::filesystem::exists( pathToFile + std::string( "/" ) +
                                       outputFilename ) )
@@ -204,7 +220,10 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
           boost::filesystem::change_extension( otfFilename, "def" ) );
       }
     }
-
+    #endif
+    
+    
+    
     MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
     /* open new otf2 file */
@@ -219,6 +238,7 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
     /* set collective callbacks to write trace in parallel */
     OTF2_MPI_Archive_SetCollectiveCallbacks( archive, commGroup, MPI_COMM_NULL );
   }
+
 
   timerOffset     = 0;
   timerResolution = 0;

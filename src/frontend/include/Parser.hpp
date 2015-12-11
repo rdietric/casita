@@ -12,7 +12,10 @@
 
 #pragma once
 
+#if defined( BOOST_AVAILABLE ) 
 #include <boost/program_options/options_description.hpp>
+#endif
+
 
 #include <string>
 #include <stdexcept>
@@ -22,8 +25,10 @@
 
 namespace casita
 {
+ #if defined( BOOST_AVAILABLE )
  namespace po = boost::program_options;
-
+#endif
+ 
  typedef struct
  {
    bool        createOTF;
@@ -32,13 +37,16 @@ namespace casita
    bool        mergeActivities;
    bool        noErrors;
    bool        ignoreAsyncMpi;
-   uint32_t    analysisInterval;
+   uint32_t        analysisInterval;
+   bool        createSummaryFile;
    int         verbose;
-   //int         memLimit;
+   int         eventsProcessed;
+   int         memLimit;
    std::string outOtfFile;
    std::string filename;
  } ProgramOptions;
-
+ 
+ 
  class Parser
  {
    public:
@@ -48,20 +56,46 @@ namespace casita
      static int getVerboseLevel( );
 
      bool
-     init( int argc, char** argv ) throw ( std::runtime_error );
+     init_with_boost( int argc, char** argv ) throw ( std::runtime_error );
 
+     bool
+     init_without_boost( int argc, char** argv ) throw ( std::runtime_error );
+     
      ProgramOptions&
      getProgramOptions( );
+     
+     void
+     printHelp();
+     
+     std::string
+     getOutputFilename()
+     {
+         return outputFilename;
+     }
+     
+     std::string
+     getPathToFile()
+     {
+         return pathToFile;
+     }
 
    private:
      Parser( );
 
      Parser( Parser& cc );
-
+     
+     void    
+     setOutput_Path_and_Name();
+     
+     bool
+     processArgs( int argc, char** argv);
+     
      bool
      endsWith( std::string const& str, std::string const& ext );
 
      ProgramOptions options;
+     std::string pathToFile;
+     std::string outputFilename;
  };
 
 }

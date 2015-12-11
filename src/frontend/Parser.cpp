@@ -17,18 +17,24 @@
 #include <sstream>
 #include <fstream>
 #include <vector>
-
+#include <stdlib.h>
+#include <unistd.h> //for getcwd
+#include "utils/ErrorUtils.hpp"
 #include "Parser.hpp"
 
+#if defined(BOOST_AVAILABLE)
 #include <boost/program_options.hpp>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/cmdline.hpp>
 #include <boost/program_options/variables_map.hpp>
+#endif
 
 namespace casita
 {
+ #if defined(BOOST_AVAILABLE)
  namespace po = boost::program_options;
-
+ #endif
+ 
  Parser::Parser( )
  {
 
@@ -81,8 +87,9 @@ namespace casita
    return Parser::getInstance().options.verbose;
  }
 
+ #if defined(BOOST_AVAILABLE)
  bool
- Parser::init( int argc, char** argv ) throw ( std::runtime_error )
+ Parser::init_with_boost( int argc, char** argv ) throw ( std::runtime_error )
  {
    // default values
    bool noSummary = false;
@@ -183,7 +190,241 @@ namespace casita
    }
    return true;
  }
+#endif
+ 
+ 
+ void
+ Parser::printHelp(){
+   std::cout << "Usage: casita <otf-file> [options]\n" << std::endl;
+   std::cout << "  -h [--help]             print help message" << std::endl;
+   std::cout << "  -i [--input]   name     input OTF file" << std::endl;
+   std::cout << "  -o [--output]  name     output OTF file" << std::endl;
+   std::cout << "  -v [--verbose] int      verbosity level" << std::endl;
+   std::cout << "     [--summary]          create summary file" << std::endl;
+   std::cout << "  -p [--path]             print critical paths"<< std::endl;
+   std::cout << "     [--no-errors]        ignore non-fatal errors" << std::endl;
+   std::cout << "     [--ignore-nb-mpi]    treat non-blocking MPI functions as CPU functions" << std::endl;
+   
+   std::cout << "     [--secure-mpi-cpa]   Perform MPI critical-path analysis with slave feedback" << std::endl
+             << "                          to ensure that a master has been found." << std::endl
+             << "                          (Avoids a potential deadlock situaton, when no master" << std::endl
+             << "                          has been found.)\n" << std::endl;
+   
+   std::cout << "  -c [--interval-analysis] [uint32_t]   Run analysis in intervals (between global" << std::endl
+             << "                          collectives) to reduce memory footprint. The optional value sets the " << std::endl
+             << "                          number of pending graph nodes before an analysis run is started." << std::endl;
+   
+ 
+ }
 
+ bool
+ Parser::processArgs( int argc, char** argv){
+   
+    std::string opt;
+    for (int i=1;i<argc;i++){
+     opt = std::string(argv[i]);
+
+
+     //  input file:
+     if (i==1 && opt.find_first_of("-") != 0 ){
+       options.filename = std::string(argv[1]);
+     }
+
+     else if (opt.compare(std::string("-i")) == 0){
+       options.filename = std::string(argv[i+1]);
+       i++;
+     }
+
+     else if (opt.find("--input=")!= std::string::npos){
+       options.filename = opt.erase(0,std::string("--input=").length());
+     }
+
+
+     //  output file
+     else if (opt.compare(std::string("-o")) == 0 ){
+       options.outOtfFile = std::string(argv[i+1]);
+       options.createOTF = true;
+       i++;
+     }
+
+     else if ( opt.find("--output=")!= std::string::npos){
+       options.outOtfFile = opt.erase(0,std::string("--output=").length());
+       options.createOTF = true;
+     }
+
+
+     // help
+     else if (opt.compare(std::string("-h")) == 0 || opt.find("--help")!= std::string::npos){
+       return false;
+     }
+
+
+     // verbose
+     else if (opt.compare(std::string("-v")) == 0){
+       options.verbose = atoi(argv[i+1]);
+       i++;
+     }
+
+     else if (opt.find("--verbose=")!= std::string::npos){
+       options.verbose = atoi(opt.erase(0, std::string("--verbose=").length()).c_str());
+     }
+
+
+     //  summary
+     else if (opt.find("--summary")!= std::string::npos){
+       options.createSummaryFile = true;
+     }
+
+
+     // path
+    else if (opt.compare(std::string("-p")) == 0){
+       options.printCriticalPath = true;
+       i++;
+     }
+
+     else if (opt.find("--path=")!= std::string::npos){
+       options.printCriticalPath = true;
+     }
+
+     // no error
+     else if (opt.find("--no-errors=")!= std::string::npos){
+       options.noErrors = true;
+     }
+
+     // ignore non blocking
+     else if (opt.find("--ignore-nb-mpi=")!= std::string::npos){
+       options.ignoreAsyncMpi = true;
+     }
+
+     // secure mpi cpa
+     else if (opt.find("--secure-mpi-cpa=")!= std::string::npos){
+       options.criticalPathSecureMPI = true;
+     }
+
+     // interval analysis TODO: complete optional?
+     else if (opt.compare(std::string("-c")) == 0){
+       options.analysisInterval = atoi(argv[i+1]);
+       i++;
+     }
+
+     else if (opt.find("--interval-analysis=")!= std::string::npos){
+       options.analysisInterval = atoi(opt.erase(0, std::string("--interval-analysis=").length()).c_str());;
+     }
+
+     // if nothing matches 
+     else {
+       std::cout << "Unrecognized option " << opt << std::endl;
+       return false;
+     }
+   }
+    
+    if (options.filename.length()==0){
+        std::cout << "No Inputfile specified" << std::endl;
+        return false;
+    }
+    
+    return true;
+ }
+ 
+ bool
+ Parser::init_without_boost( int argc, char** argv) throw ( std::runtime_error )
+ {
+
+   bool success=false;
+   
+   options.createOTF         = false;
+   options.eventsProcessed   = 0;
+   options.filename          = "";
+   options.mergeActivities   = true;
+   options.noErrors          = false;
+   options.analysisInterval  = 64;
+   options.outOtfFile        = "";
+   options.printCriticalPath = false;
+   options.criticalPathSecureMPI = false;
+   options.verbose           = 0;
+   options.ignoreAsyncMpi    = false;
+   options.createSummaryFile = false;
+
+    
+   success = processArgs(argc,argv);
+      
+   if ( endsWith(options.filename, ".otf2")){
+   #if ( ENABLE_OTF2 != 1 )
+         std::cerr << "OTF2 not supported" << std::endl;
+         return false;
+   #endif
+   }
+   
+   if ( success && options.createOTF){
+      setOutput_Path_and_Name();
+
+      // if the outputfile allready exists, append unique number
+      std::string file = pathToFile +std::string("/")+ outputFilename + std::string(".otf2");
+      if (!access(file.c_str(),0) ) // test if file exists
+      { 
+          int n=2;
+          std::stringstream num;
+          num << n;
+          
+          // search for unique number to append
+          while(!access( (pathToFile +std::string("/")+ outputFilename + std::string("_")+num.str() + std::string(".otf2")).c_str() ,0) ){
+              n++;
+              // clear stringstream and increase 
+              num.str("");
+              num.clear();
+              num << n;
+          }
+          
+          outputFilename = outputFilename + std::string("_") + num.str();
+          options.outOtfFile = outputFilename;
+          std::cout << "Outputfile does already exist,  changed Outputfilename to: " << outputFilename << std::endl;
+
+      }
+
+   }
+   
+   
+   return success;
+ }
+ 
+ void    
+ Parser::setOutput_Path_and_Name(){
+    std::string otfFilename = options.outOtfFile;
+    char currentworkdir[500];   
+    
+    
+    int startFilename = otfFilename.find_last_of("/")+1; // if there is no "/" find_last_of() returns -1 
+    int endFilename = otfFilename.find_last_of(".");
+    int lenName = endFilename - startFilename;
+    
+    
+    outputFilename = otfFilename.substr(startFilename, lenName); //Name without extension
+    getcwd(currentworkdir,500);
+
+
+    // absolute path
+    if ( otfFilename.find_first_of("/") == 0 )
+    { 
+        pathToFile = std::string(currentworkdir).substr(0,startFilename);
+    }
+
+    // relative path
+    else
+    { 
+        if (startFilename == 0)
+        {
+            pathToFile = std::string(currentworkdir) ;
+        }
+        else
+        {
+            pathToFile = std::string(currentworkdir) + std::string("/") + otfFilename.substr(0,startFilename-1);
+        }
+    }
+
+
+}
+
+ 
  ProgramOptions&
  Parser::getProgramOptions( )
  {
