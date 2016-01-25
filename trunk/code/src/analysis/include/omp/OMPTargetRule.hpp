@@ -51,42 +51,46 @@ namespace casita
       apply( AnalysisParadigmOMP* analysis, GraphNode* node )
       {
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
+        EventStream*    nodeStream     = 
+                commonAnalysis->getStream( node->getStreamId( ) );
 
-        EventStream*    nodeStream     = commonAnalysis->getStream(
-          node->getStreamId( ) );
-
+        // for enter nodes
         if ( node->isEnter( ) )
         {
           if ( nodeStream->getStreamType( ) == EventStream::ES_DEVICE )
           {
             analysis->setOmpTargetFirstEvent( node );
+            
             return true;
           }
 
+          // remember the current target begin node
           if ( node->isOMPTargetOffload( ) )
           {
             analysis->setOmpTargetBegin( node );
+            
             return true;
           }
 
           return false;
         }
 
-        /* only leave nodes here */
+        // handle leave nodes (NOT enter nodes)
         if ( nodeStream->getStreamType( ) == EventStream::ES_DEVICE )
         {
           analysis->setOmpTargetLastEvent( node );
+          
           return true;
         }
 
+        // for the leave node of an OpenMP target region
         if ( node->isOMPTargetOffload( ) )
         {
-          /* ignore return value, just erase old entry in mapping
-           *table */
+          // consume the target begin value
           analysis->consumeOmpTargetBegin( node->getStreamId( ) );
 
-          GraphNode* targetBegin    = node->getPartner( );
-          uint64_t   refStreamId    = targetBegin->getReferencedStreamId( );
+          GraphNode* targetBegin = node->getPartner( );
+          uint64_t   refStreamId = targetBegin->getReferencedStreamId( );
 
           if ( !refStreamId )
           {
@@ -150,14 +154,15 @@ namespace casita
         }
         else
         {
+          // for OpenMP target flush region leave node
           if ( node->isOMPTargetFlush( ) )
           {
-            GraphNode* targetBegin = analysis->consumeOmpTargetBegin(
-              node->getStreamId( ) );
+            GraphNode* targetBegin = 
+                    analysis->consumeOmpTargetBegin( node->getStreamId( ) );
             if ( !targetBegin )
             {
               ErrorUtils::getInstance( ).throwError(
-                "[OMPTR] Found OMP target flush %s without target begin",
+                "[OMPT] Found OMP target flush %s without target begin",
                 node->getUniqueName( ).c_str( ) );
             }
 

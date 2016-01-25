@@ -297,6 +297,13 @@ Graph::compareDistancesLess( GraphNode* n1, GraphNode* n2,
   }
 }
 
+/**
+ * 
+ * 
+ * @param n
+ * @param nodes
+ * @param distanceMap
+ */
 void
 Graph::sortedInsert( GraphNode* n, std::list< GraphNode* >& nodes,
                      DistanceMap& distanceMap )
@@ -319,11 +326,19 @@ Graph::sortedInsert( GraphNode* n, std::list< GraphNode* >& nodes,
   nodes.push_front( n );
 }
 
+/**
+ * Detect the longest/critical path between the given start and stop node.
+ * 
+ * @param start start node
+ * @param end end node
+ * @param path the list of critical nodes / the longest path
+ */
 void
 Graph::getLongestPath( GraphNode* start, GraphNode* end,
                        GraphNode::GraphNodeList& path ) const
 {
   const uint64_t infinite  = std::numeric_limits< uint64_t >::max( );
+  
   std::map< GraphNode*, GraphNode* > preds;
   std::map< GraphNode*, uint64_t > distance;
   std::list< GraphNode* > pendingNodes;
@@ -331,65 +346,95 @@ Graph::getLongestPath( GraphNode* start, GraphNode* end,
   const uint64_t startTime = start->getTime( );
   const uint64_t endTime   = end->getTime( );
 
+  // iterate over the nodes of the graph and initialize predecessor relations,
+  // distances and pending nodes
   for ( Graph::NodeList::const_iterator iter = nodes.begin( );
         iter != nodes.end( ); ++iter )
   {
-    uint64_t nodeTime = ( *iter )->getTime( );
+    GraphNode* node     = *iter;
+    uint64_t   nodeTime = node->getTime( );
+    // ignore nodes that are not in the time interval
     if ( nodeTime < startTime || nodeTime > endTime )
     {
       continue;
     }
+    
+    // initialize infinite distances
+    distance[node] = infinite;
+    
+    // initialize predecessors (-> start is pred of start)
+    preds[node] = node;
 
-    GraphNode* gn     = *iter;
-    /** initialize infinite distances */
-    distance[gn] = infinite;
-    /** initialize predecessors (-> start is pred of start) */
-    preds[gn]    = gn;
-
-    if ( gn != start )
+    // initialize pending nodes
+    if ( node != start )
     {
-      pendingNodes.push_back( gn );
+      pendingNodes.push_back( node );
     }
   }
 
+  // set distance of start node to zero
   distance[start] = 0;
+  
+  // make the start node (of the section) the first in the pending nodes list
   pendingNodes.push_front( start );
 
   /* pendingNodes is already sorted after construction */
 
+  // 
+  // until all pending nodes have been processed
   while ( !pendingNodes.empty( ) )
   {
     GraphNode* current_node      = pendingNodes.front( );
     uint64_t   current_node_dist = distance[current_node];
+    
     if ( current_node_dist == infinite )
     {
       break;
     }
 
+    // remove the current node from the pending nodes and its distance
     pendingNodes.pop_front( );
     distance.erase( current_node );
 
+    // if the current node has out edges
     if ( hasOutEdges( current_node ) )
     {
       const Graph::EdgeList& outEdges = getOutEdges( current_node );
 
+      // iterate over the out edges
       for ( Graph::EdgeList::const_iterator iter = outEdges.begin( );
             iter != outEdges.end( ); ++iter )
       {
-        Edge*      edge      = *iter;
+        Edge* edge = *iter;
+
+        // get the node the edge is pointing to
         GraphNode* neighbour = edge->getEndNode( );
+
+        // if (target == end node OR target time < end time)
         if ( ( ( neighbour == end ) || ( neighbour->getTime( ) < endTime ) )
-             && ( distance.find( neighbour ) != distance.end( ) )
-             && ( !edge->isBlocking( ) ) && ( !edge->isReverseEdge( ) ) )
+             && ( distance.find( neighbour ) != distance.end( ) ) // AND target has a distance (is in the interval)
+             && ( !edge->isBlocking( ) ) && ( !edge->isReverseEdge( ) ) ) // AND edge is not blocking or revers
         {
+          /*if( current_node->getParadigm() == PARADIGM_OMP && edge->causesWaitState() )
+          {
+            //UTILS_MSG( strcmp( current_node->getName(), "!$omp implicit barrier @jacobi_cuda.c:361") == 0, 
+            //           "Edge causes wait state" );
+            continue;
+          }*/
+          
+          // compute the distance to the target
           uint64_t alt_distance = current_node_dist + edge->getWeight( );
+          
+          // set new distance if it is smaller than the previous --> find shortest distance
           if ( alt_distance < distance[neighbour] )
           {
             pendingNodes.remove( neighbour );
             distance[neighbour] = alt_distance;
 
             sortedInsert( neighbour, pendingNodes, distance );
-            preds[neighbour]    = current_node;
+            
+            //
+            preds[neighbour] = current_node;
           }
         }
       }
@@ -399,8 +444,7 @@ Graph::getLongestPath( GraphNode* start, GraphNode* end,
   GraphNode* currentNode = end;
   while ( currentNode != start )
   {
-    /* get all ingoing nodes for current node, ignore blocking and */
-    /* reverse edges */
+    // get all ingoing nodes for current node, ignore blocking and reverse edges
     GraphNode::GraphNodeList possibleInNodes;
 
     if ( hasInEdges( currentNode ) )

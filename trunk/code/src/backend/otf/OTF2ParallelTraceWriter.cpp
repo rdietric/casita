@@ -635,6 +635,14 @@ OTF2ParallelTraceWriter::writeStream( EventStream*  stream,
                                       Graph*        graph,
                                       uint64_t*     events_read )
 {
+  // if the period is still default, there is nothing to write
+  if( stream->getPeriod().second == 0 )
+    return true;
+  
+  UTILS_MSG( verbose >= VERBOSE_ALL, "[%u] Write stream %s", 
+             mpiRank, stream->getName() );
+  
+  //\todo: this prohibits parallelization
   currentStream = stream;
   processNodes  = &(stream->getNodes());
   assert( processNodes );
@@ -642,21 +650,41 @@ OTF2ParallelTraceWriter::writeStream( EventStream*  stream,
   currentNodeIter = processNodes->begin( );
   
   // set current node behind first node on host processes since first node is 
-  // an additional start node
-  if ( stream->isHostStream() )
+  // an additional start node / the (atomic) start interval node
+  if ( stream->isHostMasterStream() )
   {
-    currentNodeIter = ++processNodes->begin( );
+    //currentNodeIter = ++processNodes->begin( );
     
     // the following node is for MPI streams the atomic node of the MPI
     // collective (previously the leave node), which we do not want to write
-    if( (*currentNodeIter)->isAtomic() )
+    // but some special handling, e.g. for the CP is needed
+    while( (*currentNodeIter)->isAtomic() )
     {
-      //std::cerr << "Skipping atomic event for writing: " 
-      //          << (*currentNodeIter)->getUniqueName() << std::endl;
+      UTILS_MSG( verbose >= VERBOSE_ALL, "[%u] TraceWriter: Skip atomic (intermediate) event: %s", 
+                 mpiRank, (*currentNodeIter)->getUniqueName().c_str( ) );
+     
+      // first part of the condition should be wrong for the global source node
+      if( ( (*currentNodeIter)->getCounter( CRITICAL_PATH, NULL ) == 1 ) &&
+          ( currentNodeIter + 1 != processNodes->end( ) ) && 
+          ( *( currentNodeIter + 1 ) )->getCounter( CRITICAL_PATH, NULL ) == 0 )
+      {
+        OTF2_Type        type  = OTF2_TYPE_UINT64;
+        OTF2_MetricValue value;
+        OTF2_EvtWriter*  evt_writer = evt_writerMap[stream->getId()];
+
+        value.unsigned_int = 0;
+        lastCounterValues[CRITICAL_PATH] = 0;
+
+        OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, lastEventTime[stream->getId()],
+                                           cTable->getMetricId( CRITICAL_PATH ), 
+                                           1, &type, &value ) );
+      }
+      
       ++currentNodeIter;
     }
   }
 
+  // store a pointer to the graph as class member
   this->graph = graph;
   
   // reset last counter values before processing the current stream
@@ -741,29 +769,44 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& co
     activityGroupMap[event.regionRef].numInstances++;
   }
 
+  // get the activity stack for the current event's location
   ActivityStackMap::const_iterator activityIter = activityStack.find( event.location );
   
-  size_t counters_avail = counters.size();
+  bool onCP = false;
   
-  uint64_t cpValue = counters[ CRITICAL_PATH ];
+  // if there are counters (nodes) available
+  if( counters.size() != 0 )
+  {
+    onCP = counters[ CRITICAL_PATH ];
+  }
+  else
+  {
+    onCP = processOnCriticalPath[event.location];
+  }
 
-  /* add time to current function on stack */
+  // add duration, CP time and blame to current function on stack
   if ( activityIter != activityStack.end( ) && activityIter->second.size( ) > 0 )
   {
     uint32_t currentActivity = activityIter->second.top( );
+    
+    // time between the last and the current event
     uint64_t timeDiff        = event.time - lastEventTime[event.location];
 
     activityGroupMap[currentActivity].totalDuration += timeDiff;
-
+/*
+    UTILS_MSG( onCP, //strcmp( getRegionName(event.regionRef).c_str(), "MPI_Barrier" ) == 0
+               "[%u] %s (type %d): on stack %s (%d) (time: %llu), onCP: %d", 
+               mpiRank, getRegionName(event.regionRef).c_str(), event.type, 
+               getRegionName(currentActivity).c_str(),
+               activityStack[event.location].size( ),
+               event.time, onCP );
+*/
     activityGroupMap[currentActivity].totalDurationOnCP +=
-      ( processOnCriticalPath[event.location] && ( cpValue != 0 ) ) ? timeDiff : 0;
+      //( processOnCriticalPath[event.location] ) ? timeDiff : 0;
+      onCP ? timeDiff : 0;
 
     activityGroupMap[currentActivity].totalBlame += counters[ BLAME ];
   }
-
-  // if there are counters (nodes) available, log if this process is currently on the critical path 
-  if( counters_avail != 0 )
-    processOnCriticalPath[event.location] = cpValue;
 }
 
 /**
@@ -976,10 +1019,12 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
         continue;
       }
       
-      if( lastCounterValues[CRITICAL_PATH] != iter->second )
+      uint64_t onCP = processOnCriticalPath[event.location];
+      //uint64_t onCP = iter->second;
+      if( lastCounterValues[CRITICAL_PATH] != onCP )
       {
-        value.unsigned_int = iter->second;
-        lastCounterValues[CRITICAL_PATH] = iter->second;
+        value.unsigned_int = onCP;
+        lastCounterValues[CRITICAL_PATH] = onCP;
         
         OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
                                            cTable->getMetricId( CRITICAL_PATH ), 
@@ -1047,6 +1092,8 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
     }
 #endif // BLAME_COUNTER
     
+    // The following is currently only for the blame counter
+    
     // reset counter if this enter is the first event on the activity stack
     if ( event.type == OTF2_EVT_ENTER && activityStack[event.location].size( ) == 0 )
     {
@@ -1104,12 +1151,14 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
 
   // if this is a node we are using for analysis
   if ( mapsInternalNode )
-  {    
+  {
     // if we are after the end of the node list
     if ( currentNodeIter == processNodes->end( ) )
     {
-      std::cerr << "[" << mpiRank << "] OTF2 writer: More events than nodes! " 
-                << eventName << " " << event.location << " " << event.time << std::endl;
+      UTILS_MSG( true, "[%u] OTF2 writer: More events than nodes! "
+                       "(%s (%" PRIu64 "): %s (%d) at %" PRIu64 ")", 
+                 mpiRank, currentStream->getName(), event.location, 
+                 eventName.c_str(), event.type, event.time - timerOffset );
     }
     else
     {
@@ -1153,7 +1202,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         }
       }
 
-      // copy node counter values to tmp counter map
+      // copy node counter values to temporary counter map
       const AnalysisMetric::MetricIdSet& metricIdSet = cTable->getAllMetricIds( );
       for ( AnalysisMetric::MetricIdSet::const_iterator metricIter = metricIdSet.begin( );
             metricIter != metricIdSet.end( ); ++metricIter )
@@ -1164,6 +1213,35 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         if ( !( metric->isInternal ) )
         {
           tmpCounters[metricType] = currentNode->getCounter( metricType, NULL );
+          
+          // set CP counter to 0, if the next node is not on the CP 
+          // (because we use counter next mode)
+          if( CRITICAL_PATH == metricType )
+          {
+            processOnCriticalPath[event.location] = (bool) tmpCounters[ CRITICAL_PATH ];
+            
+            // if next node is NOT on the CP
+            if( currentNodeIter + 1 != processNodes->end( ) &&  
+                (*( currentNodeIter + 1 ) )->getCounter( CRITICAL_PATH, NULL ) == 0 )
+            {
+              processOnCriticalPath[event.location] = false;
+            }
+            
+            // if node is leave AND enter has zero as CP counter
+            if( currentNode->isLeave() && 
+                currentNode->getPartner()->getCounter(CRITICAL_PATH, NULL ) == 0 )
+            {
+              //\todo: does that work for visualization (OTF2)
+              // zero the counter, as the activity is not on the CP
+              tmpCounters[ CRITICAL_PATH ] = 0;
+            }
+
+            /*UTILS_MSG( ( strcmp( currentNode->getName(), "MPI_Allreduce") == 0 ) ||  
+                       ( strcmp( currentNode->getName(), "MPI_Sendrecv") == 0 ), 
+                       "[%llu] %s: CP %llu, %d (%d)", 
+                       currentNode->getStreamId(), currentNode->getUniqueName().c_str(), tmpCounters[CRITICAL_PATH], 
+                       processOnCriticalPath[event.location], event.type );*/
+          }
           
 #if defined(BLAME_COUNTER_FALSE)
           /* no special handling for CP counter */
@@ -1184,11 +1262,19 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   }
   else
   { // this is a CPU or unknown event
+    /*
+    UTILS_MSG( strcmp( getRegionName(event.regionRef).c_str(), "stop_timer" ) == 0, 
+              "[%u] stop_timer: '%s' (time: %llu); %d", 
+              mpiRank, getRegionName(event.regionRef).c_str(), 
+              event.time - timerOffset, event.type );
+     */
+    // the currentNodeIter points to a node after the current event
+    
     // compute counters for that event, if we still have internal nodes following
     if ( currentNodeIter != processNodes->end( ) )
     {
-      // compute critical path counter
-      // event is on critical path if next internal node is, too
+      //// Compute critical path counter ////
+      // Event is on critical path if next internal node is, too
       // BUT: if next event is a leave AND the corresponding enter node is not on the CP
       // the nested regions are not on the CP
       if( ( *currentNodeIter )->isLeave() &&
@@ -1198,11 +1284,14 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       }
       else
       {
-        tmpCounters[CRITICAL_PATH]  = ( *currentNodeIter )->getCounter( CRITICAL_PATH, NULL );
+        tmpCounters[CRITICAL_PATH] = ( *currentNodeIter )->getCounter( CRITICAL_PATH, NULL );
       }
       
       // compute blame counter
-      tmpCounters[BLAME] = computeCPUEventBlame( event );
+      uint64_t blame = computeCPUEventBlame( event );
+      //\todo: validate the following if, which affects only the OTF2 output
+      if( blame )
+        tmpCounters[BLAME] = blame;
 
       // non-paradigm events cannot be wait states
       tmpCounters[WAITING_TIME] = 0;
@@ -1838,8 +1927,7 @@ OTF2ParallelTraceWriter::otf2CallbackLeave( OTF2_LocationRef    location, // str
   
   // interrupt reading, if we processed the last read leave event
   if ( tw->mpiSize > 1 && 
-       //tw->currentNodeIter == tw->processNodes->end( ) && !( tw->processNodes->back()->isMPIFinalize() ) 
-       tw->currentStream->getPeriod().second == time - tw->timerOffset )
+       time - tw->timerOffset == tw->currentStream->getPeriod().second )
   {
     return OTF2_CALLBACK_INTERRUPT;
   }

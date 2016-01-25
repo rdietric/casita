@@ -36,7 +36,7 @@ sub test_trace
 
     my $nprocs = $1;
     my $trace_name = $2;
-    #print "Executing 'mpirun -n $nprocs casita ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2 --verbose=1'\n";
+    print "Executing 'mpirun -n $nprocs casita ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2 --verbose=1'\n";
     my @output = qx(mpirun -n $nprocs casita ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2 --verbose=1 2>&1);
     my $status = $? >> 8;
 
@@ -48,7 +48,7 @@ sub test_trace
     }
 
     # test that reading OTF2 trace succeeded
-    my @running_analysis = grep (/Running analysis/, @output);
+    my @running_analysis = grep (/Running CASITA/, @output);
     if (not ($#running_analysis + 1 >= 1))
     {
         print "@output \n\n";

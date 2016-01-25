@@ -101,8 +101,12 @@ namespace casita
             (GraphNode*)waitingKernelEnter->getLink( );
           if ( !waitingKernelLaunchEnter )
           {
-            ErrorUtils::getInstance( ).throwError( "Kernel %s has no matching kernel launch",
-                               waitingKernelEnter->getUniqueName( ).c_str( ) );
+            //ErrorUtils::getInstance( ).throwError( "Kernel %s has no matching kernel launch",
+            UTILS_MSG( true, 
+                    "[%u] Applying StreamWaitRule failed. "
+                    "Kernel %s has no matching kernel launch", 
+                    commonAnalysis->getMPIRank( ),
+                    waitingKernelEnter->getUniqueName( ).c_str( ) );
             
             return false;
           }

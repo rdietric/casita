@@ -54,8 +54,11 @@ namespace casita
 
         if ( !launchEnterEvent )
         {
-          ErrorUtils::getInstance( ).throwError( 
-            "Found kernel %s without matching kernel launch",
+          //ErrorUtils::getInstance( ).throwError( 
+          UTILS_MSG( true, 
+            "[%u] Applying KernelExecutionRule failed. "
+            "Found kernel %s without matching kernel launch.",
+            commonAnalysis->getMPIRank( ),
             kernelLeave->getUniqueName( ).c_str( ) );
           
           return false;

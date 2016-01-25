@@ -40,9 +40,11 @@ namespace casita
  {
    public:
 
+     
+     // keep numbers to the power of two, as required by stream type identification
      enum EventStreamType
      {
-       ES_HOST = 1, ES_DEVICE = 2, ES_DEVICE_NULL = 3
+       ES_HOST = 1, ES_HOST_MASTER = 2, ES_DEVICE = 4, ES_DEVICE_NULL = 8
      };
 
      // Types for blocking MPI communication
@@ -91,8 +93,7 @@ namespace casita
    public:
 
      EventStream( uint64_t id, uint64_t parentId, const std::string name,
-                  EventStreamType eventStreamType, bool remoteStream =
-                    false );
+                  EventStreamType eventStreamType, bool remoteStream = false );
 
      virtual
      ~EventStream( );
@@ -111,6 +112,9 @@ namespace casita
 
      bool
      isHostStream( ) const;
+     
+     bool
+     isHostMasterStream( ) const;
 
      bool
      isDeviceStream( ) const;
@@ -120,6 +124,24 @@ namespace casita
 
      bool
      isRemoteStream( ) const;
+     
+     /**
+      * Compare function:
+      * Sort the streams by stream id, but with host streams first.
+      */
+     static bool
+     streamSort( const EventStream* p1, const EventStream* p2 )
+     {
+       if ( p1->isDeviceStream( ) && p2->isHostStream( ) )
+       {
+         return false;
+       }
+        if ( p2->isDeviceStream( ) && p1->isHostStream( ) )
+       {
+         return true;
+       }
+        return p1->getId( ) <= p2->getId( );
+     }
      
      std::pair< uint64_t, uint64_t >&
      getPeriod( );
@@ -319,6 +341,14 @@ namespace casita
      bool
      walkForward( GraphNode* node, StreamWalkCallback callback, void* userData );
      
+     /**
+      * Did the stream change (new nodes added) since the interval start
+      * 
+      * @return true, if nodes have been added, otherwise false
+      */
+     bool
+     hasNewNodes( );
+     
      void
      reset( );
 
@@ -328,6 +358,7 @@ namespace casita
      const std::string   name;
      EventStreamType     streamType;
      bool                remoteStream;
+     bool                nodesAdded; //!< has the new nodes?
      
      //!< first enter and last leave time
      std::pair< uint64_t, uint64_t > streamPeriod; 

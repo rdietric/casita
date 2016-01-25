@@ -133,7 +133,7 @@ void
 CallbackHandler::handleDefProcess( ITraceReader*     reader,
                                    uint32_t          stream,
                                    uint64_t          streamId,
-                                   uint64_t          parentId,
+                                   uint64_t          parentId, //location group
                                    const char*       name,
                                    OTF2KeyValueList* list,
                                    bool              isCUDA,
@@ -165,8 +165,8 @@ CallbackHandler::handleDefProcess( ITraceReader*     reader,
   }
 
   UTILS_MSG( handler->getOptions( ).verbose >= VERBOSE_BASIC,
-                 "  [%u] Found stream %s (%"PRIu64") with type %u, stream %u",
-                 analysis.getMPIRank( ), name, streamId, streamType, stream );
+             "  [%u] Found stream %s (%"PRIu64") with type %u, parent %"PRIu64,
+             analysis.getMPIRank( ), name, streamId, streamType, parentId );
 
   analysis.newEventStream( streamId, parentId, name, streamType /*, PARADIGM_CUDA*/ );
   
@@ -298,8 +298,10 @@ CallbackHandler::handleLeave( ITraceReader*     reader,
   }
   
   // save the time stamp of the last leave event
-  if( stream->getPeriod().second < time )
-    stream->getPeriod().second = time;
+  if( stream->getPeriod( ).second < time )
+  {
+    stream->getPeriod( ).second = time;
+  }
 
   std::string funcStr = reader->getFunctionName( functionId );
   const char* funcName = funcStr.c_str(); //analysis.getFunctionName( functionId );
@@ -361,6 +363,10 @@ CallbackHandler::handleLeave( ITraceReader*     reader,
   // for debugging
   handler->printNode( leaveNode, stream );
   
+//  if ( functionType.paradigm == PARADIGM_CUDA )
+//  {
+//    std::cerr << "[" << streamId << "] Adding CUDA event " << leaveNode->getUniqueName() << std::endl;
+//  }
   
   // if analysis should be run in intervals (between global collectives)
   if ( analysis.getMPISize() > 1 && options.analysisInterval &&
@@ -376,6 +382,11 @@ CallbackHandler::handleLeave( ITraceReader*     reader,
     if ( mpiCommGroup.procs.size( ) == analysis.getMPISize() )
     {
       analysis.getMPIAnalysis().globalCollectiveCounter++;
+      
+      UTILS_MSG( handler->getOptions( ).verbose >= VERBOSE_ANNOY, 
+                 "[%u] Global collective: %s", 
+                 streamId, leaveNode->getUniqueName().c_str() );
+      
       return true;
     }
   }

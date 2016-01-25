@@ -120,7 +120,7 @@ namespace casita
 
         // I'm not last collective -> blocking + remoteEdge to lastEnter
         if ( lastEnterProcessId != node->getStreamId( ) ) // collStartTime < lastEnterTime )
-        {          
+        {         
           // These nodes/edges are needed for dependency correctness but are
           // omitted since they are currently not used anywhere.
 //           analysis->getMPIAnalysis().addRemoteMPIEdge(coll.second, lastEnterRemoteNodeId, lastEnterProcessId);

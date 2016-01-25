@@ -94,16 +94,7 @@ namespace casita
    // default values
    bool noSummary = false;
 
-   options.createOTF         = false;
-   options.filename          = "";
-   options.mergeActivities   = true;
-   options.noErrors          = false;
-   options.outOtfFile        = "";
-   options.printCriticalPath = false;
-   options.criticalPathSecureMPI = false;
-   options.verbose           = 0;
-   options.ignoreAsyncMpi    = false;
-   options.analysisInterval  = 0;
+   setDefaultValues( );
 
    try
    {
@@ -162,19 +153,9 @@ namespace casita
 
      if ( vm.count( "input" ) != 1 )
      {
-       std::cerr << "Please specify exactly one input OTF file." << std::endl;
+       std::cerr << "Please specify exactly one input OTF2 file." << std::endl;
        std::cerr << desc << "\n";
        return false;
-     }
-     else
-     {
-       if ( endsWith( options.filename, ".otf2" ) )
-       {
-#if ( ENABLE_OTF2 != 1 )
-         std::cerr << "OTF2 not supported" << std::endl;
-         return false;
-#endif
-       }
      }
 
      if ( noSummary )
@@ -201,6 +182,7 @@ namespace casita
    std::cout << "  -o [--output]  name     output OTF file" << std::endl;
    std::cout << "  -v [--verbose] int      verbosity level" << std::endl;
    std::cout << "     [--summary]          create summary file" << std::endl;
+   std::cout << "     [--top] int          print top optimization candidates" << std::endl;
    std::cout << "  -p [--path]             print critical paths"<< std::endl;
    std::cout << "     [--no-errors]        ignore non-fatal errors" << std::endl;
    std::cout << "     [--ignore-nb-mpi]    treat non-blocking MPI functions as CPU functions" << std::endl;
@@ -274,6 +256,12 @@ namespace casita
      else if (opt.find("--summary")!= std::string::npos){
        options.createSummaryFile = true;
      }
+     
+     
+     // print top X activities
+     else if (opt.find("--top=")!= std::string::npos){
+       options.topX = atoi(opt.erase(0, std::string("--top=").length()).c_str());
+     }
 
 
      // path
@@ -327,41 +315,23 @@ namespace casita
  }
  
  bool
- Parser::init_without_boost( int argc, char** argv) throw ( std::runtime_error )
+ Parser::init_without_boost( int mpiRank, int argc, char** argv) 
+ throw ( std::runtime_error )
  {
 
    bool success=false;
    
-   options.createOTF         = false;
-   options.eventsProcessed   = 0;
-   options.filename          = "";
-   options.mergeActivities   = true;
-   options.noErrors          = false;
-   options.analysisInterval  = 64;
-   options.outOtfFile        = "";
-   options.printCriticalPath = false;
-   options.criticalPathSecureMPI = false;
-   options.verbose           = 0;
-   options.ignoreAsyncMpi    = false;
-   options.createSummaryFile = false;
-
+   setDefaultValues( );
     
    success = processArgs(argc,argv);
-      
-   if ( endsWith(options.filename, ".otf2")){
-   #if ( ENABLE_OTF2 != 1 )
-         std::cerr << "OTF2 not supported" << std::endl;
-         return false;
-   #endif
-   }
    
    if ( success && options.createOTF){
       setOutput_Path_and_Name();
 
-      // if the outputfile allready exists, append unique number
+      // if the output file already exists, append unique number
       std::string file = pathToFile +std::string("/")+ outputFilename + std::string(".otf2");
       if (!access(file.c_str(),0) ) // test if file exists
-      { 
+      {
           int n=2;
           std::stringstream num;
           num << n;
@@ -377,12 +347,12 @@ namespace casita
           
           outputFilename = outputFilename + std::string("_") + num.str();
           options.outOtfFile = outputFilename;
-          std::cout << "Outputfile does already exist,  changed Outputfilename to: " << outputFilename << std::endl;
-
+          
+          UTILS_MSG( mpiRank == 0,
+                     "Output file does already exist, changed to: %s",
+                     outputFilename.c_str() );
       }
-
    }
-   
    
    return success;
  }
@@ -430,5 +400,23 @@ namespace casita
  {
    return options;
  }
+ 
+  void
+  Parser::setDefaultValues( )
+  {   
+     options.createOTF         = false;
+     options.eventsProcessed   = 0;
+     options.filename          = "";
+     options.mergeActivities   = true;
+     options.noErrors          = false;
+     options.analysisInterval  = 64;
+     options.outOtfFile        = "";
+     options.printCriticalPath = false;
+     options.criticalPathSecureMPI = false;
+     options.verbose           = 0;
+     options.topX              = 20;
+     options.ignoreAsyncMpi    = false;
+     options.createSummaryFile = false;
+  }
 
 }

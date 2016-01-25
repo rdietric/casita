@@ -219,15 +219,11 @@ int main(int argc, char **argv)
     next_rank = (mpi_rank + 1) % mpi_size;
     last_rank = mpi_size - 1;
     
-    //late_sender(); barrier(); late_sender();
+    late_sender(); barrier(); late_sender();
   
     //isend_recv_root_to_all(); barrier(); irecv_send_ring();
     
-    barrier();
-    
-    irecv_send_ring();
-    
-    barrier();
+    //barrier();  irecv_send_ring(); barrier();
     
     //isend_irecv_wait();
     
