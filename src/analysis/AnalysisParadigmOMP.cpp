@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014,
+ * Copyright (c) 2014-2015,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -210,6 +210,11 @@ AnalysisParadigmOMP::clearBarrierEventList( bool device, GraphNode* caller, int 
   }
 }
 
+/**
+ * Set the OpenMP target begin node for the node's stream. 
+ * 
+ * @param node OpenMP target begin node
+ */
 void
 AnalysisParadigmOMP::setOmpTargetBegin( GraphNode* node )
 {
@@ -217,13 +222,18 @@ AnalysisParadigmOMP::setOmpTargetBegin( GraphNode* node )
        ompTargetRegionBeginMap.end( ) )
   {
     ErrorUtils::getInstance( ).outputMessage(
-      "Warning: Replacing nested target region at %s",
+      "[OpenMP Offloading]: Nested target regions detected. Replacing target begin with %s",
       node->getUniqueName( ).c_str( ) );
   }
 
   ompTargetRegionBeginMap[node->getStreamId( )] = node;
 }
 
+/**
+ * Consume the OpenMP target begin node of the given streamId.
+ * 
+ * @param streamId stream ID where the target begin node shall be consumed
+ */
 GraphNode*
 AnalysisParadigmOMP::consumeOmpTargetBegin( uint64_t streamId )
 {

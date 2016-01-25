@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -34,6 +34,7 @@ EventStream::EventStream( uint64_t          id,
   name( name ),
   streamType( eventStreamType ),
   remoteStream( remoteStream ),
+  nodesAdded( false ),
   lastNode( NULL ),
   pendingMPIRequestId( std::numeric_limits< uint64_t >::max( ) ),
   mpiIsendPartner( std::numeric_limits< uint64_t >::max( ) )
@@ -85,19 +86,25 @@ EventStream::getStreamType( ) const
 bool
 EventStream::isHostStream( ) const
 {
-  return streamType == ES_HOST;
+  return streamType & ( ES_HOST | ES_HOST_MASTER );
+}
+
+bool
+EventStream::isHostMasterStream( ) const
+{
+  return streamType & ES_HOST_MASTER;
 }
 
 bool
 EventStream::isDeviceStream( ) const
 {
-  return streamType != ES_HOST;
+  return streamType & ( ES_DEVICE | ES_DEVICE_NULL );
 }
 
 bool
 EventStream::isDeviceNullStream( ) const
 {
-  return streamType == ES_DEVICE_NULL;
+  return streamType & ES_DEVICE_NULL;
 }
 
 bool
@@ -186,6 +193,9 @@ void
 EventStream::addGraphNode( GraphNode*                  node,
                            GraphNode::ParadigmNodeMap* predNodes )
 {
+  // set changed flag
+  nodesAdded = true;
+  
   GraphNode* lastLocalNode = getLastNode( );
   
   GraphNode* oldNode[NODE_PARADIGM_COUNT];
@@ -261,6 +271,9 @@ EventStream::insertGraphNode( GraphNode*                  node,
                               GraphNode::ParadigmNodeMap& predNodes,
                               GraphNode::ParadigmNodeMap& nextNodes )
 {
+  // set changed flag
+  nodesAdded = true;
+  
   // set the last-node field
   if ( !lastNode || Node::compareLess( lastNode, node ) )
   {
@@ -358,6 +371,17 @@ EventStream::insertGraphNode( GraphNode*                  node,
       }
     }
   }
+}
+
+/**
+ * Did the stream change (new nodes added) since the interval start?
+ * 
+ * @return true, if nodes have been added, otherwise false
+ */
+bool
+EventStream::hasNewNodes( )
+{
+  return nodesAdded;
 }
 
 EventStream::SortedGraphNodeList&
@@ -1087,6 +1111,8 @@ EventStream::addNodeInternal( SortedGraphNodeList& nodes, GraphNode* node )
 void
 EventStream::reset( )
 {
+  nodesAdded = false;
+  
   if( !(this->pendingKernels.empty()) )
   {
     UTILS_MSG( true, "[%"PRIu64"] Clear list of pending kernels (%lu)!", 

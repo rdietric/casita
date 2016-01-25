@@ -54,8 +54,8 @@ main( int argc, char** argv )
     MPI_CHECK( MPI_Finalize() );
     return -1;
   }
-  #elif !defined(BOOST_AVAILABLE)
-  if ( !Parser::getInstance( ).init_without_boost( argc, argv ) )
+  #else
+  if ( !Parser::getInstance( ).init_without_boost( mpiRank, argc, argv ) )
   {
     if (mpiRank == 0){
         Parser::getInstance().printHelp();

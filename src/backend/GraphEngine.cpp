@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -58,6 +58,12 @@ GraphEngine::newEventStream( uint64_t                     id,
                              /*Paradigm                     paradigm,*/
                              bool                         remoteStream )
 {
+  //\todo: check whether that is always true
+  if( id == parentId )
+  {
+    streamType = EventStream::ES_HOST_MASTER;
+  }
+  
   EventStream* p = new EventStream( id,
                                     parentId,
                                     name,
@@ -65,12 +71,15 @@ GraphEngine::newEventStream( uint64_t                     id,
                                     remoteStream );
   streamsMap[id] = p;
 
-  if ( streamType == EventStream::ES_HOST )
+  if ( p->isHostStream() )
   {
-    GraphNode* startNode = newGraphNode( 0, id, name, PARADIGM_ALL,
-                                         RECORD_ATOMIC, MISC_PROCESS );
-    p->addGraphNode( startNode, NULL );
-    newEdge( globalSourceNode, startNode );
+    if( p->isHostMasterStream() )
+    {
+      GraphNode* startNode = newGraphNode( 0, id, name, PARADIGM_ALL,
+                                           RECORD_ATOMIC, MISC_PROCESS );
+      p->addGraphNode( startNode, NULL );
+      newEdge( globalSourceNode, startNode );
+    }
 
     streamGroup.addHostStream( p );
   }
@@ -82,7 +91,7 @@ GraphEngine::newEventStream( uint64_t                     id,
     {
       streamGroup.addDeviceStream( p );
     }
-    else
+    else if ( streamType == EventStream::ES_DEVICE_NULL )
     {
       streamGroup.setNullStream( p );
     }
@@ -460,23 +469,32 @@ GraphEngine::createIntermediateBegin( )
 {
   // clean all lists in the graph and delete edges, node objects are deleted via the streams
   this->graph.cleanup( true );
-  
+
   EventStreamGroup::EventStreamList streams;
   getStreams( streams );
-
+  
+  // sort streams by ID with host streams first
+  // std::sort( streams.begin( ), streams.end( ), EventStream::streamSort );
+  
   for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin( );
         iter != streams.end( ); ++iter )
   {
-    EventStream* p = *iter;
+    bool isMpiStream = false;
+    EventStream* p   = *iter;
+    
     EventStream::SortedGraphNodeList& nodes = p->getNodes( );
     
     //GraphNode* startNode = nodes.front( );
     
     // todo check for > 1
     if ( nodes.size( ) > 0 )
-    {      
-      //do not remove the last node (last collective leave)
-      nodes.pop_back( );
+    {
+      //do not remove the last MPI collective leave node
+      if( nodes.back()->isMPI() )
+      {
+        nodes.pop_back( );
+        isMpiStream = true;
+      }
       
       EventStream::SortedGraphNodeList::const_iterator it = nodes.begin( );
       
@@ -497,8 +515,9 @@ GraphEngine::createIntermediateBegin( )
     // clean up stream internal data, keep graphData (first and last node)
     p->reset();
 
-    // do that for all streams, only the MPI?
-    if ( p->getStreamType() == EventStream::ES_HOST )
+    // create a new global begin node on the MPI synchronization point stream
+    if( isMpiStream )
+    //if ( p->isHostStream() )
     {
       GraphNode* lastNode = p->getLastNode( );
 

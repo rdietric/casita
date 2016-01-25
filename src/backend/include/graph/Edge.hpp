@@ -25,8 +25,8 @@ namespace casita
  enum EdgeProperties
  {
    EDGE_NONE             = 0,
-   EDGE_IS_BLOCKING      = ( 1 << 0 ),
-   EDGE_CAUSES_WAITSTATE = ( 1 << 1 )
+   EDGE_IS_BLOCKING      = ( 1 << 0 ), // edge is a wait state
+   EDGE_CAUSES_WAITSTATE = ( 1 << 1 )  //
  };
 
  class Edge

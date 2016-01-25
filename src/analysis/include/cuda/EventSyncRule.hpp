@@ -118,7 +118,7 @@ namespace casita
             // analysis->printDebugInformation( ( (EventNode*)syncLeave )->getEventId( ) );
 
             UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME, 
-              "[%u] Cannot apply rule for %s (%f) on stream %s.\n"
+              "[%u] Cannot apply EventSyncRule for %s (%f) on stream %s.\n"
               "Synchronize returned before kernel %s (%f) on stream "
               "[%u, %s] finished. Deferring node ...",
               commonAnalysis->getMPIRank( ),

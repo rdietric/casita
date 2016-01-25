@@ -52,18 +52,36 @@ namespace casita
  {
    MetricType  type;
    const char* name;
-   const char* description;   
+   const char* description;
    MetricMode  metricMode;
    bool        isInternal;
    uint32_t    otf2DefId;
  } MetricEntry;
  
- // this table does not define the OTF2 definition ID
+ // Definition of metrics and attributes:
+ //
+ // Blame is computed for each CPU event based on the blame that has been
+ // assigned to edges during the analysis phase. It is currently written as
+ // counter, as we use the time difference between the current and the last 
+ // written event. Hence, we do not need to track the region stack.
+ //
+ // Waiting time can be assigned to regions as attribute, as it will only occur
+ // on events that are also graph nodes (paradigms events). Regions that are 
+ // wait states typically do not have a nested region. For cuCtxSynchronize the 
+ // BUFFER_FLUSH region is nested. Use inclusive mode in Vampir, when creating 
+ // a metric from this attribute. 
+ //
+ // The critical path is written as a counter in absolute next mode. It is 
+ // written, whenever a stream changes between being critical or not. Compared
+ // to the blame counter it does not need to be written with every event. 
+ //
+ // This table does not define the OTF2 definition ID!
  static const MetricEntry METRIC_TABLE[] =
  {
 #if defined(BLAME_COUNTER)
    { BLAME,         "Blame",         
-                    "Amount of caused waiting time", COUNTER_ABSOLUT_LAST, false },
+                    "Amount of caused waiting time", 
+                    COUNTER_ABSOLUT_LAST, false },
 #else
    { BLAME,         "Blame",         
                     "Amount of caused waiting time", ATTRIBUTE,            false },

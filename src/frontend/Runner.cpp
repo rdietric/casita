@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -65,7 +65,7 @@ Runner::Runner( int mpiRank, int mpiSize ) :
     
     // critical path end stream and last critical node time
     criticalPathEnd.first = std::numeric_limits< uint64_t >::max( );
-    criticalPathEnd.second = 0; 
+    criticalPathEnd.second = 0;
   }
 }
 
@@ -333,7 +333,7 @@ Runner::processTrace( ITraceReader* traceReader )
     // writes the OTF2 event streams and computes blame for CPU functions
     if( analysis.writeOTF2EventStreams( options.verbose ) == false && events_available )
     {
-      UTILS_MSG( true, "[%u] Reader and writer are not synchronous! Aborting ...", 
+      UTILS_MSG( true, "[%d] Reader and writer are not synchronous! Aborting ...", 
                        mpiRank );
       events_available = false;
     }
@@ -394,9 +394,20 @@ Runner::processTrace( ITraceReader* traceReader )
                "Number of analysis intervals: %u", ++analysis_intervals );
   }
   
-  UTILS_MSG( options.verbose >= VERBOSE_BASIC, 
+  UTILS_MSG( options.verbose >= VERBOSE_SOME, 
                "[%u] Total number of processed events: %llu", 
                mpiRank, total_events_read );
+  
+  // print the total number of processed events over all processes
+  if( options.verbose >= VERBOSE_BASIC )
+  {
+    uint64_t total_events = 0;
+    MPI_CHECK( MPI_Reduce( &total_events_read, &total_events, 1, 
+                           MPI_UNSIGNED_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD ) );
+    
+    UTILS_MSG( mpiRank == 0, "Total number of processed events: %llu", 
+                             total_events );
+  }
 }
 
 void
@@ -408,12 +419,8 @@ Runner::mergeActivityGroups( )
   assert( activityGroupMap );
 
   uint64_t globalBlame    = 0;
-  uint64_t lengthCritPath =
-    analysis.getLastNode( )->getTime( ) - analysis.getSourceNode( )->getTime( ); 
-    // the source node has time "0"
-  
-  //\todo: use global length of the critical path! Do not use source node, 
-  //       but first real node. Do not use local last graph node, but global
+  uint64_t lengthCritPath = globalLengthCP;
+  //  analysis.getLastNode( )->getTime( ) - analysis.getSourceNode( )->getTime( );
   
   /*UTILS_MSG( true, "CP length (%llu - %llu) = %llu", 
              analysis.getLastGraphNode( PARADIGM_COMPUTE_LOCAL )->getTime( ),
@@ -596,11 +603,13 @@ Runner::computeCriticalPath( )
                (options.criticalPathSecureMPI) ? "(with slave feedback)" : "" );
     detectCriticalPathMPIP2P( sectionsList, criticalNodes );
     
-    // detect the critical path within all sections individually
-    UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-               "Start critical-path detection for sections ..." );
     if( sectionsList.size() > 0 )
     {
+      // detect the critical path within all sections individually
+      UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+                 "Start critical-path detection for %llu sections ...",
+                 sectionsList.size() );
+      
       getCriticalLocalNodes( sectionsList, criticalNodes );
       
       sectionsList.clear();
@@ -647,10 +656,12 @@ Runner::computeCriticalPath( )
       if( currentTime == 0 )
         continue;
 
-      //\todo: clean up this exception! maybe  not needed any more
-      if( currentNode->isMPIInit() && currentNode->isLeave() ){
+      //\todo: clean up this exception! maybe not needed any more
+      /*if( currentNode->isMPIInit() && currentNode->isLeave() ){
+        UTILS_MSG( true,
+             "[%u] MPIInit leave", mpiRank );
         currentTime = currentNode->getPartner()->getTime();
-      }
+      }*/
 
       if ( currentTime < criticalPathStart.second )
       {
@@ -690,14 +701,19 @@ Runner::findGlobalLengthCP( )
     firstTime = analysis.getStream( criticalPathStart.first )->getPeriod().first;
     lastTime  = analysis.getStream( criticalPathEnd.first )->getPeriod().second;
   }
+//  else
+//  {
+//    UTILS_MSG( true, "[%d] No critical first (stream %llu) or last time (stream %llu)", mpiRank,
+//               criticalPathStart.first, criticalPathEnd.first );
+//  }
 
   if( std::numeric_limits< uint64_t >::max( ) == firstTime || 0 == lastTime )
   {
-    UTILS_MSG( true,"[%d] Process is not on the critical path?", mpiRank );
+    UTILS_MSG( options.verbose >= VERBOSE_BASIC, 
+               "[%d] Process is not on the critical path?", mpiRank );
   }
   
-  UTILS_MSG( true,
-             "[%d] Last time stamp: %llu", mpiRank, lastTime );
+  //UTILS_MSG( true, "[%d] Last time stamp: %llu", mpiRank, lastTime );
     
   // get the global first and last timestamps
   if ( mpiSize > 1 )
@@ -725,11 +741,11 @@ Runner::findGlobalLengthCP( )
 
 /**
  * Compute the critical path between two nodes of the same process
- * (might have multiple event streams).
+ * (which might have multiple event streams).
  *
  * @param start    local non-MPI start node
  * @param end      local non-MPI end node
- * @param cpNodes  list to store nodes of computed cp in
+ * @param cpNodes  list to store nodes of computed CP in
  * @param subGraph subgraph between the two nodes
  */
 void
@@ -785,40 +801,31 @@ Runner::getCriticalLocalNodes( MPIAnalysis::CriticalSectionsList& sections,
   //Graph*     subGraph   = analysis.getGraph( PARADIGM_ALL ); 
   uint32_t   lastSecCtr = 0;
 
+  // compute all MPI-local critical sections in parallel
   #pragma omp parallel for
   for ( uint32_t i = 0; i < sections.size(); ++i )
   {
     MPIAnalysis::CriticalPathSection* section = &( sections[i] );
-
-    uint32_t sectionStartNodeID = section->startNode->getId();
-    uint32_t sectionEndNodeID   = section->endNode->getId();
-
-    UTILS_MSG( options.verbose > VERBOSE_ALL,
-               "[%d] computing local critical path between MPI nodes [%u, %u] on process %lu",
-               mpiRank,
-               sectionStartNodeID,
-               sectionEndNodeID,
-               section->streamID );
     
     GraphNode* startNode = section->startNode;
-    GraphNode* endNode = section->endNode;
+    GraphNode* endNode   = section->endNode;
 
     if ( !startNode || !endNode )
     {
-      throw RTException( "[%d] Did not find local nodes for node IDs %u and %u",
-                         mpiRank, sectionStartNodeID, sectionEndNodeID );
+      throw RTException( "[%d] Did not find local nodes!",
+                         mpiRank );
     }
     else
     {
       UTILS_MSG( options.verbose > VERBOSE_ALL,
-                 "[%d] node mapping: %u = %s (%f), %u = %s (%f)",
-                 mpiRank, sectionStartNodeID,
-                 startNode->getUniqueName( ).c_str( ),
-                 analysis.getRealTime( startNode->getTime( ) ),
-                 sectionEndNodeID, endNode->getUniqueName( ).c_str( ),
-                 analysis.getRealTime( endNode->getTime( ) ) );
+                 "[%d] computing local critical path between MPI nodes [%s, %s] "
+                 "on process %lu",
+                 mpiRank,
+                 startNode->getUniqueName().c_str(),
+                 endNode->getUniqueName().c_str(),
+                 section->streamID );
     }
-
+    
     if ( startNode->isEnter( ) )
     {
       startNode = startNode->getPartner( );
@@ -947,8 +954,7 @@ Runner::findLastMpiNode( GraphNode** node )
   {
     myLastMpiNode->setCounter( CRITICAL_PATH, 1 );
 
-    UTILS_MSG( true,
-    //UTILS_DBG_MSG( DEBUG_CPA_MPI,
+    UTILS_DBG_MSG( DEBUG_CPA_MPI,
                "[%u] critical path reverse replay starts at node %s (%f)",
                mpiRank, myLastMpiNode->getUniqueName( ).c_str( ),
                analysis.getRealTime( myLastMpiNode->getTime( ) ) );
@@ -999,7 +1005,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
 
   // mpiGraph is an allocated graph object with a vector of all nodes of the 
   // given paradigm (\TODO this might be extremely memory intensive)
-  Graph*   mpiGraph = analysis.getGraph( PARADIGM_MPI );
+  Graph* mpiGraph = analysis.getGraph( PARADIGM_MPI );
   
   uint64_t *sendBfr = new uint64_t[BUFFER_SIZE];
   uint64_t *recvBfr = new uint64_t[BUFFER_SIZE];
@@ -1008,7 +1014,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
   {
     if ( isMaster )
     {
-      // master
+      ///////////////////////////// master ////////////////////////////////
       if ( lastNode )
       {
         UTILS_MSG( options.verbose >= VERBOSE_ANNOY,
@@ -1027,33 +1033,40 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
       }
 
       UTILS_MSG( lastNode && ( lastNode->getId( ) <= currentNode->getId( ) ),
-                 "[%u] ! [Warning] current node ID %u (%s) is not strictly decreasing"
-                 "; last node ID %u (%s)", 
+                 "[%u] ! [Warning] current node ID %u (%s) is not strictly "
+                 "decreasing; last node ID %u (%s)", 
                  mpiRank, currentNode->getId( ), currentNode->getUniqueName().c_str(),
                  lastNode->getId( ), lastNode->getUniqueName().c_str() );
 
+      if( currentNode == NULL )
+        UTILS_MSG( true, "currentNode == NULL" );
+      
       //\todo: the intermediate begin has to be the start of a section
-      if ( currentNode->isLeave( ) )
+      if ( currentNode->isLeave( ) ) // isLeave
       {
-        // isLeave
         Edge* activityEdge = analysis.getEdge(
-          currentNode->getPartner( ), currentNode );
-
-        // CP changes stream on blocking edges or if we are at MPI_Init()
-        if ( activityEdge->isBlocking( ) || currentNode->isMPIInit( ) )
+            currentNode->getPartner( ), currentNode );
+        
+        // CP changes stream on blocking edges
+        if ( activityEdge->isBlocking( ) )
         {
-          // create section for local processing later
+          // therefore, create section for local processing later
           if ( sectionEndNode && ( currentNode != sectionEndNode ) )
           {
             MPIAnalysis::CriticalPathSection section;
-            section.streamID    = currentNode->getStreamId( );
-            section.startNode   = currentNode;
-            section.endNode     = sectionEndNode;
+            section.streamID  = currentNode->getStreamId( );
+            section.startNode = currentNode;
+            section.endNode   = sectionEndNode;
+
+            UTILS_DBG_MSG( DEBUG_CPA_MPI, "[%d] Push critical section [%s,%s]", 
+                           mpiRank, currentNode->getUniqueName( ).c_str(), 
+                           sectionEndNode->getUniqueName( ).c_str());
             sectionsList.push_back( section );
 
+            //\todo: why on CP if edge is blocking?
             currentNode->setCounter( CRITICAL_PATH, 1 );
           }
-          
+
           // communicate with slaves to decide on new master
           GraphNode* commMaster  = currentNode->getGraphPair( ).second;
           bool nodeHasRemoteInfo = false;
@@ -1164,14 +1177,24 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
         if ( currentNode->isMPIInit( ) || currentNode->isAtomic( ) )
         {
           // create critical section for intermediate begin
-          if ( currentNode->isAtomic( ) && currentNode->getParadigm() == PARADIGM_MPI &&
-               sectionEndNode && ( currentNode != sectionEndNode ) )
+          if ( sectionEndNode && ( currentNode != sectionEndNode ) )
           {
             MPIAnalysis::CriticalPathSection section;
-            section.streamID    = currentNode->getStreamId( );
-            section.startNode   = currentNode;
-            section.endNode     = sectionEndNode;
+            section.streamID  = currentNode->getStreamId( );
+            section.startNode = currentNode;
+            section.endNode   = sectionEndNode;
+
+            UTILS_DBG_MSG( DEBUG_CPA_MPI,  
+                           "[%d] Push critical section [%s,%s] (MPI_Init/atomic)", 
+                           mpiRank, currentNode->getUniqueName( ).c_str(), 
+                           sectionEndNode->getUniqueName( ).c_str());
             sectionsList.push_back( section );
+          }
+          else if ( currentNode->isMPIInit( ) )
+          {
+            // add MPI_Init enter to critical nodes, as it is on the CP and needs 
+            // to be considered for global times
+            criticalNodes.push_back( currentNode );
           }
           
           currentNode->setCounter( CRITICAL_PATH, 1 );
@@ -1234,7 +1257,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
                              currentNode->getUniqueName( ).c_str( ) );
         }
       } // END: isEnter (master)
-    } // END: master
+    } ///////////////////////////// END: master ////////////////////////////////
     else
     { 
       //////////////////////////////// slave ////////////////////////////////
@@ -1327,9 +1350,9 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
         //this rank is the new master
         isMaster       = true;
         slaveActivity.second->setCounter( CRITICAL_PATH, 1 );
+        
         lastNode       = slaveActivity.second;
         currentNode    = slaveActivity.first;
-
         sectionEndNode = lastNode;
 
         UTILS_DBG_MSG( DEBUG_CPA_MPI,
@@ -1445,7 +1468,7 @@ Runner::printAllActivities( )
     printf( "\n%50s %10s %10s %11s %12s %21s %9s\n",
             "Activity Group",
             "Instances",
-            "Time",
+            "Time (sec)",
             "Time on CP",
             "Fraction CP",
             "Fraction Global Blame",
@@ -1501,16 +1524,29 @@ Runner::printAllActivities( )
             "Rating" );
     }
     
-    const size_t max_ctr = 20;
+    uint32_t sumInstances   = 0;
+    uint64_t sumDuration    = 0;
+    uint64_t sumDurationCP  = 0;
+    double sumFractionCP    = 0.0;
+    double sumFractionBlame = 0.0;
+    
     size_t ctr           = 0;
     for ( std::set< IParallelTraceWriter::ActivityGroup,
                     IParallelTraceWriter::ActivityGroupCompare >::
           const_iterator iter =
             sortedActivityGroups.begin( );
-          iter != sortedActivityGroups.end( ) && ( ctr < max_ctr );
+          iter != sortedActivityGroups.end( ) && ( ctr < options.topX );
           ++iter )
     {
       ++ctr;
+      
+      // generate a sum of the TOP rated functions
+      sumInstances     += iter->numInstances;
+      sumDuration      += iter->totalDuration;
+      sumDurationCP    += iter->totalDurationOnCP;
+      sumFractionCP    += iter->fractionCP;
+      sumFractionBlame += iter->fractionBlame;
+      
       printf( "%50.50s %10u %10f %11f %11.2f%% %20.2f%%  %7.6f\n",
               analysis.getFunctionName( iter->functionId ),
               iter->numInstances,
@@ -1522,7 +1558,7 @@ Runner::printAllActivities( )
               iter->fractionBlame );
       
         if (options.createSummaryFile){
-              fprintf(summaryFile, "%s;%u;%f;%f;%f%;%f%;%f\n",
+              fprintf(summaryFile, "%s;%u;%lf;%lf;%lf;%lf;%lf\n",
                       analysis.getFunctionName( iter->functionId ),
                       iter->numInstances,
                       analysis.getRealTime( iter->totalDuration ),
@@ -1533,6 +1569,17 @@ Runner::printAllActivities( )
                       iter->fractionBlame );
         }
     }
+    
+    printf( "--------------------------------------------------\n"
+            "%48.48s%2lu %10u %10lf %11lf %11.2lf%% %20.2lf%%\n",
+              "Sum of Top ",
+              ctr,
+              sumInstances,
+              analysis.getRealTime( sumDuration ),
+              analysis.getRealTime( sumDurationCP ),
+              100.0 * sumFractionCP,
+              100.0 * sumFractionBlame );
+    
     if (options.createSummaryFile){
       fclose(summaryFile);
     }

@@ -404,7 +404,7 @@ AnalysisEngine::getRealTime( uint64_t t )
 
 /**
  * Sort the streams by stream id, but with host streams first.
- */
+ 
 static bool
 streamSort( EventStream* p1, EventStream* p2 )
 {
@@ -419,7 +419,7 @@ streamSort( EventStream* p1, EventStream* p2 )
   }
 
   return p1->getId( ) <= p2->getId( );
-}
+}*/
 
 /**
  * Write OTF2 output trace definitions. Should be called only once per rank.
@@ -441,7 +441,7 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
   //\todo why not getLocalStreams( allStreams ) ?
   getStreams( allStreams );
 
-  std::sort( allStreams.begin( ), allStreams.end( ), streamSort );
+  std::sort( allStreams.begin( ), allStreams.end( ), EventStream::streamSort );
 
   writer = NULL;
   if ( strstr( origFilename.c_str( ), ".otf2" ) != NULL )
@@ -519,26 +519,32 @@ AnalysisEngine::writeOTF2EventStreams( int verbose )
   EventStreamGroup::EventStreamList allStreams;
   getStreams( allStreams );
 
-  std::sort( allStreams.begin( ), allStreams.end( ), streamSort );
+  // sort streams by ID with host streams first
+  std::sort( allStreams.begin( ), allStreams.end( ), EventStream::streamSort );
+  
+  // first stream should be the MPI rank
+  //uint64_t masterPeriodEnd = allStreams.front().getPeriod().second;
 
+  // \todo: needed?
   MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
   
   uint64_t events_read = 0;
   
+  // write all process local streams
   for ( EventStreamGroup::EventStreamList::const_iterator pIter =
           allStreams.begin( ); pIter != allStreams.end( ); ++pIter )
   {
-    EventStream* p = *pIter;
+    EventStream* stream = *pIter;
 
-    // write only streams that are local to the process 
-    if ( p->isRemoteStream( ) )
+    // skip remote streams
+    if ( stream->isRemoteStream( ) || stream->hasNewNodes( ) == false )
     {
       continue;
     }
 
     uint64_t events_read_per_stream = 0;
-    events_available |= writer->writeStream( p, &( this->getGraph( ) ), 
-                                            &events_read_per_stream );
+    events_available |= writer->writeStream( stream, &( this->getGraph( ) ), 
+                                             &events_read_per_stream );
     
     events_read += events_read_per_stream;
   }

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -35,56 +35,59 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmOMP* analysis, GraphNode* node )
+      apply( AnalysisParadigmOMP* analysis, GraphNode* barrierLeave )
       {
-        if ( !node->isOMPSync( ) || !node->isLeave( ) )
+        if ( !barrierLeave->isOMPSync( ) || !barrierLeave->isLeave( ) )
         {
           return false;
         }
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
-
-        GraphNode*      enterEvent     = node->getPartner( );
+        GraphNode*      barrierEnter   = barrierLeave->getPartner( );
         EventStream*    nodeStream     = commonAnalysis->getStream(
-          node->getStreamId( ) );
+          barrierLeave->getStreamId( ) );
 
         if ( nodeStream->isDeviceStream( ) )
         {
           return false;
         }
 
-        /* save barrier enter events to BarrierEventList */
-        analysis->addBarrierEventToList( enterEvent, false );
+        // save barrier enter events to BarrierEventList
+        analysis->addBarrierEventToList( barrierEnter, false );
 
         const EventStreamGroup::EventStreamList& streams =
           commonAnalysis->getHostStreams( );
-        const GraphNode::GraphNodeList& barrierList      =
+        
+        // get list with all barrier enter events
+        const GraphNode::GraphNodeList& barrierList =
           analysis->getBarrierEventList( false );
 
-        GraphNode::GraphNodeList::const_iterator iter    = barrierList.begin( );
+        GraphNode::GraphNodeList::const_iterator iter = barrierList.begin( );
         
-        /* keep enter event with max enter timestamp */
-        GraphNode* maxEnterTimeNode = *iter;                               
+        // keep enter event with latest enter timestamp
+        GraphNode* latestEnterNode = *iter;                               
 
-        uint64_t   blame = 0;
+        uint64_t blame = 0;
 
-        /* check if all barriers were passed */
+        // check if all barriers were passed
         if ( streams.size( ) == barrierList.size( ) )
         {
-          /* find last barrierEnter */
+          // find last barrierEnter
           for (; iter != barrierList.end( ); ++iter )
           {
-            if ( ( *iter )->getTime( ) > maxEnterTimeNode->getTime( ) )
+            if ( ( *iter )->getTime( ) > latestEnterNode->getTime( ) )
             {
-              maxEnterTimeNode = *iter;
+              latestEnterNode = *iter;
             }
-            /* accumulate blame, set edges from latest enter to all
-             * other leaves */
           }
+          
+          // accumulate blame, set edges from latest enter to all other leaves
           for ( iter = barrierList.begin( ); iter != barrierList.end( ); ++iter )
           {
             GraphNode::GraphNodePair& barrier = ( *iter )->getGraphPair( );
-            if ( barrier.first != maxEnterTimeNode )
+            
+            // for blocking barrier regions
+            if ( barrier.first != latestEnterNode )
             {
               Edge* barrierEdge = commonAnalysis->getEdge( barrier.first,
                                                            barrier.second );
@@ -92,29 +95,30 @@ namespace casita
                             barrier.first->getUniqueName( ).c_str( ),
                             barrier.second->getUniqueName( ).c_str( ) );
 
-              /* make this barrier a blocking wait state */
+              // make this barrier a blocking wait state
               barrierEdge->makeBlocking( );
-              //\TODO: write wait state and blame on barrier enter node
+              
+              // compute waiting time for this barrier region
               barrier.second->setCounter( WAITING_TIME,
-                                          maxEnterTimeNode->getTime( ) -
+                                          latestEnterNode->getTime( ) -
                                           barrier.first->getTime( ) );
 
-              /* create edge from latest enter to other leaves */
-              commonAnalysis->newEdge( maxEnterTimeNode,
-                                       barrier.second,
-                                       EDGE_CAUSES_WAITSTATE );
+              // create edge from latest enter to other leaves
+              //\todo: check whether it's legal to not have this edge
+              //commonAnalysis->newEdge( latestEnterNode, barrier.second,
+              //                         EDGE_CAUSES_WAITSTATE );
 
-              blame += maxEnterTimeNode->getTime( ) - barrier.first->getTime( );
+              blame += latestEnterNode->getTime( ) - barrier.first->getTime( );
             }
           }
 
-          /* set blame */
+          // set blame
           distributeBlame( commonAnalysis,
-                           maxEnterTimeNode,
+                           latestEnterNode,
                            blame,
                            streamWalkCallback );
 
-          /* clear list of buffered barriers */
+          // clear list of buffered barriers
           analysis->clearBarrierEventList( false );
 
           return true;
