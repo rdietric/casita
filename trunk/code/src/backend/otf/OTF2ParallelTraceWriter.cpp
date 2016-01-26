@@ -1778,19 +1778,14 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaPut( OTF2_LocationRef location,
 }
 
 OTF2_CallbackCode
-OTF2ParallelTraceWriter::otf2CallbackComm_RmaOpCompleteBlocking( OTF2_LocationRef location,
-                                                                 OTF2_TimeStamp
-                                                                 time,
-                                                                 uint64_t
-                                                                 eventPosition,
-                                                                 void*            userData,
-                                                                 OTF2_AttributeList
-                                                                 *
-                                                                 attributeList,
-                                                                 OTF2_RmaWinRef
-                                                                 win,
-                                                                 uint64_t
-                                                                 matchingId )
+OTF2ParallelTraceWriter::otf2CallbackComm_RmaOpCompleteBlocking( 
+                                           OTF2_LocationRef    location,
+                                           OTF2_TimeStamp      time,
+                                           uint64_t            eventPosition,
+                                           void*               userData,
+                                           OTF2_AttributeList* attributeList,
+                                           OTF2_RmaWinRef      win,
+                                           uint64_t            matchingId )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
@@ -1924,7 +1919,7 @@ OTF2ParallelTraceWriter::otf2CallbackLeave( OTF2_LocationRef    location, // str
   }
   
   // interrupt reading, if we processed the last read leave event
-  if ( tw->mpiSize > 1 && 
+  if ( tw->mpiSize > 1 && Parser::getInstance().getProgramOptions().analysisInterval &&
        time - tw->timerOffset == tw->currentStream->getPeriod().second )
   {
     return OTF2_CALLBACK_INTERRUPT;
@@ -1934,20 +1929,14 @@ OTF2ParallelTraceWriter::otf2CallbackLeave( OTF2_LocationRef    location, // str
 }
 
 OTF2_CallbackCode
-OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadFork( OTF2_LocationRef locationID,
-                                                            OTF2_TimeStamp
-                                                            time,
-                                                            uint64_t
-                                                            eventPosition,
-                                                            void*
-                                                            userData,
-                                                            OTF2_AttributeList
-                                                            *
-                                                            attributeList,
-                                                            OTF2_Paradigm
-                                                            paradigm,
-                                                            uint32_t
-                                                            numberOfRequestedThreads )
+OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadFork( 
+                                  OTF2_LocationRef    locationID,
+                                  OTF2_TimeStamp      time,
+                                  uint64_t            eventPosition,
+                                  void*               userData,
+                                  OTF2_AttributeList* attributeList,
+                                  OTF2_Paradigm       paradigm,
+                                  uint32_t            numberOfRequestedThreads )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
