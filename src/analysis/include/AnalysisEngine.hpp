@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -20,8 +20,8 @@
 #include "GraphEngine.hpp"
 #include "MPIAnalysis.hpp"
 #include "graph/EventNode.hpp"
-#include "otf/ITraceReader.hpp"
-#include "otf/IParallelTraceWriter.hpp"
+#include "otf/OTF2TraceReader.hpp"
+#include "otf/OTF2ParallelTraceWriter.hpp"
 
 using namespace casita::io;
 
@@ -105,12 +105,12 @@ namespace casita
      handlePostLeave( GraphNode* node );
 
      void
-     handleKeyValuesEnter( ITraceReader*     reader,
+     handleKeyValuesEnter( OTF2TraceReader*     reader,
                            GraphNode*        node,
                            OTF2KeyValueList* list );
 
      void
-     handleKeyValuesLeave( ITraceReader*     reader,
+     handleKeyValuesLeave( OTF2TraceReader*     reader,
                            GraphNode*        node,
                            GraphNode*        oldNode,
                            OTF2KeyValueList* list );
@@ -137,7 +137,7 @@ namespace casita
      bool
      writeOTF2EventStreams( int verbose );
 
-     io::IParallelTraceWriter::ActivityGroupMap*
+     io::OTF2ParallelTraceWriter::ActivityGroupMap*
      getActivityGroupMap( );
 
      double
@@ -171,7 +171,7 @@ namespace casita
      //!< defer nodes that could not be processed
      EventStream::SortedGraphNodeList deferredNodes;
 
-     io::IParallelTraceWriter* writer;
+     io::OTF2ParallelTraceWriter* writer;
      
      std::map< uint32_t, std::string > functionMap;
      uint32_t maxFunctionId;

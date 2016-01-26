@@ -733,20 +733,6 @@ GraphEngine::runSanityCheck( uint32_t mpiRank )
   streams.clear();
 }
 
-ITraceWriter::ProcessGroup
-GraphEngine::streamTypeToGroup( EventStream::EventStreamType pt )
-{
-  switch ( pt )
-  {
-    case EventStream::ES_DEVICE:
-      return ITraceWriter::PG_DEVICE;
-    case EventStream::ES_DEVICE_NULL:
-      return ITraceWriter::PG_DEVICE_NULL;
-    default:
-      return ITraceWriter::PG_HOST;
-  }
-}
-
 void
 GraphEngine::addCPUEvent( uint64_t time, uint64_t stream )
 {

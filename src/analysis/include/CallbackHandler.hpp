@@ -15,8 +15,7 @@
 #include "Parser.hpp"
 #include "AnalysisEngine.hpp"
 
-#include "otf/ITraceReader.hpp"
-#include "otf/IKeyValueList.hpp"
+#include "otf/OTF2TraceReader.hpp"
 
 namespace casita
 {
@@ -42,41 +41,41 @@ namespace casita
 
      /* handlers */
      static void
-     handleProcessMPIMapping( io::ITraceReader* reader,
+     handleProcessMPIMapping( io::OTF2TraceReader* reader,
                               uint64_t streamId, uint32_t mpiRank );
 
      static void
-     handleDefProcess( io::ITraceReader* reader, uint32_t stream,
+     handleDefProcess( io::OTF2TraceReader* reader, uint32_t stream,
                        uint64_t streamId, uint64_t parentId, const char* name,
                        io::OTF2KeyValueList* list, bool isCUDA, bool isCUDANull );
 
      static void
-     handleDefFunction( io::ITraceReader* reader,
+     handleDefFunction( io::OTF2TraceReader* reader,
                         uint64_t          streamId,
                         uint32_t          functionId,
                         const char*       name,
                         uint32_t          functionGroupId );
      
      static void
-     handleDefAttribute( io::ITraceReader* reader,
+     handleDefAttribute( io::OTF2TraceReader* reader,
                          uint64_t          streamId,
                          uint32_t          key, 
                          const char*       name,
                          const char*       description );
 
      static void
-     handleEnter( io::ITraceReader* reader, uint64_t time, uint32_t functionId,
+     handleEnter( io::OTF2TraceReader* reader, uint64_t time, uint32_t functionId,
                   uint64_t streamId, io::OTF2KeyValueList* list );
 
      static bool
-     handleLeave( io::ITraceReader*  reader,
+     handleLeave( io::OTF2TraceReader*  reader,
                   uint64_t           time,
                   uint32_t           functionId,
                   uint64_t           streamId,
                   io::OTF2KeyValueList* list );
 
      static void
-     handleMPIComm( io::ITraceReader* reader,
+     handleMPIComm( io::OTF2TraceReader* reader,
                     io::MPIType       mpiType,
                     uint64_t          streamId,
                     uint64_t          partnerId,
@@ -84,22 +83,22 @@ namespace casita
                     uint32_t          tag );
 
      static void
-     handleMPICommGroup( io::ITraceReader* reader, uint32_t group,
+     handleMPICommGroup( io::OTF2TraceReader* reader, uint32_t group,
                          uint32_t numProcs, const uint64_t* procs );
 
      static void
-     handleMPIIsend( ITraceReader* reader, uint64_t streamId, uint64_t receiver,
+     handleMPIIsend( OTF2TraceReader* reader, uint64_t streamId, uint64_t receiver,
                      uint64_t request );
      
      static void
-     handleMPIIrecv( ITraceReader* reader, uint64_t streamId, uint64_t sender,
+     handleMPIIrecv( OTF2TraceReader* reader, uint64_t streamId, uint64_t sender,
                      uint64_t request );
 
      static void
-     handleMPIIrecvRequest( ITraceReader* reader, uint64_t streamId, uint64_t request );
+     handleMPIIrecvRequest( OTF2TraceReader* reader, uint64_t streamId, uint64_t request );
 
      static void
-     handleMPIIsendComplete( ITraceReader* reader, uint64_t streamId, uint64_t request );
+     handleMPIIsendComplete( OTF2TraceReader* reader, uint64_t streamId, uint64_t request );
 
    private:
      AnalysisEngine& analysis;
@@ -109,16 +108,16 @@ namespace casita
 
      /* OTF misc */
      void
-     applyStreamRefsEnter( io::ITraceReader* reader, GraphNode* node,
+     applyStreamRefsEnter( io::OTF2TraceReader* reader, GraphNode* node,
                            io::OTF2KeyValueList* list, Paradigm paradigm );
 
      void
-     applyStreamRefsLeave( io::ITraceReader* reader, GraphNode* node,
+     applyStreamRefsLeave( io::OTF2TraceReader* reader, GraphNode* node,
                            GraphNode* oldNode, io::OTF2KeyValueList* list,
                            Paradigm paradigm );
 
      static uint32_t
-     readKeyVal( io::ITraceReader* reader, const char* keyName,
+     readKeyVal( io::OTF2TraceReader* reader, const char* keyName,
                  io::OTF2KeyValueList* list );
      
      /**
@@ -131,7 +130,7 @@ namespace casita
       * @return the uint64_t type attribute
       */
      static uint64_t
-     readKeyValUInt64( io::ITraceReader* reader, const char* keyName,
+     readKeyValUInt64( io::OTF2TraceReader* reader, const char* keyName,
                        io::OTF2KeyValueList* list );
 
  };

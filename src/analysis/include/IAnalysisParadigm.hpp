@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014,
+ * Copyright (c) 2014, 2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -20,8 +20,7 @@
 #include "graph/GraphNode.hpp"
 #include "graph/EventNode.hpp"
 #include "EventStream.hpp"
-#include "otf/OTF2KeyValueList.hpp"
-#include "otf/ITraceReader.hpp"
+#include "otf/OTF2TraceReader.hpp"
 
 using namespace casita::io;
 
@@ -91,14 +90,14 @@ namespace casita
      }
 
      virtual void
-     handleKeyValuesEnter( ITraceReader*     reader,
+     handleKeyValuesEnter( OTF2TraceReader*  reader,
                            GraphNode*        node,
                            OTF2KeyValueList* list )
      {
      }
 
      virtual void
-     handleKeyValuesLeave( ITraceReader*     reader,
+     handleKeyValuesLeave( OTF2TraceReader*  reader,
                            GraphNode*        node,
                            GraphNode*        oldNode,
                            OTF2KeyValueList* list )

@@ -56,9 +56,9 @@ AnalysisParadigmOpenCL::handlePostLeave( GraphNode* node )
 }
 
 void
-AnalysisParadigmOpenCL::handleKeyValuesEnter( ITraceReader*     reader,
-                                            GraphNode*        node,
-                                            OTF2KeyValueList* list )
+AnalysisParadigmOpenCL::handleKeyValuesEnter( OTF2TraceReader* reader,
+                                            GraphNode*         node,
+                                            OTF2KeyValueList*  list )
 {
   uint64_t refValue     = 0;
   int32_t  streamRefKey = reader->getFirstKey( SCOREP_CUDA_STREAMREF );
@@ -80,10 +80,10 @@ AnalysisParadigmOpenCL::handleKeyValuesEnter( ITraceReader*     reader,
  * @param list
  */
 void
-AnalysisParadigmOpenCL::handleKeyValuesLeave( ITraceReader*     reader,
-                                            GraphNode*        node,
-                                            GraphNode*        oldNode,
-                                            OTF2KeyValueList* list )
+AnalysisParadigmOpenCL::handleKeyValuesLeave( OTF2TraceReader* reader,
+                                              GraphNode*       node,
+                                              GraphNode*       oldNode,
+                                              OTF2KeyValueList* list )
 {
   uint64_t refValue     = 0;
   int32_t  streamRefKey = reader->getFirstKey( SCOREP_CUDA_STREAMREF );
