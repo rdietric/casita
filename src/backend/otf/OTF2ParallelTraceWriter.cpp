@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -649,18 +649,16 @@ OTF2ParallelTraceWriter::writeStream( EventStream*  stream,
   
   currentNodeIter = processNodes->begin( );
   
-  // set current node behind first node on host processes since first node is 
-  // an additional start node / the (atomic) start interval node
+  // check the first nodes on host processes. They might be some artificial 
+  // atomic nodes (e.g. global source node or interval start node)
   if ( stream->isHostMasterStream() )
   {
-    //currentNodeIter = ++processNodes->begin( );
-    
     // the following node is for MPI streams the atomic node of the MPI
     // collective (previously the leave node), which we do not want to write
     // but some special handling, e.g. for the CP is needed
     while( (*currentNodeIter)->isAtomic() )
     {
-      UTILS_MSG( verbose >= VERBOSE_ALL, "[%u] TraceWriter: Skip atomic (intermediate) event: %s", 
+      UTILS_MSG( verbose >= VERBOSE_ALL, "[%u] TraceWriter: Skip atomic event: %s", 
                  mpiRank, (*currentNodeIter)->getUniqueName().c_str( ) );
      
       // first part of the condition should be wrong for the global source node

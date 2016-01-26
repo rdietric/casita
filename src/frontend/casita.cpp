@@ -28,7 +28,7 @@
 #include "Parser.hpp"
 #include "Runner.hpp"
 
-#define CASITA_VERSION "1.3"
+#define CASITA_VERSION "1.4"
 
 using namespace casita;
 using namespace casita::io;
