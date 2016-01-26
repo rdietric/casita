@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -42,16 +42,19 @@ namespace casita
  {
    PARADIGM_CPU           = ( 1 << 0 ),
    PARADIGM_CUDA          = ( 1 << 1 ),
-   PARADIGM_MPI           = ( 1 << 2 ),
-   PARADIGM_OMP           = ( 1 << 3 ),
+   PARADIGM_OCL           = ( 1 << 2 ),
+   PARADIGM_MPI           = ( 1 << 3 ),
+   PARADIGM_OMP           = ( 1 << 4 ),
 
-   PARADIGM_COMPUTE_LOCAL = ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_OMP ),
+   PARADIGM_COMPUTE_LOCAL = 
+           ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_OCL | PARADIGM_OMP ),
+           
    PARADIGM_ALL           =
-     ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_MPI | PARADIGM_OMP )
+     ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_OCL | PARADIGM_MPI | PARADIGM_OMP )
  };
 
- const size_t NODE_PARADIGM_COUNT   = 5;
- const size_t NODE_PARADIGM_INVALID = ( 1 << 5 );
+ const size_t NODE_PARADIGM_COUNT   = 6;
+ const size_t NODE_PARADIGM_INVALID = ( 1 << NODE_PARADIGM_COUNT );
 
  enum NodeTypeMisc
  {
@@ -61,44 +64,54 @@ namespace casita
 
  enum NodeTypeCUDA
  {
-   CUDA_SYNC = ( 1 << 1 ),
-   CUDA_COLLSYNC          = ( 1 << 2 ),
-   CUDA_WAITSTATE         = ( 1 << 3 ),
-   CUDA_KERNEL = ( 1 << 4 ),
-   CUDA_KERNEL_LAUNCH     = ( 1 << 5 ),
-   CUDA_EV_SYNC           = ( 1 << 6 ),
-   CUDA_EV_LAUNCH         = ( 1 << 7 ),
-   CUDA_EV_QUERY          = ( 1 << 8 ),
-   CUDA_QUERY = ( 1 << 9 ),
-   CUDA_STREAMWAIT        = ( 1 << 10 )
+   CUDA_SYNC          = ( 1 << 1 ),
+   CUDA_COLLSYNC      = ( 1 << 2 ),
+   CUDA_WAITSTATE     = ( 1 << 3 ),
+   CUDA_KERNEL        = ( 1 << 4 ),
+   CUDA_KERNEL_LAUNCH = ( 1 << 5 ),
+   CUDA_EV_SYNC       = ( 1 << 6 ),
+   CUDA_EV_LAUNCH     = ( 1 << 7 ),
+   CUDA_EV_QUERY      = ( 1 << 8 ),
+   CUDA_QUERY         = ( 1 << 9 ),
+   CUDA_STREAMWAIT    = ( 1 << 10 )
+ };
+ 
+ enum NodeTypeOCL
+ {
+   OCL_SYNC_QUEUE     = ( 1 << 1 ),
+   OCL_WAITSTATE      = ( 1 << 2 ),
+   OCL_KERNEL         = ( 1 << 3 ),
+   OCL_KERNEL_ENQUEUE = ( 1 << 4 ),
+   OCL_EV_SYNC        = ( 1 << 5 ),
+   OCL_EV_QUERY       = ( 1 << 6 )
  };
 
  enum NodeTypeMPI
  {
-   MPI_RECV = ( 1 << 1 ),
-   MPI_SEND = ( 1 << 2 ),
-   MPI_WAIT = ( 1 << 3 ),
-   MPI_COLL = ( 1 << 4 ),
-   MPI_SENDRECV           = ( 1 << 5 ),
-   MPI_MISC = ( 1 << 6 ),
-   MPI_EXIT = ( 1 << 7 ),
-   MPI_WAITSTATE          = ( 1 << 8 ),
-   MPI_ONETOALL           = ( 1 << 9 ),
-   MPI_ALLTOONE           = ( 1 << 10 ),
-   MPI_ISEND = ( 1 << 11 ),
-   MPI_IRECV = ( 1 << 12 ),
-   MPI_WAITALL = ( 1 << 13 ),
-   MPI_TEST = ( 1 << 14 )
+   MPI_RECV      = ( 1 << 1 ),
+   MPI_SEND      = ( 1 << 2 ),
+   MPI_WAIT      = ( 1 << 3 ),
+   MPI_COLL      = ( 1 << 4 ),
+   MPI_SENDRECV  = ( 1 << 5 ),
+   MPI_MISC      = ( 1 << 6 ),
+   MPI_EXIT      = ( 1 << 7 ),
+   MPI_WAITSTATE = ( 1 << 8 ),
+   MPI_ONETOALL  = ( 1 << 9 ),
+   MPI_ALLTOONE  = ( 1 << 10 ),
+   MPI_ISEND     = ( 1 << 11 ),
+   MPI_IRECV     = ( 1 << 12 ),
+   MPI_WAITALL   = ( 1 << 13 ),
+   MPI_TEST      = ( 1 << 14 )
  };
 
  enum NodeTypeOMP
  {
-   OMP_SYNC = ( 1 << 1 ),
-   OMP_FORKJOIN           = ( 1 << 2 ),
-   OMP_COMPUTE = ( 1 << 3 ),
-   OMP_WAITSTATE          = ( 1 << 4 ),
-   OMP_TARGET_OFFLOAD     = ( 1 << 5 ),
-   OMP_TARGET_FLUSH       = ( 1 << 6 )
+   OMP_SYNC           = ( 1 << 1 ),
+   OMP_FORKJOIN       = ( 1 << 2 ),
+   OMP_COMPUTE        = ( 1 << 3 ),
+   OMP_WAITSTATE      = ( 1 << 4 ),
+   OMP_TARGET_OFFLOAD = ( 1 << 5 ),
+   OMP_TARGET_FLUSH   = ( 1 << 6 )
  };
 
  typedef struct
@@ -107,6 +120,12 @@ namespace casita
    const char*  str;
  } TypeStrEntryCUDA;
 
+  typedef struct
+ {
+   NodeTypeOCL type;
+   const char*  str;
+ } TypeStrEntryOpenCL;
+ 
  typedef struct
  {
    NodeTypeMPI type;
@@ -132,6 +151,17 @@ namespace casita
    { CUDA_QUERY, "cuda_query" },
    { CUDA_EV_QUERY, "cuda_event_query" },
    { CUDA_STREAMWAIT, "cuda_streamwait" }
+ };
+ 
+ static const size_t numTypeStrEntriesOCL = 6;
+ static const TypeStrEntryOpenCL typeStrTableOCL[numTypeStrEntriesOCL] =
+ {
+   { OCL_SYNC_QUEUE, "ocl_sync_queue" },
+   { OCL_EV_SYNC, "ocl_event_sync" },
+   { OCL_KERNEL, "ocl_kernel" },
+   { OCL_KERNEL_ENQUEUE, "ocl_kernel_enqueue" },
+   { OCL_WAITSTATE, "ocl_waitstate" },
+   { OCL_EV_QUERY, "ocl_event_query" }
  };
 
  static const size_t numTypeStrEntriesMPI = 11;
@@ -197,6 +227,12 @@ namespace casita
      {
        return paradigm & PARADIGM_CUDA;
      }
+     
+     bool
+     isOpenCL( ) const
+     {
+       return paradigm & PARADIGM_OCL;
+     }
 
      bool
      isMPI( ) const
@@ -229,6 +265,20 @@ namespace casita
      {
 
        return isCUDA( ) && ( nodeType & CUDA_EV_SYNC );
+     }
+     
+     bool
+     isOpenCLQueueSync( ) const
+     {
+
+       return isOpenCL( ) && ( nodeType & OCL_SYNC_QUEUE );
+     }
+     
+     bool
+     isOpenCLEventSync( ) const
+     {
+
+       return isOpenCL( ) && ( nodeType & OCL_EV_SYNC );
      }
 
      bool
@@ -304,6 +354,20 @@ namespace casita
                 ( type & CUDA_EV_SYNC ) ||
                 ( type & CUDA_EV_QUERY ) ||
                 ( type & CUDA_STREAMWAIT ) );
+     }
+     
+     bool
+     isOpenCLKernel( ) const
+     {
+
+       return isOpenCL( ) && ( nodeType & OCL_KERNEL );
+     }
+
+     bool
+     isOpenCLKernelEnqueue( ) const
+     {
+
+       return isOpenCL( ) && ( nodeType & OCL_KERNEL_ENQUEUE );
      }
 
      bool
@@ -443,6 +507,16 @@ namespace casita
              if ( typeStrTableCUDA[i].type & type )
              {
                stream << typeStrTableCUDA[i].str << ",";
+             }
+           }
+           break;
+           
+         case PARADIGM_OCL:
+           for ( i = 0; i < numTypeStrEntriesOCL; ++i )
+           {
+             if ( typeStrTableOCL[i].type & type )
+             {
+               stream << typeStrTableOCL[i].str << ",";
              }
            }
            break;
@@ -590,6 +664,18 @@ namespace casita
              }
 
              if ( ( type2 & CUDA_KERNEL ) && ( type1 & CUDA_SYNC ) )
+             {
+               return false;
+             }
+           }
+           else if ( paradigm1 & PARADIGM_OCL )
+           {
+             if ( ( type1 & OCL_KERNEL ) && ( type2 & OCL_SYNC_QUEUE ) )
+             {
+               return true;
+             }
+
+             if ( ( type2 & OCL_KERNEL ) && ( type1 & OCL_SYNC_QUEUE ) )
              {
                return false;
              }
