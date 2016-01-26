@@ -40,7 +40,7 @@ namespace casita
       applyRule( AnalysisEngine* analysis, GraphNode* node )
       {
         return apply( (AnalysisParadigmOpenCL*)analysis->getAnalysisParadigm(
-                        PARADIGM_OPENCL ), node );
+                        PARADIGM_OCL ), node );
       }
 
     protected:

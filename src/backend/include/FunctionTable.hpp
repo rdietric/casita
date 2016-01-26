@@ -25,6 +25,7 @@
 
 #include "graph/Node.hpp"
 #include "common.hpp"
+#include <Parser.hpp>
 
 #define INVALID_ID 0
 
@@ -45,6 +46,7 @@ namespace casita
    int      type;
  } FunctionDescriptor;
 
+ ///////////////// CUDA functions ////////////////
  static const char* FTABLE_CUDA_COLL_SYNC[] =
  {
    "cuCtxSynchronize",
@@ -111,11 +113,33 @@ namespace casita
    "cuStreamWaitEvent"
  };
 
- static const char* FTABLE_CUDA_WAITSTATE[]    =
+ static const char* FTABLE_GPU_WAITSTATE[]    =
  {
    "__WaitState__"
  };
+ 
+  ///////////////// OpenCL functions ////////////////
+ static const char* FTABLE_OPENCL_QUEUE_SYNC[] =
+ {
+   "clFinish"
+ };
+ 
+ static const char* FTABLE_OPENCL_ENQUEUE[]       =
+ {
+   "clEnqueueNDRangeKernel"
+ };
+ 
+ static const char* FTABLE_OPENCL_EVENT_QUERY[]  =
+ {
+   "clGetEventInfo"
+ };
+ 
+  static const char* FTABLE_OPENCL_EVENT_SYNC[]   =
+ {
+   "clWaitForEvents"
+ };
 
+  ///////////////// MPI functions ////////////////
  static const char* FTABLE_MPI_RECV[]          =
  {
    "MPI_Recv"
@@ -191,7 +215,17 @@ namespace casita
    { CUDA_EV_SYNC, 1, FTABLE_CUDA_EVENT_SYNC },
    { CUDA_EV_LAUNCH, 1, FTABLE_CUDA_EVENT_LAUNCH },
    { CUDA_STREAMWAIT, 1, FTABLE_CUDA_STREAM_WAIT },
-   { CUDA_WAITSTATE, 1, FTABLE_CUDA_WAITSTATE }
+   { CUDA_WAITSTATE, 1, FTABLE_GPU_WAITSTATE }
+ };
+ 
+ static const size_t      fTableEntriesOpenCL = 5;
+ static const FTableEntry fTableOpenCL[fTableEntriesOpenCL] =
+ {
+   { OCL_SYNC_QUEUE, 1, FTABLE_OPENCL_QUEUE_SYNC },
+   { OCL_ENQUEUE_KERNEL, 1, FTABLE_OPENCL_ENQUEUE },
+   { OCL_QUERY_EVENT, 1, FTABLE_OPENCL_EVENT_QUERY },
+   { OCL_SYNC_EVENT, 1, FTABLE_OPENCL_EVENT_SYNC },
+   { OCL_WAITSTATE, 1, FTABLE_GPU_WAITSTATE }
  };
 
  static const size_t      fTableEntriesMPI = 8;
@@ -204,7 +238,7 @@ namespace casita
    { MPI_ALLTOONE, 2, FTABLE_MPI_ALLTOONE },
    { MPI_SENDRECV, 1, FTABLE_MPI_SENDRECV },
    { MPI_MISC, 0, FTABLE_MPI_MISC },
-   { MPI_WAITSTATE, 1, FTABLE_CUDA_WAITSTATE }
+   { MPI_WAITSTATE, 1, FTABLE_GPU_WAITSTATE }
  };
 
  static const size_t      fTableEntriesMPIAsync = 4;
@@ -244,11 +278,12 @@ namespace casita
 
      static bool
      getAPIFunctionType( const char* name, FunctionDescriptor* descr,
-                         bool deviceStream, bool deviceNullStream,
-                         bool ignoreAsyncMpi )
+                         bool deviceStream, bool deviceNullStream )
      {
        descr->paradigm = PARADIGM_CPU;
        descr->type     = 0;
+       
+       bool ignoreAsyncMpi = Parser::getInstance().getProgramOptions().ignoreAsyncMpi;
 
        bool set = false;
 
@@ -290,6 +325,21 @@ namespace casita
            }
          }
        }
+       
+       for ( size_t i = 0; i < fTableEntriesOpenCL; ++i )
+       {
+         FTableEntry entry = fTableOpenCL[i];
+         for ( size_t j = 0; j < entry.numEntries; ++j )
+         {
+           if ( strcmp( entry.table[j], name ) == 0 )
+           {
+             descr->paradigm = PARADIGM_OCL;
+             descr->type     = entry.type;
+             set = true;
+             /* return true; */
+           }
+         }
+       }
 
        for ( size_t i = 0; i < fTableEntriesMPI; ++i )
        {
@@ -324,6 +374,16 @@ namespace casita
                case CUDA_QUERY:
                case CUDA_EV_QUERY:
                case CUDA_STREAMWAIT:
+                 return true;
+             }
+             
+           case PARADIGM_OCL:
+             switch ( descr->type )
+             {
+               case OCL_SYNC_QUEUE:
+               case OCL_SYNC_EVENT:
+               case OCL_QUERY_EVENT:
+               case OCL_ENQUEUE_KERNEL:
                  return true;
              }
 

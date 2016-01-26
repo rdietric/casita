@@ -1142,7 +1142,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   FunctionDescriptor desc;
   const bool isDeviceStream   = deviceStreamMap[event.location];
   const bool mapsInternalNode = FunctionTable::getAPIFunctionType(
-    eventName.c_str( ), &desc, isDeviceStream, false, ignoreAsyncMpi );
+    eventName.c_str( ), &desc, isDeviceStream, false );
 
   // non-internal counter values for this event
   CounterMap tmpCounters;

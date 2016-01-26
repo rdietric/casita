@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -32,10 +32,7 @@ namespace casita
        uint32_t regionRef;
      } OTF2_Barrier_Event;
 
-     CallbackHandler( ProgramOptions& options, AnalysisEngine& analysis );
-
-     ProgramOptions&
-     getOptions( );
+     CallbackHandler( AnalysisEngine& analysis );
 
      AnalysisEngine&
      getAnalysis( );
@@ -105,7 +102,6 @@ namespace casita
      handleMPIIsendComplete( ITraceReader* reader, uint64_t streamId, uint64_t request );
 
    private:
-     ProgramOptions& options;
      AnalysisEngine& analysis;
      int mpiRank;
 

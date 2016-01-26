@@ -44,13 +44,13 @@ namespace casita
 
         AnalysisEngine* commonAnalysis  = analysis->getCommon( );
 
-        GraphNode* kernelEnter     = kernelLeave->getPartner();
+        GraphNode* kernelEnter  = kernelLeave->getPartner();
         uint64_t   kernelStrmId = kernelLeave->getStreamId( );
 
         // find the stream which launched this kernel and consume the launch event
         // the number of kernel launches and kernel executions has to be the same
         GraphNode* launchEnterEvent = 
-                analysis->consumeFirstPendingKernelLaunchEnter( kernelStrmId );
+                analysis->consumeFirstPendingKernelEnqueueEnter( kernelStrmId );
 
         if ( !launchEnterEvent )
         {
@@ -78,7 +78,7 @@ namespace casita
           GraphNode* syncEvtLeave = ( GraphNode* )launchEnterEvent->getData();
           
           // if it is a CUDA event synchronize leave (compare EventSyncRule)
-          if ( syncEvtLeave->isCUDAEventSync( ) && syncEvtLeave->isLeave( ) )
+          if ( syncEvtLeave->isOpenCLEventSync( ) && syncEvtLeave->isLeave( ) )
           {
             GraphNode* syncEvtEnter = syncEvtLeave->getPartner();
 

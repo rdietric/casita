@@ -36,7 +36,7 @@ namespace casita
       apply( AnalysisParadigmOpenCL* analysis, GraphNode* syncLeave )
       {
         // applied at sync
-        if ( !syncLeave->isOpenCLSync( ) || !syncLeave->isLeave( ) )
+        if ( !syncLeave->isOpenCLQueueSync( ) || !syncLeave->isLeave( ) )
         {
           return false;
         }
