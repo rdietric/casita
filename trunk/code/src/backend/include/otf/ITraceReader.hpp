@@ -38,8 +38,8 @@ namespace casita
   typedef void ( *HandleDefProcess )( ITraceReader* reader, uint32_t stream,
                                       uint64_t processId, uint64_t parentId,
                                       const char* name,
-                                      OTF2KeyValueList* list, bool isCUDA,
-                                      bool isCUDANull );
+                                      OTF2KeyValueList* list, bool isGPU,
+                                      bool isGPUNull );
   typedef void ( *HandleProcessMPIMapping )( ITraceReader* reader,
                                              uint64_t      processId,
                                              uint32_t      mpiRank );

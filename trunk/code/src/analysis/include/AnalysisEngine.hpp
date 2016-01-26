@@ -62,8 +62,7 @@ namespace casita
      getFunctionType( uint32_t            id,
                       const char*         name,
                       EventStream*        stream,
-                      FunctionDescriptor* descr,
-                      bool                ignoreAsyncMpi );
+                      FunctionDescriptor* descr );
 
      void
      addFunction( uint32_t funcId, const char* name );
@@ -187,6 +186,7 @@ namespace casita
      
      // available analysis paradigms (identified during reading the trace)
      bool foundCUDA;
+     bool foundOpenCL;
      bool foundOMP;
  };
 

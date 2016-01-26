@@ -20,19 +20,11 @@ using namespace casita;
 using namespace casita::io;
 using namespace casita::omp;
 
-CallbackHandler::CallbackHandler( ProgramOptions& options,
-                                  AnalysisEngine& analysis ) :
-  options( options ),
+CallbackHandler::CallbackHandler( AnalysisEngine& analysis ) :
   analysis( analysis ),
   mpiRank( analysis.getMPIRank( ) )
 {
 
-}
-
-ProgramOptions&
-CallbackHandler::getOptions( )
-{
-  return options;
 }
 
 AnalysisEngine&
@@ -44,8 +36,8 @@ CallbackHandler::getAnalysis( )
 void
 CallbackHandler::printNode( GraphNode* node, EventStream* stream )
 {
-  if ( ( options.verbose >= VERBOSE_ALL ) ||
-       ( ( options.verbose > VERBOSE_BASIC ) &&
+  if ( ( Parser::getInstance().getVerboseLevel() >= VERBOSE_ALL ) ||
+       ( ( Parser::getInstance().getVerboseLevel() > VERBOSE_BASIC ) &&
          ( !node->isEventNode( ) ||
            ( ( (EventNode*)node )->
              getFunctionResult( ) ==
@@ -136,8 +128,8 @@ CallbackHandler::handleDefProcess( ITraceReader*     reader,
                                    uint64_t          parentId, //location group
                                    const char*       name,
                                    OTF2KeyValueList* list,
-                                   bool              isCUDA,
-                                   bool              isCUDANull )
+                                   bool              isGPU,
+                                   bool              isGPUNull )
 {
   CallbackHandler* handler  =
     (CallbackHandler*)( reader->getUserData( ) );
@@ -145,26 +137,33 @@ CallbackHandler::handleDefProcess( ITraceReader*     reader,
 
   EventStream::EventStreamType streamType = EventStream::ES_HOST;
 
-  if ( isCUDANull )
+  if ( isGPUNull )
   {
     streamType = EventStream::ES_DEVICE_NULL;
     analysis.setParadigmFound( PARADIGM_CUDA );
   }
   else
   {
-    if ( isCUDA )
+    if ( isGPU )
     {
       streamType = EventStream::ES_DEVICE;
-      analysis.setParadigmFound( PARADIGM_CUDA );
+      
+      if( strstr( name, "CUDA" ) )
+      {
+        analysis.setParadigmFound( PARADIGM_CUDA );
+      }
+      else
+      {
+        analysis.setParadigmFound( PARADIGM_OCL );
+      }
     }
-
-    if ( strstr( name, "MIC" ) )
+    else if ( strstr( name, "MIC" ) )
     {
       streamType = EventStream::ES_DEVICE;
     }
   }
 
-  UTILS_MSG( handler->getOptions( ).verbose >= VERBOSE_BASIC,
+  UTILS_MSG( Parser::getInstance().getVerboseLevel() >= VERBOSE_BASIC,
              "  [%u] Found stream %s (%"PRIu64") with type %u, parent %"PRIu64,
              analysis.getMPIRank( ), name, streamId, streamType, parentId );
 
@@ -223,8 +222,7 @@ CallbackHandler::handleEnter( ITraceReader*  reader,
   const char* funcName = funcStr.c_str();
 
   FunctionDescriptor functionType;
-  AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType,
-                                   handler->getOptions( ).ignoreAsyncMpi );
+  AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType );
   
   // check for function with the OpenMP paradigm
   if ( functionType.paradigm == PARADIGM_OMP )
@@ -289,7 +287,6 @@ CallbackHandler::handleLeave( ITraceReader*     reader,
 {
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
   AnalysisEngine&  analysis = handler->getAnalysis( );
-  ProgramOptions&  options  = handler->getOptions( );
 
   EventStream*     stream   = handler->getAnalysis( ).getStream( streamId );
   if ( !stream )
@@ -307,8 +304,7 @@ CallbackHandler::handleLeave( ITraceReader*     reader,
   const char* funcName = funcStr.c_str(); //analysis.getFunctionName( functionId );
 
   FunctionDescriptor functionType;
-  AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType,
-                                   handler->getOptions( ).ignoreAsyncMpi );
+  AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType );
 
   if ( functionType.paradigm == PARADIGM_CPU )
   {
@@ -369,7 +365,7 @@ CallbackHandler::handleLeave( ITraceReader*     reader,
 //  }
   
   // if analysis should be run in intervals (between global collectives)
-  if ( analysis.getMPISize() > 1 && options.analysisInterval &&
+  if ( analysis.getMPISize() > 1 && Parser::getInstance().getProgramOptions().analysisInterval &&
       // if we have read a global blocking collective, we can start the analysis
        ( leaveNode->isMPICollective( ) /*|| leaveNode->isMPIAllToOne() || leaveNode->isMPIOneToAll()*/ ) &&
        !( leaveNode->isMPIInit( ) ) && !( leaveNode->isMPIFinalize( ) ) )
@@ -383,7 +379,7 @@ CallbackHandler::handleLeave( ITraceReader*     reader,
     {
       analysis.getMPIAnalysis().globalCollectiveCounter++;
       
-      UTILS_MSG( handler->getOptions( ).verbose >= VERBOSE_ANNOY, 
+      UTILS_MSG( Parser::getInstance().getVerboseLevel() >= VERBOSE_ANNOY, 
                  "[%u] Global collective: %s", 
                  streamId, leaveNode->getUniqueName().c_str() );
       
@@ -436,7 +432,7 @@ CallbackHandler::handleMPIComm( ITraceReader* reader,
     default: throw RTException( "Unknown io::MPIType %u", mpiType );
   }
 
-  UTILS_MSG( handler->getOptions( ).verbose > VERBOSE_ALL,
+  UTILS_MSG( Parser::getInstance().getVerboseLevel() > VERBOSE_ALL,
              " [%u] mpi record, [%lu > %lu], type %u, tag %u",
              analysis.getMPIRank( ),
              streamId, partnerId,

@@ -81,9 +81,9 @@ namespace casita
    OCL_SYNC_QUEUE     = ( 1 << 1 ),
    OCL_WAITSTATE      = ( 1 << 2 ),
    OCL_KERNEL         = ( 1 << 3 ),
-   OCL_KERNEL_ENQUEUE = ( 1 << 4 ),
-   OCL_EV_SYNC        = ( 1 << 5 ),
-   OCL_EV_QUERY       = ( 1 << 6 )
+   OCL_ENQUEUE_KERNEL = ( 1 << 4 ),
+   OCL_SYNC_EVENT     = ( 1 << 5 ),
+   OCL_QUERY_EVENT    = ( 1 << 6 )
  };
 
  enum NodeTypeMPI
@@ -157,11 +157,11 @@ namespace casita
  static const TypeStrEntryOpenCL typeStrTableOCL[numTypeStrEntriesOCL] =
  {
    { OCL_SYNC_QUEUE, "ocl_sync_queue" },
-   { OCL_EV_SYNC, "ocl_event_sync" },
+   { OCL_SYNC_EVENT, "ocl_event_sync" },
    { OCL_KERNEL, "ocl_kernel" },
-   { OCL_KERNEL_ENQUEUE, "ocl_kernel_enqueue" },
+   { OCL_ENQUEUE_KERNEL, "ocl_kernel_enqueue" },
    { OCL_WAITSTATE, "ocl_waitstate" },
-   { OCL_EV_QUERY, "ocl_event_query" }
+   { OCL_QUERY_EVENT, "ocl_event_query" }
  };
 
  static const size_t numTypeStrEntriesMPI = 11;
@@ -278,7 +278,7 @@ namespace casita
      isOpenCLEventSync( ) const
      {
 
-       return isOpenCL( ) && ( nodeType & OCL_EV_SYNC );
+       return isOpenCL( ) && ( nodeType & OCL_SYNC_EVENT );
      }
 
      bool
@@ -367,7 +367,7 @@ namespace casita
      isOpenCLKernelEnqueue( ) const
      {
 
-       return isOpenCL( ) && ( nodeType & OCL_KERNEL_ENQUEUE );
+       return isOpenCL( ) && ( nodeType & OCL_ENQUEUE_KERNEL );
      }
 
      bool

@@ -42,7 +42,7 @@ Runner::Runner( int mpiRank, int mpiSize ) :
   mpiSize( mpiSize ),
   analysis( mpiRank, mpiSize ),
   options( Parser::getInstance( ).getProgramOptions( ) ),
-  callbacks( options, analysis ),
+  callbacks( analysis ),
   globalLengthCP( 0 )
 {
   if ( options.noErrors )
@@ -208,6 +208,7 @@ Runner::processTrace( ITraceReader* traceReader )
   clock_t time_analysis_mpi  = 0;
   clock_t time_analysis_omp  = 0;
   clock_t time_analysis_cuda = 0;
+  clock_t time_analysis_ocl  = 0;
   clock_t time_analysis_cp   = 0;
   do
   {
@@ -271,6 +272,13 @@ Runner::processTrace( ITraceReader* traceReader )
       time_tmp = clock( );
       runAnalysis( PARADIGM_CUDA, allNodes );
       time_analysis_cuda += clock() - time_tmp;
+    }
+    
+    if ( analysis.haveParadigm( PARADIGM_OCL ) )
+    {
+      time_tmp = clock( );
+      runAnalysis( PARADIGM_OCL, allNodes );
+      time_analysis_ocl += clock() - time_tmp;
     }
     
     if ( analysis.haveParadigm( PARADIGM_OMP ) )
@@ -376,6 +384,10 @@ Runner::processTrace( ITraceReader* traceReader )
 
     UTILS_MSG( options.verbose >= VERBOSE_TIME && analysis.haveParadigm( PARADIGM_OMP ), 
                "[0] OpenMP analysis took %f seconds.", 
+               ( (float) time_analysis_omp ) / CLOCKS_PER_SEC );
+    
+    UTILS_MSG( options.verbose >= VERBOSE_TIME && analysis.haveParadigm( PARADIGM_OCL ), 
+               "[0] OpenCL analysis took %f seconds.", 
                ( (float) time_analysis_omp ) / CLOCKS_PER_SEC );
 
     UTILS_MSG( options.verbose >= VERBOSE_TIME && analysis.haveParadigm( PARADIGM_CUDA ), 
@@ -1392,6 +1404,10 @@ Runner::runAnalysis( Paradigm                          paradigm,
     {
       case PARADIGM_CUDA:
         UTILS_MSG( true, "Running analysis: CUDA" );
+        break;
+        
+      case PARADIGM_OCL:
+        UTILS_MSG( true, "Running analysis: OpenCL" );
         break;
 
       case PARADIGM_MPI:

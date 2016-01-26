@@ -26,6 +26,7 @@
 #include "common.hpp"
 
 #include "cuda/AnalysisParadigmCUDA.hpp"
+#include "opencl/AnalysisParadigmOpenCL.hpp"
 #include "mpi/AnalysisParadigmMPI.hpp"
 #include "omp/AnalysisParadigmOMP.hpp"
 
@@ -44,12 +45,14 @@ AnalysisEngine::AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize ) :
   maxMetricMemberId( 0 ),
   maxAttributeId( 0 ),
   foundCUDA( false ),
+  foundOpenCL( false ),
   foundOMP( false )
 {
   // add analysis paradigms
   // \todo: only if paradigm found
   // \todo: Where deleted?
   addAnalysisParadigm( new cuda::AnalysisParadigmCUDA( this ) );
+  addAnalysisParadigm( new opencl::AnalysisParadigmOpenCL( this ) );
   addAnalysisParadigm( new omp::AnalysisParadigmOMP( this ) );
   addAnalysisParadigm( new mpi::AnalysisParadigmMPI( this, mpiRank, mpiSize ) );
 }
@@ -94,6 +97,10 @@ AnalysisEngine::setParadigmFound( Paradigm paradigm )
   {
     foundCUDA = true;
   }
+  else if( paradigm == PARADIGM_OCL )
+  {
+    foundOpenCL = true;
+  }
   else if( paradigm == PARADIGM_OMP )
   {
     foundOMP = true;
@@ -116,6 +123,10 @@ AnalysisEngine::haveParadigm( Paradigm paradigm )
   {
     return foundCUDA;
   }
+  else if ( paradigm == PARADIGM_OCL )
+  {
+    return foundOpenCL;
+  }
   else
   {
     return false;
@@ -126,15 +137,14 @@ bool
 AnalysisEngine::getFunctionType( uint32_t            id,
                                  const char*         name,
                                  EventStream*        stream,
-                                 FunctionDescriptor* descr,
-                                 bool                ignoreAsyncMpi )
+                                 FunctionDescriptor* descr )
 {
   assert( name );
   assert( descr );
   assert( stream );
 
   return FunctionTable::getAPIFunctionType( name, descr, stream->isDeviceStream( ),
-                                            stream->isDeviceNullStream( ), ignoreAsyncMpi );
+                                            stream->isDeviceNullStream( ) );
 }
 
 void
