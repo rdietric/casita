@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014,
+ * Copyright (c) 2014, 2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -48,12 +48,12 @@ namespace casita
       handlePostLeave( GraphNode* node );
 
       void
-      handleKeyValuesEnter( ITraceReader*     reader,
+      handleKeyValuesEnter( OTF2TraceReader*  reader,
                             GraphNode*        node,
                             OTF2KeyValueList* list );
 
       void
-      handleKeyValuesLeave( ITraceReader*     reader,
+      handleKeyValuesLeave( OTF2TraceReader*  reader,
                             GraphNode*        node,
                             GraphNode*        oldNode,
                             OTF2KeyValueList* list );

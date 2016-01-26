@@ -83,8 +83,8 @@ CallbackHandler::printNode( GraphNode* node, EventStream* stream )
 }
 
 uint32_t
-CallbackHandler::readKeyVal( ITraceReader*  reader,
-                             const char*    keyName,
+CallbackHandler::readKeyVal( OTF2TraceReader*  reader,
+                             const char*       keyName,
                              OTF2KeyValueList* list )
 {
   uint32_t keyVal = 0;
@@ -98,9 +98,9 @@ CallbackHandler::readKeyVal( ITraceReader*  reader,
 }
 
 uint64_t
-CallbackHandler::readKeyValUInt64( ITraceReader*  reader,
-                             const char*    keyName,
-                             OTF2KeyValueList* list )
+CallbackHandler::readKeyValUInt64( OTF2TraceReader* reader,
+                                   const char*       keyName,
+                                   OTF2KeyValueList* list )
 {
   uint64_t keyVal = 0;
   int32_t  key    = reader->getFirstKey( keyName );
@@ -113,16 +113,16 @@ CallbackHandler::readKeyValUInt64( ITraceReader*  reader,
 }
 
 void
-CallbackHandler::handleProcessMPIMapping( ITraceReader* reader,
-                                          uint64_t      streamId,
-                                          uint32_t      mpiRank )
+CallbackHandler::handleProcessMPIMapping( OTF2TraceReader* reader,
+                                          uint64_t         streamId,
+                                          uint32_t         mpiRank )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
   handler->getAnalysis( ).getMPIAnalysis( ).setMPIRank( streamId, mpiRank );
 }
 
 void
-CallbackHandler::handleDefProcess( ITraceReader*     reader,
+CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
                                    uint32_t          stream,
                                    uint64_t          streamId,
                                    uint64_t          parentId, //location group
@@ -173,11 +173,11 @@ CallbackHandler::handleDefProcess( ITraceReader*     reader,
 }
 
 void
-CallbackHandler::handleDefFunction( ITraceReader* reader,
-                                    uint64_t      streamId,
-                                    uint32_t      functionId,
-                                    const char*   name,
-                                    uint32_t      functionGroupId )
+CallbackHandler::handleDefFunction( OTF2TraceReader* reader,
+                                    uint64_t         streamId,
+                                    uint32_t         functionId,
+                                    const char*      name,
+                                    uint32_t         functionGroupId )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
   handler->getAnalysis( ).addFunction( functionId, name );
@@ -186,11 +186,11 @@ CallbackHandler::handleDefFunction( ITraceReader* reader,
 }
 
 void
-CallbackHandler::handleDefAttribute( ITraceReader* reader,
-                                     uint64_t      streamId,
-                                     uint32_t      attributeId, 
-                                     const char*   name,
-                                     const char*   description )
+CallbackHandler::handleDefAttribute( OTF2TraceReader* reader,
+                                     uint64_t         streamId,
+                                     uint32_t         attributeId, 
+                                     const char*      name,
+                                     const char*      description )
 {
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
   
@@ -199,10 +199,10 @@ CallbackHandler::handleDefAttribute( ITraceReader* reader,
 }
 
 void
-CallbackHandler::handleEnter( ITraceReader*  reader,
-                              uint64_t       time,
-                              uint32_t       functionId,
-                              uint64_t       streamId,
+CallbackHandler::handleEnter( OTF2TraceReader*  reader,
+                              uint64_t          time,
+                              uint32_t          functionId,
+                              uint64_t          streamId,
                               OTF2KeyValueList* list )
 {
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
@@ -279,7 +279,7 @@ CallbackHandler::handleEnter( ITraceReader*  reader,
  * @return true, if it is a global collective leave event
  */
 bool
-CallbackHandler::handleLeave( ITraceReader*     reader,
+CallbackHandler::handleLeave( OTF2TraceReader*  reader,
                               uint64_t          time,
                               uint32_t          functionId,
                               uint64_t          streamId,
@@ -401,12 +401,12 @@ CallbackHandler::handleLeave( ITraceReader*     reader,
  * @param tag
  */
 void
-CallbackHandler::handleMPIComm( ITraceReader* reader,
-                                MPIType       mpiType,
-                                uint64_t      streamId,
-                                uint64_t      partnerId,
-                                uint32_t      root,
-                                uint32_t      tag )
+CallbackHandler::handleMPIComm( OTF2TraceReader* reader,
+                                MPIType          mpiType,
+                                uint64_t         streamId,
+                                uint64_t         partnerId,
+                                uint32_t         root,
+                                uint32_t         tag )
 {
   CallbackHandler*     handler  = (CallbackHandler*)( reader->getUserData( ) );
   AnalysisEngine&      analysis = handler->getAnalysis( );
@@ -442,7 +442,7 @@ CallbackHandler::handleMPIComm( ITraceReader* reader,
 }
 
 void
-CallbackHandler::handleMPICommGroup( ITraceReader* reader, uint32_t group,
+CallbackHandler::handleMPICommGroup( OTF2TraceReader* reader, uint32_t group,
                                      uint32_t numProcs, const uint64_t* procs )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
@@ -461,7 +461,7 @@ CallbackHandler::handleMPICommGroup( ITraceReader* reader, uint32_t group,
  * @param requestId OTF2 ID of the request handle
  */
 void
-CallbackHandler::handleMPIIsend( ITraceReader* reader, 
+CallbackHandler::handleMPIIsend( OTF2TraceReader* reader, 
                                  uint64_t      streamId,
                                  uint64_t      receiver,
                                  uint64_t      requestId )
@@ -487,7 +487,7 @@ CallbackHandler::handleMPIIsend( ITraceReader* reader,
  * @param request OTF2 ID of the MPI_Irecv request handle
  */
 void
-CallbackHandler::handleMPIIrecv( ITraceReader* reader, 
+CallbackHandler::handleMPIIrecv( OTF2TraceReader* reader, 
                                  uint64_t      streamId,
                                  uint64_t      sender,
                                  uint64_t      requestId )
@@ -510,7 +510,7 @@ CallbackHandler::handleMPIIrecv( ITraceReader* reader,
  * @param request
  */
 void
-CallbackHandler::handleMPIIrecvRequest( ITraceReader* reader, 
+CallbackHandler::handleMPIIrecvRequest( OTF2TraceReader* reader, 
                                         uint64_t streamId, 
                                         uint64_t requestId )
 {
@@ -522,7 +522,7 @@ CallbackHandler::handleMPIIrecvRequest( ITraceReader* reader,
 }
 
 void
-CallbackHandler::handleMPIIsendComplete( ITraceReader* reader, 
+CallbackHandler::handleMPIIsendComplete( OTF2TraceReader* reader, 
                                          uint64_t streamId, 
                                          uint64_t requestId )
 {

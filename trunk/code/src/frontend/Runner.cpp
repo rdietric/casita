@@ -29,11 +29,6 @@
 
 #include "Runner.hpp"
 
-#include "otf/IKeyValueList.hpp"
-#include "otf/ITraceReader.hpp"
-
-#include "otf/OTF2TraceReader.hpp"
-
 using namespace casita;
 using namespace casita::io;
 
@@ -94,7 +89,7 @@ Runner::getGlobalLengthCP( )
 void
 Runner::startAnalysisRun( )
 {
-  ITraceReader* traceReader = NULL;
+  OTF2TraceReader* traceReader = NULL;
 
   UTILS_MSG( mpiRank == 0, "Reading %s", options.filename.c_str( ) );
 
@@ -180,7 +175,7 @@ Runner::startAnalysisRun( )
  * @param traceReader a fully set up trace reader (definitions are read)
  */
 void
-Runner::processTrace( ITraceReader* traceReader )
+Runner::processTrace( OTF2TraceReader* traceReader )
 {
   if ( !traceReader )
   {
@@ -425,7 +420,7 @@ Runner::processTrace( ITraceReader* traceReader )
 void
 Runner::mergeActivityGroups( )
 {
-  IParallelTraceWriter::ActivityGroupMap* activityGroupMap =
+  OTF2ParallelTraceWriter::ActivityGroupMap* activityGroupMap =
     analysis.getActivityGroupMap( );
   
   assert( activityGroupMap );
@@ -440,7 +435,7 @@ Runner::mergeActivityGroups( )
              lengthCritPath );*/
 
   // compute total process-local blame and process-local CP fraction of activity groups
-  for ( IParallelTraceWriter::ActivityGroupMap::iterator groupIter =
+  for ( OTF2ParallelTraceWriter::ActivityGroupMap::iterator groupIter =
           activityGroupMap->begin( ); groupIter != activityGroupMap->end( ); 
         ++groupIter )
   {
@@ -482,21 +477,21 @@ Runner::mergeActivityGroups( )
       // receive the entries
       if ( numEntries > 0 )
       {
-        IParallelTraceWriter::ActivityGroup* buf =
-          new IParallelTraceWriter::ActivityGroup[numEntries];
+        OTF2ParallelTraceWriter::ActivityGroup* buf =
+          new OTF2ParallelTraceWriter::ActivityGroup[numEntries];
         //\todo: Could be replaced by MPI_Gatherv
         MPI_CHECK( MPI_Recv( buf,
-                   numEntries * sizeof( IParallelTraceWriter::ActivityGroup ),
+                   numEntries * sizeof( OTF2ParallelTraceWriter::ActivityGroup ),
                    MPI_BYTE,
                    rank,
                    MPI_ENTRIES_TAG,
                    MPI_COMM_WORLD, MPI_STATUS_IGNORE ) );
 
         // combine with own activity groups and generate a global metrics
-        IParallelTraceWriter::ActivityGroupMap::iterator groupIter;
+        OTF2ParallelTraceWriter::ActivityGroupMap::iterator groupIter;
         for ( uint32_t i = 0; i < numEntries; ++i )
         {
-          IParallelTraceWriter::ActivityGroup* group = &( buf[i] );
+          OTF2ParallelTraceWriter::ActivityGroup* group = &( buf[i] );
           uint32_t fId = group->functionId;
           groupIter = activityGroupMap->find( fId );
 
@@ -528,7 +523,7 @@ Runner::mergeActivityGroups( )
     }
 
     // for all activity groups: set the global CP fraction
-    for ( IParallelTraceWriter::ActivityGroupMap::iterator groupIter =
+    for ( OTF2ParallelTraceWriter::ActivityGroupMap::iterator groupIter =
             activityGroupMap->begin( );
           groupIter != activityGroupMap->end( ); ++groupIter )
     {
@@ -563,21 +558,21 @@ Runner::mergeActivityGroups( )
                            &numEntriesRecv, 1, MPI_UNSIGNED, 
                            0, MPI_COMM_WORLD ) );
 
-    IParallelTraceWriter::ActivityGroup* buf =
-      new IParallelTraceWriter::ActivityGroup[numEntries];
+    OTF2ParallelTraceWriter::ActivityGroup* buf =
+      new OTF2ParallelTraceWriter::ActivityGroup[numEntries];
 
-    for ( IParallelTraceWriter::ActivityGroupMap::iterator groupIter =
+    for ( OTF2ParallelTraceWriter::ActivityGroupMap::iterator groupIter =
             activityGroupMap->begin( );
           groupIter != activityGroupMap->end( ); ++groupIter )
     {
       memcpy( &( buf[i] ), &( groupIter->second ),
-              sizeof( IParallelTraceWriter::ActivityGroup ) );
+              sizeof( OTF2ParallelTraceWriter::ActivityGroup ) );
       ++i;
     }
 
     // send entries to root rank
     MPI_CHECK( MPI_Send( buf,
-               numEntries * sizeof( IParallelTraceWriter::ActivityGroup ),
+               numEntries * sizeof( OTF2ParallelTraceWriter::ActivityGroup ),
                MPI_CHAR,
                0, 
                MPI_ENTRIES_TAG,
@@ -1476,7 +1471,7 @@ Runner::runAnalysis( Paradigm                          paradigm,
 void
 Runner::printAllActivities( )
 {
-  IParallelTraceWriter::ActivityGroupMap* activityGroupMap =
+  OTF2ParallelTraceWriter::ActivityGroupMap* activityGroupMap =
     analysis.getActivityGroupMap( );
 
   if ( mpiRank == 0 )
@@ -1490,8 +1485,8 @@ Runner::printAllActivities( )
             "Fraction Global Blame",
             "Rating" );
 
-    std::set< IParallelTraceWriter::ActivityGroup,
-              IParallelTraceWriter::ActivityGroupCompare > sortedActivityGroups;
+    std::set< OTF2ParallelTraceWriter::ActivityGroup,
+              OTF2ParallelTraceWriter::ActivityGroupCompare > sortedActivityGroups;
 
     if( globalLengthCP == 0 )
     {
@@ -1500,7 +1495,7 @@ Runner::printAllActivities( )
     }
       
     // for all activity groups
-    for ( IParallelTraceWriter::ActivityGroupMap::iterator iter =
+    for ( OTF2ParallelTraceWriter::ActivityGroupMap::iterator iter =
             activityGroupMap->begin( );
           iter != activityGroupMap->end( ); ++iter )
     {
@@ -1547,8 +1542,8 @@ Runner::printAllActivities( )
     double sumFractionBlame = 0.0;
     
     size_t ctr           = 0;
-    for ( std::set< IParallelTraceWriter::ActivityGroup,
-                    IParallelTraceWriter::ActivityGroupCompare >::
+    for ( std::set< OTF2ParallelTraceWriter::ActivityGroup,
+                    OTF2ParallelTraceWriter::ActivityGroupCompare >::
           const_iterator iter =
             sortedActivityGroups.begin( );
           iter != sortedActivityGroups.end( ) && ( ctr < options.topX );

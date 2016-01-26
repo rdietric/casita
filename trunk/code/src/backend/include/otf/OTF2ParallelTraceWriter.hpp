@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -19,13 +19,29 @@
 #include <list>
 #include <string>
 #include "AnalysisMetric.hpp"
-#include "otf/IParallelTraceWriter.hpp"
 #include "OTF2TraceReader.hpp"
+#include "EventStream.hpp"
+#include "graph/Graph.hpp"
 
 namespace casita
 {
  namespace io
  {
+   
+    enum FunctionGroup
+    {
+      FG_APPLICATION = 1, FG_CUDA_API, FG_KERNEL, FG_WAITSTATE, FG_MPI
+    };
+
+    enum ProcessGroup
+    {
+      PG_HOST        = 1, PG_DEVICE, PG_DEVICE_NULL
+    };
+
+    enum MarkerGroup
+    {
+      MG_Marker      = 1
+    };
 
   typedef std::map< uint32_t, uint32_t > CtrInstanceMap;
 
@@ -54,10 +70,45 @@ namespace casita
     uint32_t         numberOfRequestedThreads;
   } OTF2ThreadFork;
 
-  class OTF2ParallelTraceWriter :
-    public IParallelTraceWriter
+  class OTF2ParallelTraceWriter
   {
     public:
+      
+      typedef struct
+      {
+        uint32_t functionId;
+        uint32_t numInstances;
+        uint32_t numUnifyStreams;
+        uint64_t totalDuration;
+        uint64_t totalDurationOnCP;
+        uint64_t totalBlame;
+        double   fractionCP;
+        double   fractionBlame;
+        uint64_t lastEnterTime;
+      } ActivityGroup;
+
+      typedef struct
+      {
+        bool
+        operator()( const ActivityGroup& g1, const ActivityGroup& g2 ) const
+        {
+          double rating1 = g1.fractionBlame + g1.fractionCP;
+          double rating2 = g2.fractionBlame + g2.fractionCP;
+
+          if ( rating1 == rating2 )
+          {
+            return g1.functionId > g2.functionId;
+          }
+          else
+          {
+            return rating1 > rating2;
+          }
+        }
+      } ActivityGroupCompare;
+    
+      // key: OTF2 region reference, value: activity group
+      typedef std::map< uint32_t, ActivityGroup > ActivityGroupMap;
+      
       bool writeToFile;
 
       OTF2ParallelTraceWriter( uint32_t        mpiRank,
@@ -96,14 +147,39 @@ namespace casita
       setupEventReader( uint64_t streamId );
       
       bool
-      writeStream(  EventStream*   stream,
-                    Graph*         graph,
-                    uint64_t*      events_read );
+      writeStream( EventStream* stream,
+                   Graph*       graph,
+                   uint64_t*    events_read );
 
       std::string
       getRegionName( const OTF2_RegionRef regionRef ) const;
+      
+      ActivityGroupMap*
+      getActivityGroupMap( )
+      {
+        return &activityGroupMap;
+      }
+      
+      static ProcessGroup
+      streamTypeToGroup( EventStream::EventStreamType pt )
+      {
+        switch ( pt )
+        {
+          case EventStream::ES_DEVICE:
+            return PG_DEVICE;
+          case EventStream::ES_DEVICE_NULL:
+            return PG_DEVICE_NULL;
+          default:
+            return PG_HOST;
+        }
+      }
 
     private:
+      
+      uint32_t mpiRank, mpiSize;
+      
+      // maps OTF2 region references to activity groups to collect a global profile
+      ActivityGroupMap activityGroupMap;
       
       //!< pointer to the table of available counters
       AnalysisMetric* cTable; 

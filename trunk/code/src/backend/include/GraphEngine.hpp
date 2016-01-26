@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -20,7 +20,7 @@
 #include "graph/Node.hpp"
 #include "graph/EventNode.hpp"
 #include "graph/Edge.hpp"
-#include "otf/ITraceWriter.hpp"
+#include "otf/OTF2ParallelTraceWriter.hpp"
 #include "Activity.hpp"
 #include "EventStream.hpp"
 #include "EventStreamGroup.hpp"
@@ -228,8 +228,8 @@ namespace casita
      void
      addNewGraphNodeInternal( GraphNode* node, EventStream* stream );
 
-     static io::ITraceWriter::ProcessGroup
-     streamTypeToGroup( EventStream::EventStreamType pt );
+     //static io::OTF2ParallelTraceWriter::ProcessGroup
+     //streamTypeToGroup( EventStream::EventStreamType pt );
 
  };
 

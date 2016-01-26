@@ -39,7 +39,6 @@
 #include "common.hpp"
 #include "EventStream.hpp"
 #include "FunctionTable.hpp"
-#include "otf/ITraceReader.hpp"
 #include "otf/OTF2TraceReader.hpp"
 #include "otf/OTF2ParallelTraceWriter.hpp"
 #include "GraphEngine.hpp"
@@ -148,8 +147,9 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t        mpiRank,
                                                   bool            ignoreAsyncMpi,
                                                   int             verbose )
   :
-    IParallelTraceWriter( mpiRank, mpiSize ),
     writeToFile( writeToFile ),
+    mpiRank( mpiRank ),
+    mpiSize( mpiSize ),
     cTable( metrics ),
     ignoreAsyncMpi( ignoreAsyncMpi ),
     verbose( verbose ),

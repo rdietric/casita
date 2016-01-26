@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014,
+ * Copyright (c) 2014, 2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -87,7 +87,7 @@ AnalysisParadigmCUDA::handlePostLeave( GraphNode* node )
 }
 
 void
-AnalysisParadigmCUDA::handleKeyValuesEnter( ITraceReader*     reader,
+AnalysisParadigmCUDA::handleKeyValuesEnter( OTF2TraceReader*     reader,
                                             GraphNode*        node,
                                             OTF2KeyValueList* list )
 {
@@ -116,7 +116,7 @@ AnalysisParadigmCUDA::handleKeyValuesEnter( ITraceReader*     reader,
  * @param list
  */
 void
-AnalysisParadigmCUDA::handleKeyValuesLeave( ITraceReader*     reader,
+AnalysisParadigmCUDA::handleKeyValuesLeave( OTF2TraceReader*     reader,
                                             GraphNode*        node,
                                             GraphNode*        oldNode,
                                             OTF2KeyValueList* list )

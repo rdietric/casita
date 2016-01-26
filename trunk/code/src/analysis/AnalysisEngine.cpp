@@ -241,7 +241,7 @@ AnalysisEngine::handlePostLeave( GraphNode* node )
 }
 
 void
-AnalysisEngine::handleKeyValuesEnter( ITraceReader*     reader,
+AnalysisEngine::handleKeyValuesEnter( OTF2TraceReader*     reader,
                                       GraphNode*        node,
                                       OTF2KeyValueList* list )
 {
@@ -253,7 +253,7 @@ AnalysisEngine::handleKeyValuesEnter( ITraceReader*     reader,
 }
 
 void
-AnalysisEngine::handleKeyValuesLeave( ITraceReader*     reader,
+AnalysisEngine::handleKeyValuesLeave( OTF2TraceReader*     reader,
                                       GraphNode*        node,
                                       GraphNode*        oldNode,
                                       OTF2KeyValueList* list )
@@ -392,7 +392,7 @@ AnalysisEngine::getNumAllDeviceStreams( )
   return streamGroup.getNumStreams( ) - streamGroup.getNumHostStreams( );
 }
 
-io::IParallelTraceWriter::ActivityGroupMap*
+OTF2ParallelTraceWriter::ActivityGroupMap*
 AnalysisEngine::getActivityGroupMap( )
 {
   if ( !writer )
@@ -500,7 +500,7 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
     }
 
     writer->writeDefProcess( p->getId( ), p->getParentId( ), p->getName( ),
-                             this->streamTypeToGroup( p->getStreamType( ) ) );
+                             OTF2ParallelTraceWriter::streamTypeToGroup( p->getStreamType( ) ) );
     
     writer->setupEventReader( ( *pIter )->getId( ) );
   }

@@ -36,7 +36,18 @@ using namespace casita::io;
 OTF2TraceReader::OTF2TraceReader( void*    userData,
                                   uint32_t mpiRank,
                                   uint32_t mpiSize ) :
-  ITraceReader( userData ),
+  handleEnter( NULL ),
+  handleLeave( NULL ),
+  handleDefProcess( NULL ),
+  handleDefFunction( NULL ),
+  handleDefAttribute( NULL ),
+  handleProcessMPIMapping( NULL ),
+  handleMPIComm( NULL ),
+  handleMPICommGroup( NULL ),
+  handleMPIIrecv( NULL ),
+  handleMPIIrecvRequest( NULL ),
+  handleMPIIsendComplete( NULL ),
+  userData( userData ),
   mpiRank( mpiRank ),
   mpiSize( mpiSize ),
   mpiProcessId( 1 ),
@@ -530,7 +541,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(
       }
     }
 
-    /* Locations are processes */
+    // Locations are processes
     tr->getProcessNameTokenMap( )[self] = name;
 
     if ( tr->handleDefProcess )
@@ -1098,6 +1109,12 @@ OTF2TraceReader::getFirstKey( const std::string keyName )
   {
     return -1;
   }
+}
+
+void*
+OTF2TraceReader::getUserData( )
+{
+  return userData;
 }
 
 bool

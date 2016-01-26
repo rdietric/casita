@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014-2015,
+ * Copyright (c) 2014-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -67,7 +67,7 @@ AnalysisParadigmOMP::handlePostLeave( GraphNode* node )
 }
 
 void
-AnalysisParadigmOMP::handleKeyValuesEnter( ITraceReader*     reader,
+AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*     reader,
                                            GraphNode*        node,
                                            OTF2KeyValueList* list )
 {
@@ -117,7 +117,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( ITraceReader*     reader,
 }
 
 void
-AnalysisParadigmOMP::handleKeyValuesLeave( ITraceReader*     reader,
+AnalysisParadigmOMP::handleKeyValuesLeave( OTF2TraceReader*     reader,
                                            GraphNode*        node,
                                            GraphNode*        oldNode,
                                            OTF2KeyValueList* list )

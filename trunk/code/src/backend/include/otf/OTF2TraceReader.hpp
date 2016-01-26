@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -18,15 +18,61 @@
 #include <stack>
 #include <set>
 #include <list>
-#include "ITraceReader.hpp"
 #include "OTF2KeyValueList.hpp"
+
 namespace casita
 {
  namespace io
  {
+  enum MPIType
+  {
+    MPI_SEND, MPI_RECV, MPI_COLLECTIVE, MPI_ONEANDALL, MPI_ISEND, MPI_IRECV
+  };
+  
+  class OTF2TraceReader;
 
-  class OTF2TraceReader :
-    public ITraceReader
+  typedef void ( *HandleEnter )( OTF2TraceReader* reader, uint64_t time,
+                                 uint32_t functionId, uint64_t processId,
+                                 OTF2KeyValueList* list );
+  typedef bool ( *HandleLeave )( OTF2TraceReader* reader, uint64_t time,
+                                 uint32_t functionId, uint64_t processId,
+                                 OTF2KeyValueList* list );
+  typedef void ( *HandleDefProcess )( OTF2TraceReader* reader, uint32_t stream,
+                                      uint64_t processId, uint64_t parentId,
+                                      const char* name,
+                                      OTF2KeyValueList* list, bool isGPU,
+                                      bool isGPUNull );
+  typedef void ( *HandleProcessMPIMapping )( OTF2TraceReader* reader,
+                                             uint64_t      processId,
+                                             uint32_t      mpiRank );
+  typedef void ( *HandleDefFunction )( OTF2TraceReader* reader, uint64_t streamId,
+                                       uint32_t functionId, const char* name,
+                                       uint32_t functionGroupId );
+  typedef void ( *HandleDefAttribute )( OTF2TraceReader* reader, uint64_t streamId,
+                                        uint32_t key, const char* name,
+                                        const char* description );
+  typedef void ( *HandleMPIComm )( OTF2TraceReader* reader, MPIType mpiType,
+                                   uint64_t processId, uint64_t partnerId,
+                                   uint32_t root, uint32_t tag );
+  typedef void ( *HandleMPICommGroup )( OTF2TraceReader* reader, uint32_t group,
+                                        uint32_t numProcs,
+                                        const uint64_t* procs );
+  typedef void ( *HandleMPIIsend )( OTF2TraceReader* reader, 
+                                    uint64_t      streamId,
+                                    uint64_t      receiver,
+                                    uint64_t      request );
+  typedef void ( *HandleMPIIrecv )( OTF2TraceReader* reader, 
+                                    uint64_t      streamId,
+                                    uint64_t      sender,
+                                    uint64_t      request );
+  typedef void ( *HandleMPIIrecvRequest )( OTF2TraceReader* reader,
+                                           uint64_t      streamId,
+                                           uint64_t      request );
+  typedef void ( *HandleMPIIsendComplete )( OTF2TraceReader* reader,
+                                            uint64_t      streamId,
+                                            uint64_t      request );
+
+  class OTF2TraceReader
   {
     public:
 
@@ -179,6 +225,22 @@ namespace casita
 
       int
       getProcessingPhase( );
+      
+      void*
+      getUserData( );
+      
+      HandleEnter             handleEnter;
+      HandleLeave             handleLeave;
+      HandleDefProcess        handleDefProcess;
+      HandleDefFunction       handleDefFunction;
+      HandleDefAttribute      handleDefAttribute;
+      HandleProcessMPIMapping handleProcessMPIMapping;
+      HandleMPIComm           handleMPIComm;
+      HandleMPICommGroup      handleMPICommGroup;
+      HandleMPIIsend          handleMPIIsend;
+      HandleMPIIrecv          handleMPIIrecv;
+      HandleMPIIrecvRequest   handleMPIIrecvRequest;
+      HandleMPIIsendComplete  handleMPIIsendComplete;
 
     private:
       static OTF2_CallbackCode
@@ -459,15 +521,19 @@ namespace casita
 
       void
       setEventCallbacks( OTF2_GlobalEvtReaderCallbacks* evtReaderCallbacks );
+      
+      
+      void*            userData;
 
       uint32_t         mpiRank;
       uint32_t         mpiSize;
       uint64_t         mpiProcessId;
-      IdTokenMap       processRankMap;      /* maps (parent) process ID to
-                                        * MPI rank */
-      TokenTokenMap64  processFamilyMap;      /* tracks for each
-                                               * process its direct
-                                               * parent */
+      
+      // maps (parent) process ID to MPI rank
+      IdTokenMap       processRankMap; 
+      
+      // tracks for each process its direct parent
+      TokenTokenMap64  processFamilyMap; 
 
       OTF2_Reader*     reader;
       OTF2KeyValueList kvList;

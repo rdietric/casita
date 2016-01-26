@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -22,9 +22,8 @@
 #include "Parser.hpp"
 #include "AnalysisEngine.hpp"
 #include "CallbackHandler.hpp"
-#include "otf/ITraceReader.hpp"
-#include "otf/IParallelTraceWriter.hpp"
-#include "otf/IKeyValueList.hpp"
+#include "otf/OTF2TraceReader.hpp"
+#include "otf/OTF2ParallelTraceWriter.hpp"
 
 namespace casita
 {
@@ -92,7 +91,7 @@ namespace casita
       * @param traceReader
       */
      void
-     processTrace( ITraceReader* traceReader );
+     processTrace( OTF2TraceReader* traceReader );
 
      /* critical path */
      void
