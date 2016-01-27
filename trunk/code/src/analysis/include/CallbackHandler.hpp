@@ -69,10 +69,26 @@ namespace casita
 
      static bool
      handleLeave( io::OTF2TraceReader*  reader,
-                  uint64_t           time,
-                  uint32_t           functionId,
-                  uint64_t           streamId,
+                  uint64_t              time,
+                  uint32_t              functionId,
+                  uint64_t              streamId,
                   io::OTF2KeyValueList* list );
+     
+     /**
+      * Handle RMA window destroy events as they are most often the last events in a 
+      * stream.
+      * 
+      * @param location
+      * @param time
+      * @param userData
+      * @param attributeList
+      * @param win
+      * @return 
+      */
+     static void
+     handleRmaWinDestroy( io::OTF2TraceReader* reader,
+                          uint64_t             time,
+                          uint64_t             streamId );
 
      static void
      handleMPIComm( io::OTF2TraceReader* reader,

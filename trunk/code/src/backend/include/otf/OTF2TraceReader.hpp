@@ -71,7 +71,10 @@ namespace casita
   typedef void ( *HandleMPIIsendComplete )( OTF2TraceReader* reader,
                                             uint64_t      streamId,
                                             uint64_t      request );
-
+  typedef void ( *HandleRmaWinDestroy )( OTF2TraceReader* reader,
+                                         uint64_t         time,
+                                         uint64_t         streamId );
+  
   class OTF2TraceReader
   {
     public:
@@ -241,6 +244,7 @@ namespace casita
       HandleMPIIrecv          handleMPIIrecv;
       HandleMPIIrecvRequest   handleMPIIrecvRequest;
       HandleMPIIsendComplete  handleMPIIsendComplete;
+      HandleRmaWinDestroy     handleRmaWinDestroy;
 
     private:
       static OTF2_CallbackCode

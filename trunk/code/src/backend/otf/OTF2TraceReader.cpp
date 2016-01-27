@@ -47,6 +47,7 @@ OTF2TraceReader::OTF2TraceReader( void*    userData,
   handleMPIIrecv( NULL ),
   handleMPIIrecvRequest( NULL ),
   handleMPIIsendComplete( NULL ),
+  handleRmaWinDestroy( NULL ),
   userData( userData ),
   mpiRank( mpiRank ),
   mpiSize( mpiSize ),
@@ -216,21 +217,19 @@ OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
   OTF2_GlobalEvtReaderCallbacks_SetLeaveCallback( event_callbacks,
                                                   &otf2CallbackLeave );
   OTF2_GlobalEvtReaderCallbacks_SetMpiCollectiveEndCallback(
-    event_callbacks,
-    &
-    otf2Callback_MpiCollectiveEnd );
+    event_callbacks,&otf2Callback_MpiCollectiveEnd );
   OTF2_GlobalEvtReaderCallbacks_SetMpiRecvCallback( event_callbacks,
                                                     &otf2Callback_MpiRecv );
   OTF2_GlobalEvtReaderCallbacks_SetMpiSendCallback( event_callbacks,
                                                     &otf2Callback_MpiSend );
   OTF2_GlobalEvtReaderCallbacks_SetThreadForkCallback(
-    event_callbacks,
-    &
-    OTF2_GlobalEvtReaderCallback_ThreadFork );
+    event_callbacks, &OTF2_GlobalEvtReaderCallback_ThreadFork );
   OTF2_GlobalEvtReaderCallbacks_SetThreadJoinCallback(
-    event_callbacks,
-    &
-    OTF2_GlobalEvtReaderCallback_ThreadJoin );
+    event_callbacks, &OTF2_GlobalEvtReaderCallback_ThreadJoin );
+  
+  // 
+  OTF2_GlobalEvtReaderCallbacks_SetRmaWinDestroyCallback(
+    event_callbacks, &otf2CallbackComm_RmaWinDestroy );
   
   if ( !ignoreAsyncMPI )
   {
@@ -955,6 +954,24 @@ OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadJoin( OTF2_LocationRef locat
   return OTF2TraceReader::otf2CallbackLeave( locationID, time, userData,
                                              attributeList,
                                              tr->getOmpForkJoinRef( ) );
+}
+
+OTF2_CallbackCode
+OTF2TraceReader::otf2CallbackComm_RmaWinDestroy( 
+                                            OTF2_LocationRef    location,
+                                            OTF2_TimeStamp      time,
+                                            void*               userData,
+                                            OTF2_AttributeList* attributeList,
+                                            OTF2_RmaWinRef      win )
+{
+  OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+
+  if ( tr->handleRmaWinDestroy )
+  {
+    tr->handleRmaWinDestroy( tr, time - tr->getTimerOffset() , location );
+  }
+  
+  return OTF2_CALLBACK_SUCCESS;
 }
 
 std::string

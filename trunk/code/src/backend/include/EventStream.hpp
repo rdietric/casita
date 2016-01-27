@@ -155,8 +155,23 @@ namespace casita
      GraphNode*
      getFirstNode( Paradigm paradigm ) const;
 
+     /**
+      * Get the time stamp of the last event read from an event stream. 
+      * (This is often a RMA window destroy event.)
+      * 
+      * @return time stamp of the last event
+      */
      uint64_t
      getLastEventTime( ) const;
+     
+     /**
+      * Set the time of the last read event. 
+      * (This is often a RMA window destroy event.)
+      * 
+      * @param time time to be set.
+      */
+     void
+     setLastEventTime( uint64_t time );
 
      void
      addGraphNode( GraphNode* node, GraphNode::ParadigmNodeMap* predNodes );
@@ -368,6 +383,9 @@ namespace casita
 
      //!< pointer to the last node (paradigm independent) of the analysis interval
      GraphNode*          lastNode;
+     
+     //! time stamp of the last read event for this stream (e.g. RMA win destroy)
+     uint64_t            lastEventTime;
      
      //<! first and last node of the analysis interval (for each paradigm)
      GraphData           graphData[NODE_PARADIGM_COUNT];

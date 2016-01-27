@@ -288,7 +288,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
   AnalysisEngine&  analysis = handler->getAnalysis( );
 
-  EventStream*     stream   = handler->getAnalysis( ).getStream( streamId );
+  EventStream* stream = analysis.getStream( streamId );
   if ( !stream )
   {
     throw RTException( "Stream %" PRIu64 " not found!", streamId );
@@ -388,6 +388,37 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   }
   
   return false;
+}
+
+/**
+ * Handle RMA window destroy events as they are most often the last events in a 
+ * stream.
+ * 
+ * @param location
+ * @param time
+ * @param userData
+ * @param attributeList
+ * @param win
+ * @return 
+ */
+void
+CallbackHandler::handleRmaWinDestroy( OTF2TraceReader* reader,
+                                      uint64_t         time,
+                                      uint64_t         streamId )
+{
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
+  EventStream*     stream  = handler->getAnalysis( ).getStream( streamId );
+  
+  if ( !stream )
+  {
+    throw RTException( "Stream %" PRIu64 " not found!", streamId );
+  }
+  
+  // save the time stamp of the last leave event
+  if( stream->getLastEventTime() < time )
+  {
+    stream->setLastEventTime( time );
+  }
 }
 
 /**
