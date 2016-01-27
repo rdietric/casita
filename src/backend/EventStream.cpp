@@ -36,6 +36,7 @@ EventStream::EventStream( uint64_t          id,
   remoteStream( remoteStream ),
   nodesAdded( false ),
   lastNode( NULL ),
+  lastEventTime( 0 ),
   pendingMPIRequestId( std::numeric_limits< uint64_t >::max( ) ),
   mpiIsendPartner( std::numeric_limits< uint64_t >::max( ) )
 {
@@ -176,16 +177,22 @@ EventStream::getFirstNode( Paradigm paradigm ) const
   return graphData[(int)log2( paradigm )].firstNode;
 }
 
+void
+EventStream::setLastEventTime( uint64_t time )
+{
+  lastEventTime = time;
+}
+
 uint64_t
 EventStream::getLastEventTime( ) const
 {
-  if ( lastNode )
+  if ( lastEventTime > streamPeriod.second )
   {
-    return lastNode->getTime( );
+    return lastEventTime;
   }
   else
   {
-    return 0;
+    return streamPeriod.second;
   }
 }
 

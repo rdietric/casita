@@ -1912,7 +1912,8 @@ OTF2ParallelTraceWriter::otf2CallbackLeave( OTF2_LocationRef    location, // str
 
   //std::cerr << "TW: Handle leave: " << tw->getRegionName( region ) << std::endl;
   
-  if( tw->currentStream->getPeriod().second >= time - tw->timerOffset )
+  //if( tw->currentStream->getPeriod().second >= time - tw->timerOffset )
+  if( tw->currentStream->getLastEventTime() >= time - tw->timerOffset )
   {
     //\todo: process attributes
     tw->processNextEvent( event, tw->getRegionName( region ) );
@@ -1920,7 +1921,8 @@ OTF2ParallelTraceWriter::otf2CallbackLeave( OTF2_LocationRef    location, // str
   
   // interrupt reading, if we processed the last read leave event
   if ( tw->mpiSize > 1 && Parser::getInstance().getProgramOptions().analysisInterval &&
-       time - tw->timerOffset == tw->currentStream->getPeriod().second )
+       time - tw->timerOffset == /*tw->currentStream->getPeriod().second*/
+                                   tw->currentStream->getLastEventTime() )
   {
     return OTF2_CALLBACK_INTERRUPT;
   }

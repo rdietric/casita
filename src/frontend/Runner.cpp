@@ -116,6 +116,7 @@ Runner::startAnalysisRun( )
   traceReader->handleMPIIrecv          = CallbackHandler::handleMPIIrecv;
   traceReader->handleMPIIrecvRequest   = CallbackHandler::handleMPIIrecvRequest;
   traceReader->handleMPIIsendComplete  = CallbackHandler::handleMPIIsendComplete;
+  traceReader->handleRmaWinDestroy     = CallbackHandler::handleRmaWinDestroy;
 
   traceReader->open( options.filename, 10 );
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
