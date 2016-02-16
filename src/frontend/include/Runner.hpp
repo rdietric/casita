@@ -59,9 +59,6 @@ namespace casita
 
      AnalysisEngine&
      getAnalysis( );
-     
-     void
-     findGlobalLengthCP( );
 
      uint64_t
      getGlobalLengthCP( );
@@ -79,9 +76,10 @@ namespace casita
      ProgramOptions& options;
      CallbackHandler callbacks;
      
-     // members to determine the critical path length
+     //!< members to determine the critical path length
      uint64_t globalLengthCP;
-     // intermediate critical path start and end
+     
+     //!< intermediate critical path start and end
      std::pair< uint64_t, uint64_t > criticalPathStart; //* < stream ID, time >
      std::pair< uint64_t, uint64_t > criticalPathEnd;   // < stream ID, time >
      
@@ -103,6 +101,12 @@ namespace casita
      void
      getCriticalLocalNodes( MPIAnalysis::CriticalSectionsList& sections,
                             EventStream::SortedGraphNodeList& localNodes );
+     
+     void
+     findGlobalLengthCP( );
+     
+     void
+     findCriticalPathStartTime( );
 
      int
      findLastMpiNode( GraphNode** node );

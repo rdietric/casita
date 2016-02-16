@@ -35,6 +35,7 @@ EventStream::EventStream( uint64_t          id,
   streamType( eventStreamType ),
   remoteStream( remoteStream ),
   nodesAdded( false ),
+  hasFirstCriticalNode( false ),
   lastNode( NULL ),
   lastEventTime( 0 ),
   pendingMPIRequestId( std::numeric_limits< uint64_t >::max( ) ),
@@ -120,9 +121,20 @@ EventStream::isRemoteStream( ) const
  * @return a pair the first enter and last leave time stamp
  */
 std::pair< uint64_t, uint64_t >&
-EventStream::getPeriod()
+EventStream::getPeriod( )
 {
   return streamPeriod;
+}
+
+/**
+ * Does this stream contains the global first critical node?
+ * 
+ * @return true, if the critical path starts on this stream
+ */
+bool&
+EventStream::isFirstCritical( )
+{
+  return hasFirstCriticalNode;
 }
 
 GraphNode*
