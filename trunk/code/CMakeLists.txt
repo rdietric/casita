@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.5)
 
 PROJECT(casita)
 
-SET(PROJECT_VERSION 1.4)
+SET(PROJECT_VERSION 1.4.1)
 
 # SET helper pathes to find libraries and packages
 SET(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/" "$ENV{MPI_ROOT}" "$ENV{BOOST_ROOT}" "$ENV{SCOREP_ROOT}" "$ENV{OTF2_ROOT}")

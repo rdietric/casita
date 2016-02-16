@@ -297,7 +297,34 @@ AnalysisEngine::getNullStream( ) const
   return streamGroup.getNullStream( );
 }
 
-/** Find last leave record on given stream before the given timestamp.
+void
+AnalysisEngine::getLastLeaveEvent( EventStream **stream, uint64_t *timestamp )
+{
+  uint64_t lastLeave = 0;
+  
+  EventStreamGroup::EventStreamList localStreams;
+  getLocalStreams( localStreams );
+  
+  for ( EventStreamGroup::EventStreamList::const_iterator pIter =
+          localStreams.begin( );
+        pIter != localStreams.end( ); ++pIter )
+  {
+    EventStream* p = *pIter;
+    
+    // get last leave event
+    if ( p->getPeriod().second > lastLeave )
+    {
+      lastLeave = p->getPeriod().second;
+      *stream = p;
+    }
+  }
+  
+  *timestamp = lastLeave;
+  
+  localStreams.clear();
+}
+
+/** Find last leave node on given stream before the given timestamp.
  * 
  * @param timestamp
  * @param streamId
@@ -305,7 +332,7 @@ AnalysisEngine::getNullStream( ) const
  * @return the graph node
  */
 GraphNode*
-AnalysisEngine::getLastLeave( uint64_t timestamp, uint64_t streamId ) const
+AnalysisEngine::getLastLeaveNode( uint64_t timestamp, uint64_t streamId ) const
 {
   
   EventStream* stream = getStream( streamId );

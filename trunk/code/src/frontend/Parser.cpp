@@ -176,13 +176,13 @@ namespace casita
  
  void
  Parser::printHelp(){
-   std::cout << "Usage: casita <otf-file> [options]\n" << std::endl;
+   std::cout << "Usage: casita <otf2-file> [options]\n" << std::endl;
    std::cout << "  -h [--help]             print help message" << std::endl;
-   std::cout << "  -i [--input]   name     input OTF file" << std::endl;
-   std::cout << "  -o [--output]  name     output OTF file" << std::endl;
-   std::cout << "  -v [--verbose] int      verbosity level" << std::endl;
-   std::cout << "     [--summary]          create summary file" << std::endl;
-   std::cout << "     [--top] int          print top optimization candidates" << std::endl;
+   std::cout << "  -i [--input=]NAME       input OTF file" << std::endl;
+   std::cout << "  -o [--output=]NAME      output OTF file" << std::endl;
+   std::cout << "  -v [--verbose=]INTEGER  verbosity level" << std::endl;
+   std::cout << "  -s [--summary]          create summary CSV file" << std::endl;
+   std::cout << "      --top=INTEGER       print top optimization candidates" << std::endl;
    std::cout << "  -p [--path]             print critical paths"<< std::endl;
    std::cout << "     [--no-errors]        ignore non-fatal errors" << std::endl;
    std::cout << "     [--ignore-nb-mpi]    treat non-blocking MPI functions as CPU functions" << std::endl;
@@ -192,41 +192,48 @@ namespace casita
              << "                          (Avoids a potential deadlock situaton, when no master" << std::endl
              << "                          has been found.)\n" << std::endl;
    
-   std::cout << "  -c [--interval-analysis] [uint32_t]   Run analysis in intervals (between global" << std::endl
+   std::cout << "  -c [--interval-analysis=][uint32_t]   Run analysis in intervals (between global" << std::endl
              << "                          collectives) to reduce memory footprint. The optional value sets the " << std::endl
              << "                          number of pending graph nodes before an analysis run is started." << std::endl;
    
  
  }
 
- bool
- Parser::processArgs( int argc, char** argv){
+  bool
+  Parser::processArgs( int argc, char** argv){
    
     std::string opt;
-    for (int i=1;i<argc;i++){
-     opt = std::string(argv[i]);
-
+    for( int i = 1; i < argc; i++ )
+    {
+      opt = std::string( argv[i] );
 
      //  input file:
-     if (i==1 && opt.find_first_of("-") != 0 ){
-       options.filename = std::string(argv[1]);
+     if( i==1 && opt.find_first_of( "-" ) != 0 )
+     {
+       options.filename = std::string( argv[1] );
      }
 
-     else if (opt.compare(std::string("-i")) == 0){
-       options.filename = std::string(argv[i+1]);
-       i++;
+     else if( opt.compare( std::string( "-i" ) ) == 0 )
+     {
+       if( ++i < argc )
+       {
+         options.filename = std::string(argv[i]);
+       }
      }
 
-     else if (opt.find("--input=")!= std::string::npos){
-       options.filename = opt.erase(0,std::string("--input=").length());
+     else if( opt.find( "--input=" ) != std::string::npos ){
+       options.filename = opt.erase(0,std::string( "--input=" ).length());
      }
 
 
      //  output file
-     else if (opt.compare(std::string("-o")) == 0 ){
-       options.outOtfFile = std::string(argv[i+1]);
-       options.createOTF = true;
-       i++;
+     else if (opt.compare(std::string( "-o" )) == 0 )
+     {
+       if( ++i < argc )
+       {
+         options.outOtfFile = std::string( argv[i] );
+         options.createOTF = true;
+       }
      }
 
      else if ( opt.find("--output=")!= std::string::npos){
@@ -242,9 +249,12 @@ namespace casita
 
 
      // verbose
-     else if (opt.compare(std::string("-v")) == 0){
-       options.verbose = atoi(argv[i+1]);
-       i++;
+     else if( opt.compare(std::string("-v")) == 0 )
+     {       
+       if( ++i < argc )
+       {
+         options.verbose = atoi( argv[i] );
+       }
      }
 
      else if (opt.find("--verbose=")!= std::string::npos){
@@ -253,10 +263,12 @@ namespace casita
 
 
      //  summary
-     else if (opt.find("--summary")!= std::string::npos){
+     else if( opt.compare( std::string( "-s" ) ) == 0 || 
+              opt.find( "--summary" ) != std::string::npos )
+     {
        options.createSummaryFile = true;
      }
-     
+      
      
      // print top X activities
      else if (opt.find("--top=")!= std::string::npos){
@@ -290,9 +302,12 @@ namespace casita
      }
 
      // interval analysis TODO: complete optional?
-     else if (opt.compare(std::string("-c")) == 0){
-       options.analysisInterval = atoi(argv[i+1]);
-       i++;
+     else if( opt.compare(std::string("-c")) == 0 )
+     {
+       if( ++i < argc )
+       {
+         options.analysisInterval = atoi( argv[i] );
+       }
      }
 
      else if (opt.find("--interval-analysis=")!= std::string::npos){

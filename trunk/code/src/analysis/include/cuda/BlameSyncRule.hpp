@@ -89,7 +89,7 @@ namespace casita
                  syncDeltaTicks ) )
           {
             // get the last leave node before the synchronization end
-            GraphNode* lastLeaveNode = commonAnalysis->getLastLeave(
+            GraphNode* lastLeaveNode = commonAnalysis->getLastLeaveNode(
               sync.second->getTime( ), deviceProcess->getId( ) );
             
             // leave node of the wait state
