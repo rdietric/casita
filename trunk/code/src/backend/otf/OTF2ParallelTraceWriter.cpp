@@ -21,6 +21,9 @@
 #include <cmath>
 #include <iostream>
 #include <stdlib.h>
+
+// the following definition and include is needed for the printf PRIu64 macro
+#define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
 /* following adjustments necessary to use MPI_Collectives with OTF2 */
@@ -639,7 +642,7 @@ OTF2ParallelTraceWriter::writeStream( EventStream*  stream,
   if( stream->getPeriod().second == 0 )
     return true;
   
-  UTILS_MSG( verbose >= VERBOSE_ALL, "[%u] Write stream %s", 
+  UTILS_MSG( verbose >= VERBOSE_SOME, "[%u] Write stream %s", 
              mpiRank, stream->getName() );
   
   //\todo: this prohibits parallelization
@@ -693,8 +696,16 @@ OTF2ParallelTraceWriter::writeStream( EventStream*  stream,
     lastCounterValues[*ctrIdIter] = 0;
   }
   
-  // set the stream to initially be not on the critical path
-  processOnCriticalPath[stream->getId()] = false;
+  // set the initial critical path value for this stream
+  if( stream->isFirstCritical() )
+  {
+    processOnCriticalPath[stream->getId()] = true;
+    //UTILS_MSG( true, "Process [%llu] has initial CP", stream->getId());
+  }
+  else
+  {
+    processOnCriticalPath[stream->getId()] = false;
+  }
   
   OTF2_EvtReader* evt_reader = OTF2_Reader_GetEvtReader( reader, stream->getId() );
   
@@ -788,7 +799,7 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& co
     uint32_t currentActivity = activityIter->second.top( );
     
     // time between the last and the current event
-    uint64_t timeDiff        = event.time - lastEventTime[event.location];
+    uint64_t timeDiff = event.time - lastEventTime[event.location];
 
     activityGroupMap[currentActivity].totalDuration += timeDiff;
 /*
@@ -1001,7 +1012,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
     
     // critical path counter, absolute next mode
     if( CRITICAL_PATH == metricType )
-    {
+    {      
       // set counter to '0' for last leave event on the stack, if last counter 
       // value is not already '0' for this location (applies to CUDA kernels)
       if( event.type == OTF2_EVT_LEAVE &&
@@ -1212,7 +1223,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         {
           tmpCounters[metricType] = currentNode->getCounter( metricType, NULL );
           
-          // set CP counter to 0, if the next node is not on the CP 
+          // set CP counter to 0, if the next node is NOT on the CP 
           // (because we use counter next mode)
           if( CRITICAL_PATH == metricType )
           {
@@ -1229,9 +1240,11 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
             if( currentNode->isLeave() && 
                 currentNode->getPartner()->getCounter(CRITICAL_PATH, NULL ) == 0 )
             {
-              //\todo: does that work for visualization (OTF2)
               // zero the counter, as the activity is not on the CP
               tmpCounters[ CRITICAL_PATH ] = 0;
+              
+              // does NOT work for visualization (OTF2), 
+              // therefore processOnCriticalPath[event.location] is used
             }
 
             /*UTILS_MSG( ( strcmp( currentNode->getName(), "MPI_Allreduce") == 0 ) ||  
@@ -1261,8 +1274,8 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   else
   { // this is a CPU or unknown event
     /*
-    UTILS_MSG( strcmp( getRegionName(event.regionRef).c_str(), "stop_timer" ) == 0, 
-              "[%u] stop_timer: '%s' (time: %llu); %d", 
+    UTILS_MSG( strcmp( getRegionName(event.regionRef).c_str(), "cuDevicePrimaryCtxRetain" ) == 0, 
+              "[%u] cuDevicePrimaryCtxRetain: '%s' (time: %llu); %d", 
               mpiRank, getRegionName(event.regionRef).c_str(), 
               event.time - timerOffset, event.type );
      */
@@ -1278,7 +1291,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       if( ( *currentNodeIter )->isLeave() &&
           ( *currentNodeIter )->getPartner()->getCounter( CRITICAL_PATH, NULL ) == 0 )
       {
-        tmpCounters[CRITICAL_PATH]  = 0;
+        tmpCounters[CRITICAL_PATH] = 0;
       }
       else
       {

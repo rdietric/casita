@@ -145,6 +145,9 @@ namespace casita
      
      std::pair< uint64_t, uint64_t >&
      getPeriod( );
+     
+     bool&
+     isFirstCritical( );
 
      GraphNode*
      getLastNode( ) const;
@@ -373,10 +376,13 @@ namespace casita
      const std::string   name;
      EventStreamType     streamType;
      bool                remoteStream;
-     bool                nodesAdded; //!< has the new nodes?
+     bool                nodesAdded; //!< has the stream new nodes?
      
      //!< first enter and last leave time
      std::pair< uint64_t, uint64_t > streamPeriod; 
+     
+     //!< Does this stream contain the first (global) critical path node?
+     bool                hasFirstCriticalNode;
 
      //!< list of unsynchronized kernels (leave nodes only)
      SortedGraphNodeList pendingKernels;

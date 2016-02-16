@@ -306,7 +306,16 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     // initiate the detection of the critical path
     computeCriticalPath( );
     
-    MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
+    // find process where critical path starts for first interval only
+    if( analysis_intervals <= 1 )
+    {
+      findCriticalPathStartTime( );
+      // this function ends in an MPI_Allreduce
+    }
+    else
+    {
+      MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
+    }
     
     time_analysis_cp += clock() - time_tmp;
     
@@ -664,13 +673,6 @@ Runner::computeCriticalPath( )
       if( currentTime == 0 )
         continue;
 
-      //\todo: clean up this exception! maybe not needed any more
-      /*if( currentNode->isMPIInit() && currentNode->isLeave() ){
-        UTILS_MSG( true,
-             "[%u] MPIInit leave", mpiRank );
-        currentTime = currentNode->getPartner()->getTime();
-      }*/
-
       if ( currentTime < criticalPathStart.second )
       {
         criticalPathStart.second = currentTime;
@@ -697,16 +699,12 @@ Runner::findGlobalLengthCP( )
              "Determine total length of critical path" );
   
   // set initial values to extrema if process has no critical stream
-  uint64_t firstTime = std::numeric_limits< uint64_t >::max( );
   uint64_t lastTime  = 0;
 
   // check for the availability of critical streams, before getting the period
-  if( criticalPathStart.first != std::numeric_limits< uint64_t >::max( ) && 
-      criticalPathEnd.first != std::numeric_limits< uint64_t >::max( ) &&
-      analysis.getStream( criticalPathStart.first ) && 
+  if( criticalPathEnd.first != std::numeric_limits< uint64_t >::max( ) &&
       analysis.getStream( criticalPathEnd.first ) )
   {
-    firstTime = analysis.getStream( criticalPathStart.first )->getPeriod().first;
     lastTime  = analysis.getStream( criticalPathEnd.first )->getPeriod().second;
   }
 //  else
@@ -715,7 +713,7 @@ Runner::findGlobalLengthCP( )
 //               criticalPathStart.first, criticalPathEnd.first );
 //  }
 
-  if( std::numeric_limits< uint64_t >::max( ) == firstTime || 0 == lastTime )
+  if( 0 == lastTime )
   {
     UTILS_MSG( options.verbose >= VERBOSE_BASIC, 
                "[%d] Process is not on the critical path?", mpiRank );
@@ -726,12 +724,6 @@ Runner::findGlobalLengthCP( )
   // get the global first and last timestamps
   if ( mpiSize > 1 )
   {
-    MPI_CHECK( MPI_Allreduce( &firstTime,
-                   &firstTime,
-                   1,
-                   MPI_UNSIGNED_LONG_LONG,
-                   MPI_MIN,
-                   MPI_COMM_WORLD ) );
     MPI_CHECK( MPI_Allreduce( &lastTime,
                    &lastTime,
                    1,
@@ -741,10 +733,72 @@ Runner::findGlobalLengthCP( )
   }
 
   // compute the total length of the critical path
-  globalLengthCP = lastTime - firstTime;
+  globalLengthCP = lastTime - criticalPathStart.second;
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
              "Critical path length = %f sec",
              analysis.getRealTime( globalLengthCP ) );
+}
+
+/**
+ * Determine the stream where the critical path starts and its first event time.
+ * TODO: combine MPI_Allgather with findLastMpiNode
+ */
+void
+Runner::findCriticalPathStartTime( )
+{
+  UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+             "Determine critical path start time" );
+  
+  // set initial values first critical node time and first event time
+  uint64_t firstTime[2] = { std::numeric_limits< uint64_t >::max( ), 
+                            std::numeric_limits< uint64_t >::max( ) };
+
+  // check for the availability of critical streams, before getting the period
+  if( criticalPathStart.first != std::numeric_limits< uint64_t >::max( ) && 
+      analysis.getStream( criticalPathStart.first ) )
+  {
+    //firstTime = analysis.getStream( criticalPathStart.first )->getPeriod().first;
+    firstTime[0] = criticalPathStart.second;
+    firstTime[1] = analysis.getStream( criticalPathStart.first )->getPeriod().first;
+  }
+//  else
+//  {
+//    UTILS_MSG( true, "[%d] No critical first (stream %llu) or last time (stream %llu)", mpiRank,
+//               criticalPathStart.first, criticalPathEnd.first );
+//  }
+    
+  // get the global first timestamp
+  uint64_t globalFirstCriticalTime = firstTime[0];
+  uint64_t globalFirstEventTime = firstTime[1];
+  uint64_t nodeFirstTimes[mpiSize*2];
+  if ( mpiSize > 1 )
+  {    
+    MPI_CHECK( MPI_Allgather( &firstTime, 2, MPI_UNSIGNED_LONG_LONG,
+                              nodeFirstTimes,
+                              2, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD ) );
+    
+    for ( int i = 0; i < mpiSize*2; i+=2 )
+    {
+      if ( nodeFirstTimes[i] < globalFirstCriticalTime )
+      {
+        globalFirstCriticalTime = nodeFirstTimes[i];
+        globalFirstEventTime = nodeFirstTimes[i+1];
+      }
+    }
+  }
+  
+  //if critical path starts on a local stream,
+  if( firstTime[0] == globalFirstCriticalTime )
+  {
+    analysis.getStream( criticalPathStart.first )->isFirstCritical( ) = true;
+  }
+  else
+  {
+    criticalPathStart.first = std::numeric_limits< uint64_t >::max( );
+  }
+  
+  // set the global first critical path time
+  criticalPathStart.second = globalFirstEventTime;
 }
 
 /**
