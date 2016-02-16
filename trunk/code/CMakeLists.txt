@@ -108,7 +108,7 @@ SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Critical path AnalySIs Tool for heterogen
 SET(CPACK_PACKAGE_VENDOR "TU Dresden, ZIH with GWT-TUD GmbH")
 SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${PROJECT_VERSION}")
-set(CPACK_SOURCE_IGNORE_FILES "/BUILD/;/tests/;/.svn/;svn-commit*;~$;${CPACK_SOURCE_IGNORE_FILES}")
+set(CPACK_SOURCE_IGNORE_FILES "/BUILD/;/tests/;/.svn/;svn-commit*;~$;casita$;/CMakeFiles/;cmake_install.cmake;CMakeCache.txt;Makefile;CPack*;compile*;")
 INCLUDE(CPack)
 
 add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
