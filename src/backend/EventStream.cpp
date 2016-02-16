@@ -36,6 +36,7 @@ EventStream::EventStream( uint64_t          id,
   remoteStream( remoteStream ),
   nodesAdded( false ),
   hasFirstCriticalNode( false ),
+  hasLastEvent( false ),
   lastNode( NULL ),
   lastEventTime( 0 ),
   pendingMPIRequestId( std::numeric_limits< uint64_t >::max( ) ),
@@ -135,6 +136,17 @@ bool&
 EventStream::isFirstCritical( )
 {
   return hasFirstCriticalNode;
+}
+
+/**
+ * Does this stream contains the global last event (of the trace)?
+ * 
+ * @return true, if the critical path ends on this stream
+ */
+bool&
+EventStream::hasLastGlobalEvent( )
+{
+  return hasLastEvent;
 }
 
 GraphNode*

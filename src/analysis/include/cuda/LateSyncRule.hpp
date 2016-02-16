@@ -66,7 +66,7 @@ namespace casita
 
           if ( kernelLeave && kernelLeave->getTime( ) <= syncEnter->getTime( ) )
           {
-            GraphNode* lastLeaveNode = commonAnalysis->getLastLeave(
+            GraphNode* lastLeaveNode = commonAnalysis->getLastLeaveNode(
               syncLeave->getTime( ), deviceProcess->getId( ) );
             GraphNode* waitEnter = NULL, * waitLeave = NULL;
 

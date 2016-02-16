@@ -80,12 +80,6 @@ Runner::getAnalysis( )
   return analysis;
 }
 
-uint64_t
-Runner::getGlobalLengthCP( )
-{
-  return globalLengthCP;
-}
-
 void
 Runner::startAnalysisRun( )
 {
@@ -309,10 +303,19 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     // find process where critical path starts for first interval only
     if( analysis_intervals <= 1 )
     {
-      findCriticalPathStartTime( );
-      // this function ends in an MPI_Allreduce
+      findCriticalPathStart( );
+      // this function ends in an MPI_Allgather
     }
-    else
+    
+    // if this is the last analysis interval, find the end of the critical path
+    // and determine the total length of the critical path
+    if( !events_available )
+    {
+      findCriticalPathEnd( );
+      // this function ends in an MPI_Allgather
+    }
+    
+    if ( analysis_intervals > 1 && events_available )
     {
       MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
     }
@@ -369,12 +372,6 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     // necessary?
     MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
   } while( events_available );
-  
-  // find the global critical path length
-  if ( options.mergeActivities )
-  {
-    findGlobalLengthCP( );
-  }
   
   if( mpiRank == 0 )
   {
@@ -664,6 +661,10 @@ Runner::computeCriticalPath( )
     GraphNode* currentNode = ( *iter );
     currentNode->setCounter( CRITICAL_PATH, 1 );
     
+    // only the enter nodes are relevant to determine the critical path changes
+    if ( currentNode->isLeave() )
+      continue;
+    
     // to compute the global length of the critical path:
     // get the time and stream ID of the "timely" first and last process-local critical-node
     if ( options.mergeActivities ) // this is the default
@@ -709,8 +710,8 @@ Runner::findGlobalLengthCP( )
   }
 //  else
 //  {
-//    UTILS_MSG( true, "[%d] No critical first (stream %llu) or last time (stream %llu)", mpiRank,
-//               criticalPathStart.first, criticalPathEnd.first );
+//    UTILS_MSG( true, "[%d] No critical last time (stream %llu)", mpiRank,
+//                     criticalPathEnd.first );
 //  }
 
   if( 0 == lastTime )
@@ -721,15 +722,13 @@ Runner::findGlobalLengthCP( )
   
   //UTILS_MSG( true, "[%d] Last time stamp: %llu", mpiRank, lastTime );
     
-  // get the global first and last timestamps
+  // get the global last timestamp
+  uint64_t globalLastTime = lastTime;
   if ( mpiSize > 1 )
   {
-    MPI_CHECK( MPI_Allreduce( &lastTime,
-                   &lastTime,
-                   1,
-                   MPI_UNSIGNED_LONG_LONG,
-                   MPI_MAX,
-                   MPI_COMM_WORLD ) );
+    MPI_CHECK( MPI_Allreduce( &lastTime, &globalLastTime,
+                              1, MPI_UNSIGNED_LONG_LONG,
+                              MPI_MAX, MPI_COMM_WORLD ) );
   }
 
   // compute the total length of the critical path
@@ -737,14 +736,22 @@ Runner::findGlobalLengthCP( )
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
              "Critical path length = %f sec",
              analysis.getRealTime( globalLengthCP ) );
+  
+  // local stream has the last event of the global trace
+  if( lastTime == globalLastTime )
+  {
+    analysis.getStream( criticalPathEnd.first )->hasLastGlobalEvent( ) = true;
+  }
 }
 
 /**
  * Determine the stream where the critical path starts and its first event time.
- * TODO: combine MPI_Allgather with findLastMpiNode
+ * The critical path start time may not be the first event in a trace.
+ * This function is executed only once after the critical path analysis of the
+ * first analysis interval. 
  */
 void
-Runner::findCriticalPathStartTime( )
+Runner::findCriticalPathStart( )
 {
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
              "Determine critical path start time" );
@@ -757,7 +764,6 @@ Runner::findCriticalPathStartTime( )
   if( criticalPathStart.first != std::numeric_limits< uint64_t >::max( ) && 
       analysis.getStream( criticalPathStart.first ) )
   {
-    //firstTime = analysis.getStream( criticalPathStart.first )->getPeriod().first;
     firstTime[0] = criticalPathStart.second;
     firstTime[1] = analysis.getStream( criticalPathStart.first )->getPeriod().first;
   }
@@ -774,8 +780,8 @@ Runner::findCriticalPathStartTime( )
   if ( mpiSize > 1 )
   {    
     MPI_CHECK( MPI_Allgather( &firstTime, 2, MPI_UNSIGNED_LONG_LONG,
-                              nodeFirstTimes,
-                              2, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD ) );
+                              nodeFirstTimes, 2, MPI_UNSIGNED_LONG_LONG, 
+                              MPI_COMM_WORLD ) );
     
     for ( int i = 0; i < mpiSize*2; i+=2 )
     {
@@ -799,6 +805,66 @@ Runner::findCriticalPathStartTime( )
   
   // set the global first critical path time
   criticalPathStart.second = globalFirstEventTime;
+}
+
+/**
+ * Determine where (stream) and when the critical path ends.
+ * The critical path end time is the globally last event in the trace. 
+ * This function is executed only once after the critical path analysis of the 
+ * last analysis interval.
+ */
+void
+Runner::findCriticalPathEnd( )
+{
+  UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+             "Determine critical path end" );
+  
+  // set initial value
+  uint64_t localEndTime = 0;
+  
+  // get the last event time for local streams
+  EventStream* lastLeaveStream = NULL;
+  analysis.getLastLeaveEvent( &lastLeaveStream, &localEndTime );
+    
+  // get the global timestamp
+  uint64_t globalLastLeaveTime = localEndTime;
+  uint64_t globalTimes[mpiSize];
+  if ( mpiSize > 1 )
+  {    
+    MPI_CHECK( MPI_Allgather( &localEndTime, 1, MPI_UNSIGNED_LONG_LONG,
+                              globalTimes, 1, MPI_UNSIGNED_LONG_LONG, 
+                              MPI_COMM_WORLD ) );
+    
+    for ( int i = 0; i < mpiSize; ++i )
+    {
+      // get globally last leave event time
+      if ( globalTimes[i] > globalLastLeaveTime )
+      {
+        globalLastLeaveTime = globalTimes[i];
+      }
+    }
+  }
+  
+  // if critical path ends on a local stream, mark it
+  if( localEndTime == globalLastLeaveTime )
+  {
+    lastLeaveStream->hasLastGlobalEvent() = true;
+    criticalPathEnd.first = lastLeaveStream->getId();
+  }
+  else
+  {
+    // invalidate stream ID as it is not known
+    criticalPathEnd.first = std::numeric_limits< uint64_t >::max( );
+  }
+  
+  // set the global last leave event time
+  criticalPathEnd.second = globalLastLeaveTime;
+  
+  // compute the total length of the critical path
+  globalLengthCP = globalLastLeaveTime - criticalPathStart.second;
+  UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+             "Critical path length = %f sec",
+             analysis.getRealTime( globalLengthCP ) );
 }
 
 /**
@@ -988,6 +1054,7 @@ Runner::findLastMpiNode( GraphNode** node )
 {
   uint64_t   lastMpiNodeTime = 0;
   int        lastMpiRank     = mpiRank;
+  
   uint64_t   nodeTimes[mpiSize];
   *node = NULL;
 
@@ -1566,7 +1633,7 @@ Runner::printAllActivities( )
 
     
       
-    //Print Summary in CSV file (File has to be declared in this scope for closing it)
+    // print summary in CSV file (file has to be declared in this scope for closing it)
     FILE *summaryFile;
     if (options.createSummaryFile){
       
@@ -1599,13 +1666,10 @@ Runner::printAllActivities( )
     size_t ctr           = 0;
     for ( std::set< OTF2ParallelTraceWriter::ActivityGroup,
                     OTF2ParallelTraceWriter::ActivityGroupCompare >::
-          const_iterator iter =
-            sortedActivityGroups.begin( );
-          iter != sortedActivityGroups.end( ) && ( ctr < options.topX );
+          const_iterator iter = sortedActivityGroups.begin( );
+          iter != sortedActivityGroups.end( ) /*&& ( ctr < options.topX )*/;
           ++iter )
     {
-      ++ctr;
-      
       // generate a sum of the TOP rated functions
       sumInstances     += iter->numInstances;
       sumDuration      += iter->totalDuration;
@@ -1613,27 +1677,33 @@ Runner::printAllActivities( )
       sumFractionCP    += iter->fractionCP;
       sumFractionBlame += iter->fractionBlame;
       
-      printf( "%50.50s %10u %10f %11f %11.2f%% %20.2f%%  %7.6f\n",
-              analysis.getFunctionName( iter->functionId ),
-              iter->numInstances,
-              analysis.getRealTime( iter->totalDuration ),
-              analysis.getRealTime( iter->totalDurationOnCP ),
-              100.0 * iter->fractionCP,
-              100.0 * iter->fractionBlame,
-              iter->fractionCP +
-              iter->fractionBlame );
+      if( ctr < options.topX )
+      {
+        printf( "%50.50s %10u %10f %11f %11.2f%% %20.2f%%  %7.6f\n",
+                analysis.getFunctionName( iter->functionId ),
+                iter->numInstances,
+                analysis.getRealTime( iter->totalDuration ),
+                analysis.getRealTime( iter->totalDurationOnCP ),
+                100.0 * iter->fractionCP,
+                100.0 * iter->fractionBlame,
+                iter->fractionCP +
+                iter->fractionBlame );
+        
+        ++ctr;
+      }
       
-        if (options.createSummaryFile){
-              fprintf(summaryFile, "%s;%u;%lf;%lf;%lf;%lf;%lf\n",
-                      analysis.getFunctionName( iter->functionId ),
-                      iter->numInstances,
-                      analysis.getRealTime( iter->totalDuration ),
-                      analysis.getRealTime( iter->totalDurationOnCP ),
-                      100.0 * iter->fractionCP,
-                      100.0 * iter->fractionBlame,
-                      iter->fractionCP +
-                      iter->fractionBlame );
-        }
+      if( options.createSummaryFile )
+      {
+        fprintf( summaryFile, "%s;%u;%lf;%lf;%lf;%lf;%lf\n",
+                 analysis.getFunctionName( iter->functionId ),
+                 iter->numInstances,
+                 analysis.getRealTime( iter->totalDuration ),
+                 analysis.getRealTime( iter->totalDurationOnCP ),
+                 100.0 * iter->fractionCP,
+                 100.0 * iter->fractionBlame,
+                 iter->fractionCP +
+                 iter->fractionBlame );
+      }
     }
     
     printf( "--------------------------------------------------\n"

@@ -60,9 +60,6 @@ namespace casita
      AnalysisEngine&
      getAnalysis( );
 
-     uint64_t
-     getGlobalLengthCP( );
-
      void
      printAllActivities( );
 
@@ -106,7 +103,10 @@ namespace casita
      findGlobalLengthCP( );
      
      void
-     findCriticalPathStartTime( );
+     findCriticalPathStart( );
+     
+     void
+     findCriticalPathEnd( );
 
      int
      findLastMpiNode( GraphNode** node );

@@ -1236,21 +1236,31 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
               processOnCriticalPath[event.location] = false;
             }
             
-            // if node is leave AND enter has zero as CP counter
-            if( currentNode->isLeave() && 
-                currentNode->getPartner()->getCounter(CRITICAL_PATH, NULL ) == 0 )
+            // if node is leave
+            if( currentNode->isLeave() )
             {
-              // zero the counter, as the activity is not on the CP
-              tmpCounters[ CRITICAL_PATH ] = 0;
-              
-              // does NOT work for visualization (OTF2), 
-              // therefore processOnCriticalPath[event.location] is used
+              // if node is leave AND enter has zero as CP counter
+              if( currentNode->getPartner()->getCounter(CRITICAL_PATH, NULL ) == 0 )
+              {
+                // zero the counter, as the activity is not on the CP
+                tmpCounters[ CRITICAL_PATH ] = 0;
+
+                // Does NOT work for visualization (OTF2)!
+                // visualization uses processOnCriticalPath[event.location]
+              }
+
+              // if we are at an MPI_Finalize leave and the current stream does 
+              // not contain the globally last event
+              if( currentNode->isMPIFinalize() && !currentStream->hasLastGlobalEvent( ) )
+              {
+                processOnCriticalPath[event.location] = false;
+              }
             }
 
-            /*UTILS_MSG( ( strcmp( currentNode->getName(), "MPI_Allreduce") == 0 ) ||  
-                       ( strcmp( currentNode->getName(), "MPI_Sendrecv") == 0 ), 
-                       "[%llu] %s: CP %llu, %d (%d)", 
-                       currentNode->getStreamId(), currentNode->getUniqueName().c_str(), tmpCounters[CRITICAL_PATH], 
+            /*UTILS_MSG( ( strcmp( currentNode->getName(), "MPI_Finalize") == 0 ), 
+                       "[%llu] %s: onCP %llu=?%d (EvtType: %d)", 
+                       currentNode->getStreamId(), currentNode->getUniqueName().c_str(), 
+                       tmpCounters[CRITICAL_PATH], 
                        processOnCriticalPath[event.location], event.type );*/
           }
           

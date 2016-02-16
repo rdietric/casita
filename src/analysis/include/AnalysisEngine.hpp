@@ -122,7 +122,10 @@ namespace casita
      getNumAllDeviceStreams( );
 
      GraphNode*
-     getLastLeave( uint64_t timestamp, uint64_t streamId ) const;
+     getLastLeaveNode( uint64_t timestamp, uint64_t streamId ) const;
+     
+     void
+     getLastLeaveEvent( EventStream **stream, uint64_t *timestamp );
 
      void
      reset( );

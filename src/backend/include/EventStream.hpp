@@ -143,11 +143,29 @@ namespace casita
         return p1->getId( ) <= p2->getId( );
      }
      
+     /**
+      * Get the stream's first enter and last leave time stamps
+      * 
+      * @return a pair the first enter and last leave time stamp
+      */
      std::pair< uint64_t, uint64_t >&
      getPeriod( );
      
+     /**
+      * Does this stream contains the global first critical node?
+      * 
+      * @return true, if the critical path starts on this stream
+      */
      bool&
      isFirstCritical( );
+     
+     /**
+      * Does this stream contains the global last event (of the trace)?
+      * 
+      * @return true, if the critical path ends on this stream
+      */
+     bool&
+     hasLastGlobalEvent( );
 
      GraphNode*
      getLastNode( ) const;
@@ -383,6 +401,9 @@ namespace casita
      
      //!< Does this stream contain the first (global) critical path node?
      bool                hasFirstCriticalNode;
+     
+     //! Does this stream contain the last global event of the trace?
+     bool                hasLastEvent;
 
      //!< list of unsynchronized kernels (leave nodes only)
      SortedGraphNodeList pendingKernels;
