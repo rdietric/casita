@@ -23,7 +23,7 @@ AnalysisParadigmOpenCL::AnalysisParadigmOpenCL( AnalysisEngine* analysisEngine )
   IAnalysisParadigm( analysisEngine )
 {
   addRule( new KernelExecutionRule( 9 ) );
-  addRule( new BlameKernelRule( 2 ) ); // triggered on cudaSync
+  addRule( new BlameKernelRule( 2 ) ); // triggered on clFinish
 }
 
 AnalysisParadigmOpenCL::~AnalysisParadigmOpenCL( )
@@ -61,12 +61,13 @@ AnalysisParadigmOpenCL::handleKeyValuesEnter( OTF2TraceReader* reader,
                                             OTF2KeyValueList*  list )
 {
   uint64_t refValue     = 0;
-  int32_t  streamRefKey = reader->getFirstKey( SCOREP_CUDA_STREAMREF );
+  int32_t  streamRefKey = reader->getFirstKey( SCOREP_OPENCL_QUEUEREF );
 
   if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
        list->getLocationRef( (uint32_t)streamRefKey,
                              &refValue ) == OTF2KeyValueList::KV_SUCCESS )
   {
+    fprintf(stderr, "%s set referenced stream id: %llu ", node->getName(), refValue );
     node->setReferencedStreamId( refValue );
   }
 }
@@ -86,7 +87,7 @@ AnalysisParadigmOpenCL::handleKeyValuesLeave( OTF2TraceReader* reader,
                                               OTF2KeyValueList* list )
 {
   uint64_t refValue     = 0;
-  int32_t  streamRefKey = reader->getFirstKey( SCOREP_CUDA_STREAMREF );
+  int32_t  streamRefKey = reader->getFirstKey( SCOREP_OPENCL_QUEUEREF );
 
   if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
        list->getLocationRef( (uint32_t)streamRefKey,

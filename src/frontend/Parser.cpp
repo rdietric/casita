@@ -62,13 +62,13 @@ namespace casita
  template < class T >
  bool
  from_string( T& t,
-              const std::string& s,
-              std::ios_base& ( *f )( std::ios_base & ) )
- {
+              const std::string& s )
+ {   
    std::istringstream iss( s );
-   if ( ( iss >> f >> t ).fail( ) )
+   if ( !( iss >> t ) )
    {
-     throw std::invalid_argument( "conversion invalid!" );
+     //UTILS_WARNING( "Conversion of argument %s invalid!", s.c_str() );
+     return false;
    }
 
    return true;
@@ -221,8 +221,9 @@ namespace casita
        }
      }
 
-     else if( opt.find( "--input=" ) != std::string::npos ){
-       options.filename = opt.erase(0,std::string( "--input=" ).length());
+     else if( opt.find( "--input=" ) != std::string::npos )
+     {
+       options.filename = opt.erase( 0, std::string( "--input=" ).length( ) );
      }
 
 
@@ -243,22 +244,44 @@ namespace casita
 
 
      // help
-     else if (opt.compare(std::string("-h")) == 0 || opt.find("--help")!= std::string::npos){
+     else if ( opt.compare(std::string("-h")) == 0 || 
+               opt.find("--help") != std::string::npos )
+     {
        return false;
      }
-
+      
+     //else if( checkOption( argc, argv, &i, "-v", "--verbose" ) )
 
      // verbose
-     else if( opt.compare(std::string("-v")) == 0 )
-     {       
+     else if( opt.compare(std::string( "-v" ) ) == 0 ||
+              opt.compare(std::string( "--verbose" ) ) == 0)
+     {
        if( ++i < argc )
        {
-         options.verbose = atoi( argv[i] );
+         int verbose;
+         if( from_string( verbose, argv[i] ) )
+         {
+           options.verbose = verbose;
+         }
+         else
+         {
+           --i;
+         }
        }
      }
 
-     else if (opt.find("--verbose=")!= std::string::npos){
-       options.verbose = atoi(opt.erase(0, std::string("--verbose=").length()).c_str());
+     else if ( opt.find("--verbose=")!= std::string::npos )
+     {
+        //options.verbose = atoi(opt.erase(0, std::string("--verbose=").length()).c_str());
+        int verbose;
+        if( from_string( verbose, opt.erase( 0, 10 ) ) )
+        {
+          options.verbose = verbose;
+        }
+        else
+        {
+          UTILS_WARNING( "Unrecognized option %s for --verbose", opt.c_str() );
+        }
      }
 
 
@@ -271,6 +294,8 @@ namespace casita
       
      
      // print top X activities
+      
+      
      else if (opt.find("--top=")!= std::string::npos){
        options.topX = atoi(opt.erase(0, std::string("--top=").length()).c_str());
      }
