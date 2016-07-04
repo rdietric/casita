@@ -35,7 +35,7 @@ namespace casita
       bool
       apply( AnalysisParadigmOpenCL* analysis, GraphNode* syncLeave )
       {
-        // applied at sync
+        // applied at OpenCL command queue synchronization
         if ( !syncLeave->isOpenCLQueueSync( ) || !syncLeave->isLeave( ) )
         {
           return false;
@@ -45,13 +45,10 @@ namespace casita
 
         GraphNode* syncEnter = syncLeave->getGraphPair( ).first;
 
-        /* ignore delta ticks for now until we have a better heuristic */
-        /* uint64_t syncDeltaTicks        = commonAnalysis->getDeltaTicks( ); */
-
         bool ruleResult = false;
         /* find all referenced (device) streams */
         EventStreamGroup::EventStreamList deviceStreams;
-        commonAnalysis->getAllDeviceStreams( deviceStreams );
+        commonAnalysis->getAllDeviceStreams( deviceStreams );        
         for ( EventStreamGroup::EventStreamList::const_iterator pIter =
                 deviceStreams.begin( );
               pIter != deviceStreams.end( ); ++pIter )
@@ -62,16 +59,23 @@ namespace casita
           {
             continue;
           }
+          
+          ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: Found referenced queue" );
 
           // test that there is a pending kernel (leave)
-          bool isFirstKernel        = true;
+          bool isFirstKernel = true;
           while ( true )
           {
             GraphNode* kernelLeave = deviceStream->getPendingKernel( );
             if ( !kernelLeave )
             {
+              ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: NO pending kernel found" );
+
+              
               break;
             }
+            
+            ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: Pending kernel found" );
 
             GraphNode::GraphNodePair& kernel = kernelLeave->getGraphPair( );
 
@@ -88,7 +92,6 @@ namespace casita
               commonAnalysis->getEdge( syncEnter, syncLeave )->makeBlocking( );
 
               // set counters (to sync leave node)
-              //\todo: set counters of enter nodes
               syncLeave->incCounter( WAITING_TIME,
                                      std::min( syncLeave->getTime( ),
                                                kernel.second->getTime( ) ) -
@@ -100,6 +103,8 @@ namespace casita
                                                    kernel.second->getTime( ) ) -
                                          std::max( syncEnter->getTime( ),
                                                    kernel.first->getTime( ) ) );
+              
+              ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: set blame");
 
               ruleResult    = true;
               isFirstKernel = false;

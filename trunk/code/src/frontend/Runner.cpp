@@ -632,8 +632,8 @@ Runner::computeCriticalPath( )
   else
   {
     // compute local critical path on root, only
-    UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-               "Single process: defaulting to CUDA/OMP only mode" );
+    UTILS_MSG( options.verbose >= VERBOSE_BASIC,
+               "Single process: Detect local critical path (CUDA, OpenCL, OpenMP)" );
 
     Graph& subGraph = analysis.getGraph( );
 

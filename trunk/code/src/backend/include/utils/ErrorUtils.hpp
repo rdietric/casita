@@ -32,6 +32,12 @@ namespace casita
        static ErrorUtils instance;
        return instance;
      }
+     
+     void
+     throwWarning( const char* fmt, ... )
+     {
+       
+     }
 
      void
      throwError( const char* fmt, ... )
@@ -140,6 +146,9 @@ namespace casita
   if ( cond ) { \
     ErrorUtils::getInstance( ).outputMessageNoLineBreak( fmt, ## __VA_ARGS__ ); \
   }
+ 
+#define UTILS_WARNING( fmt, ... ) \
+    ErrorUtils::getInstance( ).outputMessage( "Warning: " fmt, ## __VA_ARGS__ );
 
 // debugging
 #if defined(DEBUG) && defined(DEBUG_LEVEL)

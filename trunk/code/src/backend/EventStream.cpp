@@ -631,7 +631,6 @@ EventStream::handleMPIIrecvEventData( uint64_t requestId,
   //std::cerr << "MPIIrecv: mpiWaitRequest = " << requestId << std::endl;
  
   mpiIcommRecords[requestId].leaveNode->setReferencedStreamId(partnerId);
-  //mpiIcommRecords[requestId]->leaveNode->setReferencedStreamId(partnerId);
   
   // temporarily store the request that is consumed by MPI_Wait[all] leave event
   pendingRequests.push_back(requestId);
@@ -676,16 +675,6 @@ EventStream::setMPIIsendNodeData( GraphNode* node )
   // set node-specific data to a pointer to the record in the map
   node->setData( &mpiIcommRecords[pendingMPIRequestId] );
   
-  /*
-  MPIIcommRecord *record = new MPIIcommRecord;
-  record->requests[0] = MPI_REQUEST_NULL;
-  record->requests[1] = MPI_REQUEST_NULL;
-  record->leaveNode = node;
-  record->requestId = pendingMPIRequestId;
-  mpiIcommRecords[pendingMPIRequestId] = record;
-  node->setData( record );
-  */
-  
   node->setReferencedStreamId( mpiIsendPartner ); 
   
   //invalidate temporary stored request and partner ID
@@ -717,7 +706,6 @@ EventStream::setMPIWaitNodeData( GraphNode* node )
   // set OTF2 request ID as node-specific data
   // the request ID has to be already in the map from Irecv or Isend record
   node->setData( &mpiIcommRecords[ pendingRequests.back( ) ] );
-  
   
   // !!! invalidate node-specific data when deleting this entry
   mpiIcommRecords[ pendingRequests.back( ) ].leaveNode = node;

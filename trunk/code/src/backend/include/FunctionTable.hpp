@@ -453,8 +453,19 @@ namespace casita
 
        if ( deviceStream )
        {
-         descr->type     = CUDA_KERNEL;
-         descr->paradigm = PARADIGM_CUDA;
+         // TODO: distinguish by function group:
+         
+         // if name starts with '$' it is an OpenCL kernel
+         if( name[0] == '$' )
+         {
+           descr->type     = OCL_KERNEL;
+           descr->paradigm = PARADIGM_OCL;
+         }
+         else
+         {
+           descr->type     = CUDA_KERNEL;
+           descr->paradigm = PARADIGM_CUDA;
+         }
          return true;
        }
 
