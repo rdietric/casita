@@ -1636,14 +1636,12 @@ Runner::printAllActivities( )
     if (options.createRatingCSV){
       
       UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-                 "[%u] create Summary", mpiRank );
-      std::string otfFilename = options.outOtfFile;
-      int startFilename = otfFilename.find_last_of("/")+1; // if there is no "/" find_last_of() returns -1 
-      int endFilename = otfFilename.find_last_of(".");  
-      int lenName = endFilename - startFilename;
-      std::string Filename = otfFilename.substr(startFilename, lenName) + std::string("_rating") + std::string(".csv");
-      
+                 "[0] generate rating as csv file" );
 
+      std::string Filename = Parser::getInstance().getPathToFile() 
+                           + std::string( "/" ) + Parser::getInstance().getOutputFilename()
+                           + std::string( "_rating.csv" );
+      
       summaryFile = fopen(Filename.c_str(),"w");
       fprintf(summaryFile, "%s;%s;%s;%s;%s;%s;%s\n",
             "Activity Group",
