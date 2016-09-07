@@ -67,7 +67,6 @@ AnalysisParadigmOpenCL::handleKeyValuesEnter( OTF2TraceReader* reader,
        list->getLocationRef( (uint32_t)streamRefKey,
                              &refValue ) == OTF2KeyValueList::KV_SUCCESS )
   {
-    fprintf(stderr, "%s set referenced stream id: %llu ", node->getName(), refValue );
     node->setReferencedStreamId( refValue );
   }
 }

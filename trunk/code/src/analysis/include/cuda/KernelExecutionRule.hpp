@@ -82,11 +82,11 @@ namespace casita
           {
             GraphNode* syncEvtEnter = syncEvtLeave->getPartner();
 
-            UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME, 
+            /*UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME, 
                        "[%u] Process deferred node %s at %s",
                        commonAnalysis->getMPIRank( ), 
                        syncEvtLeave->getUniqueName( ).c_str( ),
-                       kernelLeave->getUniqueName().c_str() );
+                       kernelLeave->getUniqueName().c_str() );*/
 
             if ( syncEvtEnter->getTime( ) < kernelLeave->getTime( ) )
             {

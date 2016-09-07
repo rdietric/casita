@@ -38,7 +38,7 @@ namespace casita
    bool        noErrors;
    bool        ignoreAsyncMpi;
    uint32_t    analysisInterval;
-   bool        createSummaryFile;
+   bool        createRatingCSV;
    int         verbose;
    size_t      topX;
    int         eventsProcessed;

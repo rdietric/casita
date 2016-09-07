@@ -25,8 +25,6 @@
 
 #include <time.h>       /* clock_t, clock, CLOCKS_PER_SEC */
 
-#include <omp.h>
-
 #include "Runner.hpp"
 
 using namespace casita;
@@ -1635,7 +1633,7 @@ Runner::printAllActivities( )
       
     // print summary in CSV file (file has to be declared in this scope for closing it)
     FILE *summaryFile;
-    if (options.createSummaryFile){
+    if (options.createRatingCSV){
       
       UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
                  "[%u] create Summary", mpiRank );
@@ -1643,7 +1641,7 @@ Runner::printAllActivities( )
       int startFilename = otfFilename.find_last_of("/")+1; // if there is no "/" find_last_of() returns -1 
       int endFilename = otfFilename.find_last_of(".");  
       int lenName = endFilename - startFilename;
-      std::string Filename = otfFilename.substr(startFilename, lenName) + std::string("Summary") + std::string(".csv");
+      std::string Filename = otfFilename.substr(startFilename, lenName) + std::string("_rating") + std::string(".csv");
       
 
       summaryFile = fopen(Filename.c_str(),"w");
@@ -1692,7 +1690,7 @@ Runner::printAllActivities( )
         ++ctr;
       }
       
-      if( options.createSummaryFile )
+      if( options.createRatingCSV )
       {
         fprintf( summaryFile, "%s;%u;%lf;%lf;%lf;%lf;%lf\n",
                  analysis.getFunctionName( iter->functionId ),
@@ -1716,7 +1714,7 @@ Runner::printAllActivities( )
               100.0 * sumFractionCP,
               100.0 * sumFractionBlame );
     
-    if (options.createSummaryFile){
+    if (options.createRatingCSV){
       fclose(summaryFile);
     }
   }

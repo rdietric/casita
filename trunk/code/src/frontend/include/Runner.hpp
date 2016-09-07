@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <mpi.h>
+#include <omp.h>
 #include <map>
 
 #include "common.hpp"

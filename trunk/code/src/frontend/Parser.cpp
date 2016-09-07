@@ -289,7 +289,7 @@ namespace casita
      else if( opt.compare( std::string( "-s" ) ) == 0 || 
               opt.find( "--summary" ) != std::string::npos )
      {
-       options.createSummaryFile = true;
+       options.createRatingCSV = true;
      }
       
      
@@ -365,23 +365,32 @@ namespace casita
     
    success = processArgs(argc,argv);
    
-   if ( success && options.createOTF){
+   // if all arguments have been parsed and an OTF2 output shall be generated
+   if ( success && options.createOTF ){
       setOutput_Path_and_Name();
 
       // if the output file already exists, append unique number
-      std::string file = pathToFile +std::string("/")+ outputFilename + std::string(".otf2");
-      if (!access(file.c_str(),0) ) // test if file exists
+      std::string traceDir = pathToFile + std::string("/") + outputFilename;
+      std::string file = traceDir + std::string(".otf2");
+      
+      // if output .otf2 file or trace directory exist
+      if ( access( file.c_str(), F_OK ) == 0 || 
+           access( traceDir.c_str(), F_OK ) == 0 )
       {
-          int n=2;
+          int n = 2;
           std::stringstream num;
           num << n;
           
-          // search for unique number to append
-          while(!access( (pathToFile +std::string("/")+ outputFilename + std::string("_")+num.str() + std::string(".otf2")).c_str() ,0) ){
+          // append underscore for new output directory
+          traceDir += std::string( "_" );
+          
+          // search for unique number to append 
+          while( access( ( traceDir + num.str( ) + std::string(".otf2") ).c_str() , F_OK ) == 0 || 
+                 access( ( traceDir + num.str( ) ).c_str() , F_OK ) == 0 )
+          {
               n++;
-              // clear stringstream and increase 
-              num.str("");
-              num.clear();
+              num.str( "" );
+              num.clear( );
               num << n;
           }
           
@@ -397,25 +406,25 @@ namespace casita
    return success;
  }
  
+ /*
+  * 
+  */
  void    
  Parser::setOutput_Path_and_Name(){
     std::string otfFilename = options.outOtfFile;
     char currentworkdir[500];   
     
-    
-    int startFilename = otfFilename.find_last_of("/")+1; // if there is no "/" find_last_of() returns -1 
-    int endFilename = otfFilename.find_last_of(".");
+    int startFilename = otfFilename.find_last_of( "/" ) +1; // if there is no "/" find_last_of() returns -1 
+    int endFilename = otfFilename.find_last_of( "." );
     int lenName = endFilename - startFilename;
     
-    
-    outputFilename = otfFilename.substr(startFilename, lenName); //Name without extension
-    getcwd(currentworkdir,500);
-
+    outputFilename = otfFilename.substr( startFilename, lenName ); //name without extension
+    getcwd( currentworkdir, 500 );
 
     // absolute path
-    if ( otfFilename.find_first_of("/") == 0 )
+    if ( otfFilename.find_first_of( "/" ) == 0 )
     { 
-        pathToFile = std::string(currentworkdir).substr(0,startFilename);
+        pathToFile = std::string( currentworkdir ).substr( 0, startFilename );
     }
 
     // relative path
@@ -456,7 +465,7 @@ namespace casita
      options.verbose           = 0;
      options.topX              = 20;
      options.ignoreAsyncMpi    = false;
-     options.createSummaryFile = false;
+     options.createRatingCSV = true;
   }
 
 }
