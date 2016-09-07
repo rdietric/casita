@@ -130,7 +130,7 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
 
       case EventStream::MPI_SEND:
         tmpId  = new uint64_t; // \TODO: not deleted in case of MPI_Sendrecv
-        *tmpId = iter->partnerId;
+        *tmpId = iter->partnerId;        
         node->setData( tmpId );
         break;
         

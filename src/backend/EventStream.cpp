@@ -700,18 +700,28 @@ EventStream::setMPIIsendNodeData( GraphNode* node )
 void
 EventStream::setMPIWaitNodeData( GraphNode* node )
 {
-  UTILS_ASSERT( pendingRequests.size() == 1, 
-                "List of pending OTF2 request IDs != 1.\n");
+//  UTILS_ASSERT( pendingRequests.size( ) == 1, 
+//                "List of pending OTF2 request IDs != 1 (%llu).\n", 
+//                pendingRequests.size( ) );
+  
+  if( pendingRequests.size( ) == 1 )
+  {
+    // set OTF2 request ID as node-specific data
+    // the request ID has to be already in the map from Irecv or Isend record
+    node->setData( &mpiIcommRecords[ pendingRequests.back( ) ] );
 
-  // set OTF2 request ID as node-specific data
-  // the request ID has to be already in the map from Irecv or Isend record
-  node->setData( &mpiIcommRecords[ pendingRequests.back( ) ] );
-  
-  // !!! invalidate node-specific data when deleting this entry
-  mpiIcommRecords[ pendingRequests.back( ) ].leaveNode = node;
-  
-  // request ID is consumed, therefore pop it from the vector
-  pendingRequests.pop_back( );
+    // !!! invalidate node-specific data when deleting this entry
+    mpiIcommRecords[ pendingRequests.back( ) ].leaveNode = node;
+
+    // request ID is consumed, therefore pop it from the vector
+    pendingRequests.pop_back( );
+  }
+  else // error handling
+  {
+    UTILS_MSG( true, "List of pending OTF2 request IDs != 1 (%llu) at %s\n", 
+               pendingRequests.size( ), node->getUniqueName().c_str() );
+    
+  }
 }
 
 /**

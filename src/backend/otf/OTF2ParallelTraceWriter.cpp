@@ -193,7 +193,7 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
   UTILS_MSG( mpiRank == 0 && verbose >= VERBOSE_BASIC, 
              "[0] PATH: '%s'", pathToFile.c_str( ) );
   
-  #elif !defined(BOOST_AVAILABLE)
+  #else
 
   outputFilename = Parser::getInstance().getOutputFilename();
   pathToFile = Parser::getInstance().getPathToFile();
@@ -224,8 +224,6 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
       }
     }
     #endif
-    
-    
     
     MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
@@ -1154,6 +1152,8 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   const bool isDeviceStream   = deviceStreamMap[event.location];
   const bool mapsInternalNode = FunctionTable::getAPIFunctionType(
     eventName.c_str( ), &desc, isDeviceStream, false );
+  
+  //UTILS_MSG( true, "Event name: '%s'", eventName.c_str( ) );
 
   // non-internal counter values for this event
   CounterMap tmpCounters;
@@ -1172,6 +1172,8 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
     else
     {
       GraphNode* currentNode = *currentNodeIter;
+      
+      //UTILS_MSG( true, "Current Node: '%s'", currentNode->getUniqueName( ).c_str( ) );
 
       UTILS_ASSERT( currentNode->getFunctionId( ) == event.regionRef,
                     " [%u] RegionRef doesn't fit for %s and %s, %u != %u \n", 
@@ -1182,18 +1184,25 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       // model fork/join nodes as the currently running activity
       if ( currentNode->isOMPForkJoinRegion( ) )
       {
-        UTILS_ASSERT( activityStack[event.location].size( ) > 0,
-                      "No current activity for OMP ForkJoin" );
-
         UTILS_ASSERT( event.regionRef == ompForkJoinRef,
                       "ForkJoin must have regionRef %u", ompForkJoinRef );
 
         UTILS_ASSERT( event.type == OTF2_EVT_ATOMIC,
                       "Event %s has unexpected type", eventName.c_str( ) );
-
-        const OTF2_RegionRef newRegionRef = activityStack[event.location].top( );
-        currentNode->setFunctionId( newRegionRef );
-        event.regionRef = newRegionRef;
+        /*
+        UTILS_ASSERT( activityStack[event.location].size( ) > 0,
+                      "[%u] No current activity for OMP ForkJoin "
+                      "(%s, %u)",
+                      mpiRank, currentNode->getUniqueName( ).c_str( ), event.regionRef);
+        */
+        
+        if( activityStack[event.location].size( ) > 0 )
+        {
+          const OTF2_RegionRef newRegionRef = activityStack[event.location].top( );
+          currentNode->setFunctionId( newRegionRef );
+        
+          event.regionRef = newRegionRef;
+        }
       }
 
       // preprocess current internal node (mark open edges to blame CPU events)
@@ -1965,16 +1974,19 @@ OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadFork(
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  /* write next node in List */
+  // write next node in List
   OTF2Event event;
   event.location  = locationID;
+  
   /* Fork/Join-RegionRef is created when definitions are read.
    * This event is processed because internal it is a node and counters have to
    * be calculated correctly (always happens between internal nodes).
    */
   event.regionRef = tw->ompForkJoinRef;
   event.time      = time;
-  event.type      = OTF2_EVT_ATOMIC;
+  
+  // mark as atomic to avoid unnecessary operations in processNextEvent())
+  event.type      = OTF2_EVT_ATOMIC; 
 
   tw->processNextEvent( event, OTF2_OMP_FORKJOIN_INTERNAL );
 

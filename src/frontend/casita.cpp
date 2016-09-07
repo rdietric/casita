@@ -45,6 +45,7 @@ main( int argc, char** argv )
 
   UTILS_MSG( mpiRank == 0, "Running CASITA " CASITA_VERSION 
                            " with %d analysis processes", mpiSize );
+  UTILS_MSG( mpiRank == 0, "Using %d OpenMP threads", omp_get_max_threads() );
                            
   #if defined(BOOST_AVAILABLE)  
   if ( !Parser::getInstance( ).init_with_boost( argc, argv ) )

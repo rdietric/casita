@@ -60,7 +60,7 @@ namespace casita
             continue;
           }
           
-          ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: Found referenced queue" );
+          //ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: Found referenced queue" );
 
           // test that there is a pending kernel (leave)
           bool isFirstKernel = true;
@@ -69,13 +69,12 @@ namespace casita
             GraphNode* kernelLeave = deviceStream->getPendingKernel( );
             if ( !kernelLeave )
             {
-              ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: NO pending kernel found" );
+              //ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: NO pending kernel found" );
 
-              
               break;
             }
             
-            ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: Pending kernel found" );
+            //ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: Pending kernel found" );
 
             GraphNode::GraphNodePair& kernel = kernelLeave->getGraphPair( );
 
