@@ -414,7 +414,7 @@ namespace casita
     std::string otfFilename = options.outOtfFile;
     char currentworkdir[500];   
     
-    int startFilename = otfFilename.find_last_of( "/" ) +1; // if there is no "/" find_last_of() returns -1 
+    int startFilename = otfFilename.find_last_of( "/" ) + 1; // if there is no "/" find_last_of() returns -1 
     int endFilename = otfFilename.find_last_of( "." );
     int lenName = endFilename - startFilename;
     
@@ -432,11 +432,12 @@ namespace casita
     { 
         if (startFilename == 0)
         {
-            pathToFile = std::string(currentworkdir) ;
+            pathToFile = std::string( currentworkdir ) ;
         }
         else
         {
-            pathToFile = std::string(currentworkdir) + std::string("/") + otfFilename.substr(0,startFilename-1);
+            pathToFile = std::string( currentworkdir ) + std::string( "/" ) 
+                       + otfFilename.substr( 0, startFilename - 1 );
         }
     }
 
