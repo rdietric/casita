@@ -103,7 +103,7 @@ namespace casita
                                          std::max( syncEnter->getTime( ),
                                                    kernel.first->getTime( ) ) );
               
-              ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: set blame");
+              //ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: set blame");
 
               ruleResult    = true;
               isFirstKernel = false;

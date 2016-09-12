@@ -273,7 +273,7 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
  * @param reader
  * @param time
  * @param functionId
- * @param streamId
+ * @param streamId OTF2 location ID / reference
  * @param list
  * 
  * @return true, if it is a global collective leave event
@@ -426,9 +426,9 @@ CallbackHandler::handleRmaWinDestroy( OTF2TraceReader* reader,
  * 
  * @param reader
  * @param mpiType
- * @param streamId
- * @param partnerId the communication partner or the communicator for collectives
- * @param root
+ * @param streamId OTF2 location ID / reference
+ * @param partnerId the MPI communication partner or the communicator for collectives
+ * @param root MPI rank of root process in a collective
  * @param tag
  */
 void
@@ -439,10 +439,9 @@ CallbackHandler::handleMPIComm( OTF2TraceReader* reader,
                                 uint32_t         root,
                                 uint32_t         tag )
 {
-  CallbackHandler*     handler  = (CallbackHandler*)( reader->getUserData( ) );
-  AnalysisEngine&      analysis = handler->getAnalysis( );
-
-  EventStream*         stream   = analysis.getStream( streamId );
+  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
+  AnalysisEngine&  analysis = handler->getAnalysis( );
+  EventStream*     stream   = analysis.getStream( streamId );
 
   EventStream::MPIType pMPIType;
 

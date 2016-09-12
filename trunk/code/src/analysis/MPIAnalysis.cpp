@@ -63,10 +63,17 @@ MPIAnalysis::getMPIRank( uint64_t streamId ) const
   }
   else
   {
-    throw RTException( "Request for mpi rank with invalid stream ID %u",
+    throw RTException( "Request for MPI rank with invalid stream ID %u",
                        streamId );
   }
 }
+
+/**
+ * This routine seems to not work correctly. Check if needed!!!
+ * 
+ * @param streamId
+ * @param commGroup
+ * @return 
 
 uint32_t
 MPIAnalysis::getMPIRank( uint64_t            streamId,
@@ -83,7 +90,7 @@ MPIAnalysis::getMPIRank( uint64_t            streamId,
   }
   throw RTException( "Can not find rank for stream %u in MPI comm group",
                      streamId );
-}
+} */
 
 void
 MPIAnalysis::setMPIRank( uint64_t streamId, uint32_t rank )
