@@ -34,17 +34,17 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmMPI* analysis, GraphNode* node )
+      apply( AnalysisParadigmMPI* analysis, GraphNode* recvLeave )
       {
         // applied only at MPI_Recv leave
-        if ( !node->isMPIRecv( ) || !node->isLeave( ) )
+        if ( !recvLeave->isMPIRecv( ) || !recvLeave->isLeave( ) )
         {
           return false;
         }
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        uint64_t partnerProcessId = node->getReferencedStreamId( );
+        uint64_t partnerProcessId = recvLeave->getReferencedStreamId( );
         uint32_t partnerMPIRank   =
           commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
         
@@ -58,10 +58,10 @@ namespace casita
                              CASITA_MPI_REPLAY_TAG, 
                              MPI_COMM_WORLD, &status ) );
         
-        GraphNode::GraphNodePair& recv = node->getGraphPair( );
-        uint64_t   sendStartTime       = buffer[0];  
-        uint64_t   recvStartTime       = recv.first->getTime( );
-        uint64_t   recvEndTime         = recv.second->getTime( );
+        GraphNode* recvEnter     = recvLeave->getGraphPair( ).first;
+        uint64_t   sendStartTime = buffer[0];  
+        uint64_t   recvStartTime = recvEnter->getTime( );
+        uint64_t   recvEndTime   = recvLeave->getTime( );
 
         
         // TODO: MPI_Recv should be always blocking
@@ -72,8 +72,8 @@ namespace casita
           // compute wait states and edges
           if ( recvStartTime < sendStartTime )
           {
-            Edge* recvRecordEdge = commonAnalysis->getEdge( recv.first,
-                                                            recv.second );
+            Edge* recvRecordEdge = commonAnalysis->getEdge( recvEnter,
+                                                            recvLeave );
             
             if ( recvRecordEdge )
             {
@@ -81,13 +81,12 @@ namespace casita
             }
             else
             {
-              std::cerr << "[" << node->getStreamId( ) 
+              std::cerr << "[" << recvLeave->getStreamId( ) 
                         << "] RecvRule: Record edge not found. CPA might fail!" 
                         << std::endl;
             }
             
-            //\todo: write counter to enter node
-            recv.second->setCounter( WAITING_TIME, 
+            recvLeave->setCounter( WAITING_TIME, 
                                      sendStartTime - recvStartTime );
 
 #ifdef MPI_CP_MERGE
@@ -100,25 +99,24 @@ namespace casita
           if ( recvStartTime > sendStartTime )
           {
             distributeBlame( commonAnalysis,
-                             recv.first,
+                             recvEnter,
                              recvStartTime - sendStartTime,
                              streamWalkCallback );
           }
 
           commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
-            recv.second,
+            recvLeave,
             (uint32_t)buffer[2],
             partnerProcessId,
-            MPIAnalysis::
-            MPI_EDGE_REMOTE_LOCAL );
+            MPIAnalysis::MPI_EDGE_REMOTE_LOCAL );
         }
 
         // send local information to communication partner to compute wait states
         // use another tag to not mix up with replayed communication
         buffer[0] = recvStartTime;
         buffer[1] = recvEndTime;
-        buffer[2] = recv.first->getId( );
-        buffer[3] = recv.second->getId( );
+        buffer[2] = recvEnter->getId( );
+        buffer[3] = recvLeave->getId( );
         buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_RECV; //recv.second->getType( );
 
         MPI_CHECK( MPI_Send( buffer, 

@@ -513,6 +513,12 @@ EventStream::clearPendingKernels( )
   pendingKernels.clear( );
 }
 
+/**
+ * 
+ * @param mpiType
+ * @param partnerId
+ * @param rootId root MPI rank of the ONEANDALL collective
+ */
 void
 EventStream::setPendingMPIRecord( MPIType  mpiType,
                                   uint64_t partnerId,

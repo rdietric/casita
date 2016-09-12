@@ -95,8 +95,8 @@ namespace casita
      uint32_t
      getMPIRank( uint64_t streamId ) const;
 
-     uint32_t
-     getMPIRank( uint64_t streamId, const MPICommGroup& commGroup ) const;
+     /*uint32_t
+     getMPIRank( uint64_t streamId, const MPICommGroup& commGroup ) const;*/
 
      void
      setMPIRank( uint64_t streamId, uint32_t rank );

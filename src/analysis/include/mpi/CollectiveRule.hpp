@@ -73,15 +73,15 @@ namespace casita
 
         // receive buffer has to be dynamically allocated as it depends on the
         // number of processes in this group
-        uint32_t recvBufferSize    = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
-        uint64_t *recvBuffer       = new uint64_t[recvBufferSize];
+        uint32_t recvBufferSize = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
+        uint64_t *recvBuffer    = new uint64_t[recvBufferSize];
         
         UTILS_ASSERT( recvBuffer != NULL, "Could not allocate uint64_t[]!\n");
         
         memset( recvBuffer, 0, recvBufferSize * sizeof( uint64_t ) );
 
-        uint64_t collStartTime     = coll.first->getTime( );
-        uint64_t collEndTime       = coll.second->getTime( );
+        uint64_t collStartTime = coll.first->getTime( );
+        uint64_t collEndTime   = coll.second->getTime( );
         
         // prepare send buffer
         sendBuffer[0] = collStartTime;

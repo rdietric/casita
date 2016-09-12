@@ -34,21 +34,20 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmMPI* analysis, GraphNode* node )
+      apply( AnalysisParadigmMPI* analysis, GraphNode* oneToAllLeave )
       {
-        /* applied at MPI OneToAll leave */
-        if ( !node->isMPIOneToAll( ) || !node->isLeave( ) )
+        // applied at MPI OneToAll leave
+        if ( !oneToAllLeave->isMPIOneToAll( ) || !oneToAllLeave->isLeave( ) )
         {
           return false;
         }
 
-        AnalysisEngine* commonAnalysis    = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        /* get the complete execution */
-        GraphNode::GraphNodePair oneToAll = node->getGraphPair( );
-        uint32_t  mpiGroupId = node->getReferencedStreamId( );
-        uint64_t* root       =
-          (uint64_t*)( oneToAll.second->getData( ) );
+        // get the complete execution
+        GraphNode* oneToAllEnter = oneToAllLeave->getGraphPair( ).first;
+        uint32_t  mpiGroupId = oneToAllLeave->getReferencedStreamId( );
+        uint64_t* root = (uint64_t*)( oneToAllLeave->getData( ) );
         if ( !root )
         {
           ErrorUtils::getInstance( ).throwFatalError(
@@ -63,47 +62,51 @@ namespace casita
           return false;
         }
 
-        uint64_t rootId            = *root;
+        uint64_t rootStreamId = *root;
         
         // TODO: used in CPA?
         // delete root;
         
-        uint32_t rootMPIRank;
-        rootMPIRank = commonAnalysis->getMPIAnalysis( ).getMPIRank(
-          rootId,
-          mpiCommGroup );
+        // this translation seems wrong
+        uint32_t rootMPIRank = commonAnalysis->getMPIAnalysis( ).getMPIRank(
+                                               rootStreamId/*, mpiCommGroup*/ );
+        
+        bool isRoot = false;
+        // we compare OTF2 location IDs / references
+        if ( oneToAllLeave->getStreamId( ) == rootStreamId )
+        {
+          isRoot = true;
+        }
 
-        const uint32_t BUFFER_SIZE = 5;
-        uint32_t recvBufferSize    = 0;
-        if ( node->getStreamId( ) == rootId )
-        {
-          recvBufferSize = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
-        }
-        else
-        {
-          recvBufferSize = BUFFER_SIZE;
-        }
+        const uint32_t BUFFER_SIZE = 4;
+        uint32_t recvBufferSize    = BUFFER_SIZE;
 
         uint64_t  sendBuffer[BUFFER_SIZE];
-        uint64_t* recvBuffer        = new uint64_t[recvBufferSize];
-        memset( recvBuffer, 0, recvBufferSize * sizeof( uint64_t ) );
-
-        uint64_t  oneToAllStartTime = oneToAll.first->getTime( );
-        uint64_t  oneToAllEndTime   = oneToAll.second->getTime( );
-
+        uint64_t* recvBuffer = NULL;
+        if( isRoot )
+        {
+          recvBufferSize = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
+          
+          recvBuffer = new uint64_t[recvBufferSize];
+          
+          // zero the receive buffer
+          memset( recvBuffer, 0, recvBufferSize * sizeof( uint64_t ) );
+        }
+ 
+        uint64_t oneToAllStartTime = oneToAllEnter->getTime( );
         sendBuffer[0] = oneToAllStartTime;
-        sendBuffer[1] = oneToAllEndTime;
-        sendBuffer[2] = oneToAll.first->getId( );
-        sendBuffer[3] = oneToAll.second->getId( );
-        sendBuffer[4] = node->getStreamId( );
+        //sendBuffer[1] = oneToAllLeave->getTime( );;
+        sendBuffer[1] = oneToAllEnter->getId( );
+        sendBuffer[2] = oneToAllLeave->getId( );
+        sendBuffer[3] = oneToAllLeave->getStreamId( );
 
         MPI_CHECK( MPI_Gather( sendBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                                recvBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                                rootMPIRank, mpiCommGroup.comm ) );
 
-        if ( node->getStreamId( ) == rootId )
+        if ( isRoot )
         {
-          /* root computes its blame */
+          // root computes its blame
           uint64_t total_blame = 0;
           for ( size_t i = 0; i < recvBufferSize; i += BUFFER_SIZE )
           {
@@ -115,35 +118,38 @@ namespace casita
             }
 
             commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
-              oneToAll.first,
+              oneToAllEnter,
+              recvBuffer[i + 2],
               recvBuffer[i + 3],
-              recvBuffer[i + 4],
-              MPIAnalysis::
-              MPI_EDGE_LOCAL_REMOTE );
+              MPIAnalysis::MPI_EDGE_LOCAL_REMOTE );
           }
 
           distributeBlame( commonAnalysis,
-                           oneToAll.first,
+                           oneToAllEnter,
                            total_blame,
                            streamWalkCallback );
+          
+          delete[] recvBuffer;
         }
+        
+        //\TODO: needed?
+        //MPI_Barrier( mpiCommGroup.comm );
 
-        MPI_Barrier( mpiCommGroup.comm );
-
-        memcpy( recvBuffer, sendBuffer, sizeof( uint64_t ) * BUFFER_SIZE );
-        MPI_CHECK( MPI_Bcast( recvBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
+        //memcpy( recvBuffer, sendBuffer, sizeof( uint64_t ) * BUFFER_SIZE );
+        
+        // use the fixed-size send buffer for each rank
+        MPI_CHECK( MPI_Bcast( sendBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
                               rootMPIRank, mpiCommGroup.comm ) );
 
-        if ( node->getStreamId( ) != rootId )
+        // non-root ranks compute their wait states and create dependency edges
+        if ( !isRoot )
         {
-          /* all others compute their wait states and create
-           * dependency edges */
-          uint64_t rootEnterTime = recvBuffer[0];
+          uint64_t rootEnterTime = sendBuffer[0];
 
           if ( rootEnterTime > oneToAllStartTime )
           {
             Edge* oneToAllRecordEdge = commonAnalysis->getEdge(
-              oneToAll.first, oneToAll.second );
+              oneToAllEnter, oneToAllLeave );
           
             if ( oneToAllRecordEdge )
             {
@@ -151,25 +157,21 @@ namespace casita
             }
             else
             {
-              std::cerr << "[" << node->getStreamId( ) 
+              std::cerr << "[" << oneToAllLeave->getStreamId( ) 
                         << "] OneToAllRule: Record edge not found. CPA might fail!" 
                         << std::endl;
             }
             
-            //\todo: write counter to enter event
-            oneToAll.second->setCounter( WAITING_TIME,
-                                         rootEnterTime - oneToAllStartTime );
+            oneToAllLeave->setCounter( WAITING_TIME,
+                                       rootEnterTime - oneToAllStartTime );
           }
 
           commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
-            oneToAll.second,
-            recvBuffer[2],
-            recvBuffer[4],
-            MPIAnalysis::
-            MPI_EDGE_REMOTE_LOCAL );
+            oneToAllLeave,
+            sendBuffer[1],
+            sendBuffer[3],
+            MPIAnalysis::MPI_EDGE_REMOTE_LOCAL );
         }
-
-        delete[]recvBuffer;
 
         return true;
       }

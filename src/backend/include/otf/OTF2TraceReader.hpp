@@ -109,6 +109,7 @@ namespace casita
       typedef std::set< Token > TokenSet;
       typedef std::map< Token, TokenSet > TokenSetMap;
       typedef std::map< uint32_t, OTF2Group > GroupIdGroupMap;
+      typedef std::map< uint32_t, uint64_t > RankStreamIdMap;
 
       typedef std::map< Token, ProcessGroup* > ProcessGroupMap;
 
@@ -125,10 +126,10 @@ namespace casita
       getMPIProcessId( );
 
       void
-      setMPIProcessId( uint64_t processId );
+      setMPIStreamId( uint64_t processId );
 
-      IdTokenMap&
-      getProcessRankMap( );
+      //IdTokenMap&
+      //getProcessRankMap( );
 
       TokenTokenMap64&
       getProcessFamilyMap( );
@@ -529,12 +530,19 @@ namespace casita
       
       void*            userData;
 
+      //<! MPI rank of the analysis process
       uint32_t         mpiRank;
       uint32_t         mpiSize;
+      
+      //<! location ID (OTF2 location reference) for this MPI rank 
       uint64_t         mpiProcessId;
       
-      // maps (parent) process ID to MPI rank
-      IdTokenMap       processRankMap; 
+      // maps (parent) process ID (OTF2 location reference) to MPI rank
+      // key: OTF2 location reference, value: MPI rank
+      //IdTokenMap       processRankMap; 
+      
+      // Map of MPI ranks with its corresponding stream IDs / OTF2 location references
+      RankStreamIdMap  rankStreamMap; 
       
       // tracks for each process its direct parent
       TokenTokenMap64  processFamilyMap; 

@@ -21,6 +21,8 @@
 #include <iostream>
 #include <list>
 #include <algorithm>
+#include <limits>
+
 #include "common.hpp"
 #include "otf/OTF2TraceReader.hpp"
 #include "utils/ErrorUtils.hpp"
@@ -118,11 +120,11 @@ OTF2TraceReader::getProcessFamilyMap( )
   return processFamilyMap;
 }
 
-OTF2TraceReader::IdTokenMap&
+/*OTF2TraceReader::IdTokenMap&
 OTF2TraceReader::getProcessRankMap( )
 {
   return processRankMap;
-}
+}*/
 
 OTF2TraceReader::GroupIdGroupMap&
 OTF2TraceReader::getGroupMap( )
@@ -149,7 +151,7 @@ OTF2TraceReader::getMPIProcessId( )
 }
 
 void
-OTF2TraceReader::setMPIProcessId( uint64_t processId )
+OTF2TraceReader::setMPIStreamId( uint64_t processId )
 {
   mpiProcessId = processId;
 }
@@ -437,11 +439,16 @@ OTF2TraceReader::readDefinitions( )
 
   close( );
   
-  if ( ( processRankMap.size() == 0 && mpiSize > 1 ) || 
+  /*if ( ( processRankMap.size() == 0 && mpiSize > 1 ) || 
        ( processRankMap.size() && (mpiSize != processRankMap.size() ) ) )
   {
     UTILS_MSG( true, "[%u] CASITA has to be run with %zu MPI process(es)!",
-               mpiRank, processRankMap.size() == 0 ? 1 : processRankMap.size() );
+               mpiRank, processRankMap.size() == 0 ? 1 : processRankMap.size() );*/
+  if ( ( rankStreamMap.size() == 0 && mpiSize > 1 ) || 
+       ( rankStreamMap.size() && (mpiSize != rankStreamMap.size() ) ) )
+  {
+    UTILS_MSG( true, "[%u] CASITA has to be run with %zu MPI process(es)!",
+               mpiRank, rankStreamMap.size() == 0 ? 1 : rankStreamMap.size() );
     
     return false;
   }
@@ -483,6 +490,16 @@ OTF2TraceReader::readDefinitions( )
   definitionTokenStringMap[stringSize] = OTF2_OMP_FORKJOIN_INTERNAL;
   ompForkJoinRef = functionNameTokenMap.size( );
   functionNameTokenMap[ompForkJoinRef] = stringSize;
+  
+  /* check OTF2 location reference, MPI rank map
+  IdTokenMap& processRankMap = this->getProcessRankMap( );
+  IdTokenMap::iterator iter = processRankMap.begin();
+
+  UTILS_MSG(true, "[%u] OTF2 location reference, MPI rank map", mpiRank )
+  for( ; iter != processRankMap.end( ); ++iter )
+  {
+    UTILS_MSG(true, "[%u] %llu, %u", mpiRank, iter->first, iter->second )
+  }*/
   
   return true;
 }
@@ -575,6 +592,21 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationGroup(
   return OTF2_CALLBACK_SUCCESS;
 }
 */
+
+/**
+ * Callback for OTF2 group definitions (such as OPENCL, PTHREAD, etc. ).
+ * 
+ * @param userData
+ * @param self unique identifier of this group reference
+ * @param name
+ * @param groupType
+ * @param paradigm
+ * @param groupFlags
+ * @param numberOfMembers
+ * @param members identifiers of the group members
+ * 
+ * @return 
+ */
 OTF2_CallbackCode
 OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
                                                      OTF2_GroupRef   self,
@@ -587,8 +619,10 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
   
-  //if( name != OTF2_UNDEFINED_STRING )
-  //  std::cerr << "OTF2 Group: " << tr->getDefinitionTokenStringMap( )[name] << std::endl;
+  UTILS_MSG( tr->mpiRank == 0 && Parser::getVerboseLevel() > VERBOSE_BASIC && 
+             name != OTF2_UNDEFINED_STRING, 
+             "[0] Read OTF2 group definition: %s",  
+             tr->getDefinitionTokenStringMap( )[name].c_str() );
 
   uint64_t* myMembers = new uint64_t[numberOfMembers];
   for ( uint32_t i = 0; i < numberOfMembers; i++ )
@@ -609,20 +643,23 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
   if ( ( groupType == OTF2_GROUP_TYPE_COMM_LOCATIONS ) &&
        ( paradigm == OTF2_PARADIGM_MPI ) )
   {
-    uint32_t mpiRank           = tr->getMPIRank( );
+    uint32_t mpiRank = tr->getMPIRank( );
 
     if ( numberOfMembers <= tr->getMPIRank( ) )
     {
       throw RTException(
-              "Process group MPI_COMM_WORLD has no process for this mpi rank (%u)",
-              mpiRank );
+          "Process group MPI_COMM_WORLD has no process for this MPI rank (%u)",
+          mpiRank );
     }
 
-    IdTokenMap& processRankMap = tr->getProcessRankMap( );
-    tr->setMPIProcessId( members[mpiRank] );
+    //IdTokenMap& processRankMap = tr->getProcessRankMap( );
+    
+    // set the trace reader's stream ID
+    tr->setMPIStreamId( members[mpiRank] );
     for ( uint32_t i = 0; i < numberOfMembers; ++i )
     {
-      processRankMap[members[i]] = i;
+      //processRankMap[ members[i] ] = i;
+      tr->rankStreamMap[i] = members[i];
     }
     if ( tr->handleMPICommGroup )
     {
@@ -634,6 +671,16 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
   return OTF2_CALLBACK_SUCCESS;
 }
 
+/**
+ * Callback for communicator definition.
+ * 
+ * @param userData
+ * @param self 
+ * @param name name of the communicator
+ * @param group
+ * @param parent
+ * @return 
+ */
 OTF2_CallbackCode
 OTF2TraceReader::OTF2_GlobalDefReaderCallback_Comm( void*          userData,
                                                     OTF2_CommRef   self,
@@ -641,8 +688,12 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Comm( void*          userData,
                                                     OTF2_GroupRef  group,
                                                     OTF2_CommRef   parent )
 {
-
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+  
+  UTILS_MSG( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC && 
+             name != OTF2_UNDEFINED_STRING, 
+             "[0] Read OTF2 communicator definition: %s",  
+             tr->getDefinitionTokenStringMap( )[name].c_str() );
 
   GroupIdGroupMap::const_iterator iter = tr->getGroupMap( ).find( group );
   UTILS_ASSERT( iter != tr->getGroupMap( ).end( ), "Group not found" );
@@ -771,6 +822,20 @@ OTF2TraceReader::otf2CallbackLeave( OTF2_LocationRef    location,
   return OTF2_CALLBACK_SUCCESS;
 }
 
+/**
+ * 
+ * @param locationID    OTF2 location where this event happened
+ * @param time
+ * @param userData
+ * @param attributeList
+ * @param collectiveOp
+ * @param communicator  Communicator references a definition and will be mapped 
+ *                      to the global definition
+ * @param root          MPI rank of root in communicator.
+ * @param sizeSent
+ * @param sizeReceived
+ * @return 
+ */
 OTF2_CallbackCode
 OTF2TraceReader::otf2Callback_MpiCollectiveEnd( OTF2_LocationRef  locationID,
                                                 OTF2_TimeStamp    time,
@@ -799,8 +864,25 @@ OTF2TraceReader::otf2Callback_MpiCollectiveEnd( OTF2_LocationRef  locationID,
         mpiType = io::MPI_ONEANDALL;
         break;
     }
+    
+    uint64_t rootStreamId = std::numeric_limits< uint64_t >::max( );
+    
+    if( mpiType == io::MPI_ONEANDALL )
+    {
+      RankStreamIdMap::iterator it = tr->rankStreamMap.find( root );
+      
+      if ( it != tr->rankStreamMap.end( ) )
+      {
+        rootStreamId = tr->rankStreamMap[root];
+      }
+      else
+      {
+        throw RTException( "Could not find stream ID for root rank (%u)", root );
+        rootStreamId = root; // use root rank instead
+      }
+    }
 
-    tr->handleMPIComm( tr, mpiType, locationID, communicator, root, 0 );
+    tr->handleMPIComm( tr, mpiType, locationID, communicator, /*root*/rootStreamId, 0 );
   }
 
   return OTF2_CALLBACK_SUCCESS;
