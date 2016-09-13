@@ -699,6 +699,9 @@ OTF2ParallelTraceWriter::writeStream( EventStream*  stream,
   {
     processOnCriticalPath[stream->getId()] = true;
     //UTILS_MSG( true, "Process [%llu] has initial CP", stream->getId());
+    
+    // after the first interval analysis there is no first critical any more
+    stream->isFirstCritical() = false;
   }
   else
   {
@@ -1297,7 +1300,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
               "[%u] cuDevicePrimaryCtxRetain: '%s' (time: %llu); %d", 
               mpiRank, getRegionName(event.regionRef).c_str(), 
               event.time - timerOffset, event.type );
-     */
+    */
     // the currentNodeIter points to a node after the current event
     
     // compute counters for that event, if we still have internal nodes following

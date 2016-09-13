@@ -101,7 +101,11 @@ namespace casita
    MPI_ISEND     = ( 1 << 11 ),
    MPI_IRECV     = ( 1 << 12 ),
    MPI_WAITALL   = ( 1 << 13 ),
-   MPI_TEST      = ( 1 << 14 )
+   MPI_TEST      = ( 1 << 14 ),
+   MPI_INIT      = ( 1 << 15 ),
+   MPI_FINALIZE  = ( 1 << 16 ),
+   MPI_ALLRANKS  = ( 1 << 17 ), // all ranks are involved in the MPI operation
+   MPI_BLOCKING  = ( 1 << 18 )  // blocking MPI operation
  };
 
  enum NodeTypeOMP
@@ -422,9 +426,7 @@ namespace casita
      bool
      isMPIInit( ) const
      {
-       // move the strcmp to callback handler
-       return isMPI( ) && ( nodeType & MPI_COLL ) &&
-              ( strcmp( name.c_str( ), NAME_MPI_INIT ) == 0 );
+       return isMPI( ) && ( nodeType & MPI_INIT );
      }
 
      bool
@@ -432,6 +434,15 @@ namespace casita
      {
 
        return isMPI( ) && ( nodeType & MPI_COLL );
+     }
+     
+     /**
+      * Are all ranks involved in the operation of the node. (Is global collective?)
+      */
+     bool
+     isMPIallRanks( ) const
+     {
+       return isMPI( ) && ( nodeType & MPI_ALLRANKS );
      }
 
      bool
@@ -451,16 +462,20 @@ namespace casita
      bool
      isMPISendRecv( ) const
      {
-
        return isMPI( ) && ( nodeType & MPI_SENDRECV );
      }
 
      bool
      isMPIFinalize( ) const
      {
-       // strcmp better while reading
-       return isMPI( ) && ( nodeType & MPI_COLL ) &&
-              ( strcmp( name.c_str( ), NAME_MPI_FINALIZE ) == 0 );
+       return isMPI( ) && ( nodeType & MPI_FINALIZE );
+     }
+     
+     bool
+     isMPIBlocking( ) const
+     {
+
+       return isMPI( ) && ( nodeType & MPI_BLOCKING );
      }
 
      bool
@@ -828,6 +843,12 @@ namespace casita
      hasParadigm( Paradigm p ) const
      {
        return paradigm & p;
+     }
+     
+     void
+     addType( int type )
+     {
+       nodeType |= type;
      }
 
      int
