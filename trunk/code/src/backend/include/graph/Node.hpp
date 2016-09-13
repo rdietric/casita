@@ -82,8 +82,9 @@ namespace casita
    OCL_WAITSTATE      = ( 1 << 2 ),
    OCL_KERNEL         = ( 1 << 3 ),
    OCL_ENQUEUE_KERNEL = ( 1 << 4 ),
-   OCL_SYNC_EVENT     = ( 1 << 5 ),
-   OCL_QUERY_EVENT    = ( 1 << 6 )
+   OCL_ENQUEUE_BUFFER = ( 1 << 5 ),
+   OCL_SYNC_EVENT     = ( 1 << 6 ),
+   OCL_QUERY_EVENT    = ( 1 << 7 )
  };
 
  enum NodeTypeMPI
