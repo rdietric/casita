@@ -124,6 +124,12 @@ namespace casita
    "clFinish"
  };
  
+ static const char* FTABLE_OPENCL_ENQUEUE_BUFFER[] =
+ {
+   "clEnqueueReadBuffer",
+   "clEnqueueWriteBuffer"
+ };
+ 
  static const char* FTABLE_OPENCL_ENQUEUE[]       =
  {
    "clEnqueueNDRangeKernel"
@@ -234,10 +240,11 @@ namespace casita
    { CUDA_WAITSTATE, 1, FTABLE_GPU_WAITSTATE }
  };
  
- static const size_t      fTableEntriesOpenCL = 5;
+ static const size_t      fTableEntriesOpenCL = 6;
  static const FTableEntry fTableOpenCL[fTableEntriesOpenCL] =
  {
    { OCL_SYNC_QUEUE, 1, FTABLE_OPENCL_QUEUE_SYNC },
+   { OCL_ENQUEUE_BUFFER, 2, FTABLE_OPENCL_ENQUEUE_BUFFER },
    { OCL_ENQUEUE_KERNEL, 1, FTABLE_OPENCL_ENQUEUE },
    { OCL_QUERY_EVENT, 1, FTABLE_OPENCL_EVENT_QUERY },
    { OCL_SYNC_EVENT, 1, FTABLE_OPENCL_EVENT_SYNC },
@@ -400,6 +407,7 @@ namespace casita
                case OCL_SYNC_EVENT:
                case OCL_QUERY_EVENT:
                case OCL_ENQUEUE_KERNEL:
+               case OCL_ENQUEUE_BUFFER:
                  return true;
              }
 

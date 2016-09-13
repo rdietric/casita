@@ -94,6 +94,12 @@ AnalysisParadigmOpenCL::handleKeyValuesLeave( OTF2TraceReader* reader,
   {
     node->setReferencedStreamId( refValue );
     oldNode->setReferencedStreamId( refValue );
+    
+    // if the enqueue buffer operation has an OTF2 attribute, it is blocking
+    if( node->getType() == OCL_ENQUEUE_BUFFER )
+    {
+      node->addType( OCL_SYNC_QUEUE );
+    }
   }
 }
 
