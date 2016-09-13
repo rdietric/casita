@@ -140,6 +140,17 @@ namespace casita
  };
 
   ///////////////// MPI functions ////////////////
+ static const char* FTABLE_MPI_INIT[]          =
+ {
+   "MPI_Init",
+   "MPI_Init_thread"
+ };
+ 
+ static const char* FTABLE_MPI_FINALIZE[]      =
+ {
+   "MPI_Finalize"
+ };
+ 
  static const char* FTABLE_MPI_RECV[]          =
  {
    "MPI_Recv"
@@ -173,7 +184,7 @@ namespace casita
    "MPI_Irecv"
  };
 
- static const char*       FTABLE_MPI_COLL[]     =
+ static const char* FTABLE_MPI_COLL[]          =
  {
    "MPI_Barrier",
    "MPI_Allreduce",
@@ -182,32 +193,29 @@ namespace casita
    "MPI_Alltoall",
    "MPI_Alltoallv",
    "MPI_Reduce_scatter",
-   "MPI_Finalize",
-   "MPI_Init",
-   "MPI_Init_thread",
    "MPI_Reduce",
    "MPI_Gather"
  };
 
- static const char*       FTABLE_MPI_ONETOALL[] =
+ static const char* FTABLE_MPI_ONETOALL[]      =
  {
    "MPI_Scatter",
    "MPI_Bcast"
  };
 
- // allToOne rule is broken, hence use collective rule
- static const char*       FTABLE_MPI_ALLTOONE[] =
+ /* allToOne rule is broken, hence use collective rule
+ static const char* FTABLE_MPI_ALLTOONE[]      =
  {
-   //"MPI_Gather",
-   //"MPI_Reduce"
- };
+   "MPI_Gather",
+   "MPI_Reduce"
+ };*/
 
- static const char*       FTABLE_MPI_SENDRECV[] =
+ static const char* FTABLE_MPI_SENDRECV[]      =
  {
    "MPI_Sendrecv"
  };
 
- static const char*       FTABLE_MPI_MISC[]     =
+ static const char* FTABLE_MPI_MISC[]          =
  {
    //"MPI_Bsend", "MPI_Cancel", "MPI_Probe"
  };
@@ -236,14 +244,16 @@ namespace casita
    { OCL_WAITSTATE, 1, FTABLE_GPU_WAITSTATE }
  };
 
- static const size_t      fTableEntriesMPI = 8;
+ static const size_t      fTableEntriesMPI = 9;
  static const FTableEntry fTableMPI[fTableEntriesMPI] =
  {
+   { MPI_INIT, 2, FTABLE_MPI_INIT },
+   { MPI_FINALIZE, 1, FTABLE_MPI_FINALIZE },
    { MPI_RECV, 1, FTABLE_MPI_RECV },
    { MPI_SEND, 4, FTABLE_MPI_SEND },
-   { MPI_COLL, 12, FTABLE_MPI_COLL },
+   { MPI_COLL, 9, FTABLE_MPI_COLL },
    { MPI_ONETOALL, 2, FTABLE_MPI_ONETOALL },
-   { MPI_ALLTOONE, 0, FTABLE_MPI_ALLTOONE }, // allToOne rule is broken
+//   { MPI_ALLTOONE, 0, FTABLE_MPI_ALLTOONE }, // allToOne rule is broken
    { MPI_SENDRECV, 1, FTABLE_MPI_SENDRECV },
    { MPI_MISC, 0, FTABLE_MPI_MISC },
    { MPI_WAITSTATE, 1, FTABLE_GPU_WAITSTATE }
@@ -295,6 +305,7 @@ namespace casita
 
        bool set = false;
 
+       // handle non-blocking MPI communication
        for ( size_t i = 0; i < fTableEntriesMPIAsync; ++i )
        {
          FTableEntry entry = fTableMPIAsync[i];
@@ -313,12 +324,12 @@ namespace casita
                descr->paradigm = PARADIGM_MPI;
                descr->type     = entry.type;
                return true;
-               /* throw RTException( "Asynchronous MPI functions are not supported (%s).", name ); */
              }
            }
          }
        }
 
+       // handle CUDA functions
        for ( size_t i = 0; i < fTableEntriesCUDA; ++i )
        {
          FTableEntry entry = fTableCUDA[i];
@@ -329,7 +340,6 @@ namespace casita
              descr->paradigm = PARADIGM_CUDA;
              descr->type     = entry.type;
              set = true;
-             /* return true; */
            }
          }
        }
@@ -344,7 +354,6 @@ namespace casita
              descr->paradigm = PARADIGM_OCL;
              descr->type     = entry.type;
              set = true;
-             /* return true; */
            }
          }
        }
@@ -359,7 +368,6 @@ namespace casita
              descr->paradigm = PARADIGM_MPI;
              descr->type     = entry.type;
              set = true;
-             /* return true; */
            }
          }
        }
@@ -399,12 +407,17 @@ namespace casita
            case PARADIGM_MPI:
              switch ( descr->type )
              {
+               case MPI_INIT:
+               case MPI_FINALIZE:
+                 descr->type |= MPI_ALLRANKS; // these two are always executed on all ranks
+                 descr->type |= MPI_COLL;     // these two are collectives
                case MPI_COLL:
                case MPI_ONETOALL:
                case MPI_ALLTOONE:
                case MPI_SENDRECV:
                case MPI_RECV:
                case MPI_SEND:
+                 descr->type |= MPI_BLOCKING;
                case MPI_MISC:
                  return true;
              }

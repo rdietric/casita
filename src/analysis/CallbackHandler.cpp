@@ -377,6 +377,9 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
     // if the collective is global (collective group size == number of analysis ranks)
     if ( mpiCommGroup.procs.size( ) == analysis.getMPISize() )
     {
+      // mark as global operation over all processes
+      leaveNode->addType( MPI_ALLRANKS );
+      
       analysis.getMPIAnalysis().globalCollectiveCounter++;
       
       UTILS_MSG( Parser::getInstance().getVerboseLevel() >= VERBOSE_ANNOY, 

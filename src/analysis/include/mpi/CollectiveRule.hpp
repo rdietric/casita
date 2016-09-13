@@ -60,9 +60,10 @@ namespace casita
         {
           analysis->getCommon()->getStream( colLeave->getStreamId() )->testAllPendingMPIRequests();
         }
-        
-        //UTILS_MSG( true, "MPI collective: %s", colLeave->getUniqueName().c_str());
-
+        /*
+        UTILS_MSG( 0 == strcmp( colLeave->getName(), "MPI_Reduce" ), 
+                   "[%u] MPI collective: %s", colLeave->getStreamId(), colLeave->getUniqueName().c_str());
+        */
         GraphNode* colEnter = colLeave->getGraphPair( ).first;
         
         uint32_t mpiGroupId = colLeave->getReferencedStreamId( );
@@ -115,9 +116,9 @@ namespace casita
           }
         }
 
-        // I'm not last collective -> blocking + remoteEdge to lastEnter
+        // this is not the last -> blocking + remoteEdge to lastEnter
         if ( lastEnterProcessId != colLeave->getStreamId( ) ) // collStartTime < lastEnterTime )
-        {         
+        {
           // These nodes/edges are needed for dependency correctness but are
           // omitted since they are currently not used anywhere.
 //           analysis->getMPIAnalysis().addRemoteMPIEdge(coll.second, lastEnterRemoteNodeId, lastEnterProcessId);
@@ -133,6 +134,8 @@ namespace casita
           if ( collRecordEdge )
           {
             collRecordEdge->makeBlocking( );
+            /*UTILS_MSG( 0 == strcmp( colLeave->getName(), "MPI_Reduce" ), 
+                       "[%u] make blocking", colLeave->getStreamId() );*/
           }
           else
           {

@@ -43,7 +43,7 @@ AnalysisParadigmMPI::AnalysisParadigmMPI( AnalysisEngine* analysisEngine,
   addRule( new CollectiveRule( 1 ) );
   addRule( new SendRecvRule( 1 ) );
   addRule( new OneToAllRule( 1 ) );
-  addRule( new AllToOneRule( 1 ) );
+  //addRule( new AllToOneRule( 1 ) );
   
   // do not add the rules for non-blocking MPI communication, if it shall be ignored
   if ( !(Parser::getInstance().getProgramOptions().ignoreAsyncMpi) )
