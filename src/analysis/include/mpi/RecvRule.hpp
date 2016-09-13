@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -86,11 +86,10 @@ namespace casita
                         << std::endl;
             }
             
-            recvLeave->setCounter( WAITING_TIME, 
-                                     sendStartTime - recvStartTime );
+            recvLeave->setCounter( WAITING_TIME, sendStartTime - recvStartTime );
 
 #ifdef MPI_CP_MERGE
-            analysis->getMPIAnalysis( ).addMPIEdge( recv.first,
+            analysis->getMPIAnalysis( ).addMPIEdge( recvEnter,
                                                     buffer[4],
                                                     partnerProcessId );
 #endif

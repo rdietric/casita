@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -34,32 +34,30 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmMPI* analysis, GraphNode* node )
+      apply( AnalysisParadigmMPI* analysis, GraphNode* sendLeave )
       {
         /* applied at MPI_Send leave */
-        if ( !node->isMPISend( ) || !node->isLeave( ) )
+        if ( !sendLeave->isMPISend( ) || !sendLeave->isLeave( ) )
         {
           return false;
         }
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        /* get the complete execution */
-        GraphNode::GraphNodePair send  = node->getGraphPair( );
+        GraphNode* sendEnter = sendLeave->getGraphPair( ).first;
         
         // send
-        uint64_t  sendStartTime = send.first->getTime( );
-        uint64_t  sendEndTime   = send.second->getTime( );
+        uint64_t sendStartTime = sendEnter->getTime( );
+        uint64_t sendEndTime   = sendLeave->getTime( );
 
         // allocated in class AnalysisParadigmMPI, still used in CPA later
-        uint64_t* data = (uint64_t*)( node->getData( ) );
+        uint64_t* data = (uint64_t*)( sendLeave->getData( ) );
         uint64_t partnerProcessId = *data;
         
         // set referenced stream field and delete allocated memory of data field
-        node->setReferencedStreamId( partnerProcessId );
+        sendLeave->setReferencedStreamId( partnerProcessId );// for debugging in CP analysis
         delete data;
         
-        node->setReferencedStreamId( partnerProcessId ); // for debugging in CP analysis
         uint32_t  partnerMPIRank  =
           commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
 
@@ -68,8 +66,8 @@ namespace casita
         
         buffer[0] = sendStartTime;
         buffer[1] = sendEndTime;
-        buffer[2] = send.first->getId( );
-        buffer[3] = send.second->getId( );
+        buffer[2] = sendEnter->getId( );
+        buffer[3] = sendLeave->getId( );
         buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_SEND;//send.second->getType( );
         MPI_CHECK( MPI_Send( buffer, 
                              CASITA_MPI_P2P_BUF_SIZE, 
@@ -99,7 +97,7 @@ namespace casita
                   buffer[CASITA_MPI_P2P_BUF_SIZE - 1] & MPI_ISEND )
         {
           // the communication partner should be a receive!!!
-          std::cerr << "[" << node->getStreamId( ) 
+          std::cerr << "[" << sendLeave->getStreamId( ) 
                     << "] SendRule: Partner rank " << partnerMPIRank 
                     << " is MPI_[I]SEND "
                     << buffer[CASITA_MPI_P2P_BUF_SIZE - 1] << std::endl;
@@ -110,32 +108,30 @@ namespace casita
         {
           if ( sendStartTime < recvStartTime )
           {
-            Edge* sendRecordEdge = commonAnalysis->getEdge( send.first,
-                                                            send.second );
+            Edge* sendRecordEdge = commonAnalysis->getEdge( sendEnter,
+                                                            sendLeave );
             if ( sendRecordEdge )
             {
               sendRecordEdge->makeBlocking( );
             }
             else
             {
-              std::cerr << "[" << node->getStreamId( ) 
+              std::cerr << "[" << sendLeave->getStreamId( ) 
                         << "] SendRule: Record edge not found. CPA might fail!" 
                         << std::endl;
             }
             
-            //\todo: write counter to enter node
-            send.second->setCounter( WAITING_TIME,
-                                     recvStartTime - sendStartTime );
+            sendLeave->setCounter( WAITING_TIME, recvStartTime - sendStartTime );
           }
         }
         else
         {
-          distributeBlame( commonAnalysis, send.first,
+          distributeBlame( commonAnalysis, sendEnter,
                            sendStartTime - recvStartTime, streamWalkCallback );
         }
 
         commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
-          send.first,
+          sendEnter,
           (uint32_t)buffer[3],
           partnerProcessId,
           MPIAnalysis::

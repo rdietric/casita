@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -21,8 +21,8 @@ namespace casita
  {
 
   /** What this rule does:
-   *  1) Send indicator that this is an ISEND
-   *  ...
+   *  1) Forward replay: MPI_Isend
+   *  2) Backward replay: MPI_Irecv
    */
   class ISendRule :
     public IMPIRule
@@ -42,33 +42,34 @@ namespace casita
       MPIRequestList pendingMPIRequests;
 
       bool
-      apply( AnalysisParadigmMPI* analysis, GraphNode* node )
+      apply( AnalysisParadigmMPI* analysis, GraphNode* isendLeave )
       {
         // applied at MPI_ISend leave
-        if ( !node->isMPIISend( ) || !node->isLeave( ) )
+        if ( !isendLeave->isMPIISend( ) || !isendLeave->isLeave( ) )
         {
           return false;
         }
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        GraphNode::GraphNodePair send  = node->getGraphPair( );
+        GraphNode* isendEnter = isendLeave->getGraphPair( ).first;
+        
         EventStream::MPIIcommRecord* record = 
-                (EventStream::MPIIcommRecord* ) node->getData( );
+                (EventStream::MPIIcommRecord* ) isendLeave->getData( );
         
         // check if the record has been invalidated/deleted
         UTILS_MSG( NULL == record, "[%u] MPI_Isend rule: Invalid record data.",
-                                   node->getStreamId( ) );
+                                   isendLeave->getStreamId( ) );
         
         uint64_t *buffer = record->sendBuffer;
         
         buffer[0] = 0; // start time is not relevant 
         buffer[1] = 0; // leave time is not relevant 
-        buffer[2] = send.first->getId( );  // send start node
-        buffer[3] = send.second->getId( ); // send leave node
+        buffer[2] = isendEnter->getId( );  // send start node
+        buffer[3] = isendLeave->getId( ); // send leave node
         buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_ISEND; //send.second->getType( );
         
-        uint64_t partnerProcessId  = node->getReferencedStreamId();
+        uint64_t partnerProcessId = isendLeave->getReferencedStreamId();
         uint32_t partnerMPIRank =
           commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
 
@@ -76,7 +77,8 @@ namespace casita
         // a blocking MPI_Recv can distribute blame then
         MPI_CHECK( MPI_Isend( buffer, CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
-                              partnerMPIRank, CASITA_MPI_REPLAY_TAG, MPI_COMM_WORLD, &(record->requests[0]) ) );
+                              partnerMPIRank, CASITA_MPI_REPLAY_TAG, 
+                              MPI_COMM_WORLD, &(record->requests[0]) ) );
         
         // MPI_Isend would like to know if partner is an MPI_Irecv or MPI_Recv
         // for the latter we need the dependency edge
