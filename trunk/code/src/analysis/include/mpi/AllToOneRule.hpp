@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -25,6 +25,7 @@ namespace casita
   {
     public:
 
+      // This rule seems to be broken!
       AllToOneRule( int priority ) :
         IMPIRule( "AllToOneRule", priority )
       {
@@ -42,7 +43,7 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* commonAnalysis    = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
         // get the enter event
         GraphNode* allToOneEnter = allToOneLeave->getGraphPair( ).first;
@@ -74,14 +75,12 @@ namespace casita
         uint32_t recvBufferSize    = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
 
         uint64_t sendBuffer[BUFFER_SIZE];
-        uint64_t* recvBuffer  = new uint64_t[recvBufferSize];
+        uint64_t* recvBuffer = new uint64_t[recvBufferSize];
         memset( recvBuffer, 0, recvBufferSize * sizeof( uint64_t ) );
 
         uint64_t allToOneStartTime = allToOneEnter->getTime( );
-        //uint64_t allToOneEndTime   = allToOneLeave->getTime( );
 
         sendBuffer[0] = allToOneStartTime;
-        //sendBuffer[1] = allToOneEndTime;
         sendBuffer[1] = allToOneEnter->getId( );
         sendBuffer[2] = allToOneLeave->getId( );
         sendBuffer[3] = allToOneLeave->getStreamId( );
@@ -123,16 +122,18 @@ namespace casita
                 allToOneLeave,
                 recvBuffer[i + 1],
                 recvBuffer[i + 3],
-                MPIAnalysis::
-                MPI_EDGE_REMOTE_LOCAL );
+                MPIAnalysis::MPI_EDGE_REMOTE_LOCAL );
             }
           }
 
-          /* make edge blocking if root is a wait state */
+          // make edge blocking if root is a wait state
           if ( total_waiting_time )
           {
+            UTILS_MSG( true, "[%u] AllToOne %s is blocking", 
+                       allToOneLeave->getStreamId( ), allToOneLeave->getUniqueName().c_str() );
+            
             Edge* allToOneRecordEdge = commonAnalysis->getEdge(
-              allToOneEnter, allToOneLeave );
+                                                 allToOneEnter, allToOneLeave );
             
             if ( allToOneRecordEdge )
             {
@@ -148,13 +149,8 @@ namespace casita
             allToOneLeave->setCounter( WAITING_TIME, total_waiting_time );
           }
         }
-
-        //\todo: needed
-        //MPI_Barrier( mpiCommGroup.comm );
-
-        if ( !isRoot )
+        else // non-root processes compute their blame
         {
-          // all others compute their blame
           uint64_t rootEnterTime = recvBuffer[rootMPIRank];
 
           if ( rootEnterTime < allToOneStartTime )
@@ -170,8 +166,7 @@ namespace casita
               allToOneEnter,
               recvBuffer[rootMPIRank + 2],
               recvBuffer[rootMPIRank + 3],
-              MPIAnalysis::
-              MPI_EDGE_LOCAL_REMOTE );
+              MPIAnalysis::MPI_EDGE_LOCAL_REMOTE );
           }
         }
 

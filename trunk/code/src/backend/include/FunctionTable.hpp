@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -178,8 +178,15 @@ namespace casita
    "MPI_Barrier",
    "MPI_Allreduce",
    "MPI_Allgather",
+   "MPI_Allgatherv",
+   "MPI_Alltoall",
+   "MPI_Alltoallv",
+   "MPI_Reduce_scatter",
    "MPI_Finalize",
-   "MPI_Init"
+   "MPI_Init",
+   "MPI_Init_thread",
+   "MPI_Reduce",
+   "MPI_Gather"
  };
 
  static const char*       FTABLE_MPI_ONETOALL[] =
@@ -188,10 +195,11 @@ namespace casita
    "MPI_Bcast"
  };
 
+ // allToOne rule is broken, hence use collective rule
  static const char*       FTABLE_MPI_ALLTOONE[] =
  {
-   "MPI_Gather",
-   "MPI_Reduce",
+   //"MPI_Gather",
+   //"MPI_Reduce"
  };
 
  static const char*       FTABLE_MPI_SENDRECV[] =
@@ -233,9 +241,9 @@ namespace casita
  {
    { MPI_RECV, 1, FTABLE_MPI_RECV },
    { MPI_SEND, 4, FTABLE_MPI_SEND },
-   { MPI_COLL, 5, FTABLE_MPI_COLL },
+   { MPI_COLL, 12, FTABLE_MPI_COLL },
    { MPI_ONETOALL, 2, FTABLE_MPI_ONETOALL },
-   { MPI_ALLTOONE, 2, FTABLE_MPI_ALLTOONE },
+   { MPI_ALLTOONE, 0, FTABLE_MPI_ALLTOONE }, // allToOne rule is broken
    { MPI_SENDRECV, 1, FTABLE_MPI_SENDRECV },
    { MPI_MISC, 0, FTABLE_MPI_MISC },
    { MPI_WAITSTATE, 1, FTABLE_GPU_WAITSTATE }

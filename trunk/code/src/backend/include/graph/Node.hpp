@@ -190,9 +190,9 @@ namespace casita
    { OMP_TARGET_FLUSH, "omp_target_flush" }
  };
 
- static const char   NAME_WAITSTATE[]     = "WaitState";
- static const char   NAME_MPI_INIT[]      = "MPI_Init";
- static const char   NAME_MPI_FINALIZE[]  = "MPI_Finalize";
+ static const char NAME_WAITSTATE[]     = "WaitState";
+ static const char NAME_MPI_INIT[]      = "MPI_Init";
+ static const char NAME_MPI_FINALIZE[]  = "MPI_Finalize";
 
  class Node
  {
@@ -422,7 +422,7 @@ namespace casita
      bool
      isMPIInit( ) const
      {
-
+       // move the strcmp to callback handler
        return isMPI( ) && ( nodeType & MPI_COLL ) &&
               ( strcmp( name.c_str( ), NAME_MPI_INIT ) == 0 );
      }
@@ -458,7 +458,7 @@ namespace casita
      bool
      isMPIFinalize( ) const
      {
-
+       // strcmp better while reading
        return isMPI( ) && ( nodeType & MPI_COLL ) &&
               ( strcmp( name.c_str( ), NAME_MPI_FINALIZE ) == 0 );
      }

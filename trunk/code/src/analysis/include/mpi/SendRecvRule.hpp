@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -34,38 +34,37 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmMPI* analysis, GraphNode* node )
+      apply( AnalysisParadigmMPI* analysis, GraphNode* sendRecvLeave )
       {
-        /* applied at MPI send recv leave */
-        if ( !node->isMPISendRecv( ) || !node->isLeave( ) )
+        // applied at MPI send recv leave
+        if ( !sendRecvLeave->isMPISendRecv( ) || !sendRecvLeave->isLeave( ) )
         {
           return false;
         }
 
-        AnalysisEngine* commonAnalysis    = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        /* get the complete execution */
-        GraphNode::GraphNodePair sendRecv = node->getGraphPair( );
+        GraphNode* sendRecvEnter = sendRecvLeave->getGraphPair( ).first;
 
         uint64_t* data =
-          (uint64_t*)( node->getData( ) );
+          (uint64_t*)( sendRecvLeave->getData( ) );
         UTILS_ASSERT( data, "No data found for %s",
-                      node->getUniqueName( ).c_str( ) );
+                      sendRecvLeave->getUniqueName( ).c_str( ) );
 
-        uint64_t  partnerProcessIdRecv    = node->getReferencedStreamId( );
-        uint64_t  partnerProcessIdSend    = *data;
+        uint64_t  partnerProcessIdRecv = sendRecvLeave->getReferencedStreamId( );
+        uint64_t  partnerProcessIdSend = *data;
 
         const int BUFFER_SIZE = 8;
         uint64_t  sendBuffer[BUFFER_SIZE], recvBuffer[BUFFER_SIZE];
 
-        uint64_t  myStartTime = sendRecv.first->getTime( );
-        uint64_t  myEndTime   = sendRecv.second->getTime( );
+        uint64_t  myStartTime = sendRecvEnter->getTime( );
+        uint64_t  myEndTime   = sendRecvLeave->getTime( );
 
-        /* prepare send buffer */
+        // prepare send buffer
         sendBuffer[0] = myStartTime;
         sendBuffer[1] = myEndTime;
-        sendBuffer[2] = sendRecv.first->getId( );
-        sendBuffer[3] = sendRecv.second->getId( );
+        sendBuffer[2] = sendRecvEnter->getId( );
+        sendBuffer[3] = sendRecvLeave->getId( );
 
         /* send + recv */
         uint32_t   partnerMPIRankRecv =
@@ -94,8 +93,8 @@ namespace casita
         {
           if ( myStartTime < otherStartTime )
           {
-            Edge* sendRecordEdge = commonAnalysis->getEdge( sendRecv.first,
-                                                            sendRecv.second );
+            Edge* sendRecordEdge = commonAnalysis->getEdge( sendRecvEnter,
+                                                            sendRecvLeave );
             
             if ( sendRecordEdge )
             {
@@ -103,31 +102,28 @@ namespace casita
             }
             else
             {
-              std::cerr << "[" << node->getStreamId( ) 
+              std::cerr << "[" << sendRecvLeave->getStreamId( ) 
                         << "] SendRecvRule: Record edge not found. CPA might fail!" 
                         << std::endl;
             }
 
-            //\todo: write counter to enter node
-            sendRecv.second->incCounter( WAITING_TIME,
+            sendRecvLeave->incCounter( WAITING_TIME,
                                          otherStartTime - myStartTime );
           }
         }
         else
         {
-          distributeBlame( commonAnalysis, sendRecv.first,
+          distributeBlame( commonAnalysis, sendRecvEnter,
                            myStartTime - otherStartTime, streamWalkCallback );
 
           commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
-            sendRecv.first,
+            sendRecvEnter,
             otherLeaveId,
             partnerProcessIdRecv,
-            MPIAnalysis::
-            MPI_EDGE_LOCAL_REMOTE );
+            MPIAnalysis::MPI_EDGE_LOCAL_REMOTE );
         }
 
-        /* round 2: send reverse direction. myself == recv */
-
+        // round 2: send reverse direction. myself == recv
         MPI_CHECK( MPI_Sendrecv( sendBuffer, BUFFER_SIZE,
                                  MPI_UNSIGNED_LONG_LONG, partnerMPIRankRecv, 0,
                                  recvBuffer, BUFFER_SIZE,
@@ -138,38 +134,36 @@ namespace casita
         otherEnterId   = recvBuffer[2];
         otherLeaveId   = recvBuffer[3];
 
-        /* compute wait states and edges */
+        // compute wait states and edges
         if ( myStartTime < otherStartTime )
         {
-          Edge* recvRecordEdge = commonAnalysis->getEdge( sendRecv.first,
-                                                          sendRecv.second );
+          Edge* recvRecordEdge = commonAnalysis->getEdge( sendRecvEnter,
+                                                          sendRecvLeave );
           if ( recvRecordEdge )
           {
             recvRecordEdge->makeBlocking( );
           }
           else
           {
-            std::cerr << "[" << node->getStreamId( ) 
+            std::cerr << "[" << sendRecvLeave->getStreamId( ) 
                       << "] SendRecvRule: Record edge not found. CPA might fail!" 
                       << std::endl;
           }
           
-          //\todo: write counter to enter node
-          sendRecv.second->incCounter( WAITING_TIME,
+          sendRecvLeave->incCounter( WAITING_TIME,
                                        otherStartTime - myStartTime );
         }
 
         if ( myStartTime > otherStartTime )
         {
-          distributeBlame( commonAnalysis, sendRecv.first,
+          distributeBlame( commonAnalysis, sendRecvEnter,
                            myStartTime - otherStartTime, streamWalkCallback );
 
           commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
-            sendRecv.second,
+            sendRecvLeave,
             otherEnterId,
             partnerProcessIdSend,
-            MPIAnalysis::
-            MPI_EDGE_REMOTE_LOCAL );
+            MPIAnalysis::MPI_EDGE_REMOTE_LOCAL );
         }
 
         return true;

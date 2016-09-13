@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -21,7 +21,8 @@ namespace casita
  {
 
   /* What this rule does:
-   * 1) Replay MPI_Irecv
+   * 1) Forward replay: MPI_Irecv
+   * 2) Backward replay: MPI_Isend
    */
   class IRecvRule :
     public IMPIRule
@@ -37,25 +38,28 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmMPI* analysis, GraphNode* node )
+      apply( AnalysisParadigmMPI* analysis, GraphNode* irecvLeave )
       {
-        /* applied at MPI_IRecv leave */
-        if ( !node->isMPIIRecv( ) || !node->isLeave( ) )
+        // applied at MPI_Irecv leave
+        if ( !irecvLeave->isMPIIRecv( ) || !irecvLeave->isLeave( ) )
         {
           return false;
         }
         
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        uint64_t partnerProcessId      = node->getReferencedStreamId( );
-        GraphNode::GraphNodePair& recv = node->getGraphPair( );
+        uint64_t partnerProcessId = irecvLeave->getReferencedStreamId( );
+        
+        GraphNode* irecvEnter = irecvLeave->getGraphPair( ).first;
+        
         EventStream::MPIIcommRecord* record = 
-                (EventStream::MPIIcommRecord* )node->getData( );
+                          (EventStream::MPIIcommRecord* )irecvLeave->getData( );
         
         // check if the record has been invalidated/deleted
         if( NULL == record )
         {
-          std::cerr << "[" << node->getStreamId( ) << "] Irecv rule: Invalid record data." 
+          std::cerr << "[" << irecvLeave->getStreamId( ) 
+                    << "] Irecv rule: Invalid record data." 
                     << std::endl;
           
           return false;
@@ -76,8 +80,8 @@ namespace casita
         // send information to communication partner
         // the blocking MPI_Recv can evaluate them and e.g. stop wait state analysis
         uint64_t *buffer_send = record->sendBuffer;
-        buffer_send[0] = recv.first->getTime( );
-        buffer_send[3] = recv.second->getId( );
+        buffer_send[0] = irecvEnter->getTime( );
+        buffer_send[3] = irecvLeave->getId( );
         buffer_send[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_IRECV; //recv.second->getType( );
 
         // Send indicator that this is an MPI_Irecv

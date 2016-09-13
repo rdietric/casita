@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -25,6 +25,13 @@ namespace casita
   {
     public:
 
+      /**
+       * This rule can be applied for all kind of MPI collectives, e.g. Barrier, 
+       * Allreduce, Allgather, etc.. It can also be used instead of oneToAll and 
+       * allToOne rules.
+       * 
+       * @param priority
+       */
       CollectiveRule( int priority ) :
         IMPIRule( "CollectiveRule", priority )
       {
@@ -34,10 +41,10 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmMPI* analysis, GraphNode* node )
+      apply( AnalysisParadigmMPI* analysis, GraphNode* colLeave )
       {
-        /* applied at MPI collective leave */
-        if ( !node->isMPICollective( ) || !node->isLeave( ) )
+        // applied at MPI collective leave
+        if ( !colLeave->isMPICollective( ) || !colLeave->isLeave( ) )
         {
           return false;
         }
@@ -45,30 +52,30 @@ namespace casita
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
         
         // wait or test for pending non-blocking MPI communication
-        if ( node->isMPIFinalize() )
+        if ( colLeave->isMPIFinalize() )
         {
-          analysis->getCommon()->getStream( node->getStreamId() )->waitForAllPendingMPIRequests();
+          analysis->getCommon()->getStream( colLeave->getStreamId() )->waitForAllPendingMPIRequests();
         }
-        else if ( !node->isMPIInit() )
+        else if ( !colLeave->isMPIInit() )
         {
-          analysis->getCommon()->getStream( node->getStreamId() )->testAllPendingMPIRequests();
+          analysis->getCommon()->getStream( colLeave->getStreamId() )->testAllPendingMPIRequests();
         }
+        
+        //UTILS_MSG( true, "MPI collective: %s", colLeave->getUniqueName().c_str());
 
-        /* get the complete execution */
-        GraphNode::GraphNodePair coll  = node->getGraphPair( );
-        uint32_t mpiGroupId            = node->getReferencedStreamId( );
+        GraphNode* colEnter = colLeave->getGraphPair( ).first;
+        
+        uint32_t mpiGroupId = colLeave->getReferencedStreamId( );
         const MPIAnalysis::MPICommGroup& mpiCommGroup =
           commonAnalysis->getMPIAnalysis( ).getMPICommGroup( mpiGroupId ); 
-        uint32_t myMpiRank             = commonAnalysis->getMPIRank( );
 
         if ( mpiCommGroup.comm == MPI_COMM_SELF )
         {
           return false;
         }
 
-        /* Data about each collective is exchanged with everyone */
-        
-        const uint32_t BUFFER_SIZE = 5;
+        // Data about each collective is exchanged with everyone
+        const uint32_t BUFFER_SIZE = 4;
         uint64_t sendBuffer[BUFFER_SIZE];
 
         // receive buffer has to be dynamically allocated as it depends on the
@@ -80,46 +87,36 @@ namespace casita
         
         memset( recvBuffer, 0, recvBufferSize * sizeof( uint64_t ) );
 
-        uint64_t collStartTime = coll.first->getTime( );
-        uint64_t collEndTime   = coll.second->getTime( );
+        uint64_t collStartTime = colEnter->getTime( );
         
         // prepare send buffer
         sendBuffer[0] = collStartTime;
-        sendBuffer[1] = collEndTime;
-        sendBuffer[2] = coll.first->getId( );
-        sendBuffer[3] = coll.second->getId( );
-        sendBuffer[4] = node->getStreamId( );
+        sendBuffer[1] = colEnter->getId( );
+        sendBuffer[2] = colLeave->getId( );
+        sendBuffer[3] = colLeave->getStreamId( );
 
-        MPI_CHECK( MPI_Allgather( sendBuffer, BUFFER_SIZE,
-                                  MPI_UNSIGNED_LONG_LONG,
-                                  recvBuffer, BUFFER_SIZE,
-                                  MPI_UNSIGNED_LONG_LONG, mpiCommGroup.comm ) );
+        MPI_CHECK( MPI_Allgather( sendBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
+                                  recvBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, 
+                                  mpiCommGroup.comm ) );
 
         // get last enter event for collective
-        uint64_t lastEnterTime         = 0, lastLeaveTime = 0;
+        uint64_t lastEnterTime         = 0;
         uint64_t lastEnterProcessId    = 0;
         uint64_t lastEnterRemoteNodeId = 0;
         for ( size_t i = 0; i < recvBufferSize; i += BUFFER_SIZE )
         {
           uint64_t enterTime = recvBuffer[i];
-          uint64_t leaveTime = recvBuffer[i + 1];
 
           if ( enterTime > lastEnterTime )
           {
             lastEnterTime         = enterTime;
-            lastEnterRemoteNodeId = recvBuffer[i + 2];
-            lastEnterProcessId    = recvBuffer[i + 4];
+            lastEnterRemoteNodeId = recvBuffer[i + 1];
+            lastEnterProcessId    = recvBuffer[i + 3];
           }
-
-          if ( leaveTime > lastLeaveTime )
-          {
-            lastLeaveTime = leaveTime;
-          }
-
         }
 
         // I'm not last collective -> blocking + remoteEdge to lastEnter
-        if ( lastEnterProcessId != node->getStreamId( ) ) // collStartTime < lastEnterTime )
+        if ( lastEnterProcessId != colLeave->getStreamId( ) ) // collStartTime < lastEnterTime )
         {         
           // These nodes/edges are needed for dependency correctness but are
           // omitted since they are currently not used anywhere.
@@ -131,8 +128,7 @@ namespace casita
 //           
 //           analysis->newEdge(remoteNode, coll.second);
            
-          Edge* collRecordEdge = commonAnalysis->getEdge( coll.first,
-                                                          coll.second );
+          Edge* collRecordEdge = commonAnalysis->getEdge( colEnter, colLeave );
           
           if ( collRecordEdge )
           {
@@ -140,23 +136,20 @@ namespace casita
           }
           else
           {
-            std::cerr << "[" << node->getStreamId( ) 
+            std::cerr << "[" << colLeave->getStreamId( ) 
                       << "] CollectiveRule: Record edge not found. CPA might fail!" 
                       << std::endl;
           }
           
           // set the wait state counter for this blocking region
           // waiting time = last enter time - this ranks enter time
-          //\todo: write counter to enter event
-          coll.second->setCounter( WAITING_TIME,
-                                   lastEnterTime - collStartTime );
+          colLeave->setCounter( WAITING_TIME, lastEnterTime - collStartTime );
 
           commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
-            coll.second, // local leave node
+            colLeave, // local leave node
             lastEnterRemoteNodeId, // remote enter node
             lastEnterProcessId,
-            MPIAnalysis::
-            MPI_EDGE_REMOTE_LOCAL );
+            MPIAnalysis::MPI_EDGE_REMOTE_LOCAL );
         }
         else // I am the last entering collective
         {
@@ -167,12 +160,13 @@ namespace casita
             uint64_t enterTime = recvBuffer[i];
             total_blame += lastEnterTime - enterTime;
 
-            if ( recvBuffer[i + 4] != myMpiRank )
+            uint32_t myMpiRank = commonAnalysis->getMPIRank( );
+            if ( recvBuffer[i + 3] != myMpiRank )
             {
               commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
-                coll.first, // local enter node
-                recvBuffer[i + 3], // remote leave node ID
-                recvBuffer[i + 4], // remote process ID
+                colEnter, // local enter node
+                recvBuffer[i + 2], // remote leave node ID
+                recvBuffer[i + 3], // remote process ID
                 MPIAnalysis::MPI_EDGE_LOCAL_REMOTE );
             }
 
@@ -191,7 +185,7 @@ namespace casita
           }
 
           distributeBlame( commonAnalysis,
-                           coll.first,
+                           colEnter,
                            total_blame,
                            streamWalkCallback );
         }
