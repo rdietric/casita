@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -17,120 +17,166 @@
 namespace casita
 {
 
- typedef struct
- {
-   GraphNode::GraphNodeList list;
-   uint64_t                 waitStateTime;
-   AnalysisEngine*          analysis;
- } StreamWalkInfo;
+  typedef struct
+  {
+    GraphNode::GraphNodeList list; //<! list of nodes for the stream walk
+    uint64_t waitStateTime;        //<! accumulated waiting time of the list members, end node waiting time is not included
+    AnalysisEngine* analysis;
+  } StreamWalkInfo;
 
- /**
-  * Distribute the blame by walking backwards from the given node.
-  * Blame is assigned to all nodes in the blame interval and to edges between 
-  * the nodes to blame CPU functions later.
-  * 
-  * @param analysis pointer to analysis engine
-  * @param node start node of the stream walk back
-  * @param totalBlame blame to be distributed
-  * @param callback 
-  */
- static void
- distributeBlame( AnalysisEngine*                 analysis,
-                  GraphNode*                      node,
-                  uint64_t                        totalBlame,
-                  EventStream::StreamWalkCallback callback )
- {
-   if ( totalBlame == 0 )
-   {
-     return;
-   }
+  /**
+   * Distribute the blame by walking backwards from the given node.
+   * Blame is assigned to all nodes in the blame interval and to edges between 
+   * the nodes to blame CPU functions later.
+   * 
+   * @param analysis pointer to analysis engine
+   * @param node start node of the stream walk back
+   * @param totalBlame blame to be distributed
+   * @param callback 
+   */
+  static void
+  distributeBlame( AnalysisEngine* analysis,
+                   GraphNode* node,
+                   uint64_t totalBlame,
+                   EventStream::StreamWalkCallback callback )
+  {
+    // return if there is no blame to distribute
+    if ( totalBlame == 0 )
+    {
+      return;
+    }
 
-   // walk backwards from node using callback
-   StreamWalkInfo walkListAndWaitTime;
-   walkListAndWaitTime.waitStateTime = 0;
-   walkListAndWaitTime.analysis      = analysis;
-   analysis->getStream( node->getStreamId( ) )->walkBackward(
-     node, callback, &walkListAndWaitTime );
+    // walk backwards from node using callback
+    StreamWalkInfo walkListInfo;
+    walkListInfo.waitStateTime = 0;
+    walkListInfo.analysis = analysis;
+    analysis->getStream(node->getStreamId())->walkBackward(
+                                                 node, callback, &walkListInfo);
 
-   const GraphNode::GraphNodeList& walkList = walkListAndWaitTime.list;
-   const uint32_t waitTime      = walkListAndWaitTime.waitStateTime;
+    // the walk list includes the interval boundary nodes, e.g. MPI leave as 
+    // start node (walklist.front()) and MPI enter as end node (walklist.back())
+    const GraphNode::GraphNodeList& walkList = walkListInfo.list;
 
-   if ( walkList.size( ) < 2 )
-   {
-     ErrorUtils::getInstance( ).throwError( "Can't walk list back from %s",
-                                            node->getUniqueName( ).c_str( ) );
-   }
+    // ensure that the walk list contains at least the two boundary nodes
+    UTILS_ASSERT(walkList.size() > 1,
+                 "Walk list has one or less entries. Can't walk list back from %s",
+                 node->getUniqueName().c_str());
 
-   GraphNode* start = walkList.front( );
-   
-   /*if ( false )
-   {
-     GraphNode* end   = walkList.back( );
-     std::cout << "[" << analysis->getMPIRank( ) << "] Walking: " <<
-     start->getUniqueName( )
-               << " to " << end->getUniqueName( ) << " node " <<
-     node->getUniqueName( ) << " Blame: " <<
-     totalBlame << std::endl;
-   }*/
+    GraphNode* start = walkList.front();
+    
+    // if the start node has no caller, hence is first on the stack
+    if ( start->getCaller() == NULL )
+    {
+      start->setCounter(BLAME, 0);
+    }
 
-   uint64_t   totalWalkTime = walkList.front( )->getTime( ) 
-                            - walkList.back( )->getTime( );
-   GraphNode* lastWalkNode  = walkList.front( );
+    // total time interval for blame distribution
+    const uint64_t totalWalkTime = walkList.front()->getTime()
+      - walkList.back()->getTime();
 
-   // if the start node has no caller, hence is first on the stack
-   if ( start->getCaller( ) == NULL )
-   {
-     start->setCounter( BLAME, 0 );
-   }
+    // time within the interval that is a wait state itself
+    const uint64_t waitTime = walkListInfo.waitStateTime;
 
-   // iterate over the walk list
-   for ( GraphNode::GraphNodeList::const_iterator iter = ( ++walkList.begin( ) );
-         iter != walkList.end( ); ++iter )
-   {
-     GraphNode* currentWalkNode = *iter;
-     
-     Edge* edge = analysis->getEdge( currentWalkNode, lastWalkNode );
-     
-     uint64_t cpuTimeDiff = lastWalkNode->getTime( ) 
-                          - edge->getCPUNodesStartTime( );
-     uint64_t timeDiff    = lastWalkNode->getTime( ) 
-                          - currentWalkNode->getTime( ) - cpuTimeDiff;
+    // total time for blame distribution (wait states in the interval are subtracted)
+    const uint64_t totalTimeToBlame = totalWalkTime - waitTime;
+    /*
+    UTILS_MSG( totalBlame > 0 && node->getId() < 88950 &&
+               strcmp( node->getName(), "MPI_Allreduce") == 0,
+               "[%u] %s, totalBlame: %llu sec (%lf)",
+               analysis->getMPIRank(), analysis->getNodeInfo(node).c_str(),
+               totalBlame, analysis->getRealTime( totalBlame ) );
+    
+    // debug walk list
+    if( totalBlame > 0 && strcmp( node->getName(), "MPI_Allreduce") == 0 )
+    {
+      for ( GraphNode::GraphNodeList::const_iterator iter = ++(walkList.begin( ));
+          iter != walkList.end( ); ++iter )
+      {
+        GraphNode* currentWalkNode = *iter;
+       
+        uint64_t wtime = currentWalkNode->getCounter( WAITING_TIME, NULL );
+       
+        UTILS_MSG( true, " -> %s with waiting time: %llu (%lf sec)", 
+                   analysis->getNodeInfo( currentWalkNode ).c_str(), 
+                   wtime, analysis->getRealTime( wtime ) );
+      }
+    }
+    */
+    // total time to blame has to be greater than zero
+    UTILS_ASSERT(totalWalkTime > waitTime,
+                 "[%u] Waiting time %llu (%lf sec) in the time interval [%s,%s] is "
+                 "greater than its duration %llu (%lf sec)",
+                 analysis->getMPIRank(), 
+                 waitTime, analysis->getRealTime( waitTime ),
+                 analysis->getNodeInfo( walkList.front() ).c_str(),
+                 analysis->getNodeInfo( walkList.back() ).c_str(), 
+                 totalWalkTime, analysis->getRealTime( totalWalkTime ) );
 
-     const uint64_t currentWaitingTime =
-                                   lastWalkNode->getCounter( WAITING_TIME, NULL );
+    GraphNode* lastWalkNode = walkList.front();
 
-     uint64_t ratioBlame = (double)totalBlame 
-                         * (double)( timeDiff - currentWaitingTime ) 
-                         / (double)( totalWalkTime - waitTime );
+    // iterate (backwards in time) over the walk list which contains enter and leave events
+    for ( GraphNode::GraphNodeList::const_iterator iter = (++walkList.begin());
+          iter != walkList.end(); ++iter )
+    {
+      GraphNode* currentWalkNode = *iter;
 
-     uint64_t cpuBlame   = ( cpuTimeDiff == 0 ) ? 0 : (double)totalBlame *
-                                         (double)( cpuTimeDiff ) /
-                                         (double)( totalWalkTime - waitTime );
+      Edge* edge = analysis->getEdge(currentWalkNode, lastWalkNode);
 
-     edge->addCPUBlame( cpuBlame );
-     
-     /*
-     if ( cpuBlame > 0 && false )
-     {
-       std::cout << "Write cpuBlame " << cpuBlame << " (of " << totalBlame
-                 << " and " << ratioBlame << " cpuTimeDiff: " << cpuTimeDiff
-                 << " timediff: " << timeDiff << " current waiting time: "
-                 << currentWaitingTime << " total walk time: "
-                 << totalWalkTime << " waitTime: "
-                 << waitTime << ") between "
-                 << currentWalkNode->getUniqueName( ) << " and "
-                 << lastWalkNode->getUniqueName( )
-                 << " " << edge->getNumberOfCPUNodes( ) << " Nodes ("
-                 << edge->getCPUNodesStartTime( ) << " - "
-                 << edge->getCPUNodesEndTime( ) << ")" << std::endl;
-     }*/
+      UTILS_ASSERT(edge, "[%u] No edge found between %s and %s",
+                   analysis->getMPIRank(),
+                   currentWalkNode->getUniqueName().c_str(),
+                   lastWalkNode->getUniqueName().c_str());
+      /*
+      UTILS_MSG( strcmp( currentWalkNode->getName(), "clCreateContextFromType") == 0,
+                       "Current walk node: %s",
+                       currentWalkNode->getUniqueName().c_str() );
+      */
+      // blame distribution depends on the edge type
+      // if edge is from enter to leave node of a region (represents a region)
+      if ( edge->isRegion() ) 
+      {
+        uint64_t edgeRegionExclTime = edge->getDuration() - edge->getCPUNodesExclTime();
+        
+        if( edgeRegionExclTime > 0 )
+        {
+          //\todo: accuracy gets lost here, store result into double
+          uint64_t ratioBlame = (double) totalBlame
+                              * (double) edgeRegionExclTime
+                              / (double) totalTimeToBlame;
+          
+          // check for zero to avoid unnecessary find in incCounter()
+          if ( ratioBlame > 0 )
+          {
+            lastWalkNode->incCounter(BLAME, ratioBlame);
+          }
+        }
 
-     if ( ratioBlame > 0 )
-     {
-       lastWalkNode->incCounter( BLAME, ratioBlame );
-     }
+        if( edge->getCPUNodesExclTime() )
+        {
+          double cpuBlame = (double) totalBlame
+                          * (double) ( edge->getCPUNodesExclTime() )
+                          / (double) totalTimeToBlame;
+          
+          edge->addCPUBlame( cpuBlame );
+        }
+      }
+      else
+      {
+        // all blame on the edge, if it is not a region
+        double cpuBlame = (double) totalBlame
+          * (double) ( edge->getDuration() )
+          / (double) totalTimeToBlame;
 
-     lastWalkNode = currentWalkNode;
-   }
- }
+        if( cpuBlame > 0 )
+        {
+          edge->addCPUBlame(cpuBlame);
+          
+          // enter node of following paradigm region
+          //lastWalkNode->incCounter(BLAME, cpuBlame);
+        }
+      }
+
+      lastWalkNode = currentWalkNode;
+    }
+  }
 }

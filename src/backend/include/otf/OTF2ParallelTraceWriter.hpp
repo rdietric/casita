@@ -192,6 +192,9 @@ namespace casita
       // 
       uint64_t timerOffset;
       
+      double
+      getRealTime(  uint64_t time );
+      
       //!< counter to assign IDs to string definitions
       uint64_t      counterForStringDefinitions;
       

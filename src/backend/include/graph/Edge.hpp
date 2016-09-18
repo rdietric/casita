@@ -34,11 +34,6 @@ namespace casita
    public:
      typedef std::map< uint32_t, uint64_t > TimeProfileMap;
      typedef std::map< Paradigm, Edge* > ParadigmEdgeMap;
-     typedef struct
-     {
-       uint64_t startTime;
-       uint64_t endTime;
-     } cpuStartEndTime;
 
      Edge( GraphNode* start, GraphNode* end, uint64_t duration,
            int properties, Paradigm edgeParadigm ) :
@@ -53,9 +48,10 @@ namespace casita
 
        cpuNodes              = 0;
        cpuBlame              = 0;
-       /* set both to end->getTime() for initial CPU time to be 0 */
-       cpuStartEnd.startTime = end->getTime( );
-       cpuStartEnd.endTime   = end->getTime( );
+       
+       // set both to end->getTime() for initial CPU time to be 0
+       //cpuEvtStartTime = end->getTime( );
+       //cpuEvtEndTime   = end->getTime( );
 
        this->properties      = properties;
        this->edgeDuration    = duration;
@@ -200,45 +196,97 @@ namespace casita
      {
        return pair.first->getStreamId( ) != pair.second->getStreamId( );
      }
+     
+     /**
+      * Determine whether this is an edge representing a region/function or 
+      * an edge between functions.
+      * 
+      * @return 
+      */
+     bool
+     isRegion( ) const
+     {      
+       if( isIntraStreamEdge() )
+       {
+         // if either of the nodes is atomic this cannot be a region
+         if( pair.first->isAtomic() || pair.second->isAtomic() )
+         {
+           return false;
+         }
+         
+         bool result = false;
+         
+         // for forward edges
+         if( pair.first->isEnter() && pair.second->isLeave() )
+         {
+           result = true;
+         }
+         else
+         {
+           result = false;
+         }
+
+         // for reverse edges negate the result
+         if( isReverseEdge() )
+         {
+           return !result;
+         }
+       }
+       return false;
+     }
 
      void
-     addCPUData( uint32_t nodes, uint64_t startTime, uint64_t endTime )
+     addCPUData( uint32_t nodes, 
+                 //uint64_t startTime, uint64_t endTime, 
+                 uint64_t exclCPUEvtTime )
      {
        UTILS_ASSERT( cpuNodes == 0, "Can not set CPU data multiple times" );
 
        if ( nodes > 0 )
        {
          cpuNodes = nodes;
-         cpuStartEnd.startTime = startTime;
-         cpuStartEnd.endTime = endTime;
+         //cpuEvtStartTime = startTime;
+         //cpuEvtEndTime = endTime;
+         cpuEvtExclTime = exclCPUEvtTime;
        }
      }
 
-     uint64_t
+     /*uint64_t
      getCPUNodesStartTime( )
      {
-       return cpuStartEnd.startTime;
+       return cpuEvtStartTime;
      }
 
      uint64_t
      getCPUNodesEndTime( )
      {
-       return cpuStartEnd.endTime;
+       return cpuEvtEndTime;
+     }*/
+     
+     /**
+      * Get the time of regions that are explicitly created by CPU events for this edge. 
+      * 
+      * @return 
+      */
+     uint64_t
+     getCPUNodesExclTime( )
+     {
+       return cpuEvtExclTime;
      }
 
-     uint32_t
+     /*uint32_t
      getNumberOfCPUNodes( )
      {
        return cpuNodes;
-     }
+     }*/
 
      void
-     addCPUBlame( uint64_t blame )
+     addCPUBlame( double blame )
      {
        cpuBlame += blame;
      }
 
-     uint64_t
+     double
      getCPUBlame( )
      {
        return cpuBlame;
@@ -253,8 +301,11 @@ namespace casita
      GraphNode::GraphNodePair pair;
 
      uint32_t cpuNodes;
-     cpuStartEndTime cpuStartEnd;
-     uint64_t cpuBlame;
+     uint64_t cpuEvtStartTime;
+     uint64_t cpuEvtEndTime;
+     uint64_t cpuEvtExclTime; //<! time of regions from CPU events between the edge nodes
+     
+     double cpuBlame;
 
      void
      setWeight( uint64_t weight )

@@ -440,6 +440,24 @@ AnalysisEngine::getRealTime( uint64_t t )
 }
 
 /**
+ * Get information on a node as char pointer (similar to Node getUniqueName).
+ * Includes stream ID, node name, node type, and elapsed time.
+ * 
+ * @param node
+ * 
+ * @return node information as char pointer
+ */
+const std::string
+AnalysisEngine::getNodeInfo( Node* node )
+{
+  std::stringstream sstream;
+  
+  sstream << node->getUniqueName() << ":" << getRealTime( node->getTime() );
+
+  return sstream.str( );
+}
+
+/**
  * Sort the streams by stream id, but with host streams first.
  
 static bool

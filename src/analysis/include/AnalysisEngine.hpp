@@ -146,6 +146,18 @@ namespace casita
      double
      getRealTime( uint64_t t );
      
+     const std::string
+     getNodeInfo( Node* node );
+     
+     /**
+      * Get elapsed time from an event time stamp, e.g. to spot an event in Vampir.
+      * 
+      * @param t event time stamp
+      * @return elapsed time in seconds
+      */
+     double
+     getElapsedTime( uint64_t t );
+
      void
      runAnalysis( Paradigm paradigm, EventStream::SortedGraphNodeList& allNodes, 
                   bool verbose );

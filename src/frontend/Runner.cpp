@@ -330,7 +330,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
       // write the OTF2 output trace definitions and setup the OTF2 input reader
       analysis.writeOTF2Definitions( options.outOtfFile,
                                      options.filename,
-                                     options.createOTF, // let the trace writer know if it should write an OTF output
+                                     options.createTraceFile, // let the trace writer know if it should write an OTF output
                                      options.ignoreAsyncMpi,
                                      options.verbose );
       
@@ -339,7 +339,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
       otf2_def_written = true;
     }
     
-    if( options.createOTF )
+    if( options.createTraceFile )
     {
       MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
     }
@@ -453,12 +453,9 @@ Runner::mergeActivityGroups( )
     
     // add the activity groups blame to the total global blame
     globalBlame += groupIter->second.totalBlame;
-    
-    //groupIter = ++iter;
   }
 
   // ************* Phase 2: MPI all-reduce *************** //
-
   const int MPI_ENTRIES_TAG = 22;
   
   // send/receive groups to master/from other MPI streams
@@ -1549,7 +1546,7 @@ Runner::runAnalysis( Paradigm                          paradigm,
     GraphNode* node = *nIter;
     ctr++;
 
-    //\todo: do we really want this?
+    // ignore non-paradigm rules
     if ( !( node->getParadigm( ) & paradigm ) )
     {
       continue;
@@ -1628,8 +1625,6 @@ Runner::printAllActivities( )
 
       sortedActivityGroups.insert( iter->second );
     }
-
-    
       
     // print summary in CSV file (file has to be declared in this scope for closing it)
     FILE *summaryFile;
@@ -1663,18 +1658,17 @@ Runner::printAllActivities( )
     for ( std::set< OTF2ParallelTraceWriter::ActivityGroup,
                     OTF2ParallelTraceWriter::ActivityGroupCompare >::
           const_iterator iter = sortedActivityGroups.begin( );
-          iter != sortedActivityGroups.end( ) /*&& ( ctr < options.topX )*/;
-          ++iter )
+          iter != sortedActivityGroups.end( ); ++iter )
     {
-      // generate a sum of the TOP rated functions
-      sumInstances     += iter->numInstances;
-      sumDuration      += iter->totalDuration;
-      sumDurationCP    += iter->totalDurationOnCP;
-      sumFractionCP    += iter->fractionCP;
-      sumFractionBlame += iter->fractionBlame;
-      
       if( ctr < options.topX )
       {
+        // generate a sum of the TOP rated functions
+        sumInstances     += iter->numInstances;
+        sumDuration      += iter->totalDuration;
+        sumDurationCP    += iter->totalDurationOnCP;
+        sumFractionCP    += iter->fractionCP;
+        sumFractionBlame += iter->fractionBlame;
+      
         printf( "%50.50s %10u %10f %11f %11.2f%% %20.2f%%  %7.6f\n",
                 analysis.getFunctionName( iter->functionId ),
                 iter->numInstances,

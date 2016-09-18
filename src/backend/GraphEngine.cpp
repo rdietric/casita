@@ -97,8 +97,9 @@ GraphEngine::newEventStream( uint64_t                     id,
     }
   }
 
+  // initialize CPU data for this stream (full reset is done in addCPUEvent() )
   cpuDataPerProcess[id].numberOfEvents = 0;
-
+  
   return p;
 }
 
@@ -523,7 +524,7 @@ GraphEngine::createIntermediateBegin( )
 
       // set the stream's last node to type atomic (the collective end node)
       lastNode->setRecordType( RECORD_ATOMIC );
-      //lastNode->setParadigm( PARADIGM_ALL );
+      lastNode->addType( MISC_PROCESS ); // to match node->isProcess())
       
       // clear the nodes vector and reset first and last node of the stream
       p->clearNodes();
@@ -733,20 +734,31 @@ GraphEngine::runSanityCheck( uint32_t mpiRank )
   streams.clear();
 }
 
+/**
+ * Add information from a CPU (non-paradigm) event.
+ * 
+ * @param time the time stamp of the event
+ * @param stream the stream the event occurred
+ */
 void
-GraphEngine::addCPUEvent( uint64_t time, uint64_t stream )
+GraphEngine::addCPUEvent( uint64_t time, uint64_t stream, bool isLeave )
 {
   EdgeCPUData& cpuData = cpuDataPerProcess[stream];
 
   if ( cpuData.numberOfEvents == 0 )
   {
     cpuData.startTime = time;
+    cpuData.exclEvtRegTime = 0;
+  }
+  
+  // get the last exclusive region time at region leave
+  if( isLeave )
+  {
+    cpuData.exclEvtRegTime += cpuData.endTime - time;
   }
 
   cpuData.numberOfEvents++;
   cpuData.endTime = time;
-
-  return;
 }
 
 /**
@@ -759,8 +771,6 @@ void
 GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 {
   GraphNode::ParadigmNodeMap predNodeMap, nextNodeMap;
-
-  EdgeCPUData& cpuData = cpuDataPerProcess[stream->getId( )];
 
   if ( !stream->getLastNode( ) ||
        Node::compareLess( stream->getLastNode( ), node ) )
@@ -776,8 +786,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
     stream->insertGraphNode( node, predNodeMap, nextNodeMap );
   }
 
-  /* to support nesting we use a stack to keep track of open
-   * activities */
+  // to support nesting we use a stack to keep track of open activities
   GraphNode* stackNode = topGraphNodeStack( node->getStreamId( ) );
 
   if ( node->isLeave( ) )
@@ -794,7 +803,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
       popGraphNodeStack( node->getStreamId( ) );
 
-      /* use the stack to get the caller/parent of this node */
+      // use the stack to get the caller/parent of this node
       node->setCaller( topGraphNodeStack( node->getStreamId( ) ) );
     }
   }
@@ -802,7 +811,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   {
     if ( node->isEnter( ) )
     {
-      /* use the stack to get the caller/parent of this node */
+      // use the stack to get the caller/parent of this node
       node->setCaller( stackNode );
       pushGraphNodeStack( node, node->getStreamId( ) );
     }
@@ -842,6 +851,8 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
       directSuccessor = nextPnmIter->second;
     }
   }
+  
+  EdgeCPUData& cpuData = cpuDataPerProcess[stream->getId()];
 
   bool directPredLinked = false;
   bool directSuccLinked = false;
@@ -852,6 +863,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
     for ( size_t p_index = 0; p_index < NODE_PARADIGM_COUNT; ++p_index )
     {
+      // 
       Paradigm paradigm = (Paradigm)( 1 << p_index );
       if ( ( paradigm & nodeParadigm ) != nodeParadigm )
       {
@@ -882,8 +894,8 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
                       temp->getName( ).c_str( ) );
 
         temp->addCPUData( cpuData.numberOfEvents,
-                          cpuData.startTime,
-                          cpuData.endTime );
+                          //cpuData.startTime, cpuData.endTime,
+                          cpuData.exclEvtRegTime );
 
         /* check if this already is the direct predecessor */
         if ( directPredecessor == pred )
@@ -946,8 +958,8 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
                     temp->getName( ).c_str( ) );
 
       temp->addCPUData( cpuData.numberOfEvents,
-                        cpuData.startTime,
-                        cpuData.endTime );
+                        //cpuData.startTime, cpuData.endTime,
+                        cpuData.exclEvtRegTime );
     }
 
     if ( directSuccessor )
@@ -970,6 +982,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
     }
   }
 
+  // reset the number of CPU events for the following edge
   cpuData.numberOfEvents = 0;
 
 }
