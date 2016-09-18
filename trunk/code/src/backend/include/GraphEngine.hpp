@@ -41,6 +41,7 @@ namespace casita
      {
        uint64_t startTime;
        uint64_t endTime;
+       uint64_t exclEvtRegTime; //<! time of regions from CPU events between paradigm nodes
        uint32_t numberOfEvents;
      } EdgeCPUData;
 
@@ -144,7 +145,7 @@ namespace casita
                       int                           nodeType );
 
      void
-     addCPUEvent( uint64_t time, uint64_t stream );
+     addCPUEvent( uint64_t time, uint64_t stream, bool isLeave );
 
      Edge*
      getEdge( GraphNode* source, GraphNode* target );

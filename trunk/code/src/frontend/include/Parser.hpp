@@ -31,7 +31,7 @@ namespace casita
  
  typedef struct
  {
-   bool        createOTF;
+   bool        createTraceFile;
    bool        printCriticalPath;
    bool        criticalPathSecureMPI;
    bool        mergeActivities;
@@ -45,6 +45,7 @@ namespace casita
    int         memLimit;
    std::string outOtfFile;
    std::string filename;
+   bool        replaceCASITAoutput;
  } ProgramOptions;
  
  

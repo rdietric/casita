@@ -444,6 +444,11 @@ EventStream::addPendingKernel( GraphNode* kernelLeave )
   //std::cerr << "["<< this->id << "] Add pending kernel: " << kernelLeave->getUniqueName() << std::endl;
 }
 
+/**
+ * Retrieve the first pending kernel in the vector.
+ * 
+ * @return first pending kernel in the vector
+ */
 GraphNode*
 EventStream::getPendingKernel( )
 {
@@ -959,6 +964,18 @@ EventStream::testAllPendingMPIRequests( )
   }
 }
 
+/**
+ * Walk backwards from the given node. The StreamWalkCallback identifies the end
+ * of the walk back.
+ * 
+ * @param node start node of the back walk
+ * @param callback callback function that detects the end of the walk and 
+ *                 adds userData on the walk
+ * @param userData StreamWalkInfo that contains a node list and the list waiting 
+ *                 time
+ * 
+ * @return true, if the walk back is successful, otherwise false.
+ */
 bool
 EventStream::walkBackward( GraphNode*         node,
                            StreamWalkCallback callback,
@@ -976,7 +993,7 @@ EventStream::walkBackward( GraphNode*         node,
   // print a warning if the node could not be found and use a sequential search
   if ( *iter != node ) 
   {
-    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME, 
                "Binary search did not find %s in stream %lu. "
                "Perform sequential search for convenience ...", 
                node->getUniqueName( ).c_str( ), node->getStreamId( ) );
@@ -995,7 +1012,7 @@ EventStream::walkBackward( GraphNode*         node,
     result = callback( userData, *iter );
     if ( result == false )
     {
-      return result;
+      return false;
     }
   }
 

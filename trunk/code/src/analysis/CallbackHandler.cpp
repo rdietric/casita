@@ -234,7 +234,7 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   // only start time, end time and number of CPU events between nodes is stored
   if ( functionType.paradigm == PARADIGM_CPU )
   {
-    analysis.addCPUEvent( time, streamId );
+    analysis.addCPUEvent( time, streamId, false );
     return;
   }
 
@@ -309,7 +309,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   if ( functionType.paradigm == PARADIGM_CPU )
   {
     //std::cout << " skipping " << funcName << std::endl;
-    analysis.addCPUEvent( time, streamId );
+    analysis.addCPUEvent( time, streamId, true );
     return false;
   }
 

@@ -318,6 +318,19 @@ OTF2ParallelTraceWriter::reset()
 }
 
 /**
+ * Convert event time to elapsed runtime time (to compare with Vampir times).
+ * 
+ * @param time OTF2 event timestamp
+ * 
+ * @return elapsed runtime
+ */
+double
+OTF2ParallelTraceWriter::getRealTime( uint64_t time )
+{
+  return (double)( time - timerOffset ) / (double)timerResolution;
+}
+
+/**
  * Read definitions from original trace.
  * Write them to new one, if new OTF2 file is written.
  */
@@ -766,14 +779,19 @@ OTF2ParallelTraceWriter::getRegionName( const OTF2_RegionRef regionRef ) const
 void
 OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& counters )
 {
-  /* add function to list if not present yet */
+  // add function to list if not present yet
   if ( activityGroupMap.find( event.regionRef ) == activityGroupMap.end( ) )
   {
     activityGroupMap[event.regionRef].functionId   = event.regionRef;
     activityGroupMap[event.regionRef].numInstances = 0;
+    activityGroupMap[event.regionRef].totalBlame = 0;
+    
+    /*UTILS_MSG( strcmp( getRegionName(event.regionRef).c_str(), "clFinish" ) == 0, 
+               "[%u] Add %s to activity group map", 
+               mpiRank, getRegionName(event.regionRef).c_str());*/
   }
 
-  /* for each enter event, increase the number of instances found */
+  // for each enter event, increase the number of instances found
   if ( event.type == OTF2_EVT_ENTER )
   {
     activityGroupMap[event.regionRef].numInstances++;
@@ -803,19 +821,19 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& co
     uint64_t timeDiff = event.time - lastEventTime[event.location];
 
     activityGroupMap[currentActivity].totalDuration += timeDiff;
-/*
-    UTILS_MSG( onCP, //strcmp( getRegionName(event.regionRef).c_str(), "MPI_Barrier" ) == 0
-               "[%u] %s (type %d): on stack %s (%d) (time: %llu), onCP: %d", 
+
+    activityGroupMap[currentActivity].totalDurationOnCP += onCP ? timeDiff : 0;
+
+    activityGroupMap[currentActivity].totalBlame += counters[ BLAME ];
+    
+    /*UTILS_MSG( strcmp( getRegionName(event.regionRef).c_str(), "clFinish" ) == 0,
+               "[%u] %s (type %d): on stack %s\t (%d) (Real-time: %lf), onCP: %d, "
+               "blame: %llu, total blame: %llu", 
                mpiRank, getRegionName(event.regionRef).c_str(), event.type, 
                getRegionName(currentActivity).c_str(),
                activityStack[event.location].size( ),
-               event.time, onCP );
-*/
-    activityGroupMap[currentActivity].totalDurationOnCP +=
-      //( processOnCriticalPath[event.location] ) ? timeDiff : 0;
-      onCP ? timeDiff : 0;
-
-    activityGroupMap[currentActivity].totalBlame += counters[ BLAME ];
+               getRealTime( event.time), onCP, 
+               counters[ BLAME ], activityGroupMap[currentActivity].totalBlame );*/
   }
 }
 
@@ -825,8 +843,8 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& co
  * the following non-graph (CPU) events according to their duration. 
  * See also the documentation of the variable "openEdges".
  *
- * @param event     Current CPU event
- * @return          Blame to assign to this event
+ * @param event Current CPU event
+ * @return      Blame to assign to this event
  */
 uint64_t
 OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
@@ -837,8 +855,8 @@ OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
   // time between current and last event on this location
   uint64_t timeDiff = event.time - lastEventTime[event.location];
 
-  //UTILS_MSG( true, "[%u] Compute blame for %s from %llu open edges", mpiRank, 
-  //                 getRegionName( event.regionRef ).c_str(), openEdges.size() );
+  //UTILS_MSG( openEdges.size(), "[%u] Compute blame for %s from %llu open edges", 
+  //           mpiRank, getRegionName( event.regionRef ).c_str(), openEdges.size() );
   
   // iterate over all open edges (if any) and calculate total blame
   // \todo: sanity check for open edges
@@ -869,6 +887,8 @@ OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
 
     edgeIter = nextIter;
   }
+  
+  //UTILS_MSG( totalBlame, "[%u] Computed total blame: %llu", mpiRank, totalBlame );
 
   return totalBlame;
 }
@@ -1170,7 +1190,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       UTILS_MSG( true, "[%u] OTF2 writer: More events than nodes! "
                        "(%s (%" PRIu64 "): %s (%d) at %" PRIu64 ")", 
                  mpiRank, currentStream->getName(), event.location, 
-                 eventName.c_str(), event.type, event.time - timerOffset );
+                 eventName.c_str(), event.type, getRealTime( event.time ) );
     }
     else
     {
@@ -1228,7 +1248,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       for ( AnalysisMetric::MetricIdSet::const_iterator metricIter = metricIdSet.begin( );
             metricIter != metricIdSet.end( ); ++metricIter )
       {
-        const MetricType metricType         = *metricIter;
+        const MetricType metricType = *metricIter;
         const MetricEntry* metric = cTable->getMetric( metricType );
 
         if ( !( metric->isInternal ) )
@@ -1269,11 +1289,11 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
               }
             }
 
-            /*UTILS_MSG( ( strcmp( currentNode->getName(), "MPI_Finalize") == 0 ), 
-                       "[%llu] %s: onCP %llu=?%d (EvtType: %d)", 
+            /*UTILS_MSG( ( strcmp( currentNode->getName(), "clFinish") == 0 ), 
+                       "[%llu] %s: onCP %llu=?%d, Blame=%llu (EvtType: %d)", 
                        currentNode->getStreamId(), currentNode->getUniqueName().c_str(), 
-                       tmpCounters[CRITICAL_PATH], 
-                       processOnCriticalPath[event.location], event.type );*/
+                       tmpCounters[CRITICAL_PATH], processOnCriticalPath[event.location], 
+                       tmpCounters[BLAME], event.type );*/
           }
           
 #if defined(BLAME_COUNTER_FALSE)
@@ -1289,7 +1309,39 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
 #endif //BLAME_COUNTER
         }
       }
+      
+      // check in edges to blame the interval between this and the last event
+      if ( currentNode->isEnter() && graph->hasInEdges( currentNode ) )
+      {
+        // duration between last and current event
+        uint64_t timeDiff = event.time - lastEventTime[event.location];
+        
+        // iterate over in edges
+        const Graph::EdgeList& edges = graph->getInEdges( currentNode );
+        for ( Graph::EdgeList::const_iterator edgeIter = edges.begin( );
+              edgeIter != edges.end( ); edgeIter++ )
+        {
+          Edge* edge = *edgeIter;
+          if ( edge->getCPUBlame() > 0 )
+          {
+            /*
+            UTILS_MSG( ( strcmp( currentNode->getName(), "clFinish") == 0 ), 
+                       "[%llu] %s (%lf) has in Edge %s with blame %lf", 
+                       currentNode->getStreamId(), getRealTime(event.time),
+                       currentNode->getName(), edge->getName().c_str(), edge->getCPUBlame() );
+            */
+            
+            // calculate the partial blame for this edge
+            double blame = (double)( edge->getCPUBlame( ) ) * (double)timeDiff 
+                   / (double)( edge->getDuration( ) );
+            
+            // increase the blame counter for this event
+            tmpCounters[BLAME] += blame;
+          }
+        }
+      }
 
+      // increase iterator over graph nodes
       ++currentNodeIter;
     }
   }
@@ -1299,7 +1351,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
     UTILS_MSG( strcmp( getRegionName(event.regionRef).c_str(), "cuDevicePrimaryCtxRetain" ) == 0, 
               "[%u] cuDevicePrimaryCtxRetain: '%s' (time: %llu); %d", 
               mpiRank, getRegionName(event.regionRef).c_str(), 
-              event.time - timerOffset, event.type );
+              getRealTime( event.time ), event.type );
     */
     // the currentNodeIter points to a node after the current event
     
@@ -1322,6 +1374,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       
       // compute blame counter
       uint64_t blame = computeCPUEventBlame( event );
+
       //\todo: validate the following if, which affects only the OTF2 output
       if( blame )
         tmpCounters[BLAME] = blame;
@@ -1341,7 +1394,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   // update values in activityGroupMap
   updateActivityGroupMap( event, tmpCounters );
 
-  // set last event time for all event types
+  // set last event time for all event types (CPU and paradigm nodes)
   lastEventTime[event.location] = event.time;
 
   // update activity stack

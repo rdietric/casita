@@ -47,6 +47,7 @@ namespace casita
         EventStream*    nodeStream     = commonAnalysis->getStream(
           barrierLeave->getStreamId( ) );
 
+        // this rule ignores device streams (see target barrier rule)
         if ( nodeStream->isDeviceStream( ) )
         {
           return false;

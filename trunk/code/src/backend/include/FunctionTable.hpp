@@ -113,7 +113,7 @@ namespace casita
    "cuStreamWaitEvent"
  };
 
- static const char* FTABLE_GPU_WAITSTATE[]    =
+ static const char* FTABLE_GPU_WAITSTATE[]     =
  {
    "__WaitState__"
  };

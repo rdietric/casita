@@ -58,8 +58,8 @@ namespace casita
 
  enum NodeTypeMisc
  {
-   MISC_CPU = ( 1 << 30 ),
-   MISC_PROCESS           = ( 1 << 31 )
+   MISC_CPU     = ( 1 << 30 ),
+   MISC_PROCESS = ( 1 << 31 )  //
  };
 
  enum NodeTypeCUDA
@@ -195,9 +195,7 @@ namespace casita
    { OMP_TARGET_FLUSH, "omp_target_flush" }
  };
 
- static const char NAME_WAITSTATE[]     = "WaitState";
- static const char NAME_MPI_INIT[]      = "MPI_Init";
- static const char NAME_MPI_FINALIZE[]  = "MPI_Finalize";
+ static const char NAME_WAITSTATE[] = "WaitState";
 
  class Node
  {
@@ -291,17 +289,22 @@ namespace casita
      {
        return ( isOMP( ) && ( nodeType & OMP_WAITSTATE ) ) ||
               ( isCUDA( ) && ( nodeType & CUDA_WAITSTATE ) ) ||
-              ( isMPI( ) && ( nodeType & MPI_WAITSTATE ) );
+              ( isMPI( ) && ( nodeType & MPI_WAITSTATE ) ) || 
+              ( isOpenCL( ) && ( nodeType & OCL_WAITSTATE ) );
      }
 
      bool
      isPureWaitstate( ) const
      {
 
-       return isWaitstate( ) &&
-              ( strcmp( name.c_str( ), NAME_WAITSTATE ) == 0 );
+       return isWaitstate() && ( strcmp( name.c_str(), NAME_WAITSTATE ) == 0 );
      }
 
+     /**
+      * Return true, if this is an atomic process start or intermediate node.
+      * 
+      * @return true, if this is an atomic process start or intermediate node
+      */
      bool
      isProcess( ) const
      {
@@ -782,27 +785,21 @@ namespace casita
      getUniqueName( ) const
      {
        std::stringstream sstream;
-       sstream << name << ".";
+       sstream << streamId << ":" << name << ".";
 
        if ( recordType == RECORD_ENTER )
        {
-         sstream << "enter.";
+         sstream << "enter:";
        }
 
        if ( recordType == RECORD_LEAVE )
        {
-         sstream << "leave.";
+         sstream << "leave:";
        }
 
-       sstream << id << "." << time << "." << streamId;
+       sstream << id << ":" << time;
 
        return sstream.str( );
-     }
-
-     const char*
-     toString( ) const
-     {
-       return getUniqueName( ).c_str( );
      }
 
      uint64_t
@@ -971,7 +968,7 @@ namespace casita
 
      NodeRecordType recordType;
      Paradigm       paradigm;
-     int   nodeType;
+     int            nodeType;
 
      Node* link;
      /**

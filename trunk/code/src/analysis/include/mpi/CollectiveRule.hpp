@@ -154,7 +154,7 @@ namespace casita
             lastEnterProcessId,
             MPIAnalysis::MPI_EDGE_REMOTE_LOCAL );
         }
-        else // I am the last entering collective
+        else // this stream is entering the collective last
         {
           // aggregate blame from all other streams
           uint64_t total_blame = 0;
