@@ -36,8 +36,8 @@ sub test_trace
 
     my $nprocs = $1;
     my $trace_name = $2;
-    print "Executing 'mpirun -n $nprocs casita ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2 --verbose=1'\n";
-    my @output = qx(mpirun -n $nprocs casita ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2 --verbose=1 2>&1);
+    print "Executing 'mpirun -n $nprocs casita -i ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2 -v 1'\n";
+    my @output = qx(mpirun -n $nprocs casita -i ${full_trace_dir}/traces.otf2 -o $tmp_dir/${trace_name}.otf2 -v 1 2>&1);
     my $status = $? >> 8;
 
     if (not ($status == 0))
@@ -124,10 +124,10 @@ sub test_trace
         return 1;
     }
 
-    if ($fcp_total < 75.0)
+    if ($fcp_total < 70.0)
     {
         print "@output \n\n";
-        print "Error: Invalid profile: total printed fraction cp < 75% ($fcp_total)\n";
+        print "Warning: total printed fraction cp < 70% ($fcp_total)\n";
         return 1;
     }
 
@@ -138,10 +138,10 @@ sub test_trace
         return 1;
     }
 
-    if ($fgb_total < 75.0)
+    if ($fgb_total < 70.0)
     {
         print "@output \n\n";
-        print "Error: Invalid profile: total printed fraction blame < 75% ($fgb_total)\n";
+        print "Warning: total printed fraction blame < 70% ($fgb_total)\n";
         return 1;
     }
 
@@ -157,12 +157,12 @@ sub test_trace
           }
         }
         
-    
         my @otf2_output = qx($otf2_print $tmp_dir/${trace_name}.otf2 2>&1);
         my $otf2_status = $? >> 8;
         if (not ($otf2_status == 0))
         {
             print "Error: Could not run otf2-print on output trace\n";
+            print "Command: $otf2_print $tmp_dir/${trace_name}.otf2 2>&1\n";
             return $status;
         }
 

@@ -16,6 +16,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <string>
 #include <vector>
 #include <stdlib.h>
 #include <unistd.h> //for getcwd
@@ -380,45 +381,42 @@ namespace casita
     // if all arguments have been parsed and an OTF2 output shall be generated
     if( success && options.createTraceFile )
     {
-      setOutput_Path_and_Name( );
-
-      // if the output file already exists, append unique number
-      std::string traceDir = pathToFile + std::string( "/" ) + outputFilename;
-      std::string file = traceDir + std::string( ".otf2" );
-
+      setOutputDirAndFile( );
+      
+      std::string traceEvtDir = pathToFile;
+      if( !pathToFile.empty() )
+      {
+        traceEvtDir += std::string( "/");
+      }
+      
+      traceEvtDir += outArchiveName;
+      
+      std::string file = traceEvtDir + std::string( ".otf2" );
+      
       // if output .otf2 file or trace directory exist
       if( access( file.c_str( ), F_OK ) == 0 ||
-          access( traceDir.c_str( ), F_OK ) == 0 )
+          access( traceEvtDir.c_str( ), F_OK ) == 0 )
       {
         if( options.replaceCASITAoutput )
         {
-          std::string rmCmd = std::string( "rm -rf " ) + traceDir + std::string( "*" );
+          std::string rmCmd = std::string( "rm -rf " ) + traceEvtDir + std::string( "*" );
           
           UTILS_MSG( mpiRank == 0, "Output file does already exist, %s", rmCmd.c_str( ) );
 
           system( rmCmd.c_str() );
-/*
-          if( access( file.c_str( ), F_OK ) == 0  )
-          {
-            if( remove( file.c_str( ) != 0 )
-            {
-              perror( "Error deleting file" );
-            }
-          }
-*/
         }
-        else
+        else // if the output file already exists, append unique number
         {
           int n = 2;
           std::stringstream num;
           num << n;
 
           // append underscore for new output directory
-          traceDir += std::string( "_" );
+          traceEvtDir += std::string( "_" );
 
           // search for unique number to append 
-          while( access( (traceDir + num.str( ) + std::string( ".otf2" )).c_str( ), F_OK ) == 0 ||
-                 access( (traceDir + num.str( )).c_str( ), F_OK ) == 0 )
+          while( access( (traceEvtDir + num.str( ) + std::string( ".otf2" )).c_str( ), F_OK ) == 0 ||
+                 access( (traceEvtDir + num.str( )).c_str( ), F_OK ) == 0 )
           {
             n++;
             num.str( "" );
@@ -426,13 +424,29 @@ namespace casita
             num << n;
           }
 
-          outputFilename = outputFilename + std::string( "_" ) + num.str( );
-          options.outOtfFile = outputFilename;
+          outArchiveName = outArchiveName + std::string( "_" ) + num.str( );
 
           UTILS_MSG( mpiRank == 0,
                      "Output file does already exist, changed to: %s",
-                     outputFilename.c_str( ) );
+                     outArchiveName.c_str( ) );
         }
+      }
+      else //output trace directory or file do not exist
+      if( !pathToFile.empty() ) // and path is given
+      {
+        std::string mkdirCmd = std::string( "mkdir -p " ) + pathToFile;
+          
+        UTILS_MSG( mpiRank == 0, "Output directory %s does not exist, %s ", 
+                   traceEvtDir.c_str(), mkdirCmd.c_str( ) );
+          
+        // create the output directory
+        system( mkdirCmd.c_str() );
+      }
+      
+      // if the path is empty (only output file given) -> writing in PWD
+      if( pathToFile.empty() )
+      {
+        pathToFile = std::string( "." );
       }
     }
 
@@ -443,39 +457,29 @@ namespace casita
    * 
    */
   void
-  Parser::setOutput_Path_and_Name( )
+  Parser::setOutputDirAndFile( )
   {
     std::string otfFilename = options.outOtfFile;
-    char currentworkdir[500];
-
-    int startFilename = otfFilename.find_last_of( "/" ) + 1; // if there is no "/" find_last_of() returns -1 
-    int endFilename = otfFilename.find_last_of( "." );
-    int lenName = endFilename - startFilename;
-
-    outputFilename = otfFilename.substr( startFilename, lenName ); //name without extension
-    getcwd( currentworkdir, 500 );
-
-    // absolute path
-    if( otfFilename.find_first_of( "/" ) == 0 )
+    
+    std::size_t charPos = otfFilename.find_last_of("/");
+    
+    // if only a file name is given
+    if( charPos == std::string::npos )
     {
-      pathToFile = std::string( currentworkdir ).substr( 0, startFilename );
+      outArchiveName = otfFilename;
     }
-
-      // relative path
-    else
+    else // path (relative or absolute) with directory given
     {
-      if( startFilename == 0 )
-      {
-        pathToFile = std::string( currentworkdir );
-      }
-      else
-      {
-        pathToFile = std::string( currentworkdir ) + std::string( "/" )
-          + otfFilename.substr( 0, startFilename - 1 );
-      }
+      pathToFile     = otfFilename.substr( 0, charPos );
+      outArchiveName = otfFilename.substr( charPos + 1 );
     }
-
-
+    
+    // remove the .otf2 extension from OTF2 archive name
+    charPos = outArchiveName.find_last_of( "." );
+    outArchiveName = outArchiveName.substr( 0, charPos );
+    
+    //UTILS_MSG( true, "Path %s, File: %s", 
+    //             pathToFile.c_str(), outOtf2ArchiveName.c_str() );
   }
 
   ProgramOptions&
