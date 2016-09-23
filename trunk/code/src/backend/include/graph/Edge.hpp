@@ -39,7 +39,7 @@ namespace casita
            int properties, Paradigm edgeParadigm ) :
        properties( EDGE_NONE )
      {
-       pair                  = std::make_pair( start, end );
+       pair = std::make_pair( start, end );
        if ( isReverseEdge( ) )
        {
          properties |= EDGE_IS_BLOCKING;

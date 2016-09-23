@@ -41,6 +41,9 @@ namespace casita
 
       virtual
       ~AnalysisParadigmCUDA( );
+      
+      void 
+      reset();
 
       Paradigm
       getParadigm( );
@@ -52,12 +55,12 @@ namespace casita
       handlePostLeave( GraphNode* node );
 
       void
-      handleKeyValuesEnter( OTF2TraceReader*     reader,
+      handleKeyValuesEnter( OTF2TraceReader*  reader,
                             GraphNode*        node,
                             OTF2KeyValueList* list );
 
       void
-      handleKeyValuesLeave( OTF2TraceReader*     reader,
+      handleKeyValuesLeave( OTF2TraceReader*  reader,
                             GraphNode*        node,
                             GraphNode*        oldNode,
                             OTF2KeyValueList* list );
@@ -99,7 +102,7 @@ namespace casita
       removeEventQuery( uint64_t eventId );
 
       GraphNode*
-      getLastLaunchLeave( uint64_t timestamp, uint64_t deviceStreamId ) const;
+      getLastKernelLaunchLeave( uint64_t timestamp, uint64_t deviceStreamId ) const;
       
       void 
       printDebugInformation( uint64_t eventId );
@@ -120,7 +123,7 @@ namespace casita
       //!< 
       NullStreamWaitList nullStreamWaits;
       
-      //!< list of nodes for every (device) stream; 
+      //!< list of kernel launch enter and leave nodes for every (device) stream; 
       // <stream, list of nodes>
       IdNodeListMap      pendingKernelLaunchMap;
   };

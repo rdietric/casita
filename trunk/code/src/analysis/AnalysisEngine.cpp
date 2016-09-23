@@ -25,8 +25,6 @@
 #include "AnalysisEngine.hpp"
 #include "common.hpp"
 
-#include "cuda/AnalysisParadigmCUDA.hpp"
-#include "opencl/AnalysisParadigmOpenCL.hpp"
 #include "mpi/AnalysisParadigmMPI.hpp"
 #include "omp/AnalysisParadigmOMP.hpp"
 
@@ -44,15 +42,13 @@ AnalysisEngine::AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize ) :
   maxMetricClassId( 0 ),
   maxMetricMemberId( 0 ),
   maxAttributeId( 0 ),
-  foundCUDA( false ),
-  foundOpenCL( false ),
-  foundOMP( false )
+  availableParadigms ( 0 )
 {
   // add analysis paradigms
   // \todo: only if paradigm found
   // \todo: Where deleted?
-  addAnalysisParadigm( new cuda::AnalysisParadigmCUDA( this ) );
-  addAnalysisParadigm( new opencl::AnalysisParadigmOpenCL( this ) );
+  //addAnalysisParadigm( new cuda::AnalysisParadigmCUDA( this ) );
+  //addAnalysisParadigm( new opencl::AnalysisParadigmOpenCL( this ) );
   addAnalysisParadigm( new omp::AnalysisParadigmOMP( this ) );
   addAnalysisParadigm( new mpi::AnalysisParadigmMPI( this, mpiRank, mpiSize ) );
 }
@@ -91,20 +87,9 @@ AnalysisEngine::getMPIAnalysis( )
 
 //\todo: not implemented for OMP and MPI
 void 
-AnalysisEngine::setParadigmFound( Paradigm paradigm )
+AnalysisEngine::addDetectedParadigm( Paradigm paradigm )
 {
-  if ( paradigm == PARADIGM_CUDA )
-  {
-    foundCUDA = true;
-  }
-  else if( paradigm == PARADIGM_OCL )
-  {
-    foundOpenCL = true;
-  }
-  else if( paradigm == PARADIGM_OMP )
-  {
-    foundOMP = true;
-  }
+  availableParadigms |= paradigm;
 }
 
 bool 
@@ -115,22 +100,8 @@ AnalysisEngine::haveParadigm( Paradigm paradigm )
   {
     return true;
   }
-  else if( paradigm == PARADIGM_OMP )
-  {
-    return foundOMP;
-  }
-  else if ( paradigm == PARADIGM_CUDA )
-  {
-    return foundCUDA;
-  }
-  else if ( paradigm == PARADIGM_OCL )
-  {
-    return foundOpenCL;
-  }
-  else
-  {
-    return false;
-  }
+  
+  return availableParadigms & paradigm;
 }
 
 bool
@@ -402,6 +373,166 @@ AnalysisEngine::addNewGraphNode( uint64_t       time,
   return node;
 }
 
+void 
+AnalysisEngine::createIntermediateBegin( )
+{
+  // clean all lists in the graph and delete edges, node objects are deleted via the streams
+  this->graph.cleanup( true );
+  
+  //this->reset();
+
+  EventStreamGroup::EventStreamList streams;
+  getStreams( streams );
+  
+  // sort streams by ID with host streams first
+  // std::sort( streams.begin( ), streams.end( ), EventStream::streamSort );
+  
+  for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin( );
+        iter != streams.end( ); ++iter )
+  {
+    bool isMpiStream = false;
+    EventStream* p   = *iter;
+    
+    EventStream::SortedGraphNodeList& nodes = p->getNodes( );
+    
+    //GraphNode* startNode = nodes.front( );
+    
+    // \todo check for > 1
+    if ( nodes.size( ) > 0 )
+    {
+      //do not remove the last MPI collective leave node
+      if( nodes.back()->isMPI() )
+      {
+        nodes.pop_back( );
+        isMpiStream = true;
+      }
+      
+      EventStream::SortedGraphNodeList::const_iterator it = nodes.begin( );
+      
+      // keep the first node (stream begin node) for MPI processes
+      if( p->isHostMasterStream() )
+      {
+        ++it;
+      }
+      // do not delete the last node of a device stream, if it is an enter node
+      else if( p->isDeviceStream() && nodes.back()->isEnter() )
+      {
+        UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+                   "[%"PRIu64"] Do not delete incomplete kernel %s",
+                   p->getId(), getNodeInfo( nodes.back() ).c_str() );
+        nodes.pop_back( );
+      }
+      
+      // delete all remaining nodes
+      for (; it != nodes.end( ); ++it )
+      {
+        //UTILS_MSG(true, "[%"PRIu64"] Delete node %s", p->getId(), getNodeInfo(*it).c_str() );
+        
+        // do not remove CUDA nodes that might be required later
+        if( (*it)->isCUDA() )
+        {
+          // incomplete (only enter exists) and unsynchronized kernels are not deleted
+          if( (*it)->isCUDAKernel() )
+          {
+            if( (*it)->hasPartner() )
+            {
+              // kernel leave has not yet been synchronized (compare BlameKernelRule)
+              if( (*it)->getGraphPair().second->getLink() == NULL )
+              {
+                UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+                           "[%"PRIu64"] Do not delete unsynchronized kernel %s", 
+                           p->getId(), getNodeInfo( *it ).c_str() );
+                continue;
+              }
+            }
+            /* enter kernel nodes without partner must not be deleted
+            else if( (*it)->isEnter() )
+            {
+              UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+                         "[%"PRIu64"] Do not delete incomplete kernel %s", 
+                         p->getId(), getNodeInfo( *it ).c_str() );
+              continue;
+            }*/
+
+            if( ( (*it)->isEnter() && !(*it)->hasPartner() ) || 
+                ( (*it)->hasPartner() && (*it)->getGraphPair().second->getLink() == NULL ) )
+            {
+              
+              continue;
+            }
+          }
+          else          
+          // if the CUDA kernel launch enter node is not linked with the 
+          // associated kernel, the kernel has not started
+          if( (*it)->isCUDAKernelLaunch() /*&& (*it)->isEnter() && (*it)->getLink() == NULL*/ )
+          {
+            //UTILS_MSG(true, "[%"PRIu64"] Do not delete %s", p->getId(), 
+            //                getNodeInfo( *it ).c_str() );
+            continue;
+          }
+          
+          if( (*it)->isCUDASync() )
+          {
+            continue;
+          }
+          
+          //continue;
+        }
+        
+        delete( *it );
+      }
+
+      //check stream (e.g. pending MPI and other members)
+      // \todo
+    }
+    
+    // clean up stream internal data, keep graphData (first and last node)
+    p->reset( );
+
+    // create a new global begin node on the MPI synchronization point stream
+    if( isMpiStream )
+    //if ( p->isHostStream() )
+    {
+      GraphNode* lastNode = p->getLastNode( );
+
+      // set the stream's last node to type atomic (the collective end node)
+      lastNode->setRecordType( RECORD_ATOMIC );
+      lastNode->addType( MISC_PROCESS ); // to match node->isProcess())
+      
+      // clear the nodes vector and reset first and last node of the stream
+      p->clearNodes();
+      
+      // add node to event stream
+      //p->addGraphNode( startNode, NULL );
+      p->addGraphNode( lastNode, NULL );
+      
+      // add the stream's start node and previously end node to the empty graph
+      //graph.addNode(startNode);
+      graph.addNode( lastNode );
+      
+      // create and add a new edge (with paradigm MPI) between the above added nodes
+      //Paradigm paradigm_mpi = PARADIGM_MPI;
+      //newEdge( startNode, lastNode, EDGE_NONE, &paradigm_mpi );
+      newEdge( globalSourceNode, lastNode ); 
+      
+      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+                 "[%"PRIu64"] Created intermediate start node: %s",
+                 p->getId(), getNodeInfo(lastNode).c_str() );
+    }
+    else
+    {
+      // clear nodes of device streams
+      p->clearNodes();
+      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_SOME, 
+                 "[%"PRIu64"] Cleared nodes list", p->getId() );
+    }
+  }
+  streams.clear();
+  
+  // reset MPI-related objects
+  this->getMPIAnalysis().reset();
+}
+
 void
 AnalysisEngine::reset( )
 {
@@ -527,9 +658,8 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
   if( writeToFile )
   {
     writer->writeAnalysisMetricDefinitions( );
+    writer->setupAttributeList( );
   }
-
-  writer->setupAttributeList( );
 
   MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
@@ -591,7 +721,7 @@ AnalysisEngine::writeOTF2EventStreams( int verbose )
   {
     EventStream* stream = *pIter;
 
-    // skip remote streams
+    // skip remote streams and streams without new nodes
     if ( stream->isRemoteStream( ) || stream->hasNewNodes( ) == false )
     {
       continue;

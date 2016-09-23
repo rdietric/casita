@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -23,7 +23,13 @@ namespace casita
     public ICUDARule
   {
     public:
-
+      /**
+       * The kernel execution rule is triggered at kernel leave nodes.
+       * It uses the pending kernel launch map and links kernel enter with 
+       * respective kernel launch enter.
+       * 
+       * @param priority
+       */
       KernelExecutionRule( int priority ) :
         ICUDARule( "KernelExecutionRule", priority )
       {
@@ -42,10 +48,9 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* commonAnalysis  = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        GraphNode* kernelEnter     = kernelLeave->getPartner();
-        uint64_t   kernelStrmId = kernelLeave->getStreamId( );
+        uint64_t kernelStrmId = kernelLeave->getStreamId( );
 
         // find the stream which launched this kernel and consume the launch event
         // the number of kernel launches and kernel executions has to be the same
@@ -64,13 +69,20 @@ namespace casita
           return false;
         }
 
+        GraphNode* kernelEnter = kernelLeave->getGraphPair().first;
+        
         // link the kernel launch enter and kernel enter nodes between each other
         launchEnterEvent->setLink( kernelEnter );
         kernelEnter->setLink( launchEnterEvent );
         
         // add pending kernel
-        commonAnalysis->getStream( kernelStrmId )->addPendingKernel( kernelLeave );
+        commonAnalysis->getStream(kernelStrmId)->addPendingKernel(kernelLeave);
         
+        // add dependency
+        commonAnalysis->newEdge( launchEnterEvent, kernelEnter );
+        
+        ////////////////////////////////////////////////////////////////////////
+        // EXTRA handling for imperfect traces:
         // if the launchEnterEvent is marked with an unsatisfied node
         // add dependency edge, assign blame and waiting time
         if( launchEnterEvent->getData() )
@@ -88,13 +100,13 @@ namespace casita
                        syncEvtLeave->getUniqueName( ).c_str( ),
                        kernelLeave->getUniqueName().c_str() );*/
 
-            if ( syncEvtEnter->getTime( ) < kernelLeave->getTime( ) )
+            if ( syncEvtEnter->getTime() < kernelLeave->getTime() )
             {
-              commonAnalysis->getEdge( syncEvtEnter, syncEvtLeave )->makeBlocking( );
+              commonAnalysis->getEdge( syncEvtEnter, syncEvtLeave )->makeBlocking();
 
               // set counters
-              uint64_t value = syncEvtLeave->getTime( ) -
-                  std::max( syncEvtEnter->getTime( ), kernelEnter->getTime( ) );
+              uint64_t value = syncEvtLeave->getTime() -
+                  std::max( syncEvtEnter->getTime(), kernelEnter->getTime() );
               syncEvtLeave->incCounter( WAITING_TIME, value );
               kernelLeave->incCounter( BLAME, value );
             }
@@ -106,12 +118,8 @@ namespace casita
             // clear all pending kernels before that kernel
             commonAnalysis->getStream( kernelLeave->getStreamId() )
                                          ->consumePendingKernels( kernelLeave );
-            
           }
         }
-
-        // add dependency
-        commonAnalysis->newEdge( launchEnterEvent, kernelEnter );
 
         return true;
       }

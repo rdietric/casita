@@ -18,8 +18,12 @@
 #include <mpi.h>
 
 #include "GraphEngine.hpp"
-#include "MPIAnalysis.hpp"
 #include "graph/EventNode.hpp"
+
+#include "MPIAnalysis.hpp"
+#include "cuda/AnalysisParadigmCUDA.hpp"
+#include "opencl/AnalysisParadigmOpenCL.hpp"
+
 #include "otf/OTF2TraceReader.hpp"
 #include "otf/OTF2ParallelTraceWriter.hpp"
 
@@ -56,7 +60,7 @@ namespace casita
      haveParadigm( Paradigm paradigm );
      
      void
-     setParadigmFound( Paradigm paradigm );
+     addDetectedParadigm( Paradigm paradigm );
 
      static bool
      getFunctionType( uint32_t            id,
@@ -97,6 +101,9 @@ namespace casita
 
      IAnalysisParadigm*
      getAnalysisParadigm( Paradigm paradigm );
+     
+     void
+     createIntermediateBegin( );
 
      void
      handlePostEnter( GraphNode* node );
@@ -200,6 +207,7 @@ namespace casita
      uint32_t maxAttributeId;
      
      // available analysis paradigms (identified during reading the trace)
+     int availableParadigms;
      bool foundCUDA;
      bool foundOpenCL;
      bool foundOMP;

@@ -45,15 +45,17 @@ namespace casita
    PARADIGM_OCL           = ( 1 << 2 ),
    PARADIGM_MPI           = ( 1 << 3 ),
    PARADIGM_OMP           = ( 1 << 4 ),
+   PARADIGM_OMP_TARGET    = ( 1 << 5 ),
 
    PARADIGM_COMPUTE_LOCAL = 
            ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_OCL | PARADIGM_OMP ),
            
    PARADIGM_ALL           =
-     ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_OCL | PARADIGM_MPI | PARADIGM_OMP )
+     ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_OCL | PARADIGM_MPI | 
+       PARADIGM_OMP | PARADIGM_OMP_TARGET )
  };
 
- const size_t NODE_PARADIGM_COUNT   = 6;
+ const size_t NODE_PARADIGM_COUNT   = 7;
  const size_t NODE_PARADIGM_INVALID = ( 1 << NODE_PARADIGM_COUNT );
 
  enum NodeTypeMisc
@@ -719,6 +721,15 @@ namespace casita
        }
      }
 
+     /**
+      * 
+      * @param time
+      * @param streamId
+      * @param name
+      * @param paradigm
+      * @param recordType
+      * @param nodeType
+      */
      Node( uint64_t time, uint64_t streamId, const std::string name,
            Paradigm paradigm, NodeRecordType recordType, int nodeType ) :
        time( time ),
@@ -731,7 +742,6 @@ namespace casita
        link( NULL ),
        referencedStream( 0 )
      {
-
        id = ++globalNodeId;
      }
 
@@ -895,6 +905,14 @@ namespace casita
      {
        if ( this->link )
        {
+          std::cerr << this->getUniqueName() << "already has a link ";
+          std::cerr << this->link->getUniqueName() << ". Trying to replace with ";
+           
+          if( link )
+          {
+            std::cerr << link->getUniqueName() << std::endl;
+          }
+           
          assert( 0 );
        }
        this->link = link;
@@ -973,11 +991,10 @@ namespace casita
      Node* link;
      /**
       * Link mappings:
-      * - KernelLaunch/enter > Kernel/enter
-      * - Kernel/enter > KernelLaunch/enter
-      * - EventLaunch/leave > KernelLaunch/leave
-      * - EventQuery/leave > EventQuery/leave
-      * - StreamWaitEvent/leave > EventLaunch/leave
+      * - KernelLaunch.enter <-> Kernel.enter
+      * - EventLaunch.leave > KernelLaunch.leave
+      * - EventQuery.leave > EventQuery.leave
+      * - StreamWaitEvent.leave > EventLaunch.leave
       */
      
      uint64_t referencedStream;

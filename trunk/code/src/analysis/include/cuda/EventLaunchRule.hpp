@@ -24,6 +24,11 @@ namespace casita
   {
     public:
 
+      /**
+       * Uses pendingKernelLaunchMap.
+       * 
+       * @param priority
+       */
       EventLaunchRule( int priority ) :
         ICUDARule( "EventLaunchRule", priority )
       {
@@ -66,35 +71,17 @@ namespace casita
         analysis->setEventProcessId(
           ( (EventNode*)evtRecLeave )->getEventId( ), refProcess->getId( ) );
 
-        GraphNode* kernelLaunchLeave = NULL;
-
         // if event is on NULL stream, test if any kernel launch can be found
         if ( refProcess->isDeviceNullStream( ) )
         {
-          /*Allocation::ProcessList deviceProcs;
-          commonAnalysis->getAllDeviceStreams(deviceProcs);
-
-          for (Allocation::ProcessList::const_iterator iter = deviceProcs.begin();
-                  iter != deviceProcs.end(); ++iter)
-          {
-              kernelLaunchLeave = analysis->getLastLaunchLeave(
-                      evLaunch.first->getTime(), (*iter)->getId());
-
-              if (kernelLaunchLeave)
-                  break;
-          }
-
-          if (kernelLaunchLeave)
-          {*/
           analysis->setLastEventLaunch( (EventNode*)( evRecord.second ) );
           return true;
-          /* } */
         }
         else
         {
           // otherwise, test on its stream only
-          kernelLaunchLeave = analysis->getLastLaunchLeave(
-            evRecord.first->getTime( ), refProcess->getId( ) );
+          GraphNode* kernelLaunchLeave = analysis->getLastKernelLaunchLeave(
+                              evRecord.first->getTime( ), refProcess->getId() );
 
           if ( kernelLaunchLeave )
           {
@@ -103,7 +90,6 @@ namespace casita
 
           analysis->setLastEventLaunch( (EventNode*)( evRecord.second ) );
           return true;
-          /* } */
         }
 
         return false;

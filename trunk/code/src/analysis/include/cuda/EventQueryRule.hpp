@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -24,6 +24,11 @@ namespace casita
   {
     public:
 
+      /**
+       * Uses pendingKernels
+       * 
+       * @param priority
+       */
       EventQueryRule( int priority ) :
         ICUDARule( "EventQueryRule", priority )
       {
@@ -43,7 +48,7 @@ namespace casita
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        EventNode* evQueryLeave   = (EventNode*)queryLeave;
+        EventNode* evQueryLeave = (EventNode*)queryLeave;
 
         // link to previous matching event query
         analysis->linkEventQuery( evQueryLeave );
@@ -70,38 +75,35 @@ namespace casita
             evQueryLeave->getUniqueName( ).c_str( ) );
         }
 
-        /* get the first kernel launch before eventLaunch/enter */
-        
-        EventNode* eventLaunchLeave  = analysis->getEventRecordLeave(
-          evQueryLeave->getEventId( ) );
+        // get the first kernel launch before eventLaunch enter
+        EventNode* eventLaunchLeave = analysis->getEventRecordLeave(
+                                                   evQueryLeave->getEventId() );
         if ( !eventLaunchLeave )
         {
           throw RTException( "Could not find event record for event %" PRIu64,
-                             evQueryLeave->getEventId( ) );
+                             evQueryLeave->getEventId() );
         }
 
-        GraphNode* kernelLaunchLeave = analysis->getLastLaunchLeave(
-          eventLaunchLeave->getGraphPair( ).first->getTime( ),
-          refDeviceProcessId );
+        GraphNode* kernelLaunchLeave = analysis->getLastKernelLaunchLeave(
+               eventLaunchLeave->getPartner()->getTime(), refDeviceProcessId );
 
+        // get the linked kernel
         if ( kernelLaunchLeave )
         {
-          GraphNode::GraphNodePair& kernelLaunch =
-            ( (GraphNode*)kernelLaunchLeave )->getGraphPair( );
-          GraphNode* kernelEnter =
-            (GraphNode*)kernelLaunch.first->getLink( );
+          GraphNode* kernelLaunchEnter = kernelLaunchLeave->getGraphPair().first;
+          GraphNode* kernelEnter = (GraphNode*)kernelLaunchEnter->getLink( );
           if ( !kernelEnter )
           {
             ErrorUtils::getInstance( ).throwError(
               "Event query %s (%f) returns success but kernel from %s (%f) did not finish yet",
-              evQueryLeave->getUniqueName( ).c_str( ),
-              commonAnalysis->getRealTime( evQueryLeave->getTime( ) ),
-              kernelLaunch.first->getUniqueName( ).c_str( ),
-              commonAnalysis->getRealTime( kernelLaunch.first->getTime( ) ) );
+              evQueryLeave->getUniqueName().c_str(),
+              commonAnalysis->getRealTime( evQueryLeave->getTime() ),
+              kernelLaunchEnter->getUniqueName().c_str(),
+              commonAnalysis->getRealTime( kernelLaunchEnter->getTime() ) );
             return false;
           }
 
-          GraphNode* kernelLeave = kernelEnter->getGraphPair( ).second;
+          GraphNode* kernelLeave = kernelEnter->getGraphPair().second;
 
           if ( queryLeave->getTime( ) < kernelLeave->getTime( ) )
           {
@@ -115,7 +117,7 @@ namespace casita
           EventNode* firstEventQueryLeave = evQueryLeave;
           while ( true )
           {
-            EventNode* prev = (EventNode*)( firstEventQueryLeave->getLink( ) );
+            EventNode* prev = (EventNode*)( firstEventQueryLeave->getLink() );
             if ( !prev )
             {
               break;

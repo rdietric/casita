@@ -171,11 +171,7 @@ namespace casita
 
      void
      getAllNodes( EventStream::SortedGraphNodeList& allNodes ) const;
-     
-     void
-     createIntermediateBegin( );
 
-     /* timings */
      void
      setTimerResolution( uint64_t ticksPerSecond );
 

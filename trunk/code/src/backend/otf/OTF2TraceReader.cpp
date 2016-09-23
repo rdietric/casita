@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -273,7 +273,7 @@ OTF2TraceReader::readEvents( uint64_t *events_read )
     if( OTF2_ERROR_INTERRUPTED_BY_CALLBACK == otf2_error )
     {
       UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-                 "[0] Reader interrupted by callback. Read %lu events", 
+                 "[0] Reader interrupted by callback. Read %" PRIu64 " events", 
                  *events_read );
       
       return true;
@@ -283,7 +283,7 @@ OTF2TraceReader::readEvents( uint64_t *events_read )
   }
 
   UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-             "[0] Read %lu events", *events_read );
+             "[0] Read %" PRIu64 " events", *events_read );
 
   OTF2_Reader_CloseGlobalEvtReader( reader, global_evt_reader );
 
@@ -389,36 +389,29 @@ OTF2TraceReader::readDefinitions( )
 
   /* Phase 1 -> read string definitions and Groups */
   OTF2_GlobalDefReaderCallbacks_SetAttributeCallback(
-    global_def_callbacks,
-    &OTF2_GlobalDefReaderCallback_Attribute );
+    global_def_callbacks, &OTF2_GlobalDefReaderCallback_Attribute );
   
   OTF2_GlobalDefReaderCallbacks_SetStringCallback(
-    global_def_callbacks,
-    &OTF2_GlobalDefReaderCallback_String );
+    global_def_callbacks, &OTF2_GlobalDefReaderCallback_String );
   
   OTF2_GlobalDefReaderCallbacks_SetClockPropertiesCallback(
-    global_def_callbacks,
-    &OTF2_GlobalDefReaderCallback_ClockProperties );
+    global_def_callbacks, &OTF2_GlobalDefReaderCallback_ClockProperties );
   
   OTF2_GlobalDefReaderCallbacks_SetLocationCallback(
-    global_def_callbacks,
-    &OTF2_GlobalDefReaderCallback_Location );
+    global_def_callbacks, &OTF2_GlobalDefReaderCallback_Location );
 /*
   OTF2_GlobalDefReaderCallbacks_SetLocationGroupCallback(
     global_def_callbacks,
     OTF2_GlobalDefReaderCallback_LocationGroup );
 */
   OTF2_GlobalDefReaderCallbacks_SetGroupCallback(
-    global_def_callbacks,
-    &OTF2_GlobalDefReaderCallback_Group );
+    global_def_callbacks, &OTF2_GlobalDefReaderCallback_Group );
   
   OTF2_GlobalDefReaderCallbacks_SetCommCallback(
-    global_def_callbacks,
-    &OTF2_GlobalDefReaderCallback_Comm );
+    global_def_callbacks, &OTF2_GlobalDefReaderCallback_Comm );
   
   OTF2_GlobalDefReaderCallbacks_SetRegionCallback(
-    global_def_callbacks,
-    &OTF2_GlobalDefReaderCallback_Region );
+    global_def_callbacks, &OTF2_GlobalDefReaderCallback_Region );
 
   // register callbacks
   OTF2_Reader_RegisterGlobalDefCallbacks( reader,
@@ -435,7 +428,7 @@ OTF2TraceReader::readDefinitions( )
                                         &definitions_read );
 
   UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-             "[0] Read %lu definitions in Phase 1", definitions_read );
+             "[0] Read %" PRIu64 " definitions in Phase 1", definitions_read );
 
   close( );
   
@@ -483,7 +476,7 @@ OTF2TraceReader::readDefinitions( )
                                         &definitions_read );
 
   UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-             "[0] Read %lu definitions in Phase 2", definitions_read );
+             "[0] Read %" PRIu64 " definitions in Phase 2", definitions_read );
 
   /* add forkjoin "region" to support internal OMP-fork/join model */
   uint32_t stringSize = definitionTokenStringMap.size( );
@@ -505,13 +498,11 @@ OTF2TraceReader::readDefinitions( )
 }
 
 OTF2_CallbackCode
-OTF2TraceReader::OTF2_GlobalDefReaderCallback_ClockProperties( void* userData,
-                                                               uint64_t
-                                                               timerResolution,
-                                                               uint64_t
-                                                               globalOffset,
-                                                               uint64_t
-                                                               traceLength )
+OTF2TraceReader::OTF2_GlobalDefReaderCallback_ClockProperties( 
+                                                       void*    userData,
+                                                       uint64_t timerResolution,
+                                                       uint64_t globalOffset,
+                                                       uint64_t traceLength )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 

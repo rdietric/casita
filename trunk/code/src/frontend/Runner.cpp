@@ -119,13 +119,26 @@ Runner::startAnalysisRun( )
   {
     throw RTException( "Error while reading definitions!" );
   }
-    
+  
+  // OTF2 definitions have been checked for existence of CUDA and OpenCL
+  // OpenMP is currently checked during event reading and MPI not at all
+  if( analysis.haveParadigm( PARADIGM_CUDA ) )
+  {
+    analysis.addAnalysisParadigm( new cuda::AnalysisParadigmCUDA( &analysis ) );
+  }
+  
+  if( analysis.haveParadigm( PARADIGM_OCL ) )
+  {
+    analysis.addAnalysisParadigm( new opencl::AnalysisParadigmOpenCL( &analysis ) );
+  }
+  
   // TODO:
   analysis.getMPIAnalysis( ).createMPICommunicatorsFromMap( );
   
   // TODO: 
   analysis.setWaitStateFunctionId( analysis.getNewFunctionId( ) );
 
+  // set the timer resolution in the analysis engine
   uint64_t timerResolution = traceReader->getTimerResolution( );
   analysis.setTimerResolution( timerResolution );
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
@@ -200,7 +213,6 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   clock_t time_analysis_cp   = 0;
   do
   {
-    
     // read events until global collective (with global event reader)
     clock_t time_tmp = clock();
     
@@ -362,9 +374,6 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     {
       // create intermediate graph (reset and clear graph objects)
       analysis.createIntermediateBegin();
-      
-      // reset MPI-related objects
-      analysis.getMPIAnalysis( ).reset();
     }
     
     // necessary?
@@ -883,21 +892,18 @@ Runner::getCriticalPathIntern( GraphNode*                        start,
              end->getUniqueName( ).c_str( ) );
 
   GraphNode::GraphNodeList criticalPath;
-  subGraph.getLongestPath( start, end, criticalPath );
+  subGraph.getCriticalPath( start, end, criticalPath );
 
-  uint32_t i = 0;
   for ( GraphNode::GraphNodeList::const_iterator cpNode = criticalPath.begin( );
         cpNode != criticalPath.end( ); ++cpNode )
   {
     GraphNode* node = *cpNode;
     cpNodes.push_back( node );
 
-    UTILS_MSG( options.printCriticalPath, "[%d] %u: %s (%f)",
-               mpiRank, i,
+    UTILS_MSG( options.printCriticalPath, "[%d] %s (%f)",
+               mpiRank,
                node->getUniqueName( ).c_str( ),
                analysis.getRealTime( node->getTime( ) ) );
-
-    i++;
   }
 }
 

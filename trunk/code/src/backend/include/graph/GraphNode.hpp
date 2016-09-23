@@ -54,9 +54,15 @@ namespace casita
        name = newName;
      }
 
+     /**
+      * Set the partner node of an enter or leave.
+      * 
+      * @param partner
+      */
      void
      setPartner( GraphNode* partner )
      {
+       // set pair so that the first has a smaller time stamp
        if ( partner == NULL || ( this->time < partner->time ) )
        {
          pair.first  = ( this );
@@ -67,6 +73,8 @@ namespace casita
          pair.first  = ( partner );
          pair.second = ( this );
        }
+       
+       assert( partner->getRecordType() != this->getRecordType() );
      }
 
      virtual bool
@@ -101,7 +109,7 @@ namespace casita
      }
 
      GraphNodePair&
-     getGraphPair( )
+     getGraphPair( ) 
      {
        return pair;
      }
@@ -152,10 +160,112 @@ namespace casita
      {
        return this->data;
      }
+     
+     // TODO: This function might not be correct implemented.
+    static std::vector< GraphNode* >::const_reverse_iterator
+    findNode( GraphNode* node, const std::vector< GraphNode* >& nodes )
+    {
+      // the vector is empty
+      if ( nodes.size( ) == 0 )
+      {
+        return nodes.rend( );
+      }
+
+      // there is only one node in the vector
+      if ( nodes.size( ) == 1 )
+      {
+        return nodes.rbegin( );
+      }
+
+      // set start boundaries for the search
+      size_t indexMin = 0;
+      size_t indexMax = nodes.size( ) - 1;
+
+      size_t indexPrevMin = indexMin;
+      size_t indexPrevMax = indexMax;
+
+      size_t indexPrev = 0;
+      size_t indexPrev2 = 0;
+
+      // do a binary search
+      do
+      {
+        indexPrev2 = indexPrev;
+        indexPrev = indexPrevMax - ( indexPrevMax - indexPrevMin ) / 2;
+        size_t index = indexMax - ( indexMax - indexMin ) / 2;
+
+        assert( index < nodes.size( ) ); //, "index %lu indexMax %lu indexMin %lu", index, indexMax, indexMin );
+
+        // if we found the node at index ('middle' element)
+        // for uneven elements, index points on the element after the half
+        if ( nodes[index] == node )
+        {
+          return nodes.rbegin( ) + ( nodes.size( ) - index - 1 );
+        }
+
+        // indexMin == indexMax == index
+        // only the nodes[index] element was left, which did not match
+        // we can leave the loop
+        if ( indexMin == indexMax )
+        {
+          std::cerr << "Stream " << node->getStreamId() << " Looking for node " 
+                    << node->getUniqueName( ) << " - Wrong node found! Index (" 
+                    << index << ") node on break: "
+                    << nodes[index]->getUniqueName( ) << std::endl;
+
+          std::cerr << "Node sequence:" << std::endl;
+          for(size_t i = index - 3; i < index + 4; i++)
+          {
+            if( nodes[i] )
+              std::cerr << nodes[i]->getUniqueName( ) << std::endl;
+          }
+
+          std::cerr << " Previous compare node [" << indexPrevMin << ":" << indexPrevMax 
+                    << "]:" << nodes[indexPrev]->getUniqueName( )
+                    << " with result: " << Node::compareLess( node, nodes[indexPrev] ) 
+                    << std::endl;
+
+          std::cerr << " Pre-Previous compare node: " << nodes[indexPrev2]->getUniqueName( )
+                    << " with result: " << Node::compareLess( node, nodes[indexPrev2] ) 
+                    << std::endl;
+          //std::cerr << "return nodes.rbegin( ) = " << nodes.rbegin( ) << std::endl;
+          //std::cerr << "return nodes.rend( ) = " << nodes.rend( ) << std::endl;
+
+          break;
+        }
+
+        // use the sorted property of the list to halve the search space
+        // if node is before (less) than the node at current index
+        // nodes are not the same
+        if ( Node::compareLess( node, nodes[index] ) )
+        {
+          // left side
+          indexPrevMax = indexMax;
+          indexMax = index - 1;
+        }
+        else
+        {
+          // right side
+          indexPrevMin = indexMin;
+          indexMin = index + 1;
+        }
+
+        // if node could not be found
+        if ( indexMin > indexMax )
+        {
+          break;
+        }
+
+      }
+      while ( true );
+
+      // return iterator to first element, if node could not be found
+      return nodes.rend( );
+    }
 
    protected:
-     GraphNodePair pair;
-     GraphNode*    linkLeft, * linkRight;
+     GraphNodePair pair; //<! enter, leave node pair
+     GraphNode*    linkLeft, * linkRight; //<! link nodes on a stream
      GraphNode*    caller;
      void* data; /**< node specific data pointer */
  };

@@ -16,11 +16,13 @@
 
 #include <sstream>
 #include <fstream>
+#include <algorithm>
 
 #include "graph/Graph.hpp"
 #include "graph/Edge.hpp"
 #include "graph/GraphNode.hpp"
 #include "common.hpp"
+#include "utils/ErrorUtils.hpp"
 
 using namespace casita;
 
@@ -93,11 +95,18 @@ Graph::addNode( GraphNode* node )
   nodes.push_back( node );
 }
 
+/**
+ * Adds an edge to the graph. The end node is added to in-edges vector, the 
+ * start node is added to out-edges vector.
+ * 
+ * @param edge the edge that is added to the graph
+ */
 void
 Graph::addEdge( Edge* edge )
 {
   //std::cerr << "Added Edge " << edge->getStartNode()->getUniqueName() << " to "
   //          << edge->getEndNode()->getUniqueName() << std::endl;
+  // push this edge as in-edge to the target/end node
   inEdges[edge->getEndNode( )].push_back( edge );
   outEdges[edge->getStartNode( )].push_back( edge );
 
@@ -117,23 +126,25 @@ Graph::addEdge( Edge* edge )
 
 /**
  * Removes the given edge from the list of in and out edges.
+ * 
+ * @param edge
  */
 void
 Graph::removeEdge( Edge* edge )
 {
-  GraphNode* start     = edge->getStartNode( );
-  GraphNode* end       = edge->getEndNode( );
+  GraphNode* startNode = edge->getStartNode( );
+  GraphNode* endNode   = edge->getEndNode( );
   
   //std::cerr << "Remove edge: " << edge->getStartNode()->getUniqueName() << " to "
   //          << edge->getEndNode()->getUniqueName() << std::endl;
 
-  EdgeList&  out_edges = outEdges[start];
-  EdgeList&  in_edges  = inEdges[end];
+  EdgeList& out_edges = outEdges[startNode];
+  EdgeList& in_edges  = inEdges[endNode];
 
   for ( EdgeList::iterator iter = out_edges.begin( );
         iter != out_edges.end( ); ++iter )
   {
-    if ( ( *iter )->getEndNode( ) == end )
+    if ( ( *iter )->getEndNode( ) == endNode )
     {
       out_edges.erase( iter );
       break;
@@ -142,7 +153,7 @@ Graph::removeEdge( Edge* edge )
   for ( EdgeList::iterator iter = in_edges.begin( );
         iter != in_edges.end( ); ++iter )
   {
-    if ( ( *iter )->getStartNode( ) == start )
+    if ( ( *iter )->getStartNode( ) == startNode )
     {
       in_edges.erase( iter );
       break;
@@ -194,6 +205,11 @@ Graph::getInEdges( GraphNode* node, Paradigm paradigm ) const
   return edges;
 }
 
+/**
+ * 
+ * @param node
+ * @return 
+ */
 const Graph::EdgeList&
 Graph::getOutEdges( GraphNode* node ) const
 {
@@ -298,108 +314,130 @@ Graph::compareDistancesLess( GraphNode* n1, GraphNode* n2,
 }
 
 /**
+ * Insert a node into the given list so that node distances are increasing from
+ * the start to the end of the list.
  * 
- * 
- * @param n
- * @param nodes
- * @param distanceMap
+ * @param node        node to be inserted
+ * @param nodeKist    list of nodes where node is inserted
+ * @param distanceMap map of node distances
  */
 void
-Graph::sortedInsert( GraphNode* n, std::list< GraphNode* >& nodes,
+Graph::sortedInsert( GraphNode* node, std::list< GraphNode* >& nodeList,
                      DistanceMap& distanceMap )
 {
-  uint64_t distance_n = distanceMap[n];
+  uint64_t nodeDistance = distanceMap[node];
 
-  std::list< GraphNode* >::iterator iter = nodes.begin( );
-  while ( iter != nodes.end( ) )
+  std::list< GraphNode* >::iterator iter = nodeList.begin( );
+  while ( iter != nodeList.end( ) )
   {
     std::list< GraphNode* >::iterator current = iter;
     ++iter;
 
-    if ( iter == nodes.end( ) || distanceMap[*iter] >= distance_n )
+    // if this is the last node OR distance of next node is greater than of current node
+    if ( iter == nodeList.end( ) || distanceMap[*iter] >= nodeDistance )
     {
-      nodes.insert( current, n );
+      // insert before the current iterator
+      nodeList.insert( current, node );
       return;
     }
   }
 
-  nodes.push_front( n );
+  // if no node with greater or equal distance was found, insert node as first node
+  nodeList.push_front( node );
 }
 
 /**
  * Detect the longest/critical path between the given start and stop node.
+ * (Does not need the OpenMP latestEnterNode to barrierEndNode edge.)
+ * Seems to be broken somehow!
  * 
  * @param start start node
  * @param end end node
  * @param path the list of critical nodes / the longest path
  */
 void
-Graph::getLongestPath( GraphNode* start, GraphNode* end,
+Graph::getLongestPath( GraphNode* startNode, GraphNode* endNode,
                        GraphNode::GraphNodeList& path ) const
 {
-  const uint64_t infinite  = std::numeric_limits< uint64_t >::max( );
+  const uint64_t INFINITE  = std::numeric_limits< uint64_t >::max( );
   
-  std::map< GraphNode*, GraphNode* > preds;
-  std::map< GraphNode*, uint64_t > distance;
+  std::map< GraphNode*, GraphNode* > predecessorMap;
+  
+  // store distances from start node to the map entry node (key)
+  std::map< GraphNode*, uint64_t > nodeDistanceMap; 
   std::list< GraphNode* > pendingNodes;
 
-  const uint64_t startTime = start->getTime( );
-  const uint64_t endTime   = end->getTime( );
+  const uint64_t endTime = endNode->getTime( );
+  
+  //bool test = false;
 
   // iterate over the nodes of the graph and initialize predecessor relations,
   // distances and pending nodes
   for ( Graph::NodeList::const_iterator iter = nodes.begin( );
         iter != nodes.end( ); ++iter )
   {
-    GraphNode* node     = *iter;
-    uint64_t   nodeTime = node->getTime( );
+    GraphNode* node = *iter;
+    
     // ignore nodes that are not in the time interval
-    if ( nodeTime < startTime || nodeTime > endTime )
+    if ( Node::compareLess( node, startNode ) || Node::compareLess( endNode, node ) )
     {
       continue;
     }
     
     // initialize infinite distances
-    distance[node] = infinite;
+    nodeDistanceMap[node] = INFINITE;
     
-    // initialize predecessors (-> start is pred of start)
-    preds[node] = node;
+    // initialize predecessors (predecessor is predecessor of itself)
+    predecessorMap[node] = node;
 
     // initialize pending nodes
-    if ( node != start )
-    {
+    if ( node != startNode ) // should always be true 
+    {/*
+      UTILS_MSG( node->getStreamId() == 0 && node->getId() >= 277 &&
+                 node->getId() <= 360,
+                 "[0] List node on CP? %s", node->getUniqueName().c_str() );
+      
+      if( node->getStreamId() == 0 && node->getId() == 315 )
+        test = true;
+      */
       pendingNodes.push_back( node );
     }
   }
+  
 
   // set distance of start node to zero
-  distance[start] = 0;
+  nodeDistanceMap[startNode] = 0;
   
   // make the start node (of the section) the first in the pending nodes list
-  pendingNodes.push_front( start );
+  pendingNodes.push_front( startNode );
 
   /* pendingNodes is already sorted after construction */
-
-  // 
-  // until all pending nodes have been processed
+  
+  // iterate over the nodes in the interval in chronologic order
+  // until the list is empty
   while ( !pendingNodes.empty( ) )
   {
-    GraphNode* current_node      = pendingNodes.front( );
-    uint64_t   current_node_dist = distance[current_node];
-    
-    if ( current_node_dist == infinite )
+    GraphNode* currentNode         = pendingNodes.front( );
+    uint64_t   currentNodeDistance = nodeDistanceMap[currentNode];
+    /*
+    UTILS_MSG( currentNode->getStreamId() == 0 && currentNode->getId() >= 277 &&
+               currentNode->getId() <= 360, "[0] forward check %s (pending %lu)", 
+               currentNode->getUniqueName().c_str(), pendingNodes.size());
+    */
+    // all pending nodes are initialized with infinite distance except the start node
+    if ( currentNodeDistance == INFINITE )
     {
       break;
     }
 
-    // remove the current node from the pending nodes and its distance
+    // remove the current node from the pending nodes and distance entry
     pendingNodes.pop_front( );
-    distance.erase( current_node );
+    nodeDistanceMap.erase( currentNode );
 
     // if the current node has out edges
-    if ( hasOutEdges( current_node ) )
+    if ( hasOutEdges( currentNode ) )
     {
-      const Graph::EdgeList& outEdges = getOutEdges( current_node );
+      const Graph::EdgeList& outEdges = getOutEdges( currentNode );
 
       // iterate over the out edges
       for ( Graph::EdgeList::const_iterator iter = outEdges.begin( );
@@ -407,42 +445,40 @@ Graph::getLongestPath( GraphNode* start, GraphNode* end,
       {
         Edge* edge = *iter;
 
-        // get the node the edge is pointing to
-        GraphNode* neighbour = edge->getEndNode( );
+        // get the node the edge is pointing to (move forward in time)
+        GraphNode* successor = edge->getEndNode();
 
-        // if (target == end node OR target time < end time)
-        if ( ( ( neighbour == end ) || ( neighbour->getTime( ) < endTime ) )
-             && ( distance.find( neighbour ) != distance.end( ) ) // AND target has a distance (is in the interval)
-             && ( !edge->isBlocking( ) ) && ( !edge->isReverseEdge( ) ) ) // AND edge is not blocking or revers
+        // if target is the end node or within the interval (time < interval end time)
+        // AND target is in the distance map AND edge is not blocking AND not reverse
+        if ( ( ( successor == endNode ) || ( successor->getTime() < endTime ) )
+             && ( nodeDistanceMap.find( successor ) != nodeDistanceMap.end() ) 
+             && ( !edge->isBlocking() ) && ( !edge->isReverseEdge() ) ) 
         {
-          /*if( current_node->getParadigm() == PARADIGM_OMP && edge->causesWaitState() )
-          {
-            //UTILS_MSG( strcmp( current_node->getName(), "!$omp implicit barrier @jacobi_cuda.c:361") == 0, 
-            //           "Edge causes wait state" );
-            continue;
-          }*/
+          // compute the distance to the successor
+          uint64_t alt_distance = currentNodeDistance + edge->getWeight( );
           
-          // compute the distance to the target
-          uint64_t alt_distance = current_node_dist + edge->getWeight( );
-          
-          // set new distance if it is smaller than the previous --> find shortest distance
-          if ( alt_distance < distance[neighbour] )
+          // if the distance to the successor node is less than the already 
+          // stored successor's distance (distances are initialized with infinite)
+          if ( alt_distance < nodeDistanceMap[successor] )
           {
-            pendingNodes.remove( neighbour );
-            distance[neighbour] = alt_distance;
+            // remove the neighbor from the pending nodes and assign a distance
+            pendingNodes.remove( successor );
+            nodeDistanceMap[successor] = alt_distance;
 
-            sortedInsert( neighbour, pendingNodes, distance );
+            // orders the list pendingNodes by distances, starting with the smallest
+            sortedInsert( successor, pendingNodes, nodeDistanceMap );
             
-            //
-            preds[neighbour] = current_node;
+            // the neighbors predecessor is the current node
+            predecessorMap[successor] = currentNode;
           }
         }
       }
     }
   }
 
-  GraphNode* currentNode = end;
-  while ( currentNode != start )
+  // start CP search from the end node and stop if the start node is reached
+  GraphNode* currentNode = endNode;
+  while ( currentNode != startNode )
   {
     // get all ingoing nodes for current node, ignore blocking and reverse edges
     GraphNode::GraphNodeList possibleInNodes;
@@ -458,10 +494,9 @@ Graph::getLongestPath( GraphNode* start, GraphNode* end,
         {
           GraphNode* inNode = edge->getStartNode( );
 
-          /* if the targetNode is on a critical path, add it to the */
-          /* possible target nodes */
-          GraphNode* pred   = preds[inNode];
-          if ( pred == start || pred != inNode )
+          // if the targetNode is on a critical path, add it to the possible target nodes
+          GraphNode* pred   = predecessorMap[inNode];
+          if ( pred == startNode || pred != inNode )
           {
             possibleInNodes.push_back( inNode );
           }
@@ -470,8 +505,7 @@ Graph::getLongestPath( GraphNode* start, GraphNode* end,
       }
     }
 
-    /* choose among the ingoing nodes the one which is closest */
-    /* as next current node */
+    // choose among the ingoing nodes the one which is closest as next current node
     if ( possibleInNodes.size( ) > 0 )
     {
       GraphNode* closestNode = NULL;
@@ -491,8 +525,7 @@ Graph::getLongestPath( GraphNode* start, GraphNode* end,
           }
         }
       }
-      /* add current node to critical path and choose next current
-       * node */
+      // add current node to critical path and choose next current node
       path.push_front( currentNode );
       currentNode = closestNode;
     }
@@ -501,5 +534,106 @@ Graph::getLongestPath( GraphNode* start, GraphNode* end,
       break;
     }
   }
-  path.push_front( start );
+  path.push_front( startNode );
+  
+  /*if(test)
+  {
+    UTILS_MSG( true, "Print critical path:" );
+    for ( GraphNode::GraphNodeList::const_iterator cpNode = path.begin( );
+        cpNode != path.end( ); ++cpNode )
+    {
+      GraphNode* node = *cpNode;
+
+      UTILS_MSG( true, "%s", node->getUniqueName( ).c_str( ) );
+    }
+  }*/
+}
+
+/**
+ * Detect the longest/critical path between the given start and stop node.
+ * \todo: get start and end iterator (check findNode() in EventStream())
+ * \todo: check for reverse edges and potential infinite loops due to circular inEdges
+ * 
+ * @param startNode start node
+ * @param endNode end node
+ * @param path the list of critical nodes / the longest path
+ */
+void
+Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
+                        GraphNode::GraphNodeList& path ) const
+{
+  const uint64_t INFINITE  = std::numeric_limits< uint64_t >::max( );
+
+  // assume that the node list nodes is sorted by time
+
+  GraphNode* currentNode = endNode;
+  // revers-iterate over the graph nodes as long as the the start node is before the current node
+  //while ( currentNode != startNode )
+  while ( Node::compareLess( startNode, currentNode ) )
+  {
+    if ( hasInEdges( currentNode ) )
+    {
+      uint64_t maxWeight = 0;
+      GraphNode* predecessorNode = NULL;
+      
+      // iterate over the in edges of the node (ignore blocking)
+      const Graph::EdgeList& inEdges = getInEdges( currentNode );
+      for ( Graph::EdgeList::const_iterator eIter = inEdges.begin( );
+            eIter != inEdges.end( ); ++eIter )
+      {
+        Edge* edge = *eIter;
+        uint64_t curWeight = edge->getWeight();
+        /*
+        UTILS_MSG( startNode->getStreamId() == 0 && startNode->getId() >= 277 && 
+                   endNode->getId() <= 360 && inEdges.size() > 0, 
+                   "%s has potential path to %s (weight: %llu)", 
+                   currentNode->getUniqueName().c_str(),
+                   edge->getStartNode()->getUniqueName().c_str(), curWeight );
+        */
+        if ( edge->isReverseEdge() || ( !edge->isBlocking() && 
+                              curWeight > maxWeight && curWeight != INFINITE ) )
+        {
+          maxWeight = curWeight;
+          predecessorNode = edge->getStartNode();
+        }
+      }
+      
+      // if we found the shortest predecessor edge, set end node as next node
+      if( predecessorNode /*&& maxWeight != INFINITE*/ )
+      {
+        /*UTILS_MSG( startNode->getStreamId() == 0 && startNode->getId() >= 277 && 
+                   endNode->getId() <= 360, "%s is on the CP to %s (weight: %llu)", 
+                   currentNode->getUniqueName().c_str(),
+                   predecessorNode->getUniqueName().c_str(), maxWeight);*/
+        path.push_front( currentNode );
+        
+        if( currentNode != predecessorNode ) // check for endless lopp
+        {
+          currentNode = predecessorNode;
+          continue;
+        }  
+      }
+    }
+
+    // the most 
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+               "%s has no in edges", currentNode->getUniqueName().c_str() );
+
+    /*Graph::NodeList::const_reverse_iterator rit = GraphNode::findNode( endNode, nodes );
+    if ( *rit != endNode ) 
+    {
+      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME, 
+                 "Binary search did not find %s. "
+                 "Perform sequential search for convenience ...", 
+                 endNode->getUniqueName().c_str() );
+      rit = find( nodes.rbegin(), nodes.rend(), endNode );
+    }
+
+    ++rit;
+    currentNode = *rit;*/
+
+    break;
+  }
+  
+  path.push_front( startNode );
 }

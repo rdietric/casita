@@ -32,22 +32,24 @@ using namespace casita::io;
 GraphEngine::GraphEngine( ) :
   ticksPerSecond( 1000 )
 {
-  globalSourceNode = newGraphNode( 0,
-                                   0,
-                                   "START",
-                                   PARADIGM_ALL,
-                                   RECORD_ATOMIC,
+  globalSourceNode = newGraphNode( 0, 0, "START", PARADIGM_ALL, RECORD_ATOMIC,
                                    MISC_PROCESS );
 
 }
 
+/**
+ * Destructor of GraphEngine is currently called at the end of the program.
+ * Therefore, do not clean up anything.
+ */
 GraphEngine::~GraphEngine( )
 {
-  for ( EventStreamMap::iterator iter = streamsMap.begin( );
+  /*UTILS_MSG( true, "Destructor of GraphEngine called" );
+  
+  for ( EventStreamMap::iterator iter = streamsMap.begin();
         iter != streamsMap.end( ); ++iter )
   {
     delete iter->second;
-  }
+  }*/
 }
 
 EventStream*
@@ -258,7 +260,7 @@ GraphEngine::newEventNode( uint64_t                      time,
 }
 
 Edge*
-GraphEngine::newEdge( GraphNode* n1, GraphNode* n2, int properties,
+GraphEngine::newEdge( GraphNode* source, GraphNode* target, int properties,
                       Paradigm* edgeType )
 {
   Paradigm paradigm = PARADIGM_ALL;
@@ -268,21 +270,32 @@ GraphEngine::newEdge( GraphNode* n1, GraphNode* n2, int properties,
   }
   else
   {
-    if ( n1->getParadigm( ) == n2->getParadigm( ) )
+    if ( source->getParadigm( ) == target->getParadigm( ) )
     {
-      paradigm = n1->getParadigm( );
+      paradigm = source->getParadigm( );
     }
   }
 
-  Edge* e = new Edge( n1, n2,
-                      n2->getTime( ) - n1->getTime( ), properties, paradigm );
+  Edge* newEdge = new Edge( source, target,
+                      target->getTime( ) - source->getTime( ), properties, paradigm );
   //std::cerr << "[" << n1->getStreamId() << "] Add Edge " << n1->getUniqueName() 
   //          << " to " << n2->getUniqueName() << std::endl;
-  graph.addEdge( e );
+  graph.addEdge( newEdge );
 
-  return e;
+  return newEdge;
 }
 
+/**
+ * Get the edge (object) between the source and the target node.
+ * Search the out edges only as both, in- and out-edge vectors should contain 
+ * the edge (see addEdge()).
+ * 
+ *   
+ * @param source start node of the edge
+ * @param target end node of the edge
+ * 
+ * @return the edge between source and target node
+ */
 Edge*
 GraphEngine::getEdge( GraphNode* source, GraphNode* target )
 {
@@ -296,17 +309,6 @@ GraphEngine::getEdge( GraphNode* source, GraphNode* target )
       return *iter;
     }
   }
-  
-  /* ??? TODO: iterate over ingoing edges of target node
-  edgeList = getInEdges( target );
-  for ( Graph::EdgeList::const_iterator iter = edgeList.begin( );
-        iter != edgeList.end( ); ++iter )
-  {
-    if ( ( *iter )->getStartNode( ) == source )
-    {
-      return *iter;
-    }
-  }*/
   
   return NULL;
 }
@@ -465,99 +467,6 @@ GraphEngine::getAllNodes( EventStream::SortedGraphNodeList& allNodes ) const
   std::sort( allNodes.begin( ), allNodes.end( ), Node::compareLess );
 }
 
-void 
-GraphEngine::createIntermediateBegin( )
-{
-  // clean all lists in the graph and delete edges, node objects are deleted via the streams
-  this->graph.cleanup( true );
-
-  EventStreamGroup::EventStreamList streams;
-  getStreams( streams );
-  
-  // sort streams by ID with host streams first
-  // std::sort( streams.begin( ), streams.end( ), EventStream::streamSort );
-  
-  for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin( );
-        iter != streams.end( ); ++iter )
-  {
-    bool isMpiStream = false;
-    EventStream* p   = *iter;
-    
-    EventStream::SortedGraphNodeList& nodes = p->getNodes( );
-    
-    //GraphNode* startNode = nodes.front( );
-    
-    // todo check for > 1
-    if ( nodes.size( ) > 0 )
-    {
-      //do not remove the last MPI collective leave node
-      if( nodes.back()->isMPI() )
-      {
-        nodes.pop_back( );
-        isMpiStream = true;
-      }
-      
-      EventStream::SortedGraphNodeList::const_iterator it = nodes.begin( );
-      
-      // keep the first node (stream begin node)
-      ++it;
-      
-      // delete all remaining nodes
-      for (; it != nodes.end( ); ++it )
-      {
-        //std::cerr << "[" << p->getId() << "] delete " << (*it)->getUniqueName() << std::endl;
-        delete( *it );
-      }
-
-      //check stream (e.g. pending MPI and other members)
-      // \todo
-    }
-    
-    // clean up stream internal data, keep graphData (first and last node)
-    p->reset();
-
-    // create a new global begin node on the MPI synchronization point stream
-    if( isMpiStream )
-    //if ( p->isHostStream() )
-    {
-      GraphNode* lastNode = p->getLastNode( );
-
-      // set the stream's last node to type atomic (the collective end node)
-      lastNode->setRecordType( RECORD_ATOMIC );
-      lastNode->addType( MISC_PROCESS ); // to match node->isProcess())
-      
-      // clear the nodes vector and reset first and last node of the stream
-      p->clearNodes();
-      
-      // add node to event stream
-      //p->addGraphNode( startNode, NULL );
-      p->addGraphNode( lastNode, NULL );
-      
-      // add the stream's start node and previously end node to the empty graph
-      //graph.addNode(startNode);
-      graph.addNode( lastNode );
-      
-      // create and add a new edge (with paradigm MPI) between the above added nodes
-      //Paradigm paradigm_mpi = PARADIGM_MPI;
-      //newEdge( startNode, lastNode, EDGE_NONE, &paradigm_mpi );
-      newEdge( globalSourceNode, lastNode ); 
-      
-      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-                 "[%"PRIu64"] Created intermediate start node: %s",
-                 p->getId(), lastNode->getUniqueName( ).c_str() );
-    }
-    else
-    {
-      // clear nodes of device streams
-      p->clearNodes();
-      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-                 "[%"PRIu64"] Cleared nodes list", p->getId() );
-    }
-  }
-  
-  streams.clear();
-}
-
 AnalysisMetric&
 GraphEngine::getCtrTable( )
 {
@@ -567,6 +476,21 @@ GraphEngine::getCtrTable( )
 void
 GraphEngine::reset( )
 {
+  /*
+  // debug output
+  if( pendingGraphNodeStackMap.size() > 0 )
+  {
+    for(GraphNodeStackMap::const_iterator mapIt = pendingGraphNodeStackMap.begin();
+        mapIt != pendingGraphNodeStackMap.end(); ++mapIt)
+    {
+      UTILS_MSG( mapIt->second.size(), 
+                 "  Stream %llu: stack size: %lu, top node: %s (%p)", 
+                mapIt->first, mapIt->second.size(),
+                mapIt->second.top()->getUniqueName().c_str(),
+                topGraphNodeStack( mapIt->first ) );
+    }
+  }
+
   resetCounters( );
 
   const EventStreamGroup::EventStreamList& hostStreams =
@@ -606,7 +530,7 @@ GraphEngine::reset( )
     {
       ++iter;
     }
-  }
+  }*/
 }
 
 void
@@ -771,9 +695,12 @@ void
 GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 {
   GraphNode::ParadigmNodeMap predNodeMap, nextNodeMap;
+  
+  UTILS_ASSERT( node->getStreamId() == stream->getId(), 
+                "Cannot add graph node with stream ID %" PRIu64 " to stream "
+                "with ID %" PRIu64, node->getStreamId(), stream->getId() );
 
-  if ( !stream->getLastNode( ) ||
-       Node::compareLess( stream->getLastNode( ), node ) )
+  if( !stream->getLastNode() || Node::compareLess(stream->getLastNode(), node) )
   {
     //std::cerr << "last node: ";
     //std::cerr << stream->getLastNode( )->getUniqueName() << std::endl;
@@ -787,34 +714,38 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   }
 
   // to support nesting we use a stack to keep track of open activities
-  GraphNode* stackNode = topGraphNodeStack( node->getStreamId( ) );
+  GraphNode* stackNode = topGraphNodeStack( stream->getId()/*node->getStreamId( )*/ );
 
-  if ( node->isLeave( ) )
+  if ( node->isLeave() )
   {
     if ( stackNode == NULL )
     {
       throw RTException( "StackNode NULL and found leave event %s.\n",
-                         node->getUniqueName( ).c_str( ) );
+                         node->getUniqueName().c_str() );
     }
     else
     {
+      UTILS_ASSERT( stackNode->getRecordType() != node->getRecordType(),
+        "[%" PRIu64 "] Partner graph nodes with identical types are not allowed!"
+        " new node: %s <-> stack node: %s",
+        stream->getId(), node->getUniqueName().c_str(), 
+        stackNode->getUniqueName().c_str(), stackNode );
+      
       node->setPartner( stackNode );
       stackNode->setPartner( node );
 
-      popGraphNodeStack( node->getStreamId( ) );
+      popGraphNodeStack( node->getStreamId() );
 
       // use the stack to get the caller/parent of this node
-      node->setCaller( topGraphNodeStack( node->getStreamId( ) ) );
+      node->setCaller( topGraphNodeStack( node->getStreamId() ) );
     }
   }
-  else
+  else if ( node->isEnter() )
   {
-    if ( node->isEnter( ) )
-    {
-      // use the stack to get the caller/parent of this node
-      node->setCaller( stackNode );
-      pushGraphNodeStack( node, node->getStreamId( ) );
-    }
+    // use the stack to get the caller/parent of this node ( might be NULL)
+    node->setCaller( stackNode );
+
+    pushGraphNodeStack( node, node->getStreamId() );
   }
 
   /*
@@ -843,10 +774,8 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
       //std::cerr << directPredecessor->getUniqueName() << std::endl;
     }
 
-    if ( nextPnmIter != nextNodeMap.end( ) && ( !directSuccessor ||
-                                                Node::compareLess( nextPnmIter
-                                                                   ->second,
-                                                                   directSuccessor ) ) )
+    if( nextPnmIter != nextNodeMap.end( ) && 
+        ( !directSuccessor || Node::compareLess( nextPnmIter->second, directSuccessor ) ) )
     {
       directSuccessor = nextPnmIter->second;
     }
@@ -910,7 +839,6 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
           if ( nextPnmIter != nextNodeMap.end( ) )
           {
             GraphNode* succ    = nextPnmIter->second;
-
             Edge*      oldEdge = getEdge( pred, succ );
             if ( !oldEdge )
             {
@@ -922,8 +850,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
             }
             removeEdge( oldEdge );
             /* link to direct successor */
-            /* can't be a blocking edge, as we never insert leave
-             * nodes */
+            /* can't be a blocking edge, as we never insert leave nodes */
             /* before enter nodes from the same function */
             newEdge( node, succ, EDGE_NONE, &paradigm );
             //sanityCheckEdge( temp, stream->getId() );

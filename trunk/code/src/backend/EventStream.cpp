@@ -445,26 +445,24 @@ EventStream::addPendingKernel( GraphNode* kernelLeave )
 }
 
 /**
- * Retrieve the first pending kernel in the vector.
+ * Retrieve the first pending kernel leave in the vector.
  * 
- * @return first pending kernel in the vector
+ * @return first pending kernel (leave) in the vector
  */
 GraphNode*
-EventStream::getPendingKernel( )
+EventStream::getFirstPendingKernel( )
 {
   SortedGraphNodeList::reverse_iterator iter = pendingKernels.rbegin( );
   if ( iter != pendingKernels.rend( ) )
   {
     return *iter;
   }
-  else
-  {
-    return NULL;
-  }
+  
+  return NULL;
 }
 
 GraphNode*
-EventStream::consumePendingKernel( )
+EventStream::consumeFirstPendingKernel( )
 {
   SortedGraphNodeList::reverse_iterator iter = pendingKernels.rbegin( );
   if ( iter != pendingKernels.rend( ) )
@@ -516,6 +514,16 @@ void
 EventStream::clearPendingKernels( )
 {
   pendingKernels.clear( );
+}
+
+void
+EventStream::setPendingKernelsSyncLink( GraphNode* syncLeave )
+{
+  for( SortedGraphNodeList::iterator it = pendingKernels.begin( );
+       it != pendingKernels.end(); ++it )
+  {
+    (*it)->setLink(syncLeave);
+  }
 }
 
 /**
@@ -1079,7 +1087,8 @@ EventStream::findNode( GraphNode* node ) const
     indexPrev = indexPrevMax - ( indexPrevMax - indexPrevMin ) / 2;
     size_t index = indexMax - ( indexMax - indexMin ) / 2;
 
-    UTILS_ASSERT( index < nodes.size( ), "index %lu indexMax %lu indexMin %lu", index, indexMax, indexMin );
+    UTILS_ASSERT( index < nodes.size( ), "index %lu indexMax %lu indexMin %lu", 
+                  index, indexMax, indexMin );
 
     // if we found the node at index ('middle' element)
     // for uneven elements, index points on the element after the half
@@ -1165,11 +1174,24 @@ EventStream::reset( )
 {
   nodesAdded = false;
   
-  if( !(this->pendingKernels.empty()) )
+  // Check pending (unsynchronized) CUDA kernels
+  if( !(this->pendingKernels.empty()) && Parser::getVerboseLevel() >= VERBOSE_BASIC )
   {
-    UTILS_MSG( true, "[%"PRIu64"] Clear list of pending kernels (%lu)!", 
-                     getId(), this->pendingKernels.size() );
-    clearPendingKernels( );
+    UTILS_MSG( true, "[%"PRIu64"] %lz unsynchronized kernels found!", 
+                     this->id, this->pendingKernels.size() );
+    
+    if( Parser::getVerboseLevel() >= VERBOSE_SOME )
+    {
+      for( SortedGraphNodeList::const_iterator it = pendingKernels.begin();
+           it != pendingKernels.end(); ++it )
+      {
+        UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
+                   "   %s", ( *it )->getUniqueName().c_str() );
+      }
+    }
+    
+    // do not clear pending kernels as they might be required in the following interval
+    //clearPendingKernels( );
   }
   
   //\todo nodes // currently handled in GraphEngine::createIntermediateBegin( )

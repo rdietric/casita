@@ -58,9 +58,22 @@ namespace casita
     const GraphNode::GraphNodeList& walkList = walkListInfo.list;
 
     // ensure that the walk list contains at least the two boundary nodes
-    UTILS_ASSERT(walkList.size() > 1,
-                 "Walk list has one or less entries. Can't walk list back from %s",
-                 node->getUniqueName().c_str());
+    if( walkList.size() < 2 )
+    {
+      for ( GraphNode::GraphNodeList::const_iterator iter = walkList.begin();
+          iter != walkList.end(); ++iter )
+      {
+        GraphNode* currentWalkNode = *iter;
+        
+        UTILS_MSG( true, " -> %s", 
+                   analysis->getNodeInfo( currentWalkNode ).c_str() );
+      }
+    }
+    
+    
+    UTILS_ASSERT( walkList.size() > 1,
+                  "Walk list has %lu entries. Can't walk list back from %s",
+                  walkList.size(), analysis->getNodeInfo( node ).c_str() );
 
     GraphNode* start = walkList.front();
     
@@ -79,16 +92,16 @@ namespace casita
 
     // total time for blame distribution (wait states in the interval are subtracted)
     const uint64_t totalTimeToBlame = totalWalkTime - waitTime;
-    /*
-    UTILS_MSG( totalBlame > 0 && node->getId() < 88950 &&
-               strcmp( node->getName(), "MPI_Allreduce") == 0,
-               "[%u] %s, totalBlame: %llu sec (%lf)",
-               analysis->getMPIRank(), analysis->getNodeInfo(node).c_str(),
-               totalBlame, analysis->getRealTime( totalBlame ) );
     
     // debug walk list
-    if( totalBlame > 0 && strcmp( node->getName(), "MPI_Allreduce") == 0 )
+    if( totalWalkTime < waitTime 
+       //&& strcmp( node->getName(), "MPI_Allreduce") == 0
+       )
     {
+      UTILS_MSG( true, "[%u] %s, totalBlame: %llu sec (%lf)",
+                analysis->getMPIRank(), analysis->getNodeInfo(node).c_str(),
+                totalBlame, analysis->getRealTime( totalBlame ) );
+    
       for ( GraphNode::GraphNodeList::const_iterator iter = ++(walkList.begin( ));
           iter != walkList.end( ); ++iter )
       {
@@ -101,9 +114,9 @@ namespace casita
                    wtime, analysis->getRealTime( wtime ) );
       }
     }
-    */
+    
     // total time to blame has to be greater than zero
-    UTILS_ASSERT(totalWalkTime > waitTime,
+    UTILS_ASSERT(totalWalkTime >= waitTime,
                  "[%u] Waiting time %llu (%lf sec) in the time interval [%s,%s] is "
                  "greater than its duration %llu (%lf sec)",
                  analysis->getMPIRank(), 
