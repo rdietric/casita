@@ -195,7 +195,7 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
   
   #else
 
-  outputFilename = Parser::getInstance().getOutputFilename();
+  outputFilename = Parser::getInstance().getOutArchiveName();
   pathToFile = Parser::getInstance().getPathToFile();
   
   #endif
@@ -227,7 +227,7 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
     
     MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
-    /* open new otf2 file */
+    // open new otf2 file
     archive = OTF2_Archive_Open( pathToFile.c_str( ),
                                  outputFilename.c_str( ),
                                  OTF2_FILEMODE_WRITE, 1024 * 1024, 4 * 1024 *
@@ -236,7 +236,7 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
 
     OTF2_Archive_SetFlushCallbacks( archive, &flush_callbacks, NULL );
 
-    /* set collective callbacks to write trace in parallel */
+    // set collective callbacks to write trace in parallel
     OTF2_MPI_Archive_SetCollectiveCallbacks( archive, commGroup, MPI_COMM_NULL );
   }
 

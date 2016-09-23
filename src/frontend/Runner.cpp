@@ -346,7 +346,8 @@ Runner::processTrace( OTF2TraceReader* traceReader )
                                      options.ignoreAsyncMpi,
                                      options.verbose );
       
-      UTILS_MSG( mpiRank == 0, "[0] Writing result to %s", options.outOtfFile.c_str( ) );
+      UTILS_MSG( mpiRank == 0, "[0] Writing result to %s", 
+                 Parser::getInstance().getPathToFile().c_str( ) );
 
       otf2_def_written = true;
     }
@@ -1640,7 +1641,7 @@ Runner::printAllActivities( )
                  "[0] generate rating as csv file" );
 
       std::string Filename = Parser::getInstance().getPathToFile() 
-                           + std::string( "/" ) + Parser::getInstance().getOutputFilename()
+                           + std::string( "/" ) + Parser::getInstance().getOutArchiveName()
                            + std::string( "_rating.csv" );
       
       summaryFile = fopen(Filename.c_str(),"w");

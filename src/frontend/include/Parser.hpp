@@ -69,10 +69,13 @@ namespace casita
      void
      printHelp();
      
+     /**
+      * Return the OTF2 archive name (OTF2 file name without extension .otf2).
+      */
      std::string
-     getOutputFilename()
+     getOutArchiveName()
      {
-         return outputFilename;
+         return outArchiveName;
      }
      
      std::string
@@ -87,7 +90,7 @@ namespace casita
      Parser( Parser& cc );
      
      void    
-     setOutput_Path_and_Name();
+     setOutputDirAndFile();
      
      bool
      processArgs( int argc, char** argv);
@@ -100,7 +103,7 @@ namespace casita
 
      ProgramOptions options;
      std::string pathToFile;
-     std::string outputFilename;
+     std::string outArchiveName;
  };
 
 }
