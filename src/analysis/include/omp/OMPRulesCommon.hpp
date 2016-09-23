@@ -35,17 +35,19 @@ namespace casita
     {
       StreamWalkInfo* listAndWaitTime = (StreamWalkInfo*) userData;
 
-      // add node to walk list
-      listAndWaitTime->list.push_back(node);
-
-      // if there are already nodes in the list AND this node has no caller 
+      // if this node has no caller (parallel begin should have no caller)
       // (e.g. is not nested) AND node time is smaller then last node in the 
       // list (back walk)
-      if( listAndWaitTime->list.size() > 0 && node->getCaller() == NULL &&
+      if( node->getCaller() == NULL &&
           node->getTime() < listAndWaitTime->list.back()->getTime() )
       {
+        // add interval end node to walk list
+        listAndWaitTime->list.push_back(node);
         return false;
       }
+      
+      // add node to walk list
+      listAndWaitTime->list.push_back(node);
 
       // if blocking OpenMP leave node
       if ( node->isLeave() && node->isOMPSync() )

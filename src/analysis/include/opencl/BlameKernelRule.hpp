@@ -66,7 +66,7 @@ namespace casita
           bool isFirstKernel = true;
           while ( true )
           {
-            GraphNode* kernelLeave = deviceStream->getPendingKernel( );
+            GraphNode* kernelLeave = deviceStream->getFirstPendingKernel( );
             if ( !kernelLeave )
             {
               //ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: No pending kernel found" );
@@ -110,7 +110,7 @@ namespace casita
 
               ruleResult    = true;
               isFirstKernel = false;
-              deviceStream->consumePendingKernel( );
+              deviceStream->consumeFirstPendingKernel( );
             }
             else
             {

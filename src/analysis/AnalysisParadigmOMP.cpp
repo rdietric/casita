@@ -11,7 +11,6 @@
  */
 
 #include "omp/AnalysisParadigmOMP.hpp"
-#include "AnalysisEngine.hpp"
 
 #include "omp/OMPForkJoinRule.hpp"
 #include "omp/OMPComputeRule.hpp"
@@ -24,20 +23,21 @@ using namespace casita::omp;
 using namespace casita::io;
 
 AnalysisParadigmOMP::AnalysisParadigmOMP( AnalysisEngine* analysisEngine ) :
-  IAnalysisParadigm( analysisEngine ),
-  pendingForkJoin( NULL )
+  IAnalysisParadigm( analysisEngine )
 {
   addRule( new OMPForkJoinRule( 1 ) );
   addRule( new OMPComputeRule( 1 ) );
   addRule( new OMPBarrierRule( 1 ) );
-  addRule( new OMPTargetRule( 1 ) );
-  addRule( new OMPTargetBarrierRule( 1 ) );
+  
+  // add OpenMP target rules only, if a MIC device stream is available
+  if( analysisEngine->haveParadigm( PARADIGM_OMP_TARGET ) )
+  {
+    addRule( new OMPTargetRule( 1 ) );
+    addRule( new OMPTargetBarrierRule( 1 ) );
+  }
 }
 
-AnalysisParadigmOMP::~AnalysisParadigmOMP( )
-{
-
-}
+AnalysisParadigmOMP::~AnalysisParadigmOMP( ){ }
 
 Paradigm
 AnalysisParadigmOMP::getParadigm( )
@@ -48,10 +48,9 @@ AnalysisParadigmOMP::getParadigm( )
 void
 AnalysisParadigmOMP::handlePostLeave( GraphNode* node )
 {
-  if ( node->isOMPForkJoinRegion( ) &&
-       ( commonAnalysis->getStream( node->getStreamId( ) )->getStreamType( )
-         ==
-         EventStream::ES_DEVICE ) )
+  if ( node->isOMPForkJoinRegion() &&
+       ( commonAnalysis->getStream( node->getStreamId() )->getStreamType()
+         == EventStream::ES_DEVICE ) )
   {
     popOmpTargetRegion( node );
   }
@@ -67,12 +66,13 @@ AnalysisParadigmOMP::handlePostLeave( GraphNode* node )
 }
 
 void
-AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*     reader,
+AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
                                            GraphNode*        node,
                                            OTF2KeyValueList* list )
 {
   int32_t streamRefKey = -1;
 
+  // this is only for offloaded regions
   if ( commonAnalysis->getStream( node->getStreamId( ) )->getStreamType( )
        == EventStream::ES_DEVICE )
   {
@@ -133,24 +133,74 @@ AnalysisParadigmOMP::handleKeyValuesLeave( OTF2TraceReader*     reader,
   }
 }
 
+/**
+ * Get the innermost fork-join node (top node on the stack).
+ * 
+ * @return the innermost fork-join node or NULL if stack is empty.
+ */
 GraphNode*
-AnalysisParadigmOMP::getPendingForkJoin( )
+AnalysisParadigmOMP::getInnerMostFork( )
 {
-  return pendingForkJoin;
+  if( forkJoinStack.empty() )
+  {
+    return NULL;
+  }
+  
+  return forkJoinStack.top();
 }
 
+/**
+ * Push fork operation (parallel begin) to the fork-join stack.
+ * 
+ * @param forkJoinNode fork-join node
+ */
 void
-AnalysisParadigmOMP::setPendingForkJoin( GraphNode* node )
+AnalysisParadigmOMP::pushFork( GraphNode* node )
 {
-  pendingForkJoin = node;
+  forkJoinStack.push( node );
 }
 
+/**
+ * Take the innermost fork-join node from stack.
+ * 
+ * @param forkJoinNode innermost fork-join node
+ * 
+ * @return the innermost fork-join node or NULL if stack is empty.
+ */
+GraphNode*
+AnalysisParadigmOMP::popFork( )
+{
+  if( forkJoinStack.empty() )
+  {
+    return NULL;
+  }
+  
+  GraphNode* node = forkJoinStack.top();
+  
+  forkJoinStack.pop();
+  
+  return node;
+}
+
+/**
+ * Get the last active OpenMP compute node on the given stream.
+ * 
+ * @param streamId stream ID
+ * 
+ * @return last active OpenMP compute node on the given stream
+ */
 GraphNode*
 AnalysisParadigmOMP::getOmpCompute( uint64_t streamId )
 {
   return ompComputeTrackMap[streamId];
 }
 
+/**
+ * Set the last active OpenMP compute node for the given stream.
+ * 
+ * @param node graph node
+ * @param streamId stream ID
+ */
 void
 AnalysisParadigmOMP::setOmpCompute( GraphNode* node, uint64_t streamId )
 {

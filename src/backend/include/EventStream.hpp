@@ -212,16 +212,19 @@ namespace casita
      addPendingKernel( GraphNode* kernelLeave );
 
      GraphNode*
-     getPendingKernel( );
+     getFirstPendingKernel( );
 
      GraphNode*
-     consumePendingKernel( );
+     consumeFirstPendingKernel( );
      
      /**
       * Consume all pending kernels before the given node.
       */
      void
      consumePendingKernels( GraphNode* kernelEnter );
+     
+     void
+     setPendingKernelsSyncLink( GraphNode* syncLeave );
 
      void
      clearPendingKernels( );

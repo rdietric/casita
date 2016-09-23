@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -24,6 +24,14 @@ namespace casita
   {
     public:
 
+      /**
+       * Handles the case where device kernels already finished before the 
+       * synchronization starts. 
+       * 
+       * Uses the pendingKernels list. 
+       * 
+       * @param priority
+       */
       LateSyncRule( int priority ) :
         ICUDARule( "LateSyncRule", priority )
       {
@@ -62,8 +70,9 @@ namespace casita
           }
 
           // test that there is a pending kernel leave
-          GraphNode* kernelLeave = deviceProcess->getPendingKernel( );
+          GraphNode* kernelLeave = deviceProcess->getFirstPendingKernel( );
 
+          // if kernel ends before synchronization starts
           if ( kernelLeave && kernelLeave->getTime( ) <= syncEnter->getTime( ) )
           {
             GraphNode* lastLeaveNode = commonAnalysis->getLastLeaveNode(
@@ -111,11 +120,11 @@ namespace casita
             commonAnalysis->newEdge( syncLeave, waitLeave );
 
             //\todo: is that possible?
-            if ( syncEnter->isCUDAKernel( ) )
+            /*if ( syncEnter->isCUDAKernel( ) )
             {
               commonAnalysis->newEdge( kernelLeave, syncEnter );
               UTILS_MSG( true, "syncEnter is CUDA kernel!" );
-            }
+            }*/
 
             // set counters
             syncLeave->incCounter( BLAME,

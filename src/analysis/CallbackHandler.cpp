@@ -140,7 +140,7 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
   if ( isGPUNull )
   {
     streamType = EventStream::ES_DEVICE_NULL;
-    analysis.setParadigmFound( PARADIGM_CUDA );
+    analysis.addDetectedParadigm( PARADIGM_CUDA );
   }
   else
   {
@@ -150,16 +150,18 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
       
       if( strstr( name, "CUDA" ) )
       {
-        analysis.setParadigmFound( PARADIGM_CUDA );
+        analysis.addDetectedParadigm( PARADIGM_CUDA );
       }
       else
       {
-        analysis.setParadigmFound( PARADIGM_OCL );
+        analysis.addDetectedParadigm( PARADIGM_OCL );
       }
     }
     else if ( strstr( name, "MIC" ) )
     {
       streamType = EventStream::ES_DEVICE;
+      
+      analysis.addDetectedParadigm( PARADIGM_OMP_TARGET );
     }
   }
 
@@ -208,14 +210,22 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
   AnalysisEngine&  analysis = handler->getAnalysis( );
 
-  EventStream*     stream   = analysis.getStream( streamId );
+  EventStream* stream = analysis.getStream( streamId );
   if ( !stream )
   {
     throw RTException( "Process %lu not found.", streamId );
   }
   
   if( stream->getPeriod().first > time )
+  {
     stream->getPeriod().first = time;
+  }
+  
+  // save the time stamp of the last enter event
+  if( stream->getPeriod( ).second < time )
+  {
+    stream->getPeriod( ).second = time;
+  }
 
   //const char* funcName = analysis.getFunctionName(functionId);
   std::string funcStr = reader->getFunctionName( functionId );
@@ -227,7 +237,7 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   // check for function with the OpenMP paradigm
   if ( functionType.paradigm == PARADIGM_OMP )
   {
-    analysis.setParadigmFound( PARADIGM_OMP );
+    analysis.addDetectedParadigm( PARADIGM_OMP );
   }
 
   // for CPU functions no graph node is created
@@ -365,7 +375,8 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
 //  }
   
   // if analysis should be run in intervals (between global collectives)
-  if ( analysis.getMPISize() > 1 && Parser::getInstance().getProgramOptions().analysisInterval &&
+  if ( analysis.getMPISize() > 1 && 
+       Parser::getInstance().getProgramOptions().analysisInterval &&
       // if we have read a global blocking collective, we can start the analysis
        ( leaveNode->isMPICollective( ) /*|| leaveNode->isMPIAllToOne() || leaveNode->isMPIOneToAll()*/ ) &&
        !( leaveNode->isMPIInit( ) ) && !( leaveNode->isMPIFinalize( ) ) )

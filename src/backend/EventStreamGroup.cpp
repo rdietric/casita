@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2014,2016
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -77,12 +77,19 @@ EventStreamGroup::setNullStream( EventStream* p )
 void
 EventStreamGroup::getAllStreams( EventStreamList& streams ) const
 {
+  // clear list of streams (input)
   streams.clear( );
+  
+  // add all host streams
   streams.assign( hostStreams.begin( ), hostStreams.end( ) );
+  
+  // add the device null stream if available
   if ( nullStream )
   {
     streams.insert( streams.end( ), nullStream );
   }
+  
+  // add all other device streams
   streams.insert( streams.end( ), deviceStreams.begin( ), deviceStreams.end( ) );
 }
 

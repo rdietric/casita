@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2014, 2016
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -35,21 +35,30 @@ namespace casita
       bool
       apply( AnalysisParadigmOMP* analysis, GraphNode* node )
       {
-        if ( !node->isOMPForkJoinRegion( ) )
+        if ( !node->isOMPForkJoinRegion() )
         {
           return false;
         }
 
-        GraphNode* ppr = analysis->getPendingForkJoin( );
+        GraphNode* ppr = analysis->getInnerMostFork();
 
+        // if forkjoin stack is empty, just add this fork node to the stack
         if ( ppr == NULL )
         {
-          /* open forkjoin and add as pending for connecting next upcoming kernel */
-          analysis->setPendingForkJoin( node );
+          analysis->pushFork( node );
+          
           return true;
         }
+        
+        ////////////////////////////////////////////////////////////////////////
+        // this is an OpenMP join node
+        
+        UTILS_ASSERT( ppr->getFunctionId( ) == node->getFunctionId( ),
+                      "[%" PRIu64 "] OpenMP join %s does not match the open fork %s",
+                      node->getStreamId(), node->getUniqueName( ).c_str(),
+                      ppr->getUniqueName().c_str() );
 
-        /* check if closing join matches the pending one */
+        /* check if closing join matches the open fork (have the same ID)
         if ( ppr->getFunctionId( ) != node->getFunctionId( ) )
         {
           ErrorUtils::getInstance( ).outputMessage(
@@ -61,33 +70,35 @@ namespace casita
             "ForkJoin %s and reset to %s \nCorrectness not guaranteed",
             ppr->getUniqueName( ).c_str( ), node->getUniqueName( ).c_str( ) );
 
-          /* close parallel region and reset */
+          // close parallel region and reset
           analysis->setPendingForkJoin( node );
-        }
+        }*/
 
-        /* handle collected omp kernels to add dependency to previous forkjoin */
-        /* 1) get all OMP-streams */
-        const EventStreamGroup::EventStreamList& streams =
-          analysis->getCommon( )->getHostStreams( );
-
-        /* 2) iterate over all omp streams and add dependency edge to join */
-        GraphNode* join = node->getGraphPair( ).second;
-
+        // handle collected OpenMP compute nodes to add dependency to previous forkjoin
+        //\todo:
+        
+        // iterate over all OpenMP streams and add dependency edge to join
+        const EventStreamGroup::EventStreamList& streams = 
+                                        analysis->getCommon()->getHostStreams();
         for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-                streams.begin( ); pIter != streams.end( ); ++pIter )
+                streams.begin(); pIter != streams.end(); ++pIter )
         {
           EventStream* p      = *pIter;
           GraphNode*   kernel = analysis->getOmpCompute( p->getId( ) );
-          if ( ( kernel != NULL ) && ( kernel->getStreamId( ) != join->getStreamId( ) ) )
+          if ( ( kernel != NULL ) && ( kernel->getStreamId() != node->getStreamId( ) ) )
           {
-            analysis->getCommon( )->newEdge( kernel, join );
+            analysis->getCommon( )->newEdge( kernel, node );
           }
 
           analysis->setOmpCompute( NULL, p->getId( ) );
         }
 
-        /* close forkjoin and set as null */
-        analysis->setPendingForkJoin( NULL );
+        // close forkjoin
+        if (analysis->popFork() == NULL )
+        {
+          UTILS_MSG( true, "Could not join the fork %s", 
+                     ppr->getUniqueName().c_str() );
+        }
 
         return true;
 

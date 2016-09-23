@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2014,2016
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -37,36 +37,38 @@ namespace casita
       bool
       apply( AnalysisParadigmOMP* analysis, GraphNode* node )
       {
+        // ignore non-OpenMP-compute nodes
         if ( !node->isOMPCompute( ) )
         {
           return false;
         }
 
-        /* if no kernel buffered -> save this one */
+        // if this is the first compute node (no compute region is set)
         if ( analysis->getOmpCompute( node->getStreamId( ) ) == NULL )
         {
-          GraphNode* pForkJoin = analysis->getPendingForkJoin( );
+          GraphNode* pForkJoin = analysis->getInnerMostFork();
 
-          /* if pending forkjoin -> connect kernel to it */
-          if ( ( pForkJoin != NULL ) && ( pForkJoin->getStreamId( ) != node->getStreamId( ) ) )
+          // create dependency edge to the innermost fork node
+          // if fork and node are on the same stream the dependency is implicit
+          if ( pForkJoin && ( pForkJoin->getStreamId() != node->getStreamId() ) )
           {
-            /* get the complete execution */
-            GraphNode::GraphNodePair& kernelPair = node->getGraphPair( );
+            GraphNode* kernelEnter = node->getGraphPair().first;
 
-            /* create Edges */
-            analysis->getCommon( )->newEdge( pForkJoin, kernelPair.first );
+            // create edge from pending fork to OpenMP compute enter node
+            analysis->getCommon()->newEdge( pForkJoin, kernelEnter );
+            /*UTILS_MSG(analysis->getCommon()->getMPIRank() == 0 &&
+                      node->getTime() < 781313516,
+                      "Added OpenMP dependency: %s -> %s",
+                      analysis->getCommon()->getNodeInfo( pForkJoin ).c_str(),
+                      analysis->getCommon()->getNodeInfo( node ).c_str() );*/
           }
-          analysis->setOmpCompute( node, node->getStreamId( ) );
         }
-        else         /* if already kernels buffered -> overwrite */
-        {
-          analysis->setOmpCompute( node, node->getStreamId( ) );
-        }
+        
+        // set node as active OpenMP compute region
+        analysis->setOmpCompute( node, node->getStreamId( ) );
 
         return true;
-
       }
-
   };
  }
 

@@ -78,6 +78,10 @@ namespace casita
      void
      getLongestPath( GraphNode* start, GraphNode* end,
                      GraphNode::GraphNodeList& path ) const;
+     
+     void
+     getCriticalPath( GraphNode* start, GraphNode* end,
+                      GraphNode::GraphNodeList& path ) const;
 
    protected:
      NodeList  nodes;

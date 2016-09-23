@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -59,7 +59,7 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* commonAnalysis   = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
         // get cuEventRecord leave node
         EventNode* eventRecordLeave = analysis->getEventRecordLeave(
@@ -99,7 +99,7 @@ namespace casita
           uint64_t strmId = ( *iter )->getId( );
           // get last kernel launch leave node of the given device stream 
           // that started before event record enter time
-          GraphNode* kernelLaunchLeave = analysis->getLastLaunchLeave(
+          GraphNode* kernelLaunchLeave = analysis->getLastKernelLaunchLeave(
                   eventRecordEnterTime, strmId );
           if ( !kernelLaunchLeave )
           {

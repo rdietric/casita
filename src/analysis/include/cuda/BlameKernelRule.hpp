@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -24,6 +24,14 @@ namespace casita
   {
     public:
 
+      /**
+       * Blame kernels for causing wait states. It is basically an early
+       * blocking synchronization.
+       * This rule uses the pending kernel list and needs access to kernel
+       * enter and leave nodes.
+       * 
+       * @param priority
+       */
       BlameKernelRule( int priority ) :
         ICUDARule( "BlameKernelRule", priority )
       {
@@ -46,10 +54,11 @@ namespace casita
         GraphNode* syncEnter = syncLeave->getGraphPair( ).first;
 
         /* ignore delta ticks for now until we have a better heuristic */
-        /* uint64_t syncDeltaTicks        = commonAnalysis->getDeltaTicks( ); */
+        /* uint64_t syncDeltaTicks = commonAnalysis->getDeltaTicks( ); */
 
         bool ruleResult = false;
-        /* find all referenced (device) streams */
+        
+        // find all referenced (device) streams of this synchronization
         EventStreamGroup::EventStreamList deviceStreams;
         commonAnalysis->getAllDeviceStreams( deviceStreams );
         for ( EventStreamGroup::EventStreamList::const_iterator pIter =
@@ -58,30 +67,31 @@ namespace casita
         {
           EventStream* deviceStream = *pIter;
 
+          // ignore device streams that are not referenced by this sync
           if ( !syncEnter->referencesStream( deviceStream->getId( ) ) )
           {
             continue;
           }
 
           // test that there is a pending kernel (leave)
-          bool isFirstKernel        = true;
+          bool isFirstKernel = true;
           while ( true )
           {
-            GraphNode* kernelLeave = deviceStream->getPendingKernel( );
+            GraphNode* kernelLeave = deviceStream->getFirstPendingKernel( );
             if ( !kernelLeave )
             {
               break;
             }
 
-            GraphNode::GraphNodePair& kernel = kernelLeave->getGraphPair( );
+            GraphNode* kernelEnter = kernelLeave->getGraphPair( ).first;
 
-            // if sync start time < kernel end time
+            // Early sync: sync start time < kernel end time
             //\todo: What if other kernels are concurrently executed during the sync?
-            if ( syncEnter->getTime( ) < kernel.second->getTime( ) )
+            if ( syncEnter->getTime( ) < kernelLeave->getTime( ) )
             {
               if ( isFirstKernel )
               {
-                commonAnalysis->newEdge( kernel.second, syncLeave,
+                commonAnalysis->newEdge( kernelLeave, syncLeave,
                                          EDGE_CAUSES_WAITSTATE );
               }
 
@@ -90,23 +100,28 @@ namespace casita
               // set counters (to sync leave node)
               //\todo: set counters of enter nodes
               syncLeave->incCounter( WAITING_TIME,
-                                     std::min( syncLeave->getTime( ),
-                                               kernel.second->getTime( ) ) -
-                                     std::max( syncEnter->getTime( ),
-                                               kernel.first->getTime( ) ) );
+                                     std::min( syncLeave->getTime(),
+                                               kernelLeave->getTime() ) -
+                                     std::max( syncEnter->getTime(),
+                                               kernelEnter->getTime() ) );
               
-              kernel.second->incCounter( BLAME,
-                                         std::min( syncLeave->getTime( ),
-                                                   kernel.second->getTime( ) ) -
-                                         std::max( syncEnter->getTime( ),
-                                                   kernel.first->getTime( ) ) );
+              kernelLeave->incCounter( BLAME,
+                                       std::min( syncLeave->getTime(),
+                                                 kernelLeave->getTime() ) -
+                                       std::max( syncEnter->getTime(),
+                                                 kernelEnter->getTime() ) );
+              
+              // set link to sync leave node (mark kernel as synchronized)
+              kernelLeave->setLink( syncLeave );
 
               ruleResult    = true;
               isFirstKernel = false;
-              deviceStream->consumePendingKernel( );
+              deviceStream->consumeFirstPendingKernel( );
             }
-            else
+            else // late sync: all pending kernels are synchronized
             {
+              // \todo: set link to sync leave node (mark kernel as synchronized)
+              deviceStream->setPendingKernelsSyncLink( syncLeave );
               deviceStream->clearPendingKernels( );
               break;
             }

@@ -38,7 +38,7 @@ AnalysisParadigmCUDA::AnalysisParadigmCUDA( AnalysisEngine* analysisEngine ) :
   //\todo: check priority for the following three rules triggered on cudaSync
   // they all clear the list of pending kernels when finished
   addRule( new BlameKernelRule( 2 ) ); // triggered on cudaSync
-  addRule( new BlameSyncRule( 1 ) );   // triggered on cudaSync
+  //addRule( new BlameSyncRule( 1 ) );   // triggered on cudaSync
   addRule( new LateSyncRule( 1 ) );    // triggered on cudaSync
   addRule( new EventLaunchRule( 1 ) );
   addRule( new EventSyncRule( 1 ) );
@@ -48,14 +48,98 @@ AnalysisParadigmCUDA::AnalysisParadigmCUDA( AnalysisEngine* analysisEngine ) :
 
 AnalysisParadigmCUDA::~AnalysisParadigmCUDA( )
 {
-  /*    for(IdNodeListMap::iterator iter = pendingKernelLaunchMap.begin(); iter != pendingKernelLaunchMap.end(); */
-  /*            iter++) */
-  /*    { */
-  /*        if(iter->second.size() > 0 ) */
-  /*            std::cout << "[" << commonAnalysis->getMPIRank() << "] WARNING: there are " << iter->second.size() << "
-   * kernel launches left, but no kernels to call..." << std::endl; */
-  /*    } */
+  reset();
+}
 
+void
+AnalysisParadigmCUDA::reset()
+{  
+  UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
+             "Cleanup CUDA support structures" );
+  
+  // clean up pending kernel launches
+  if( pendingKernelLaunchMap.size() )
+  {    
+    size_t pendingOperations = 0;
+    for ( IdNodeListMap::iterator mapIter = pendingKernelLaunchMap.begin( );
+          mapIter != pendingKernelLaunchMap.end( ); ++mapIter )
+    {
+      pendingOperations += mapIter->second.size();
+      
+      /*if( Parser::getVerboseLevel() >= VERBOSE_BASIC )
+      {
+        GraphNode::GraphNodeList list = mapIter->second;
+        for(GraphNode::GraphNodeList::const_iterator it = mapIter->second.begin(); 
+            it != mapIter->second.end(); ++it )
+        {
+          UTILS_MSG( true, "#### %s",  commonAnalysis->getNodeInfo(*it).c_str() );
+        }
+      }*/
+      
+      mapIter->second.clear();
+    }
+
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+               "... %llu pending kernel launches on %llu streams",
+               pendingOperations, pendingKernelLaunchMap.size() );
+
+
+    pendingKernelLaunchMap.clear();
+  }
+    
+  // clear event record/launch map and event query map
+  if( eventLaunchMap.size() )
+  {
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+               "... %llu event launches/records",
+               eventLaunchMap.size() );
+    eventLaunchMap.clear();
+  }
+  
+  // clear event query map
+  if( eventQueryMap.size() )
+  {
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+               "... %llu event query operations",
+               eventQueryMap.size() );
+    eventQueryMap.clear();
+  }
+
+  // clear lists of stream wait operations (for each stream)
+  if( streamWaitMap.size() )
+  {
+    size_t pendingOperations = 0;
+    for ( IdEventsListMap::iterator mapIter = streamWaitMap.begin( );
+          mapIter != streamWaitMap.end( ); ++mapIter )
+    {
+      pendingOperations += mapIter->second.size();
+      mapIter->second.clear();
+    }
+
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+               "... %llu stream wait operations on %llu streams",
+               pendingOperations, streamWaitMap.size() );
+
+    streamWaitMap.clear();
+  }
+  
+  // Clear list of null stream wait operations
+  if( nullStreamWaits.size() )
+  {
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+             "... %llu null stream wait operations",
+             nullStreamWaits.size() );
+    nullStreamWaits.clear();
+  }
+
+  // clear event ID process map
+  if( eventProcessMap.size() )
+  {
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+             "... %llu event stream mappings",
+             eventProcessMap.size() );
+    eventProcessMap.clear();
+  }
 }
 
 Paradigm
@@ -310,6 +394,7 @@ AnalysisParadigmCUDA::consumeFirstPendingKernelLaunchEnter( uint64_t kernelStrea
 /** 
  * Find last kernel launch (leave record) which launched a kernel for the 
  * given device stream and happened before the given time stamp.
+ * \todo: launch leave nodes remain in the list.
  * 
  * @param timestamp 
  * @param deviceStreamId
@@ -317,8 +402,8 @@ AnalysisParadigmCUDA::consumeFirstPendingKernelLaunchEnter( uint64_t kernelStrea
  * @return
  */
 GraphNode*
-AnalysisParadigmCUDA::getLastLaunchLeave( uint64_t timestamp,
-                                          uint64_t deviceStreamId ) const
+AnalysisParadigmCUDA::getLastKernelLaunchLeave( uint64_t timestamp,
+                                                uint64_t deviceStreamId ) const
 {
   GraphNode* lastLaunchLeave = NULL;
 
@@ -330,7 +415,7 @@ AnalysisParadigmCUDA::getLastLaunchLeave( uint64_t timestamp,
             listIter->second.rbegin( );
           launchIter != listIter->second.rend( ); ++launchIter )
     {
-      GraphNode* gLaunchLeave     = *launchIter;
+      GraphNode* gLaunchLeave = *launchIter;
 
       if ( gLaunchLeave->isEnter( ) )
       {
@@ -354,6 +439,7 @@ AnalysisParadigmCUDA::getLastLaunchLeave( uint64_t timestamp,
       }
     }
   }
+  
   return lastLaunchLeave;
 }
 
@@ -388,25 +474,30 @@ AnalysisParadigmCUDA::addStreamWaitEvent( uint64_t   deviceProcId,
   }
 }
 
+/**
+ * Get first cuStreamWaitEvent leave node that references the given device stream.
+ * 
+ * @param deviceStreamId
+ * 
+ * @return 
+ */
 EventNode*
 AnalysisParadigmCUDA::getFirstStreamWaitEvent( uint64_t deviceStreamId )
 {
-  IdEventsListMap::iterator iter = streamWaitMap.find(
-    deviceStreamId );
-  /* no direct streamWaitEvent found, test if one references a NULL
-   * stream */
+  IdEventsListMap::iterator iter = streamWaitMap.find( deviceStreamId );
+  
+  // no direct streamWaitEvent found, test if one references a NULL stream
   if ( iter == streamWaitMap.end( ) )
   {
-    /* test if a streamWaitEvent on NULL is not tagged for this device
-     * stream */
+    // test if a streamWaitEvent on NULL is not tagged for this device stream
     size_t numAllDevProcs = commonAnalysis->getNumAllDeviceStreams( );
     for ( NullStreamWaitList::iterator nullIter = nullStreamWaits.begin( );
           nullIter != nullStreamWaits.end( ); )
     {
       NullStreamWaitList::iterator currentIter = nullIter;
       StreamWaitTagged* swTagged = *currentIter;
-      /* remove streamWaitEvents that have been tagged by all device
-       * streams */
+      
+      // remove streamWaitEvents that have been tagged by all device streams
       if ( swTagged->tags.size( ) == numAllDevProcs )
       {
         delete( *nullIter );

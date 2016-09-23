@@ -16,6 +16,7 @@
 #include <map>
 #include <vector>
 
+#include "AnalysisEngine.hpp"
 #include "IAnalysisParadigm.hpp"
 
 using namespace casita::io;
@@ -57,12 +58,32 @@ namespace casita
                             GraphNode*        node,
                             GraphNode*        oldNode,
                             OTF2KeyValueList* list );
-
+      
+      /**
+       * Get the innermost fork-join node (top node on the stack).
+       * 
+       * @return the innermost fork-join node or NULL if stack is empty.
+       */
       GraphNode*
-      getPendingForkJoin( );
+      getInnerMostFork( );
 
+      /**
+       * Push fork operation (parallel begin) to the fork-join stack.
+       * 
+       * @param forkJoinNode fork-join node
+       */
       void
-      setPendingForkJoin( GraphNode* node );
+      pushFork( GraphNode* forkJoinNode );
+
+      /**
+       * Take the innermost fork-join node from stack.
+       * 
+       * @param forkJoinNode innermost fork-join node
+       * 
+       * @return the innermost fork-join node or NULL if stack is empty.
+       */
+      GraphNode*
+      popFork( );
 
       GraphNode*
       getOmpCompute( uint64_t streamId );
@@ -114,10 +135,9 @@ namespace casita
       /* remember last omp event per stream -> needed to resolve
        * nested function calls */
       OmpEventMap lastOmpEventMap;
-
-      /* remember opened forkjoins TODO: implement
-       * that as stack for nested parallelism */
-      GraphNode*  pendingForkJoin;
+      
+      //<! Stack of open parallel regions (fork-join regions)
+      OmpNodeStack forkJoinStack;
 
       /* keep track of omp kernels between forkjoins */
       OmpEventMap ompComputeTrackMap;

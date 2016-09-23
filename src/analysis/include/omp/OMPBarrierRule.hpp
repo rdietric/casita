@@ -37,13 +37,13 @@ namespace casita
       bool
       apply( AnalysisParadigmOMP* analysis, GraphNode* barrierLeave )
       {
-        if ( !barrierLeave->isOMPSync( ) || !barrierLeave->isLeave( ) )
+        if ( !barrierLeave->isOMPSync() || !barrierLeave->isLeave() )
         {
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon( );
-        GraphNode*      barrierEnter   = barrierLeave->getPartner( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon();
+        GraphNode*      barrierEnter   = barrierLeave->getGraphPair().first;
         EventStream*    nodeStream     = commonAnalysis->getStream(
           barrierLeave->getStreamId( ) );
 
@@ -53,6 +53,9 @@ namespace casita
           return false;
         }
 
+        if(barrierEnter->isLeave())
+          assert(0);
+        
         // save barrier enter events to BarrierEventList
         analysis->addBarrierEventToList( barrierEnter, false );
 
@@ -105,9 +108,9 @@ namespace casita
                                           barrier.first->getTime( ) );
 
               // create edge from latest enter to other leaves
-              //\todo: check whether it's legal to not have this edge
-              //commonAnalysis->newEdge( latestEnterNode, barrier.second,
-              //                         EDGE_CAUSES_WAITSTATE );
+              // (non-blocking edge from blocking barrier leave node)
+              commonAnalysis->newEdge( latestEnterNode, barrier.second,
+                                       EDGE_CAUSES_WAITSTATE );
 
               blame += latestEnterNode->getTime( ) - barrier.first->getTime( );
             }

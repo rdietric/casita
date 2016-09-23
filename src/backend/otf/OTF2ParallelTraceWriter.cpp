@@ -1195,14 +1195,15 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
     else
     {
       GraphNode* currentNode = *currentNodeIter;
-      
-      //UTILS_MSG( true, "Current Node: '%s'", currentNode->getUniqueName( ).c_str( ) );
 
-      UTILS_ASSERT( currentNode->getFunctionId( ) == event.regionRef,
-                    " [%u] RegionRef doesn't fit for %s and %s, %u != %u \n", 
-                    mpiRank, eventName.c_str( ), 
-                    currentNode->getUniqueName( ).c_str( ),
-                    currentNode->getFunctionId( ), event.regionRef );
+      UTILS_ASSERT( currentNode->getFunctionId() == event.regionRef,
+                    //&& currentNode->getRecordType() == event.type,
+                    " [%u] RegionRef doesn't fit for event %s:%d:%" PRIu64 ":%lf"
+                    " and internal node %s:%lf, %u != %" PRIu64, mpiRank, 
+                    eventName.c_str(), event.type, event.time, getRealTime(event.time),
+                    currentNode->getUniqueName().c_str(),
+                    (double)currentNode->getTime() / (double)timerResolution,
+                    event.regionRef, currentNode->getFunctionId() );
 
       // model fork/join nodes as the currently running activity
       if ( currentNode->isOMPForkJoinRegion( ) )
@@ -1957,6 +1958,17 @@ OTF2ParallelTraceWriter::otf2CallbackComm_ThreadTeamEnd( OTF2_LocationRef locati
   return OTF2_CALLBACK_SUCCESS;
 }
 
+/**
+ * Callback for an enter region record.
+ * 
+ * @param location
+ * @param time
+ * @param eventPosition
+ * @param userData
+ * @param attributes
+ * @param region
+ * @return 
+ */
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackEnter( OTF2_LocationRef    location,
                                             OTF2_TimeStamp      time,
@@ -1974,8 +1986,19 @@ OTF2ParallelTraceWriter::otf2CallbackEnter( OTF2_LocationRef    location,
   event.time      = time;
   event.type      = OTF2_EVT_ENTER;
 
-  //\todo: process attributes
-  tw->processNextEvent( event, tw->getRegionName( region ) );
+  //if( tw->currentStream->getPeriod().second >= time - tw->timerOffset )
+  if( tw->currentStream->getLastEventTime() >= time - tw->timerOffset )
+  {
+    //\todo: process attributes
+    tw->processNextEvent( event, tw->getRegionName( region ) );
+  }
+  
+  if ( tw->mpiSize > 1 && Parser::getInstance().getProgramOptions().analysisInterval &&
+       time - tw->timerOffset == /*tw->currentStream->getPeriod().second*/
+                                   tw->currentStream->getLastEventTime() )
+  {
+    return OTF2_CALLBACK_INTERRUPT;
+  }
 
   return OTF2_CALLBACK_SUCCESS;
 
