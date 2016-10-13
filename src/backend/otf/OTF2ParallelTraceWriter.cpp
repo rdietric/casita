@@ -26,9 +26,9 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
-/* following adjustments necessary to use MPI_Collectives with OTF2 */
-#define OTF2_MPI_UINT64_T MPI_UNSIGNED_LONG
-#define OTF2_MPI_INT64_T MPI_LONG
+// following adjustments necessary to use MPI_Collectives with OTF2
+#define OTF2_MPI_UINT64_T MPI_UINT64_T
+#define OTF2_MPI_INT64_T MPI_INT64_T
 
 #if defined(BOOST_AVAILABLE) 
 #include <boost/filesystem.hpp>
@@ -116,14 +116,15 @@ otf2_to_mpi_type( OTF2_Type type )
     case OTF2_TYPE_INT16:
       return MPI_SHORT;
     case OTF2_TYPE_UINT32:
+      return MPI_UINT32_T;
     case OTF2_TYPE_INT32:
-      return MPI_INTEGER;
+      return MPI_INT32_T;
     case OTF2_TYPE_FLOAT:
       return MPI_FLOAT;
     case OTF2_TYPE_UINT64:
-      return MPI_UNSIGNED_LONG_LONG;
+      return MPI_UINT64_T;
     case OTF2_TYPE_INT64:
-      return MPI_LONG_LONG;
+      return MPI_INT64_T;
     case OTF2_TYPE_DOUBLE:
       return MPI_DOUBLE;
     default:

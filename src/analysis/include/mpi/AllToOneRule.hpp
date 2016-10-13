@@ -85,8 +85,8 @@ namespace casita
         sendBuffer[2] = allToOneLeave->getId( );
         sendBuffer[3] = allToOneLeave->getStreamId( );
 
-        MPI_CHECK( MPI_Allgather( sendBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
-                                  recvBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG, 
+        MPI_CHECK( MPI_Allgather( sendBuffer, BUFFER_SIZE, MPI_UINT64_T,
+                                  recvBuffer, BUFFER_SIZE, MPI_UINT64_T, 
                                   mpiCommGroup.comm ) );
 
         // get last enter event for collective

@@ -31,7 +31,7 @@
 #define CASITA_MPI_P2P_BUF_SIZE 5
 
 /** MPI type of buffer elements */
-#define CASITA_MPI_P2P_ELEMENT_TYPE MPI_UNSIGNED_LONG_LONG
+#define CASITA_MPI_P2P_ELEMENT_TYPE MPI_UINT64_T
 
 namespace casita
 {

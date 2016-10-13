@@ -235,8 +235,8 @@ Runner::processTrace( OTF2TraceReader* traceReader )
       interval_node_id = last_node_id;
       
       // gather pending nodes on all processes
-      MPI_CHECK( MPI_Allgather( &current_pending_nodes, 1, MPI_UNSIGNED_LONG,
-                                nodeSizes, 1, MPI_UNSIGNED_LONG, MPI_COMM_WORLD ) );
+      MPI_CHECK( MPI_Allgather( &current_pending_nodes, 1, MPI_UINT32_T,
+                                nodeSizes, 1, MPI_UINT32_T, MPI_COMM_WORLD ) );
 
       // check all processes for a reasonable number of analyzable nodes
       for ( int i = 0; i < mpiSize; ++i )
@@ -425,7 +425,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   {
     uint64_t total_events = 0;
     MPI_CHECK( MPI_Reduce( &total_events_read, &total_events, 1, 
-                           MPI_UNSIGNED_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD ) );
+                           MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD ) );
     
     UTILS_MSG( mpiRank == 0, "Total number of processed events: %llu", 
                              total_events );
@@ -477,8 +477,8 @@ Runner::mergeActivityGroups( )
     // receive number of entries
     uint32_t numEntriesSend = 0; // we do not evaluate this for root rank 0
     uint32_t numEntriesRecv[mpiSize];
-    MPI_CHECK( MPI_Gather( &numEntriesSend, 1, MPI_UNSIGNED, 
-                           numEntriesRecv, 1, MPI_UNSIGNED, 
+    MPI_CHECK( MPI_Gather( &numEntriesSend, 1, MPI_UINT32_T, 
+                           numEntriesRecv,  1, MPI_UINT32_T, 
                            0, MPI_COMM_WORLD ) );
     
     // receive from all other MPI streams
@@ -566,8 +566,8 @@ Runner::mergeActivityGroups( )
 
     // send number of entries to root rank
     uint32_t numEntriesRecv; // is ignored for the sender
-    MPI_CHECK( MPI_Gather( &numEntries, 1, MPI_UNSIGNED, 
-                           &numEntriesRecv, 1, MPI_UNSIGNED, 
+    MPI_CHECK( MPI_Gather( &numEntries, 1, MPI_UINT32_T, 
+                           &numEntriesRecv, 1, MPI_UINT32_T, 
                            0, MPI_COMM_WORLD ) );
 
     OTF2ParallelTraceWriter::ActivityGroup* buf =
@@ -732,7 +732,7 @@ Runner::findGlobalLengthCP( )
   if ( mpiSize > 1 )
   {
     MPI_CHECK( MPI_Allreduce( &lastTime, &globalLastTime,
-                              1, MPI_UNSIGNED_LONG_LONG,
+                              1, MPI_UINT64_T,
                               MPI_MAX, MPI_COMM_WORLD ) );
   }
 
@@ -784,8 +784,8 @@ Runner::findCriticalPathStart( )
   uint64_t nodeFirstTimes[mpiSize*2];
   if ( mpiSize > 1 )
   {    
-    MPI_CHECK( MPI_Allgather( &firstTime, 2, MPI_UNSIGNED_LONG_LONG,
-                              nodeFirstTimes, 2, MPI_UNSIGNED_LONG_LONG, 
+    MPI_CHECK( MPI_Allgather( &firstTime, 2, MPI_UINT64_T,
+                              nodeFirstTimes, 2, MPI_UINT64_T, 
                               MPI_COMM_WORLD ) );
     
     for ( int i = 0; i < mpiSize*2; i+=2 )
@@ -836,8 +836,8 @@ Runner::findCriticalPathEnd( )
   uint64_t globalTimes[mpiSize];
   if ( mpiSize > 1 )
   {    
-    MPI_CHECK( MPI_Allgather( &localEndTime, 1, MPI_UNSIGNED_LONG_LONG,
-                              globalTimes, 1, MPI_UNSIGNED_LONG_LONG, 
+    MPI_CHECK( MPI_Allgather( &localEndTime, 1, MPI_UINT64_T,
+                              globalTimes, 1, MPI_UINT64_T, 
                               MPI_COMM_WORLD ) );
     
     for ( int i = 0; i < mpiSize; ++i )
@@ -1066,9 +1066,8 @@ Runner::findLastMpiNode( GraphNode** node )
     lastMpiNodeTime = myLastMpiNode->getTime( );
   }
 
-  MPI_CHECK( MPI_Allgather( &lastMpiNodeTime, 1, MPI_UNSIGNED_LONG_LONG,
-                            nodeTimes,
-                            1, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD ) );
+  MPI_CHECK( MPI_Allgather( &lastMpiNodeTime, 1, MPI_UINT64_T,
+                            nodeTimes, 1, MPI_UINT64_T, MPI_COMM_WORLD ) );
 
   for ( int i = 0; i < mpiSize; ++i )
   {
@@ -1249,13 +1248,13 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
                            (uint32_t)sendBfr[0],
                            sendBfr[1] );
 
-            MPI_CHECK( MPI_Send( sendBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
+            MPI_CHECK( MPI_Send( sendBfr, BUFFER_SIZE, MPI_UINT64_T,
                                  commMpiRank, MPI_CPA_TAG, MPI_COMM_WORLD ) );
             
             // if no master has been found yet, receive from next slave
             if ( options.criticalPathSecureMPI && sendBfr[BUFFER_SIZE - 1] == 0 )
             {
-              MPI_CHECK( MPI_Recv( recvBfr, 1, MPI_UNSIGNED_LONG_LONG,
+              MPI_CHECK( MPI_Recv( recvBfr, 1, MPI_UINT64_T,
                                    commMpiRank, MPI_CPA_FB_TAG, 
                                    MPI_COMM_WORLD, MPI_STATUS_IGNORE ) );
             
@@ -1355,7 +1354,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
               continue;
             }
 
-            MPI_CHECK( MPI_Send( sendBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
+            MPI_CHECK( MPI_Send( sendBfr, BUFFER_SIZE, MPI_UINT64_T,
                                  commMpiRank, MPI_CPA_TAG, MPI_COMM_WORLD ) );
           }
 
@@ -1395,14 +1394,14 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
       UTILS_DBG_MSG( DEBUG_CPA_MPI, "[%u] Slave receives... ", mpiRank);
       
       MPI_Status status;
-      //MPI_CHECK( MPI_Recv( recvBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
+      //MPI_CHECK( MPI_Recv( recvBfr, BUFFER_SIZE, MPI_UINT64_T,
       //                     MPI_ANY_SOURCE,
       //                     MPI_CPA_TAG, MPI_COMM_WORLD, &status ) );
       
       // use a non-blocking MPI receive to start local CPA meanwhile
       MPI_Request request_recv = MPI_REQUEST_NULL;
       int finished = 0;
-      MPI_CHECK( MPI_Irecv( recvBfr, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
+      MPI_CHECK( MPI_Irecv( recvBfr, BUFFER_SIZE, MPI_UINT64_T,
                            MPI_ANY_SOURCE,
                            MPI_CPA_TAG, MPI_COMM_WORLD, &request_recv ) );
       
@@ -1450,8 +1449,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
         //          << " has Edge: " << haveEdge << std::endl;
         
         //\todo: MPI_Isend, next block, wait
-        MPI_CHECK( MPI_Send( sendBfr, 1, MPI_UNSIGNED_LONG_LONG,
-                             mpiMaster,
+        MPI_CHECK( MPI_Send( sendBfr, 1, MPI_UINT64_T,mpiMaster,
                              MPI_CPA_FB_TAG, MPI_COMM_WORLD ) );
       }
       

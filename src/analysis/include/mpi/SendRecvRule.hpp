@@ -78,9 +78,9 @@ namespace casita
         /* round 1: send same direction. myself == send */
 
         MPI_CHECK( MPI_Sendrecv( sendBuffer, BUFFER_SIZE,
-                                 MPI_UNSIGNED_LONG_LONG, partnerMPIRankSend, 0,
+                                 MPI_UINT64_T, partnerMPIRankSend, 0,
                                  recvBuffer, BUFFER_SIZE,
-                                 MPI_UNSIGNED_LONG_LONG, partnerMPIRankRecv, 0,
+                                 MPI_UINT64_T, partnerMPIRankRecv, 0,
                                  MPI_COMM_WORLD, &status ) );
 
         /* evaluate receive buffer */
@@ -125,9 +125,9 @@ namespace casita
 
         // round 2: send reverse direction. myself == recv
         MPI_CHECK( MPI_Sendrecv( sendBuffer, BUFFER_SIZE,
-                                 MPI_UNSIGNED_LONG_LONG, partnerMPIRankRecv, 0,
+                                 MPI_UINT64_T, partnerMPIRankRecv, 0,
                                  recvBuffer, BUFFER_SIZE,
-                                 MPI_UNSIGNED_LONG_LONG, partnerMPIRankSend, 0,
+                                 MPI_UINT64_T, partnerMPIRankSend, 0,
                                  MPI_COMM_WORLD, &status ) );
 
         otherStartTime = recvBuffer[0]; 
