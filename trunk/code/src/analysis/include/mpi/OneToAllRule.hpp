@@ -100,8 +100,8 @@ namespace casita
         sendBuffer[2] = oneToAllLeave->getId( );
         sendBuffer[3] = oneToAllLeave->getStreamId( );
 
-        MPI_CHECK( MPI_Gather( sendBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
-                               recvBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
+        MPI_CHECK( MPI_Gather( sendBuffer, BUFFER_SIZE, MPI_UINT64_T,
+                               recvBuffer, BUFFER_SIZE, MPI_UINT64_T,
                                rootMPIRank, mpiCommGroup.comm ) );
 
         if ( isRoot )
@@ -138,7 +138,7 @@ namespace casita
         //memcpy( recvBuffer, sendBuffer, sizeof( uint64_t ) * BUFFER_SIZE );
         
         // use the fixed-size send buffer for each rank
-        MPI_CHECK( MPI_Bcast( sendBuffer, BUFFER_SIZE, MPI_UNSIGNED_LONG_LONG,
+        MPI_CHECK( MPI_Bcast( sendBuffer, BUFFER_SIZE, MPI_UINT64_T,
                               rootMPIRank, mpiCommGroup.comm ) );
 
         // non-root ranks compute their wait states and create dependency edges

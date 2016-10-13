@@ -45,16 +45,14 @@ main( int argc, char** argv )
 
   UTILS_MSG( mpiRank == 0, "Running CASITA " CASITA_VERSION 
                            " with %d analysis processes", mpiSize );
-  UTILS_MSG( mpiRank == 0, "Using %d OpenMP threads", omp_get_max_threads() );
+  UTILS_MSG( mpiRank == 0, "Using %d OpenMP threads for processing of "
+                            "critical path sections", omp_get_max_threads() );
                            
   #if defined(BOOST_AVAILABLE)  
   if ( !Parser::getInstance( ).init_with_boost( argc, argv ) )
-  {
-    MPI_CHECK( MPI_Finalize() );
-    return -1;
-  }
   #else
   if ( !Parser::getInstance( ).init_without_boost( mpiRank, argc, argv ) )
+  #endif
   {
     if (mpiRank == 0){
         Parser::getInstance().printHelp();
@@ -63,9 +61,7 @@ main( int argc, char** argv )
     MPI_CHECK( MPI_Finalize() );
     return -1;
   }
-  #endif
-  
-  
+
   try
   {
     clock_t timestamp = clock();

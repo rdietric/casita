@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014,
+ * Copyright (c) 2014, 2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
