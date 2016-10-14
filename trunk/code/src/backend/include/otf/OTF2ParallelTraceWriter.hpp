@@ -204,13 +204,14 @@ namespace casita
       //!< counter to assign IDs to attribute types
       uint64_t      counterForAttributeId;
       
-      /** regionReference for internal Fork/Join */
+      //!< regionReference for internal Fork/Join
       uint32_t      ompForkJoinRef;
 
       std::string   outputFilename, originalFilename, pathToFile;
 
-      /* maps each process to corresponding evtWriter */
+      //!< maps each process to corresponding evtWriter
       std::map< uint64_t, OTF2_EvtWriter* > evt_writerMap;
+      
       OTF2_GlobalDefWriter* global_def_writer;
       OTF2_Archive* archive;
       OTF2_Reader*  reader;
@@ -249,6 +250,9 @@ namespace casita
 
       void
       processNextEvent( OTF2Event event, const std::string eventName );
+      
+      void
+      clearOpenEdges( );
 
       EventStream::SortedGraphNodeList* processNodes;
       EventStream::SortedGraphNodeList::iterator currentNodeIter;
