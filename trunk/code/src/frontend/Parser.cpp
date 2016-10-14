@@ -324,13 +324,13 @@ namespace casita
       }
 
       // ignore non blocking
-      else if( opt.find( "--ignore-nb-mpi=" ) != std::string::npos )
+      else if( opt.find( "--ignore-nb-mpi" ) != std::string::npos )
       {
         options.ignoreAsyncMpi = true;
       }
 
         // secure mpi cpa
-      else if( opt.find( "--secure-mpi-cpa=" ) != std::string::npos )
+      else if( opt.find( "--secure-mpi-cpa" ) != std::string::npos )
       {
         options.criticalPathSecureMPI = true;
       }
