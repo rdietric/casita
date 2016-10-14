@@ -313,9 +313,29 @@ OTF2ParallelTraceWriter::reset()
   //\todo: should be empty ... check that
   //activityStack.clear();
   
-  // clear the list of open edges
-  //\todo: should be empty ... check that
-  openEdges.clear();
+  clearOpenEdges();
+}
+
+/**
+ * Clear the list of open edges and report remaining ones. These out edges are 
+ * used to blame regions within the edge interval. Edges have to be intra 
+ * stream edges. The list of out edges should be empty after a stream has been 
+ * processed.
+ */
+void
+OTF2ParallelTraceWriter::clearOpenEdges( )
+{
+  if( openEdges.size() )
+  {
+    UTILS_MSG( verbose >= VERBOSE_BASIC, "[%" PRIu64 "] Clear open edge(s)", 
+               currentStream->getId() );
+    for ( OpenEdgesList::const_iterator edgeIter = openEdges.begin( );
+        edgeIter != openEdges.end( ); ++edgeIter)
+    {
+      UTILS_MSG( verbose >= VERBOSE_BASIC, "  %s", (*edgeIter)->getName().c_str() );
+    }
+    openEdges.clear();
+  }
 }
 
 /**
@@ -731,6 +751,8 @@ OTF2ParallelTraceWriter::writeStream( EventStream*  stream,
   OTF2_ErrorCode otf2_error = 
              OTF2_Reader_ReadAllLocalEvents( reader, evt_reader, events_read );
   
+  clearOpenEdges( );
+  
   if ( OTF2_SUCCESS != otf2_error )
   {
     if( OTF2_ERROR_INTERRUPTED_BY_CALLBACK == otf2_error )
@@ -854,7 +876,10 @@ OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
   uint64_t totalBlame = 0;
   
   // time between current and last event on this location
-  uint64_t timeDiff = event.time - lastEventTime[event.location];
+  uint64_t timeDiff  = event.time - lastEventTime[event.location];
+  
+  // remove timer offset from event time
+  uint64_t eventTime = event.time - timerOffset;
 
   //UTILS_MSG( openEdges.size(), "[%u] Compute blame for %s from %llu open edges", 
   //           mpiRank, getRegionName( event.regionRef ).c_str(), openEdges.size() );
@@ -872,9 +897,10 @@ OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
     //std::cerr << getRegionName(event.regionRef) << " between nodes " << edge->getStartNode()->getUniqueName()
     //          << " -> " << edge->getEndNode()->getUniqueName() << std::endl;
 
-    // if edge has duration AND edge end node is after this event's time stamp
-    if ( ( edge->getDuration( ) > 0 ) &&
-         ( edge->getEndNode( )->getTime( ) + timerOffset > event.time ) )
+    // if edge has duration AND event is in between the edge
+    if ( ( edge->getDuration() > 0 ) &&
+         ( edge->getEndNode()->getTime() > eventTime ) &&
+         ( edge->getStartNode()->getTime() < eventTime ) )
     {
       // blame = blame(edge) * time(cpu_region)/time(edge)
       totalBlame += (double)( edge->getCPUBlame( ) ) * (double)timeDiff 
@@ -1234,10 +1260,12 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       if ( graph->hasOutEdges( currentNode ) )
       {
         const Graph::EdgeList& edges = graph->getOutEdges( currentNode );
+        
         for ( Graph::EdgeList::const_iterator edgeIter = edges.begin( );
               edgeIter != edges.end( ); edgeIter++ )
         {
           Edge* edge = *edgeIter;
+          
           if ( edge->getCPUBlame( ) > 0 )
           {
             openEdges.push_back( edge );

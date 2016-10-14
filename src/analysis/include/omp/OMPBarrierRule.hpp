@@ -53,29 +53,30 @@ namespace casita
           return false;
         }
 
-        if(barrierEnter->isLeave())
-          assert(0);
+        /*if(barrierEnter->isLeave())
+          assert(0);*/
         
-        // save barrier enter events to BarrierEventList
+        // save barrier enter events to BarrierEventList on the host
         analysis->addBarrierEventToList( barrierEnter, false );
 
         const EventStreamGroup::EventStreamList& streams =
           commonAnalysis->getHostStreams( );
         
-        // get list with all barrier enter events
+        // get list with all barrier enter events on the host
         const GraphNode::GraphNodeList& barrierList =
           analysis->getBarrierEventList( false );
 
-        GraphNode::GraphNodeList::const_iterator iter = barrierList.begin( );
-        
-        // keep enter event with latest enter timestamp
-        GraphNode* latestEnterNode = *iter;                               
-
-        uint64_t blame = 0;
-
         // check if all barriers were passed
+        //\todo: this does not work for nested parallel regions
         if ( streams.size( ) == barrierList.size( ) )
         {
+          GraphNode::GraphNodeList::const_iterator iter = barrierList.begin( );
+        
+          // keep enter event with latest enter timestamp
+          GraphNode* latestEnterNode = *iter;                               
+
+          uint64_t blame = 0;
+          
           // find last barrierEnter
           for (; iter != barrierList.end( ); ++iter )
           {
@@ -107,7 +108,7 @@ namespace casita
                                           latestEnterNode->getTime( ) -
                                           barrier.first->getTime( ) );
 
-              // create edge from latest enter to other leaves
+              // create edge from latest barrier enter to other leaves
               // (non-blocking edge from blocking barrier leave node)
               commonAnalysis->newEdge( latestEnterNode, barrier.second,
                                        EDGE_CAUSES_WAITSTATE );
@@ -129,9 +130,7 @@ namespace casita
         }
 
         return false;
-
       }
-
   };
 
  }

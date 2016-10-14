@@ -301,6 +301,14 @@ namespace casita
        }
      }
 
+     /**
+      * 
+      * @param name
+      * @param descr
+      * @param deviceStream
+      * @param deviceNullStream
+      * @return true, if it maps to an internal node
+      */
      static bool
      getAPIFunctionType( const char* name, FunctionDescriptor* descr,
                          bool deviceStream, bool deviceNullStream )
@@ -434,22 +442,24 @@ namespace casita
              break;
          }
        }
-       /* not an MPI or CUDA API function */
+       // neither an MPI nor CUDA API nor OpenCL API function
 
+       // check if an OpenMP instrumented region
        if ( strstr( name, "!$omp" ) )
        {
          descr->paradigm = PARADIGM_OMP;
+         
          if ( strstr( name, "barrier" ) )
          {
            descr->type = OMP_SYNC;
          }
-         else
+         else // not a barrier
          {
            if ( strstr( name, "target " ) || strstr( name, "targetmap " ) )
            {
              descr->type = OMP_TARGET_OFFLOAD;
            }
-           else
+           else 
            {
              if ( strstr( name, "offloading flush" ) )
              {
@@ -457,13 +467,23 @@ namespace casita
              }
              else
              {
-               descr->type = OMP_COMPUTE;
+               if( strstr( name, "parallel" ) )
+               {
+                 descr->type = OMP_PARALLEL;
+               }
+               else
+               {
+                 descr->type = OMP_MISC;
+                 descr->paradigm = PARADIGM_CPU;
+                 return false;
+               }
              }
            }
          }
          return true;
        }
 
+       // if it is an OpenMP fork join event
        if ( strstr( name, OTF2_OMP_FORKJOIN_INTERNAL ) )
        {
          descr->type     = OMP_FORKJOIN;

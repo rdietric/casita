@@ -115,10 +115,11 @@ namespace casita
  {
    OMP_SYNC           = ( 1 << 1 ),
    OMP_FORKJOIN       = ( 1 << 2 ),
-   OMP_COMPUTE        = ( 1 << 3 ),
-   OMP_WAITSTATE      = ( 1 << 4 ),
-   OMP_TARGET_OFFLOAD = ( 1 << 5 ),
-   OMP_TARGET_FLUSH   = ( 1 << 6 )
+   OMP_PARALLEL       = ( 1 << 3 ),
+   OMP_MISC           = ( 1 << 4 ),
+   OMP_WAITSTATE      = ( 1 << 5 ),
+   OMP_TARGET_OFFLOAD = ( 1 << 6 ),
+   OMP_TARGET_FLUSH   = ( 1 << 7 )
  };
 
  typedef struct
@@ -192,7 +193,7 @@ namespace casita
  {
    { OMP_SYNC, "omp_sync" },
    { OMP_FORKJOIN, "omp_forkjoin" },
-   { OMP_COMPUTE, "omp_compute" },
+   { OMP_MISC, "omp_compute" },
    { OMP_TARGET_OFFLOAD, "omp_target_offload" },
    { OMP_TARGET_FLUSH, "omp_target_flush" }
  };
@@ -497,9 +498,9 @@ namespace casita
      }
 
      bool
-     isOMPCompute( ) const
+     isOMPParallel( ) const
      {
-       return isOMP( ) && ( nodeType & OMP_COMPUTE );
+       return isOMP( ) && ( nodeType & OMP_PARALLEL );
      }
 
      bool

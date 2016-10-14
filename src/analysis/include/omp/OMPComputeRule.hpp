@@ -38,7 +38,7 @@ namespace casita
       apply( AnalysisParadigmOMP* analysis, GraphNode* node )
       {
         // ignore non-OpenMP-compute nodes
-        if ( !node->isOMPCompute( ) )
+        if ( !node->isOMPParallel( ) )
         {
           return false;
         }

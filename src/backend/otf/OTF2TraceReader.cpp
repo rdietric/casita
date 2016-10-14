@@ -272,7 +272,7 @@ OTF2TraceReader::readEvents( uint64_t *events_read )
   {
     if( OTF2_ERROR_INTERRUPTED_BY_CALLBACK == otf2_error )
     {
-      UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+      UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_SOME, 
                  "[0] Reader interrupted by callback. Read %" PRIu64 " events", 
                  *events_read );
       
@@ -781,8 +781,7 @@ OTF2TraceReader::otf2CallbackEnter( OTF2_LocationRef    location,
     OTF2KeyValueList& kvList = tr->getKVList( );
     kvList.setList( attributes );
 
-    tr->handleEnter( tr, time - tr->getTimerOffset( ), region, location,
-                     &kvList );
+    tr->handleEnter(tr, time - tr->getTimerOffset(), region, location, &kvList);
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -996,18 +995,17 @@ OTF2TraceReader::otf2Callback_MpiIRecv( OTF2_LocationRef    locationID,
 }
 
 OTF2_CallbackCode
-OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadFork( OTF2_LocationRef locationID,
-                                                          OTF2_TimeStamp   time,
-                                                          void*            userData,
-                                                          OTF2_AttributeList*
-                                                          attributeList,
-                                                          OTF2_Paradigm
-                                                          paradigm,
-                                                          uint32_t
-                                                          numberOfRequestedThreads )
+OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadFork( 
+                                  OTF2_LocationRef    locationID,
+                                  OTF2_TimeStamp      time,
+                                  void*               userData,
+                                  OTF2_AttributeList* attributeList,
+                                  OTF2_Paradigm       paradigm,
+                                  uint32_t            numberOfRequestedThreads )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
+  //\todo: handle numberOfRequestedThreads
   return OTF2TraceReader::otf2CallbackEnter( locationID, time, userData,
                                              attributeList,
                                              tr->getOmpForkJoinRef( ) );
