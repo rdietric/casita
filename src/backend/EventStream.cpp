@@ -739,7 +739,7 @@ EventStream::setMPIWaitNodeData( GraphNode* node )
   {
     UTILS_MSG( true, "List of pending OTF2 request IDs != 1 (%llu) at %s\n", 
                pendingRequests.size( ), node->getUniqueName().c_str() );
-    
+    node->setData( NULL );
   }
 }
 

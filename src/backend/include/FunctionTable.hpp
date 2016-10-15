@@ -182,7 +182,8 @@ namespace casita
 
  static const char* FTABLE_MPI_ISEND[]         =
  {
-   "MPI_Isend"
+   "MPI_Isend",
+   "MPI_Ibsend"
  };
 
  static const char* FTABLE_MPI_IRECV[]         =
@@ -272,7 +273,7 @@ namespace casita
    { MPI_WAIT, 1, FTABLE_MPI_WAIT },
    { MPI_WAITALL, 1, FTABLE_MPI_WAITALL },
    { MPI_IRECV, 1, FTABLE_MPI_IRECV },
-   { MPI_ISEND, 1, FTABLE_MPI_ISEND }
+   { MPI_ISEND, 2, FTABLE_MPI_ISEND }
  };
 
  class FunctionTable
