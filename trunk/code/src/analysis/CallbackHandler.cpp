@@ -44,25 +44,30 @@ CallbackHandler::printNode( GraphNode* node, EventStream* stream )
              EventNode::FR_SUCCESS ) ) ) )
   {
     fprintf( stderr, " [%u]", mpiRank );
-    if ( node->isEnter( ) )
+    if ( node->isEnter() )
     {
       fprintf( stderr, " E " );
     }
-    else
+    else if( node->isLeave()  )
     {
       fprintf( stderr, " L " );
     }
+    else if( node->isAtomic() )
+    {
+      fprintf( stderr, " A " );
+    }
+    else
+    {
+      fprintf( stderr, " S " );
+    }
 
     fprintf( stderr,
-             "[%12lu:%12.8fs:%10u,%5lu] [%20.20s] proc [%15s], pid [%11lu], [%s]",
-             node->getTime( ),
-             (double)( node->getTime( ) ) / (double)analysis.getTimerResolution( ),
-             node->getId( ),
-             node->getFunctionId( ),
-             node->getName( ),
-             stream->getName( ),
-             stream->getId( ),
-             Node::typeToStr( node->getParadigm( ), node->getType( ) ).c_str( ) );
+             "[%12lu(%12.8fs):%10u,%5lu] [%20.20s] on [%15s:%11lu], [%s]",
+             node->getTime(), analysis.getRealTime( node->getTime() ),
+             node->getId(), node->getFunctionId(),
+             node->getName(),
+             stream->getName(), stream->getId(),
+             Node::typeToStr( node->getParadigm(), node->getType() ).c_str() );
 
     uint64_t refProcess = node->getReferencedStreamId( );
     if ( refProcess )
@@ -231,43 +236,40 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   std::string funcStr = reader->getFunctionName( functionId );
   const char* funcName = funcStr.c_str();
 
-  FunctionDescriptor functionType;
-  AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType );
+  FunctionDescriptor functionDesc;
+  functionDesc.recordType = RECORD_ENTER; // needed to determine correct function type
+  AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionDesc );
   
   // check for function with the OpenMP paradigm
-  if ( functionType.paradigm == PARADIGM_OMP )
+  if ( functionDesc.paradigm == PARADIGM_OMP )
   {
     analysis.addDetectedParadigm( PARADIGM_OMP );
   }
 
   // for CPU functions no graph node is created
   // only start time, end time and number of CPU events between nodes is stored
-  if ( functionType.paradigm == PARADIGM_CPU )
+  if ( functionDesc.paradigm == PARADIGM_CPU )
   {
     analysis.addCPUEvent( time, streamId, false );
     return;
   }
 
   GraphNode* enterNode = NULL;
-  if ( Node::isCUDAEventType( functionType.paradigm, functionType.type ) )
+  if ( Node::isCUDAEventType( functionDesc.paradigm, functionDesc.functionType ) )
   {
     enterNode = analysis.addNewEventNode( time,
                                           0,
                                           EventNode::FR_UNKNOWN,
                                           stream,
                                           funcName,
-                                          functionType.paradigm,
-                                          RECORD_ENTER,
-                                          functionType.type );
+                                          &functionDesc );
   }
   else
   {
     enterNode = analysis.addNewGraphNode( time,
                                           stream,
                                           funcName,
-                                          functionType.paradigm,
-                                          RECORD_ENTER,
-                                          functionType.type );
+                                          &functionDesc );
   }
 
   enterNode->setFunctionId( functionId );
@@ -314,6 +316,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   const char* funcName = funcStr.c_str(); //analysis.getFunctionName( functionId );
 
   FunctionDescriptor functionType;
+  functionType.recordType = RECORD_LEAVE; // needed to determine correct function type
   AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType );
 
   if ( functionType.paradigm == PARADIGM_CPU )
@@ -324,7 +327,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   }
 
   GraphNode* leaveNode = NULL;
-  if ( Node::isCUDAEventType( functionType.paradigm, functionType.type ) )
+  if ( Node::isCUDAEventType( functionType.paradigm, functionType.functionType ) )
   {
     uint64_t eventId  = readKeyValUInt64( reader, SCOREP_CUDA_EVENTREF, list );
     uint32_t cuResult = readKeyVal( reader, SCOREP_CUDA_CURESULT, list );
@@ -339,9 +342,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
                                                          fResult,
                                                          stream,
                                                          funcName,
-                                                         functionType.paradigm,
-                                                         RECORD_LEAVE,
-                                                         functionType.type );
+                                                         &functionType );
 
     if ( eventId == 0 )
     {
@@ -354,9 +355,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
     leaveNode = analysis.addNewGraphNode( time,
                                           stream,
                                           funcName,
-                                          functionType.paradigm,
-                                          RECORD_LEAVE,
-                                          functionType.type );
+                                          &functionType );
   }
 
   leaveNode->setFunctionId( functionId );

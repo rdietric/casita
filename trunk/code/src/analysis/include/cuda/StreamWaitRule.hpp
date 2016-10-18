@@ -279,16 +279,23 @@ namespace casita
                 return false;
               }
 
+              FunctionDescriptor functionDesc;
+              functionDesc.paradigm = PARADIGM_CUDA;
+              functionDesc.functionType = CUDA_WAITSTATE;
+              functionDesc.recordType = RECORD_ENTER;
+              
               GraphNode* waitEnter = commonAnalysis->addNewGraphNode(
                 waitStateEnterTime,
                 waitingDevProc,
                 NAME_WAITSTATE,
-                PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE );
+                &functionDesc );
+              
+              functionDesc.recordType = RECORD_LEAVE;
               GraphNode* waitLeave = commonAnalysis->addNewGraphNode(
                 lastSyncKernelLeave->getTime( ),
                 waitingDevProc,
                 NAME_WAITSTATE,
-                PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE );
+                &functionDesc);
 
               commonAnalysis->newEdge( lastLeaveNode, waitEnter );
               commonAnalysis->newEdge( waitEnter, waitLeave, EDGE_IS_BLOCKING );

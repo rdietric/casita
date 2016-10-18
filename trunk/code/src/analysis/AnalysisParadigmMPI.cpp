@@ -89,11 +89,7 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
     stream->addPendingMPIIrecvNode( node );
     return;
   }
-  /*else if ( node->isMPITest() )
-  {
-    return;
-  }*/
-  else if( node->isMPIWait() )
+  else if( node->isMPIWait() || node->isMPITest() )
   {
     stream->setMPIWaitNodeData( node );
     return;

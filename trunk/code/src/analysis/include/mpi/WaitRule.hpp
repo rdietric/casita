@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -37,7 +37,7 @@ namespace casita
       apply( AnalysisParadigmMPI* analysis, GraphNode* node )
       {
         // applied at MPI_Wait leave
-        if ( !node->isMPIWait( ) || !node->isLeave( ) )
+        if ( !node->isMPIWait( ) /*|| !node->isLeave()*/ )
         {
           return false;
         }
@@ -52,7 +52,8 @@ namespace casita
         }
         else
         {
-          std::cerr << "[" << node->getStreamId() << "] MPI_Wait rule: record is NULL!" << std::endl;
+          UTILS_MSG( true, "[%" PRIu64 "]MPI_Wait rule: No request to wait for!", 
+                     node->getStreamId() );
         }
 
         return true;

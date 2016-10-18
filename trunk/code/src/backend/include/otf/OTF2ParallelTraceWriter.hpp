@@ -27,32 +27,19 @@ namespace casita
 {
  namespace io
  {
-   
-    enum FunctionGroup
-    {
-      FG_APPLICATION = 1, FG_CUDA_API, FG_KERNEL, FG_WAITSTATE, FG_MPI
-    };
-
     enum ProcessGroup
     {
       PG_HOST        = 1, PG_DEVICE, PG_DEVICE_NULL
     };
 
-    enum MarkerGroup
-    {
-      MG_Marker      = 1
-    };
-
   typedef std::map< uint32_t, uint32_t > CtrInstanceMap;
-
-  enum OTF2EventType { OTF2_EVT_ENTER, OTF2_EVT_LEAVE, OTF2_EVT_ATOMIC };
 
   typedef struct
   {
     uint64_t         time;
     OTF2_RegionRef   regionRef;
     OTF2_LocationRef location;
-    OTF2EventType    type;
+    RecordType       type;
   } OTF2Event;
 
   typedef struct

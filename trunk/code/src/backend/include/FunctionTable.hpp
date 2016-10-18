@@ -42,8 +42,9 @@ namespace casita
 
  typedef struct
  {
-   Paradigm paradigm;
-   int      type;
+   Paradigm   paradigm;
+   int        functionType;
+   RecordType recordType;
  } FunctionDescriptor;
 
  ///////////////// CUDA functions ////////////////
@@ -303,9 +304,11 @@ namespace casita
      }
 
      /**
+      * This function determines the type of the event. The record type has to
+      * be already set to get correct results (descr->recordType).
       * 
       * @param name
-      * @param descr
+      * @param descr the function descriptor (the record type must be set)
       * @param deviceStream
       * @param deviceNullStream
       * @return true, if it maps to an internal node
@@ -315,7 +318,7 @@ namespace casita
                          bool deviceStream, bool deviceNullStream )
      {
        descr->paradigm = PARADIGM_CPU;
-       descr->type     = 0;
+       descr->functionType     = 0;
        
        bool ignoreAsyncMpi = Parser::getInstance().getProgramOptions().ignoreAsyncMpi;
 
@@ -331,14 +334,31 @@ namespace casita
            {
              if ( ignoreAsyncMpi )
              {
-               descr->paradigm = PARADIGM_CPU;
-               descr->type     = MISC_CPU;
+               descr->paradigm     = PARADIGM_CPU;
+               descr->functionType = MISC_CPU;
                return false;
              }
              else
              {
+               // the enter events of non-blocking MPI operations are currently 
+               // not associated with information
+               if( entry.type == MPI_ISEND || entry.type == MPI_IRECV ||
+                   entry.type == MPI_WAIT  || entry.type == MPI_WAITALL )
+               {
+                 if( descr->recordType == RECORD_ENTER )
+                 {
+                   descr->paradigm     = PARADIGM_CPU;
+                   descr->functionType = MISC_CPU;
+                   return false;
+                 }
+                 else
+                 {
+                   descr->recordType = RECORD_SINGLE;
+                 }
+               }
+
                descr->paradigm = PARADIGM_MPI;
-               descr->type     = entry.type;
+               descr->functionType = entry.type;
                return true;
              }
            }
@@ -354,7 +374,7 @@ namespace casita
            if ( strcmp( entry.table[j], name ) == 0 )
            {
              descr->paradigm = PARADIGM_CUDA;
-             descr->type     = entry.type;
+             descr->functionType     = entry.type;
              set = true;
            }
          }
@@ -368,7 +388,7 @@ namespace casita
            if ( strcmp( entry.table[j], name ) == 0 )
            {
              descr->paradigm = PARADIGM_OCL;
-             descr->type     = entry.type;
+             descr->functionType     = entry.type;
              set = true;
            }
          }
@@ -382,7 +402,7 @@ namespace casita
            if ( strcmp( entry.table[j], name ) == 0 )
            {
              descr->paradigm = PARADIGM_MPI;
-             descr->type     = entry.type;
+             descr->functionType     = entry.type;
              set = true;
            }
          }
@@ -393,10 +413,10 @@ namespace casita
          switch ( descr->paradigm )
          {
            case PARADIGM_CUDA:
-             switch ( descr->type )
+             switch ( descr->functionType )
              {
                case CUDA_COLLSYNC:
-                 descr->type = CUDA_COLLSYNC | CUDA_SYNC;
+                 descr->functionType = CUDA_COLLSYNC | CUDA_SYNC;
                  return true;
 
                case CUDA_SYNC:
@@ -410,7 +430,7 @@ namespace casita
              }
              
            case PARADIGM_OCL:
-             switch ( descr->type )
+             switch ( descr->functionType )
              {
                case OCL_SYNC_QUEUE:
                case OCL_SYNC_EVENT:
@@ -422,19 +442,19 @@ namespace casita
 
            // only blocking MPI (non-blocking is handled separately)
            case PARADIGM_MPI:
-             switch ( descr->type )
+             switch ( descr->functionType )
              {
                case MPI_INIT:
                case MPI_FINALIZE:
-                 descr->type |= MPI_ALLRANKS; // these two are always executed on all ranks
-                 descr->type |= MPI_COLL;     // these two are collectives
+                 descr->functionType |= MPI_ALLRANKS; // these two are always executed on all ranks
+                 descr->functionType |= MPI_COLL;     // these two are collectives
                case MPI_COLL:
                case MPI_ONETOALL:
                case MPI_ALLTOONE:
                case MPI_SENDRECV:
                case MPI_RECV:
                case MPI_SEND:
-                 descr->type |= MPI_BLOCKING;
+                 descr->functionType |= MPI_BLOCKING;
                case MPI_MISC:
                  return true;
              }
@@ -452,29 +472,29 @@ namespace casita
          
          if ( strstr( name, "barrier" ) )
          {
-           descr->type = OMP_SYNC;
+           descr->functionType = OMP_SYNC;
          }
          else // not a barrier
          {
            if ( strstr( name, "target " ) || strstr( name, "targetmap " ) )
            {
-             descr->type = OMP_TARGET_OFFLOAD;
+             descr->functionType = OMP_TARGET_OFFLOAD;
            }
            else 
            {
              if ( strstr( name, "offloading flush" ) )
              {
-               descr->type = OMP_TARGET_FLUSH;
+               descr->functionType = OMP_TARGET_FLUSH;
              }
              else
              {
                if( strstr( name, "parallel" ) )
                {
-                 descr->type = OMP_PARALLEL;
+                 descr->functionType = OMP_PARALLEL;
                }
                else
                {
-                 descr->type = OMP_MISC;
+                 descr->functionType = OMP_MISC;
                  descr->paradigm = PARADIGM_CPU;
                  return false;
                }
@@ -487,7 +507,7 @@ namespace casita
        // if it is an OpenMP fork join event
        if ( strstr( name, OTF2_OMP_FORKJOIN_INTERNAL ) )
        {
-         descr->type     = OMP_FORKJOIN;
+         descr->functionType     = OMP_FORKJOIN;
          descr->paradigm = PARADIGM_OMP;
          return true;
        }
@@ -496,7 +516,7 @@ namespace casita
        /* kernel ? */
        if ( deviceNullStream )
        {
-         descr->type     = ( CUDA_KERNEL | CUDA_SYNC | CUDA_COLLSYNC );
+         descr->functionType = ( CUDA_KERNEL | CUDA_SYNC | CUDA_COLLSYNC );
          descr->paradigm = PARADIGM_CUDA;
          return true;
        }
@@ -508,20 +528,20 @@ namespace casita
          // if name starts with '$' it is an OpenCL kernel
          if( name[0] == '$' )
          {
-           descr->type     = OCL_KERNEL;
-           descr->paradigm = PARADIGM_OCL;
+           descr->functionType = OCL_KERNEL;
+           descr->paradigm     = PARADIGM_OCL;
          }
          else
          {
-           descr->type     = CUDA_KERNEL;
-           descr->paradigm = PARADIGM_CUDA;
+           descr->functionType = CUDA_KERNEL;
+           descr->paradigm     = PARADIGM_CUDA;
          }
          return true;
        }
 
        /* anything else */
-       descr->paradigm = PARADIGM_CPU;
-       descr->type     = MISC_CPU;
+       descr->paradigm     = PARADIGM_CPU;
+       descr->functionType = MISC_CPU;
        return false;
      }
 

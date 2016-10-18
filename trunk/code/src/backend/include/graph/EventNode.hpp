@@ -35,7 +35,7 @@ namespace casita
 
      EventNode( uint64_t time, uint64_t streamId, uint64_t eventId,
                 FunctionResultType fResult, const std::string name,
-                Paradigm paradigm, NodeRecordType recordType, int nodeType ) :
+                Paradigm paradigm, RecordType recordType, int nodeType ) :
        GraphNode( time, streamId, name, paradigm, recordType, nodeType ),
        eventId( eventId ),
        fResult( fResult )

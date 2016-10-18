@@ -113,7 +113,7 @@ namespace casita
                    uint64_t          streamId,
                    const std::string name,
                    Paradigm          paradigm,
-                   NodeRecordType    recordType,
+                   RecordType    recordType,
                    int               nodeType );
 
      EventNode*
@@ -123,7 +123,7 @@ namespace casita
                    EventNode::FunctionResultType fResult,
                    const std::string             name,
                    Paradigm                      paradigm,
-                   NodeRecordType                recordType,
+                   RecordType                recordType,
                    int                           nodeType );
 
      GraphNode*
@@ -131,7 +131,7 @@ namespace casita
                       EventStream*   stream,
                       const char*    name,
                       Paradigm       paradigm,
-                      NodeRecordType recordType,
+                      RecordType     recordType,
                       int            nodeType );
 
      EventNode*
@@ -140,9 +140,7 @@ namespace casita
                       EventNode::FunctionResultType fResult,
                       EventStream*                  stream,
                       const char*                   name,
-                      Paradigm                      paradigm,
-                      NodeRecordType                recordType,
-                      int                           nodeType );
+                      FunctionDescriptor*           desc );
 
      void
      addCPUEvent( uint64_t time, uint64_t stream, bool isLeave );

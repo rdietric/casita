@@ -31,7 +31,7 @@ namespace casita
      typedef std::map< Paradigm, GraphNode* > ParadigmNodeMap;
 
      GraphNode( uint64_t time, uint64_t streamId, const std::string name,
-                Paradigm paradigm, NodeRecordType recordType, int nodeType ) :
+                Paradigm paradigm, RecordType recordType, int nodeType ) :
        Node( time, streamId, name, paradigm, recordType, nodeType ),
        linkLeft( NULL ),
        linkRight( NULL ),

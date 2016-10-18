@@ -224,7 +224,7 @@ GraphEngine::newGraphNode( uint64_t          time,
                            uint64_t          streamId,
                            const std::string name,
                            Paradigm          paradigm,
-                           NodeRecordType    recordType,
+                           RecordType        recordType,
                            int               nodeType )
 {
   GraphNode* n = new GraphNode( time,
@@ -244,7 +244,7 @@ GraphEngine::newEventNode( uint64_t                      time,
                            EventNode::FunctionResultType fResult,
                            const std::string             name,
                            Paradigm                      paradigm,
-                           NodeRecordType                recordType,
+                           RecordType                    recordType,
                            int                           nodeType )
 {
   EventNode* n = new EventNode( time,
@@ -806,6 +806,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
         GraphNode* pred = predPnmIter->second;
         int edgeProp    = EDGE_NONE;
 
+        // check if this leave node is the end of a blocking operation
         if ( pred->isEnter( ) && node->isLeave( ) )
         {
           if ( pred->isWaitstate( ) && node->isWaitstate( ) )
@@ -919,7 +920,7 @@ GraphEngine::addNewGraphNode( uint64_t       time,
                               EventStream*   stream,
                               const char*    name,
                               Paradigm       paradigm,
-                              NodeRecordType recordType,
+                              RecordType     recordType,
                               int            nodeType )
 {
   GraphNode* node = newGraphNode( time, stream->getId( ), name,
@@ -935,12 +936,11 @@ GraphEngine::addNewEventNode( uint64_t                      time,
                               EventNode::FunctionResultType fResult,
                               EventStream*                  stream,
                               const char*                   name,
-                              Paradigm                      paradigm,
-                              NodeRecordType                recordType,
-                              int                           nodeType )
+                              FunctionDescriptor*           desc )
 {
   EventNode* node = newEventNode( time, stream->getId( ), eventId,
-                                  fResult, name, paradigm, recordType, nodeType );
+                                  fResult, name, desc->paradigm, desc->recordType, 
+                                  desc->functionType );
   addNewGraphNodeInternal( node, stream );
   return node;
 }

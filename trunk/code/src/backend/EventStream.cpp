@@ -659,6 +659,8 @@ EventStream::handleMPIIrecvEventData( uint64_t requestId,
  * Temporarily store the request that is consumed by MPI_Isend leave event.
  * Triggered by MPI_Isend communication record, between MPI_Isend enter/leave.
  * 
+ * This function is called while handling OTF2 MPI_ISEND record. 
+ * 
  * @param partnerId stream ID of the communication partner
  * @param requestId OTF2 MPI_Isend request ID 
  */
@@ -671,8 +673,11 @@ EventStream::handleMPIIsendEventData( uint64_t requestId,
 }
 
 /**
- * Adds MPI_Isend request to a map and sets node-specific data. 
- * Consumes the pending OTF2 request ID and the MPI_Isend communication partner ID.
+ * Adds MPI_Isend request to a map and sets node-specific data. Consumes the 
+ * pending OTF2 request ID and the MPI_Isend communication partner ID, which 
+ * have been stored in handleMPIIsendEventData().
+ * 
+ * This function is called when handling the MPI_ISEND (region) leave record.
  * 
  * @param node the graph node of the MPI_Isend leave record
  */
@@ -702,17 +707,14 @@ EventStream::setMPIIsendNodeData( GraphNode* node )
 }
 
 /**
- * Sets node-specific data for the given MPI_Test leave node.
- * ??? Consumes the pending OTF2 request ID ???
+ * Sets node-specific data for the given MPI_Wait or MPI_Test leave node.
+ * Consumes the pending OTF2 request ID. Both, MPI_Wait and MPI_Test can
+ * complete a non-blocking MPI communication. In an OTF2 trace, completed 
+ * communication operations are between ENTER and LEAVE of MPI_Wait[all],
+ * MPI_Test[all].
  * 
- * @param node the graph node of the MPI_Test leave record
- */
-//void
-//EventStream::setMPITestNodeData( GraphNode* node )
-
-/**
- * Sets node-specific data for the given MPI_Wait leave node.
- * Consumes the pending OTF2 request ID.
+ * If there are no pending request, no communication operation has completed 
+ * here.
  * 
  * @param node the graph node of the MPI_Wait leave record
  */
@@ -735,11 +737,14 @@ EventStream::setMPIWaitNodeData( GraphNode* node )
     // request ID is consumed, therefore pop it from the vector
     pendingRequests.pop_back( );
   }
-  else // error handling
+  else if( pendingRequests.size( ) == 0 )
   {
-    UTILS_MSG( true, "List of pending OTF2 request IDs != 1 (%llu) at %s\n", 
+    //\todo: no need to store this node, need to detect in TraceWriter as well
+  }
+  else
+  {
+    UTILS_MSG( true, "List of pending OTF2 request IDs > 1 (#%llu) at %s", 
                pendingRequests.size( ), node->getUniqueName().c_str() );
-    node->setData( NULL );
   }
 }
 

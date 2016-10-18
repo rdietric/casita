@@ -83,15 +83,13 @@ namespace casita
      GraphNode*
      newGraphNode( uint64_t time, uint64_t streamId,
                    const std::string name, Paradigm paradigm,
-                   NodeRecordType recordType, int nodeType );
+                   RecordType recordType, int nodeType );
 
      GraphNode*
-     addNewGraphNode( uint64_t       time,
-                      EventStream*   stream,
-                      const char*    name,
-                      Paradigm       paradigm,
-                      NodeRecordType recordType,
-                      int            nodeType );
+     addNewGraphNode( uint64_t            time,
+                      EventStream*        stream,
+                      const char*         name,
+                      FunctionDescriptor* funcDesc );
 
      bool
      applyRules( GraphNode* node, Paradigm paradigm, bool verbose );
