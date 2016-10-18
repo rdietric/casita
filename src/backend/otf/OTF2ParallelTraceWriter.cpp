@@ -815,7 +815,7 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& co
   }
 
   // for each enter event, increase the number of instances found
-  if ( event.type == OTF2_EVT_ENTER )
+  if ( event.type == RECORD_ENTER )
   {
     activityGroupMap[event.regionRef].numInstances++;
   }
@@ -951,7 +951,7 @@ OTF2ParallelTraceWriter::writeEventsWithAttributes( OTF2Event event, CounterMap&
     }
 
     // all metrics are definitely assigned to leave nodes
-    if( event.type == OTF2_EVT_LEAVE && iter->second != 0 )
+    if( event.type == RECORD_LEAVE && iter->second != 0 )
     {
       OTF2_CHECK( OTF2_AttributeList_AddUint64( attributes, 
                                                 cTable->getMetricId( metricType ), 
@@ -961,15 +961,15 @@ OTF2ParallelTraceWriter::writeEventsWithAttributes( OTF2Event event, CounterMap&
   
   switch ( event.type )
   {
-    case OTF2_EVT_ENTER:
+    case RECORD_ENTER:
       OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writer, attributes, event.time, event.regionRef ) );
       break;
 
-    case OTF2_EVT_LEAVE:
+    case RECORD_LEAVE:
       OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writer, attributes, event.time, event.regionRef ) );
       break;
 
-    case OTF2_EVT_ATOMIC:
+    default:
       /* write only counters for atomic events */
       break;
   }
@@ -993,7 +993,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
   
   OTF2_EvtWriter* evt_writer = evt_writerMap[event.location];
   
-  /*if( event.type == OTF2_EVT_ENTER && 
+  /*if( event.type == RECORD_ENTER && 
         strcmp( getRegionName(event.regionRef).c_str(), "BUFFER FLUSH" ) == 0 )
   {
     UTILS_MSG(true, "BUFFER FLUSH enter: '%s' stack %d (time: %llu), #counters: %llu", 
@@ -1002,7 +1002,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
   }*/
 
   // write enter event before counters
-  if( writeEvents && event.type == OTF2_EVT_ENTER )
+  if( writeEvents && event.type == RECORD_ENTER )
   {
     OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writer, NULL, event.time, event.regionRef ) );
   }
@@ -1012,7 +1012,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
   if( counters.size() == 0  && processOnCriticalPath[event.location] == true )
   {
     // if we are at a leave event, which is the last on the stack, write '0'
-    if( event.type == OTF2_EVT_LEAVE && activityStack[event.location].size( ) == 1
+    if( event.type == RECORD_LEAVE && activityStack[event.location].size( ) == 1
         && lastCounterValues[CRITICAL_PATH] != 0 )
     {
       OTF2_Type        type  = OTF2_TYPE_UINT64;
@@ -1027,7 +1027,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
       return;
     }
     
-    if( event.type == OTF2_EVT_ENTER && activityStack[event.location].size( ) == 0 )
+    if( event.type == RECORD_ENTER && activityStack[event.location].size( ) == 0 )
     {
       OTF2_Type        type  = OTF2_TYPE_UINT64;
       OTF2_MetricValue value;
@@ -1063,7 +1063,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
     {      
       // set counter to '0' for last leave event on the stack, if last counter 
       // value is not already '0' for this location (applies to CUDA kernels)
-      if( event.type == OTF2_EVT_LEAVE &&
+      if( event.type == RECORD_LEAVE &&
           activityStack[event.location].size( ) == 1 &&
           lastCounterValues[CRITICAL_PATH] != 0 )
       {
@@ -1094,7 +1094,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
     
     /////// other counters (blame and waiting time), absolute last mode ////////
 #if defined(BLAME_COUNTER_FALSE)
-    if( event.type == OTF2_EVT_ENTER )
+    if( event.type == RECORD_ENTER )
     {
       if( activityStack[event.location].size( ) > 0 )
       {
@@ -1125,7 +1125,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
                                            1, &type, &value ) );
       }
     }
-    else if( event.type == OTF2_EVT_LEAVE )
+    else if( event.type == RECORD_LEAVE )
     {
       // if we have a leave with a counter, write it
       if( iter->second > 0 )
@@ -1152,7 +1152,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
     // The following is currently only for the blame counter
     
     // reset counter if this enter is the first event on the activity stack
-    if ( event.type == OTF2_EVT_ENTER && activityStack[event.location].size( ) == 0 )
+    if ( event.type == RECORD_ENTER && activityStack[event.location].size( ) == 0 )
     {
       value.unsigned_int = 0;
       OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
@@ -1168,7 +1168,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
     }
 
     // reset counter if this leave is the last event on the activity stack
-    if ( event.type == OTF2_EVT_LEAVE && activityStack[event.location].size( ) == 1 &&
+    if ( event.type == RECORD_LEAVE && activityStack[event.location].size( ) == 1 &&
          value.unsigned_int != 0 )
     {
       value.unsigned_int = 0;
@@ -1179,7 +1179,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
   }
   
   // write leave event after counters
-  if( writeEvents && event.type == OTF2_EVT_LEAVE )
+  if( writeEvents && event.type == RECORD_LEAVE )
   {
     OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writer, NULL, event.time, event.regionRef ) );
   }
@@ -1196,14 +1196,19 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
 void
 OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, 
                                            const std::string eventName )
-{
+{  
   // test if this is an internal node or a CPU event
-  FunctionDescriptor desc;
-  const bool isDeviceStream   = deviceStreamMap[event.location];
+  FunctionDescriptor eventDesc;
+  // set event type to determine if an internal node is available
+  eventDesc.recordType = event.type; 
   const bool mapsInternalNode = FunctionTable::getAPIFunctionType(
-    eventName.c_str( ), &desc, isDeviceStream, false );
+    eventName.c_str( ), &eventDesc, deviceStreamMap[event.location], false );  
   
-  //UTILS_MSG( true, "Event name: '%s'", eventName.c_str( ) );
+  
+  
+  
+  //UTILS_MSG( mpiRank == 0, "Event name: '%s' (%d), maps internal: %d", 
+  //           eventName.c_str( ), event.type, (int)mapsInternalNode );
 
   // non-internal counter values for this event
   CounterMap tmpCounters;
@@ -1238,7 +1243,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         UTILS_ASSERT( event.regionRef == ompForkJoinRef,
                       "ForkJoin must have regionRef %u", ompForkJoinRef );
 
-        UTILS_ASSERT( event.type == OTF2_EVT_ATOMIC,
+        UTILS_ASSERT( event.type == RECORD_ATOMIC,
                       "Event %s has unexpected type", eventName.c_str( ) );
         /*
         UTILS_ASSERT( activityStack[event.location].size( ) > 0,
@@ -1430,7 +1435,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   // update activity stack
   switch ( event.type )
   {
-    case OTF2_EVT_ENTER:
+    case RECORD_ENTER:
     {
       activityStack[event.location].push( event.regionRef );
       
@@ -1441,7 +1446,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       
       break;
     }
-    case OTF2_EVT_LEAVE:
+    case RECORD_LEAVE:
     {
       activityStack[event.location].pop( );
 
@@ -1452,8 +1457,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       
       break;
     }
-    case OTF2_EVT_ATOMIC:
-      /* nothing to do here */
+    default:
       break;
   }
 }
@@ -2013,7 +2017,7 @@ OTF2ParallelTraceWriter::otf2CallbackEnter( OTF2_LocationRef    location,
   event.location  = location;
   event.regionRef = region;
   event.time      = time;
-  event.type      = OTF2_EVT_ENTER;
+  event.type      = RECORD_ENTER;
 
   //if( tw->currentStream->getPeriod().second >= time - tw->timerOffset )
   if( tw->currentStream->getLastEventTime() >= time - tw->timerOffset )
@@ -2048,7 +2052,7 @@ OTF2ParallelTraceWriter::otf2CallbackLeave( OTF2_LocationRef    location, // str
   event.location  = location;
   event.regionRef = region;
   event.time      = time;
-  event.type      = OTF2_EVT_LEAVE;
+  event.type      = RECORD_LEAVE;
 
   //std::cerr << "TW: Handle leave: " << tw->getRegionName( region ) << std::endl;
   
@@ -2094,7 +2098,7 @@ OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadFork(
   event.time      = time;
   
   // mark as atomic to avoid unnecessary operations in processNextEvent())
-  event.type      = OTF2_EVT_ATOMIC; 
+  event.type      = RECORD_ATOMIC; 
 
   tw->processNextEvent( event, OTF2_OMP_FORKJOIN_INTERNAL );
 
@@ -2133,7 +2137,7 @@ OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadJoin( OTF2_LocationRef loc
    */
   event.regionRef = tw->ompForkJoinRef;
   event.time      = time;
-  event.type      = OTF2_EVT_ATOMIC;
+  event.type      = RECORD_ATOMIC;
 
   tw->processNextEvent( event, OTF2_OMP_FORKJOIN_INTERNAL );
 

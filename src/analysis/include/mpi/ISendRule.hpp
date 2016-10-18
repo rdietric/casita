@@ -45,27 +45,27 @@ namespace casita
       apply( AnalysisParadigmMPI* analysis, GraphNode* isendLeave )
       {
         // applied at MPI_ISend leave
-        if ( !isendLeave->isMPIISend( ) || !isendLeave->isLeave( ) )
+        if ( !isendLeave->isMPIISend( ) /*|| !isendLeave->isLeave( )*/ )
         {
           return false;
         }
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        GraphNode* isendEnter = isendLeave->getGraphPair( ).first;
+        //GraphNode* isendEnter = isendLeave->getGraphPair( ).first;
         
         EventStream::MPIIcommRecord* record = 
                 (EventStream::MPIIcommRecord* ) isendLeave->getData( );
         
         // check if the record has been invalidated/deleted
-        UTILS_MSG( NULL == record, "[%u] MPI_Isend rule: Invalid record data.",
+        UTILS_MSG( NULL == record, "[%" PRIu64 "] MPI_Isend rule: Invalid record data.",
                                    isendLeave->getStreamId( ) );
         
         uint64_t *buffer = record->sendBuffer;
         
         buffer[0] = 0; // start time is not relevant 
         buffer[1] = 0; // leave time is not relevant 
-        buffer[2] = isendEnter->getId( );  // send start node
+        buffer[2] = 0; // isendEnter->getId( );  // send start node
         buffer[3] = isendLeave->getId( ); // send leave node
         buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_ISEND; //send.second->getType( );
         

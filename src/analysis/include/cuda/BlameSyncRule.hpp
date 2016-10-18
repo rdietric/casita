@@ -105,11 +105,16 @@ namespace casita
               else
               {
                 // insert a new synthetic graph node for the wait state enter
+                FunctionDescriptor functionDesc;
+                functionDesc.paradigm = PARADIGM_CUDA;
+                functionDesc.functionType = CUDA_WAITSTATE;
+                functionDesc.recordType = RECORD_ENTER;
+                
                 commonAnalysis->addNewGraphNode(
                   std::max( lastLeaveNode->getTime( ),
                             kernelLeave->getTime( ) ),
                   deviceProcess, NAME_WAITSTATE,
-                  PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE );
+                  &functionDesc );
               }
 
             }
@@ -117,19 +122,29 @@ namespace casita
             {
               // if last leave node is not a wait state
               // insert a new synthetic graph node for the wait state enter
+              FunctionDescriptor functionDesc;
+              functionDesc.paradigm = PARADIGM_CUDA;
+              functionDesc.functionType = CUDA_WAITSTATE;
+              functionDesc.recordType = RECORD_ENTER;
+                
               commonAnalysis->addNewGraphNode(
                 kernelLeave->getTime( ),
                 deviceProcess, NAME_WAITSTATE,
-                PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE );
+                &functionDesc );
             }
 
             // make sure that we have a wait leave 
             if ( !waitLeave )
             {
+              FunctionDescriptor functionDesc;
+              functionDesc.paradigm = PARADIGM_CUDA;
+              functionDesc.functionType = CUDA_WAITSTATE;
+              functionDesc.recordType = RECORD_LEAVE;
+              
               waitLeave = commonAnalysis->addNewGraphNode(
                 syncLeave->getTime( ),
                 deviceProcess, NAME_WAITSTATE,
-                PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE );
+                &functionDesc );
             }
 
             // create edge between sync end and wait leave

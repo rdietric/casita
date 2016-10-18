@@ -37,7 +37,7 @@ namespace casita
       apply( AnalysisParadigmMPI* analysis, GraphNode* node )
       {
         // applied at MPI_WaitAll leave
-        if ( !node->isMPIWaitall( ) || !node->isLeave( ) )
+        if ( !node->isMPIWaitall( ) /*|| !node->isLeave()*/ )
         {
           return false;
         }

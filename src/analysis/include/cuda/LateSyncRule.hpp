@@ -87,28 +87,43 @@ namespace casita
               }
               else
               {
+                FunctionDescriptor functionDesc;
+                functionDesc.paradigm = PARADIGM_CUDA;
+                functionDesc.functionType = CUDA_WAITSTATE;
+                functionDesc.recordType = RECORD_ENTER; 
+              
                 waitEnter = commonAnalysis->addNewGraphNode(
                   std::max( lastLeaveNode->getTime( ),
                             syncEnter->getTime( ) ),
                   deviceProcess, NAME_WAITSTATE,
-                  PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE );
+                  &functionDesc );
               }
 
             }
             else
             {
+              FunctionDescriptor functionDesc;
+              functionDesc.paradigm = PARADIGM_CUDA;
+              functionDesc.functionType = CUDA_WAITSTATE;
+              functionDesc.recordType = RECORD_ENTER; 
+              
               waitEnter = commonAnalysis->addNewGraphNode(
                 syncEnter->getTime( ),
                 deviceProcess, NAME_WAITSTATE,
-                PARADIGM_CUDA, RECORD_ENTER, CUDA_WAITSTATE );
+                &functionDesc );
             }
 
             if ( !waitLeave )
             {
+              FunctionDescriptor functionDesc;
+              functionDesc.paradigm = PARADIGM_CUDA;
+              functionDesc.functionType = CUDA_WAITSTATE;
+              functionDesc.recordType = RECORD_LEAVE; 
+              
               waitLeave = commonAnalysis->addNewGraphNode(
                 syncLeave->getTime( ),
                 deviceProcess, NAME_WAITSTATE,
-                PARADIGM_CUDA, RECORD_LEAVE, CUDA_WAITSTATE );
+                &functionDesc );
             }
 
             if( waitEnter )

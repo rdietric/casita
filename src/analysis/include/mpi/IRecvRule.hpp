@@ -20,9 +20,9 @@ namespace casita
  namespace mpi
  {
 
-  /* What this rule does:
-   * 1) Forward replay: MPI_Irecv
-   * 2) Backward replay: MPI_Isend
+  /** What this rule does:
+   *  1) Forward replay: MPI_Irecv
+   *  2) Backward replay: MPI_Isend
    */
   class IRecvRule :
     public IMPIRule
@@ -41,7 +41,7 @@ namespace casita
       apply( AnalysisParadigmMPI* analysis, GraphNode* irecvLeave )
       {
         // applied at MPI_Irecv leave
-        if ( !irecvLeave->isMPIIRecv( ) || !irecvLeave->isLeave( ) )
+        if ( !irecvLeave->isMPIIRecv( ) /*|| !irecvLeave->isLeave( )*/ )
         {
           return false;
         }
@@ -50,7 +50,7 @@ namespace casita
 
         uint64_t partnerProcessId = irecvLeave->getReferencedStreamId( );
         
-        GraphNode* irecvEnter = irecvLeave->getGraphPair( ).first;
+        //GraphNode* irecvEnter = irecvLeave->getGraphPair( ).first;
         
         EventStream::MPIIcommRecord* record = 
                           (EventStream::MPIIcommRecord* )irecvLeave->getData( );
@@ -80,8 +80,10 @@ namespace casita
         // send information to communication partner
         // the blocking MPI_Recv can evaluate them and e.g. stop wait state analysis
         uint64_t *buffer_send = record->sendBuffer;
-        buffer_send[0] = irecvEnter->getTime( );
-        buffer_send[3] = irecvLeave->getId( );
+        buffer_send[0] = 0; //irecvEnter->getTime( );
+        buffer_send[1] = 0;
+        buffer_send[2] = 0;
+        buffer_send[3] = irecvLeave->getId( ); // 
         buffer_send[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_IRECV; //recv.second->getType( );
 
         // Send indicator that this is an MPI_Irecv

@@ -340,7 +340,7 @@ AnalysisEngine::newGraphNode( uint64_t          time,
                               uint64_t          streamId,
                               const std::string name,
                               Paradigm          paradigm,
-                              NodeRecordType    recordType,
+                              RecordType        recordType,
                               int               nodeType )
 {
   GraphNode* node = GraphEngine::newGraphNode( time, streamId, name,
@@ -355,15 +355,15 @@ AnalysisEngine::newGraphNode( uint64_t          time,
 }
 
 GraphNode*
-AnalysisEngine::addNewGraphNode( uint64_t       time,
-                                 EventStream*   stream,
-                                 const char*    name,
-                                 Paradigm       paradigm,
-                                 NodeRecordType recordType,
-                                 int            nodeType )
+AnalysisEngine::addNewGraphNode( uint64_t            time,
+                                 EventStream*        stream,
+                                 const char*         name,
+                                 FunctionDescriptor* funcDesc )
 {
-  GraphNode* node = GraphEngine::addNewGraphNode( time, stream, name, paradigm,
-                                                  recordType, nodeType );
+  GraphNode* node = GraphEngine::addNewGraphNode( time, stream, name, 
+                                                  funcDesc->paradigm,
+                                                  funcDesc->recordType,
+                                                  funcDesc->functionType );
 
   if ( node->isWaitstate( ) )
   {

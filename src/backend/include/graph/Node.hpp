@@ -31,11 +31,12 @@ namespace casita
  typedef uint32_t NodeId;
  static NodeId globalNodeId = 0;
 
- enum NodeRecordType
+ enum RecordType
  {
-   RECORD_ATOMIC,
-   RECORD_ENTER,
-   RECORD_LEAVE
+   RECORD_ATOMIC, // the record type was an atomic operation
+   RECORD_ENTER,  // enter event of a program region
+   RECORD_LEAVE,  // leave event of a program region
+   RECORD_SINGLE  // a single event of a program region (partner is not available)
  };
 
  enum Paradigm
@@ -598,8 +599,8 @@ namespace casita
          int type1 = n1->getType( );
          int type2 = n2->getType( );
 
-         NodeRecordType recordType1 = n1->getRecordType( );
-         NodeRecordType recordType2 = n2->getRecordType( );
+         RecordType recordType1 = n1->getRecordType( );
+         RecordType recordType2 = n2->getRecordType( );
 
          // decide on atomic property of a node (first node in the list is atomic)
          if ( recordType1 == RECORD_ATOMIC && recordType2 != RECORD_ATOMIC )
@@ -732,7 +733,7 @@ namespace casita
       * @param nodeType
       */
      Node( uint64_t time, uint64_t streamId, const std::string name,
-           Paradigm paradigm, NodeRecordType recordType, int nodeType ) :
+           Paradigm paradigm, RecordType recordType, int nodeType ) :
        time( time ),
        streamId( streamId ),
        functionId( 0 ),
@@ -825,13 +826,13 @@ namespace casita
        functionId = newId;
      }
 
-     NodeRecordType
+     RecordType
      getRecordType( ) const
      {
        return recordType;
      }
      
-     void setRecordType( NodeRecordType type )
+     void setRecordType( RecordType type )
      {
        recordType = type;
      }
@@ -985,7 +986,7 @@ namespace casita
      uint64_t       functionId;
      std::string    name;
 
-     NodeRecordType recordType;
+     RecordType     recordType;
      Paradigm       paradigm;
      int            nodeType;
 
