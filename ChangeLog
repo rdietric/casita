@@ -1,0 +1,42 @@
+------------------- CASITA 1.5 ---------------------------
+
+MPI
+- handle enter events of non-blocking MPI routines as CPU
+  events to reduce memory overhead
+- fixed the detection of the MPI root process for 
+  one-to-all communication
+- handle MPI all-to-one communication with MPI collective
+   rule instead of the broken one-to-all rule
+
+OpenMP
+- fixed critical path detection for OpenMP programs
+- reduce CASITA memory footprint by handling OpenMP events
+  other than parallel and fork/join as CPU events
+- prepared OpenMP support for nested OpenMP parallel 
+  regions
+
+CUDA
+- avoid deletion of CUDA nodes at the end of analysis
+  intervals, if nodes are potentially used afterwards
+
+OpenCL
+- added support for OpenCL synchronization routines
+
+Misc
+- fixed blame distribution for all supported paradigms
+- dramatically reduced runtime of local critical path
+  detection
+- added command line option to replace CASITA output files
+- improved debugging output and documentation
+- removed revision number in CASITA versioning
+
+
+------------------- CASITA 1.4.1 -------------------------
+
+- corrected computation and visualization of the begin and
+  end of the critical path
+- added flag to specify the number of top rated functions
+- fixed several bugs in the MPI critical path analysis
+  output
+- boost is not required any more
+- added csv output for optimization rating
