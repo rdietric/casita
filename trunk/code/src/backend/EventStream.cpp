@@ -637,7 +637,8 @@ EventStream::addPendingMPIIrecvNode( GraphNode* node )
 /**
  * Set partner stream ID for the given MPI_Irecv request ID.
  * The node is identified by the given request ID.
- * It saves the request ID to be consumed by the following MPI_Wait[all] leave node. 
+ * It saves the request ID to be consumed by the following MPI_Wait[all] or 
+ * MPI_Test[all] leave node. 
  * Triggered by the MPI_Irecv record (between MPI_Wait[all] enter and leave).
  * 
  * @param requestId OTF2 MPI_Irecv request ID 
