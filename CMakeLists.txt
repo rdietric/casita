@@ -77,12 +77,12 @@ FILE(GLOB SRCFILES_BACKEND_OTF2 "src/backend/otf/OTF2*.cpp")
 ADD_DEFINITIONS(-DENABLE_OTF2=1)
 
 # include Boost
-FIND_PACKAGE(Boost COMPONENTS program_options regex filesystem system)
-IF(Boost_FOUND)
-  INCLUDE_DIRECTORIES(SYSTEM ${Boost_INCLUDE_DIRS})
-  SET(LIBS ${LIBS} ${Boost_LIBRARIES})
-  ADD_DEFINITIONS(-DBOOST_AVAILABLE)
-ENDIF(Boost_FOUND)
+#FIND_PACKAGE(Boost COMPONENTS program_options regex filesystem system)
+#IF(Boost_FOUND)
+#  INCLUDE_DIRECTORIES(SYSTEM ${Boost_INCLUDE_DIRS})
+#  SET(LIBS ${LIBS} ${Boost_LIBRARIES})
+#  ADD_DEFINITIONS(-DBOOST_AVAILABLE)
+#ENDIF(Boost_FOUND)
 
 # own includes
 INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/src/backend/include" 
@@ -92,6 +92,14 @@ INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/src/backend/include"
 FILE(GLOB SRCFILES_BACKEND "src/backend/*.cpp")
 FILE(GLOB SRCFILES_FRONTEND "src/frontend/*.cpp")
 FILE(GLOB SRCFILES_ANALYSIS "src/analysis/*.cpp")
+
+OPTION(BUILD_STATIC "static build" OFF)
+IF(BUILD_STATIC)
+  SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+  SET(BUILD_SHARED_LIBRARIES OFF)
+  SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+  message("building executable with static libraries")
+ENDIF(BUILD_STATIC)
 
 ADD_EXECUTABLE(casita ${SRCFILES_BACKEND}
                       ${SRCFILES_BACKEND_OTF2}
