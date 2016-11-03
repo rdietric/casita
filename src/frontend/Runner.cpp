@@ -23,7 +23,8 @@
 
 #include <sys/types.h>
 
-#include <time.h>       /* clock_t, clock, CLOCKS_PER_SEC */
+#include <time.h>
+#include <vector>       /* clock_t, clock, CLOCKS_PER_SEC */
 
 #include "Runner.hpp"
 
@@ -200,7 +201,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   bool events_available = false;
   bool otf2_def_written = false;
   
-  uint32_t interval_node_id   = 0;
+  uint64_t interval_node_id   = 0;
   uint32_t analysis_intervals = 0;
   uint64_t total_events_read  = 0;
   
@@ -227,16 +228,16 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     if( events_available )
     {
       bool start_analysis = false;
-      uint32_t nodeSizes[mpiSize];
+      uint64_t nodeSizes[mpiSize];
       
       // get the last node's ID
-      uint32_t last_node_id = analysis.getGraph().getNodes().back()->getId();
-      uint32_t current_pending_nodes = last_node_id - interval_node_id;
+      uint64_t last_node_id = analysis.getGraph().getNodes().back()->getId();
+      uint64_t current_pending_nodes = last_node_id - interval_node_id;
       interval_node_id = last_node_id;
       
       // gather pending nodes on all processes
-      MPI_CHECK( MPI_Allgather( &current_pending_nodes, 1, MPI_UINT32_T,
-                                nodeSizes, 1, MPI_UINT32_T, MPI_COMM_WORLD ) );
+      MPI_CHECK( MPI_Allgather( &current_pending_nodes, 1, MPI_UINT64_T,
+                                nodeSizes, 1, MPI_UINT64_T, MPI_COMM_WORLD ) );
 
       // check all processes for a reasonable number of analyzable nodes
       for ( int i = 0; i < mpiSize; ++i )
@@ -618,8 +619,7 @@ Runner::computeCriticalPath( )
     
     // perform MPI reverse replay using blocking edges; create a list of sections
     UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-               "Start critical-path detection for MPI %s ...",
-               (options.criticalPathSecureMPI) ? "(with slave feedback)" : "" );
+               "Start critical-path detection for MPI ..." );
     detectCriticalPathMPIP2P( sectionsList, criticalNodes );
     
     if( sectionsList.size() > 0 )
@@ -1054,24 +1054,26 @@ Runner::getCriticalLocalNodes( MPIAnalysis::CriticalSectionsList& sections,
 int
 Runner::findLastMpiNode( GraphNode** node )
 {
-  uint64_t   lastMpiNodeTime = 0;
-  int        lastMpiRank     = mpiRank;
+  uint64_t lastMpiNodeTime = 0;
+  int      lastMpiRank     = mpiRank;
+  uint64_t nodeTimes[mpiSize];
   
-  uint64_t   nodeTimes[mpiSize];
   *node = NULL;
 
-  GraphNode* myLastMpiNode   = analysis.getLastGraphNode( PARADIGM_MPI );
+  GraphNode* myLastMpiNode = analysis.getLastGraphNode( PARADIGM_MPI );
   if ( myLastMpiNode )
   {
     lastMpiNodeTime = myLastMpiNode->getTime( );
   }
-
+  
+  // \todo: it might be better to use gather + bcast 
+  //        (more secure to have only one last MPI node)
   MPI_CHECK( MPI_Allgather( &lastMpiNodeTime, 1, MPI_UINT64_T,
                             nodeTimes, 1, MPI_UINT64_T, MPI_COMM_WORLD ) );
 
   for ( int i = 0; i < mpiSize; ++i )
   {
-    if ( nodeTimes[i] > lastMpiNodeTime )
+    if ( nodeTimes[i] >= lastMpiNodeTime )
     {
       lastMpiNodeTime = nodeTimes[i];
       lastMpiRank     = i;
@@ -1085,10 +1087,10 @@ Runner::findLastMpiNode( GraphNode** node )
     myLastMpiNode->setCounter( CRITICAL_PATH, 1 );
 
     UTILS_DBG_MSG( DEBUG_CPA_MPI,
-               "[%u] critical path reverse replay starts at node %s (%f)",
-               mpiRank, myLastMpiNode->getUniqueName( ).c_str( ),
-               analysis.getRealTime( myLastMpiNode->getTime( ) ) );
-
+                   "[%u] critical path reverse replay starts at node %s (%f)",
+                   mpiRank, myLastMpiNode->getUniqueName( ).c_str( ),
+                   analysis.getRealTime( myLastMpiNode->getTime( ) ) );
+   
   }
   
   return lastMpiRank;
@@ -1097,10 +1099,10 @@ Runner::findLastMpiNode( GraphNode** node )
 /**
  * Detect the critical path of the MPI sub graph and generate a list of critical
  * sections that are analyzed locally (but OpenMP parallel).
- * This routine implements a master slave concept. The master looks for 
- * sends messages to its partner MPI ranks if its local edge to the previous
- * MPI node is blocked. The slaves wait for such messages and check whether 
- * they will be the new master (have an edge to the last master node).
+ * This routine implements a master slave concept. The master looks for runs
+ * until a blocking local MPI edge. Then it sends messages to all communication
+ * partners of the respective MPI activity. The slaves wait for such messages 
+ * and check whether they will be the new master (have an edge to the last master node).
  *
  * @param sectionsList  critical sections between MPI regions on the critical 
  *                      path will be stored in this list
@@ -1114,11 +1116,11 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
   const uint32_t NO_MSG         = 0;
   const uint32_t PATH_FOUND_MSG = 1;
   
-  const int MPI_CPA_TAG    = 19;
-  const int MPI_CPA_FB_TAG = 20;
-  
-  // we need an additional buffer entry for master/slave feedback communication
-  const size_t   BUFFER_SIZE    = ( options.criticalPathSecureMPI ) ? 4 : 3;
+  const int MPI_CPA_TAG = 19;
+
+  const size_t BUFFER_SIZE = 2;
+  uint64_t sendBfr[BUFFER_SIZE];
+  uint64_t recvBfr[BUFFER_SIZE];
 
   // decide on global last MPI node to start with
   GraphNode* currentNode    = NULL;
@@ -1136,9 +1138,6 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
   // mpiGraph is an allocated graph object with a vector of all nodes of the 
   // given paradigm (\TODO this might be extremely memory intensive)
   Graph* mpiGraph = analysis.getGraph( PARADIGM_MPI );
-  
-  uint64_t *sendBfr = new uint64_t[BUFFER_SIZE];
-  uint64_t *recvBfr = new uint64_t[BUFFER_SIZE];
 
   while ( true )
   {
@@ -1163,22 +1162,21 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
       }
 
       UTILS_MSG( lastNode && ( lastNode->getId( ) <= currentNode->getId( ) ),
-                 "[%u] ! [Warning] current node ID %u (%s) is not strictly "
-                 "decreasing; last node ID %u (%s)", 
+                 "[%u] ! [Warning] current node ID %"PRIu64" (%s) is not strictly "
+                 "decreasing; last node ID %"PRIu64" (%s)", 
                  mpiRank, currentNode->getId( ), currentNode->getUniqueName().c_str(),
                  lastNode->getId( ), lastNode->getUniqueName().c_str() );
 
-      if( currentNode == NULL )
-        UTILS_MSG( true, "currentNode == NULL" );
+      UTILS_MSG( currentNode == NULL, "currentNode == NULL" );
       
       //\todo: the intermediate begin has to be the start of a section
       if ( currentNode->isLeave( ) ) // isLeave
       {
-        Edge* activityEdge = analysis.getEdge(
-            currentNode->getPartner( ), currentNode );
+        Edge* activityEdge = 
+          analysis.getEdge( currentNode->getPartner(), currentNode );
         
         // CP changes stream on blocking edges
-        if ( activityEdge->isBlocking( ) )
+        if ( activityEdge->isBlocking() )
         {
           // therefore, create section for local processing later
           if ( sectionEndNode && ( currentNode != sectionEndNode ) )
@@ -1189,111 +1187,70 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
             section.endNode   = sectionEndNode;
 
             UTILS_DBG_MSG( DEBUG_CPA_MPI, "[%d] Push critical section [%s,%s]", 
-                           mpiRank, currentNode->getUniqueName( ).c_str(), 
-                           sectionEndNode->getUniqueName( ).c_str());
+                           mpiRank, currentNode->getUniqueName().c_str(), 
+                           sectionEndNode->getUniqueName().c_str());
             sectionsList.push_back( section );
 
-            //\todo: why on CP if edge is blocking?
+            // the leave node is still on the critical path
             currentNode->setCounter( CRITICAL_PATH, 1 );
           }
 
-          // communicate with slaves to decide on new master
-          GraphNode* commMaster  = currentNode->getGraphPair( ).second;
+          ///////////////// Send a message to the new master ///////////////////
           bool nodeHasRemoteInfo = false;
-          analysis.getMPIAnalysis( ).getRemoteNodeInfo( commMaster,
-                                                        &nodeHasRemoteInfo );
-          if ( !nodeHasRemoteInfo )
+          
+          // check if the given node has a remote edge (currently just check 
+          // whether the edge is available and ignore return value)
+          MPIAnalysis::ProcessNodePair pnPair = // (stream ID, node ID)
+            analysis.getMPIAnalysis( ).getRemoteNodeInfo( currentNode,
+                                                          &nodeHasRemoteInfo );
+          
+          // check enter event
+          if( !nodeHasRemoteInfo )
           {
-            commMaster = currentNode->getGraphPair( ).first;
+            pnPair = // (stream ID, node ID)
+            analysis.getMPIAnalysis( ).getRemoteNodeInfo( 
+              currentNode->getGraphPair().first, &nodeHasRemoteInfo );
+            
+            // if still no remote node found, continue as master
+            if( !nodeHasRemoteInfo )
+            {
+              currentNode->setCounter( CRITICAL_PATH, 1 );
+              lastNode    = currentNode;
+              currentNode = activityEdge->getStartNode( );
+              continue;
+            }
           }
           
           UTILS_DBG_MSG( DEBUG_CPA_MPI,
                          "[%u]  found wait state for %s (%f), changing stream at %s",
                          mpiRank, currentNode->getUniqueName( ).c_str( ),
                          analysis.getRealTime( currentNode->getTime( ) ),
-                         commMaster->getUniqueName( ).c_str( ) );
+                         currentNode->getUniqueName( ).c_str( ) );
 
-          // find communication partners
-          std::set< uint32_t > mpiPartnerRanks =
-            analysis.getMPIAnalysis( ).getMpiPartnersRank( commMaster );
-          
-          /////////// Communicate with all slaves to find new master ///////////
-          
-          // prepare send buffer
-          sendBfr[0] = commMaster->getId( );
-          sendBfr[1] = commMaster->getStreamId( );
-          sendBfr[2] = NO_MSG;
-            
-          // CPA feedback mode: Make sure that not all ranks are slave then!
-          if( options.criticalPathSecureMPI )
-          {
-            sendBfr[BUFFER_SIZE - 1] = 0; // we did not find a master yet
-          }            
-          
-          for ( std::set< uint32_t >::const_iterator iter = mpiPartnerRanks.begin( );
-                iter != mpiPartnerRanks.end( ); ++iter )
-          {
-            uint32_t commMpiRank = *iter;
-
-            // do not communicate with myself
-            if ( commMpiRank == (uint32_t)mpiRank )
-            {
-              continue;
-            }
-            
-            UTILS_DBG_MSG( DEBUG_CPA_MPI,
-                           "[%u]  testing remote MPI worker %u for remote edge to my node %u on stream %lu",
-                           mpiRank,
-                           commMpiRank,
-                           (uint32_t)sendBfr[0],
-                           sendBfr[1] );
-
-            MPI_CHECK( MPI_Send( sendBfr, BUFFER_SIZE, MPI_UINT64_T,
-                                 commMpiRank, MPI_CPA_TAG, MPI_COMM_WORLD ) );
-            
-            // if no master has been found yet, receive from next slave
-            if ( options.criticalPathSecureMPI && sendBfr[BUFFER_SIZE - 1] == 0 )
-            {
-              MPI_CHECK( MPI_Recv( recvBfr, 1, MPI_UINT64_T,
-                                   commMpiRank, MPI_CPA_FB_TAG, 
-                                   MPI_COMM_WORLD, MPI_STATUS_IGNORE ) );
-            
-              // if we found a new master
-              if( recvBfr[0] )
-              {
-                UTILS_MSG( options.verbose == VERBOSE_ALL,
-                           "[%u] Rank %u will be the new master.", 
-                           mpiRank, commMpiRank); 
-                
-                sendBfr[BUFFER_SIZE - 1] = 1;
-              }
-            }
-          }
-          
-          // free the set
-          mpiPartnerRanks.clear();
+          uint32_t mpiPartnerRank = 
+            analysis.getMPIAnalysis().getMPIRank( pnPair.streamID );
                     
-          // if no new master has been found, continue main loop as master
-          if ( options.criticalPathSecureMPI && sendBfr[BUFFER_SIZE - 1] == 0 )
-          {
-            // this should not happen, but we do not want to abort here
-            
-            currentNode->setCounter( CRITICAL_PATH, 1 );
-            lastNode    = currentNode;
-            currentNode = activityEdge->getStartNode( );
-            
-            UTILS_MSG( true , "[%u] No new master could be found! "
-                              "Continuing on node %s ", mpiRank, 
-                              currentNode->getUniqueName( ).c_str( ) );
-          }
-          else // continue main loop as slave
-          {
-            // make myself a new slave
-            isMaster = false;
-            sectionEndNode = NULL;
-          }
+          // prepare send buffer
+          sendBfr[0] = pnPair.nodeID;
+          sendBfr[1] = NO_MSG; // no specific message
+
+          UTILS_DBG_MSG( DEBUG_CPA_MPI,
+                         "[%u]  testing remote MPI worker %u for remote edge to"
+                         " my node %"PRIu64" on stream %"PRIu64,
+                         mpiRank, mpiPartnerRank, sendBfr[0], sendBfr[1] );
+
+          // send a message to the 
+          MPI_CHECK( MPI_Send( sendBfr, BUFFER_SIZE, MPI_UINT64_T,
+                               mpiPartnerRank, MPI_CPA_TAG, MPI_COMM_WORLD ) );
+
+          // continue main loop as slave
+          isMaster = false;
+          sectionEndNode = NULL;
+          
+          // remove remote node entry
+          analysis.getMPIAnalysis().removeRemoteNode( currentNode );
         }
-        else
+        else // non-blocking edge
         {
           currentNode->setCounter( CRITICAL_PATH, 1 );
           lastNode    = currentNode;
@@ -1337,18 +1294,18 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
 
           // send "path found" message to all ranks
           sendBfr[0] = 0;
-          sendBfr[1] = 0;
-          sendBfr[2] = PATH_FOUND_MSG;
+          sendBfr[1] = PATH_FOUND_MSG;
 
+          // get all MPI ranks
           std::set< uint64_t > mpiPartners =
-            analysis.getMPIAnalysis( ).getMPICommGroup( 0 ).procs;
+            analysis.getMPIAnalysis().getMPICommGroup( 0 ).procs;
           
           for ( std::set< uint64_t >::const_iterator iter = mpiPartners.begin( );
                 iter != mpiPartners.end( ); ++iter )
           {
             int commMpiRank = analysis.getMPIAnalysis( ).getMPIRank( *iter );
             
-            // not to myself
+            // ignore own rank
             if ( commMpiRank == mpiRank )
             {
               continue;
@@ -1363,7 +1320,8 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
         }
 
         // master: find previous MPI node on the same stream
-        bool foundPredecessor          = false;
+        bool foundPredecessor = false;
+        
         const Graph::EdgeList& inEdges = mpiGraph->getInEdges( currentNode );
         for ( Graph::EdgeList::const_iterator iter = inEdges.begin( );
               iter != inEdges.end( ); ++iter )
@@ -1372,6 +1330,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
           if ( intraEdge->isIntraStreamEdge( ) )
           {
             currentNode->setCounter( CRITICAL_PATH, 1 );
+            
             lastNode         = currentNode;
             currentNode      = intraEdge->getStartNode( );
             foundPredecessor = true;
@@ -1389,29 +1348,24 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
       } // END: isEnter (master)
     } ///////////////////////////// END: master ////////////////////////////////
     else
-    { 
+    {
       //////////////////////////////// slave ////////////////////////////////
       UTILS_DBG_MSG( DEBUG_CPA_MPI, "[%u] Slave receives... ", mpiRank);
-      
-      MPI_Status status;
-      //MPI_CHECK( MPI_Recv( recvBfr, BUFFER_SIZE, MPI_UINT64_T,
-      //                     MPI_ANY_SOURCE,
-      //                     MPI_CPA_TAG, MPI_COMM_WORLD, &status ) );
-      
+
       // use a non-blocking MPI receive to start local CPA meanwhile
       MPI_Request request_recv = MPI_REQUEST_NULL;
       int finished = 0;
-      MPI_CHECK( MPI_Irecv( recvBfr, BUFFER_SIZE, MPI_UINT64_T,
-                           MPI_ANY_SOURCE,
-                           MPI_CPA_TAG, MPI_COMM_WORLD, &request_recv ) );
+      MPI_CHECK( MPI_Irecv( recvBfr, BUFFER_SIZE, MPI_UINT64_T, MPI_ANY_SOURCE,
+                            MPI_CPA_TAG, MPI_COMM_WORLD, &request_recv ) );
       
+      MPI_Status status;
       MPI_CHECK( MPI_Test( &request_recv, &finished, &status) );
 
       if( !finished )
       {
         if( sectionsList.size() > 0 )
         {
-          // compute the last local critical section, which is the last element in the vector
+          //\todo: compute the last local critical section, which is the last element in the vector
           //getCriticalLocalNodes( sectionsList, criticalNodes );
         }
           
@@ -1419,89 +1373,82 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
       }
       
       // if the master send "found message" we can leave the while loop
-      if ( recvBfr[2] == PATH_FOUND_MSG )
+      if ( recvBfr[1] == PATH_FOUND_MSG )
       {
         UTILS_MSG( options.verbose >= VERBOSE_ALL,
                    "[%u] * terminate requested by master", mpiRank );
         break;
       }
+      
+      uint64_t nextNodeID = recvBfr[0];
    
       // find local node for remote node id and decide if we can continue here
       UTILS_DBG_MSG( DEBUG_CPA_MPI,
-                     "[%u]  tested by remote MPI worker %u for remote edge to its node %u on stream %lu",
+                     "[%u]  tested by remote MPI worker %u for node %"PRIu64,
+                     mpiRank, status.MPI_SOURCE,
+                     nextNodeID ); // continuation node ID
+
+      // binary search for continuation node
+      GraphNode* slaveNode = 
+        GraphNode::findNode( nextNodeID, mpiGraph->getNodes() );
+
+      // if the node could not be found, do a sequential search
+      if( !slaveNode || slaveNode->getId() != nextNodeID )
+      {
+        // reset slaveNode
+        slaveNode = NULL;
+
+        // sequential search 
+        for( Graph::NodeList::const_iterator iter = mpiGraph->getNodes().begin();
+             iter != mpiGraph->getNodes().end(); ++iter )
+        {
+          if( (*iter)->getId() == nextNodeID )
+          {
+            slaveNode = ( *iter );
+            break;
+          }
+        }
+
+        if( !slaveNode )
+        {
+          if( nextNodeID < mpiGraph->getNodes().front()->getId() )
+          {
+            UTILS_MSG( true, "[%u] Node ID %"PRIu64" is out of range "
+                       "[%"PRIu64",%"PRIu64"]! Send from %d",
+                       mpiRank, nextNodeID, mpiGraph->getNodes().front()->getId(), 
+                       mpiGraph->getNodes().back()->getId(), status.MPI_SOURCE );
+          }
+          else
+          {
+            UTILS_MSG( true, "[%u] Sequential search for node ID %"PRIu64" failed!",
+                       mpiRank, nextNodeID );
+          }
+          //slaveNode = mpiGraph->getNodes().front();
+        }
+      }
+
+      //this rank is the new master
+      isMaster = true;
+      slaveNode->getGraphPair().second->setCounter( CRITICAL_PATH, 1 );
+
+      lastNode       = slaveNode->getGraphPair().second;
+      currentNode    = slaveNode->getGraphPair().first;
+      sectionEndNode = lastNode;
+
+      UTILS_DBG_MSG( DEBUG_CPA_MPI,
+                     "[%u] becomes new master at node %s, lastNode = %s\n",
                      mpiRank,
-                     status.MPI_SOURCE,
-                     (uint32_t)recvBfr[0],
-                     recvBfr[1] );
+                     currentNode->getUniqueName( ).c_str( ),
+                     lastNode->getUniqueName( ).c_str( ) );
 
-      // check if remote edge exists
-      MPIAnalysis::MPIEdge mpiEdge;
-      bool haveEdge = analysis.getMPIAnalysis( ).getRemoteMPIEdge( 
-                                  (uint32_t)recvBfr[0], recvBfr[1], mpiEdge );
-
-      // if we did not find a new master yet, send back whether we are the new master
-      if ( options.criticalPathSecureMPI && recvBfr[BUFFER_SIZE - 1] == 0 )
-      {
-        //send information back to current master, if this rank has an edge
-        int mpiMaster = analysis.getMPIAnalysis().getMPIRank( recvBfr[1] );
-        sendBfr[0] = haveEdge;
-        //std::cerr << "[" << mpiRank << "] Slave sends to " << mpiMaster 
-        //          << " has Edge: " << haveEdge << std::endl;
-        
-        //\todo: MPI_Isend, next block, wait
-        MPI_CHECK( MPI_Send( sendBfr, 1, MPI_UINT64_T,mpiMaster,
-                             MPI_CPA_FB_TAG, MPI_COMM_WORLD ) );
-      }
-      
-      if ( haveEdge )
-      {
-        GraphNode::GraphNodePair& slaveActivity =
-          mpiEdge.localNode->getGraphPair( );
-        
-        // todo: sanity check MPI edge
-        if( mpiEdge.localNode )
-        {
-          if( !(mpiEdge.localNode->getGraphPair().first) )
-          {
-            UTILS_DBG_MSG( true, "[%u] MPI remote edge first node is NULL!", mpiRank);
-          }
-          
-          if( !(mpiEdge.localNode->getGraphPair().second) )
-          {
-            UTILS_DBG_MSG( true, "[%u] MPI remote edge second node is NULL!", mpiRank);
-          }
-        }
-        else
-        {
-          UTILS_DBG_MSG( true, "[%u] MPI remote edge local node is NULL!", mpiRank);
-        }
-        
-        //this rank is the new master
-        isMaster       = true;
-        slaveActivity.second->setCounter( CRITICAL_PATH, 1 );
-        
-        lastNode       = slaveActivity.second;
-        currentNode    = slaveActivity.first;
-        sectionEndNode = lastNode;
-
-        UTILS_DBG_MSG( DEBUG_CPA_MPI,
-                       "[%u] becomes new master at node %s, lastNode = %s\n",
-                       mpiRank,
-                       currentNode->getUniqueName( ).c_str( ),
-                       lastNode->getUniqueName( ).c_str( ) );
-        
-        // continue main loop as master
-      }
+      // continue main loop as master
     }
   }
-  
-  // delete the allocated buffers
-  delete[] sendBfr;
-  delete[] recvBfr;
   
   // allocated before this loop and not bound to any other object
   delete mpiGraph;
 
+  // make sure that every process is leaving
   MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 }
 
@@ -1598,13 +1545,13 @@ Runner::printAllActivities( )
 
   if ( mpiRank == 0 )
   {
-    printf( "\n%50s %10s %10s %11s %12s %21s %9s\n",
+    printf( "\n%50s %10s %11s %11s %9s %12s %9s\n",
             "Activity Group",
-            "Instances",
+            "Calls",
             "Time (sec)",
             "Time on CP",
-            "Fraction CP",
-            "Fraction Global Blame",
+            "CP Ratio",
+            "Blame Ratio",
             "Rating" );
 
     std::set< OTF2ParallelTraceWriter::ActivityGroup,
@@ -1645,10 +1592,10 @@ Runner::printAllActivities( )
       summaryFile = fopen(Filename.c_str(),"w");
       fprintf(summaryFile, "%s;%s;%s;%s;%s;%s;%s\n",
             "Activity Group",
-            "Instances",
+            "Calls",
             "Time [s]",
             "Time on CP [s]",
-            "Fraction CP [%]",
+            "CP Ratio[%]",
             "Fraction Global Blame[%]",
             "Rating" );
     }
@@ -1674,7 +1621,7 @@ Runner::printAllActivities( )
         sumFractionCP    += iter->fractionCP;
         sumFractionBlame += iter->fractionBlame;
       
-        printf( "%50.50s %10u %10f %11f %11.2f%% %20.2f%%  %7.6f\n",
+        printf( "%50.50s %10u %11f %11f %8.2f%% %11.2f%%  %7.6f\n",
                 analysis.getFunctionName( iter->functionId ),
                 iter->numInstances,
                 analysis.getRealTime( iter->totalDuration ),
@@ -1702,7 +1649,7 @@ Runner::printAllActivities( )
     }
     
     printf( "--------------------------------------------------\n"
-            "%48.48s%2lu %10u %10lf %11lf %11.2lf%% %20.2lf%%\n",
+            "%48.48s%2lu %10u %11lf %11lf %8.2lf%% %11.2lf%%\n",
               "Sum of Top ",
               ctr,
               sumInstances,

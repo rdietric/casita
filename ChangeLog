@@ -1,4 +1,16 @@
 ------------------- CASITA 1.5 ---------------------------
+MPI
+- added late sender/receiver rules for MPI_Wait
+  (generate graph nodes for enter events of non-blocking 
+   MPI routines again)
+- simplified critical path detection for MPI 
+  (reduced memory and communication overhead)
+- fixed detection of the last MPI node in an interval
+- use collective rule for all collectives 
+  (one-to-all, all-to-one, barrier, etc.)
+
+
+------------------- CASITA 1.5 ---------------------------
 
 MPI
 - handle enter events of non-blocking MPI routines as CPU

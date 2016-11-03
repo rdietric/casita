@@ -45,14 +45,14 @@ namespace casita
       apply( AnalysisParadigmMPI* analysis, GraphNode* isendLeave )
       {
         // applied at MPI_ISend leave
-        if ( !isendLeave->isMPIISend( ) /*|| !isendLeave->isLeave( )*/ )
+        if ( !isendLeave->isMPI_Isend( ) || isendLeave->isEnter( ) )
         {
           return false;
         }
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        //GraphNode* isendEnter = isendLeave->getGraphPair( ).first;
+        GraphNode* isendEnter = isendLeave->getGraphPair( ).first;
         
         EventStream::MPIIcommRecord* record = 
                 (EventStream::MPIIcommRecord* ) isendLeave->getData( );
@@ -63,9 +63,9 @@ namespace casita
         
         uint64_t *buffer = record->sendBuffer;
         
-        buffer[0] = 0; // start time is not relevant 
+        buffer[0] = isendEnter->getTime(); // isend start time
         buffer[1] = 0; // leave time is not relevant 
-        buffer[2] = 0; // isendEnter->getId( );  // send start node
+        buffer[2] = isendEnter->getId( );  // send start node
         buffer[3] = isendLeave->getId( ); // send leave node
         buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_ISEND; //send.second->getType( );
         
@@ -78,7 +78,7 @@ namespace casita
         MPI_CHECK( MPI_Isend( buffer, CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
                               partnerMPIRank, CASITA_MPI_REPLAY_TAG, 
-                              MPI_COMM_WORLD, &(record->requests[0]) ) );
+                              MPI_COMM_WORLD, &(record->requests[1]) ) );
         
         // MPI_Isend would like to know if partner is an MPI_Irecv or MPI_Recv
         // for the latter we need the dependency edge
@@ -89,7 +89,7 @@ namespace casita
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
                               partnerMPIRank, CASITA_MPI_REVERS_REPLAY_TAG, 
                               MPI_COMM_WORLD, 
-                              &(record->requests[1]) ) );
+                              &(record->requests[0]) ) );
         
         /*
         std::cerr << "[" << node->getStreamId( ) << "] ISendRule - record data after Icomm:" 
@@ -102,19 +102,19 @@ namespace casita
         
         // collect pending MPI operations
         int finished = 0;
-        MPI_CHECK( MPI_Test(&(record->requests[0]), &finished, MPI_STATUS_IGNORE ) );
-        if(finished)
-        {
-          // TODO: should be done by the MPI implementation
-          record->requests[0] = MPI_REQUEST_NULL; 
-        }
-
-        finished = 0;
-        MPI_CHECK( MPI_Test(&(record->requests[1]), &finished, MPI_STATUS_IGNORE ) ); 
+        MPI_CHECK( MPI_Test(&(record->requests[1]), &finished, MPI_STATUS_IGNORE ) );
         if(finished)
         {
           // TODO: should be done by the MPI implementation
           record->requests[1] = MPI_REQUEST_NULL; 
+        }
+
+        finished = 0;
+        MPI_CHECK( MPI_Test(&(record->requests[0]), &finished, MPI_STATUS_IGNORE ) ); 
+        if(finished)
+        {
+          // TODO: should be done by the MPI implementation
+          record->requests[0] = MPI_REQUEST_NULL; 
           
           /* if receive finished, we can use the buffer
           
@@ -124,8 +124,7 @@ namespace casita
               send.first,
               (uint32_t)record->recvBuffer[3],
               partnerProcessId,
-              MPIAnalysis::
-              MPI_EDGE_LOCAL_REMOTE );
+              MPIAnalysis::MPI_EDGE_LOCAL_REMOTE );
           }*/
         }
         

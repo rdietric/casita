@@ -201,15 +201,18 @@ namespace casita
    "MPI_Alltoall",
    "MPI_Alltoallv",
    "MPI_Reduce_scatter",
-   "MPI_Reduce",
-   "MPI_Gather"
+   "MPI_Reduce",  // allToOne
+   "MPI_Gather",  //allToOne
+   "MPI_Scatter", // oneToAll
+   "MPI_Bcast"    // oneToAll
  };
 
+ /* oneToAll rule might be broken, hence use collective rule
  static const char* FTABLE_MPI_ONETOALL[]      =
  {
    "MPI_Scatter",
    "MPI_Bcast"
- };
+ };*/
 
  /* allToOne rule is broken, hence use collective rule
  static const char* FTABLE_MPI_ALLTOONE[]      =
@@ -253,15 +256,15 @@ namespace casita
    { OCL_WAITSTATE, 1, FTABLE_GPU_WAITSTATE }
  };
 
- static const size_t      fTableEntriesMPI = 9;
+ static const size_t      fTableEntriesMPI = 8;
  static const FTableEntry fTableMPI[fTableEntriesMPI] =
  {
    { MPI_INIT, 2, FTABLE_MPI_INIT },
    { MPI_FINALIZE, 1, FTABLE_MPI_FINALIZE },
    { MPI_RECV, 1, FTABLE_MPI_RECV },
    { MPI_SEND, 4, FTABLE_MPI_SEND },
-   { MPI_COLL, 9, FTABLE_MPI_COLL },
-   { MPI_ONETOALL, 2, FTABLE_MPI_ONETOALL },
+   { MPI_COLL, 11, FTABLE_MPI_COLL },
+//   { MPI_ONETOALL, 2, FTABLE_MPI_ONETOALL }, // oneToAll rule might be broken
 //   { MPI_ALLTOONE, 0, FTABLE_MPI_ALLTOONE }, // allToOne rule is broken
    { MPI_SENDRECV, 1, FTABLE_MPI_SENDRECV },
    { MPI_MISC, 0, FTABLE_MPI_MISC },
@@ -340,6 +343,7 @@ namespace casita
              }
              else
              {
+               /*
                // the enter events of non-blocking MPI operations are currently 
                // not associated with information
                if( entry.type == MPI_ISEND || entry.type == MPI_IRECV ||
@@ -357,7 +361,8 @@ namespace casita
                  }
                }
 
-               descr->paradigm = PARADIGM_MPI;
+               */
+               descr->paradigm     = PARADIGM_MPI;
                descr->functionType = entry.type;
                return true;
              }
@@ -373,8 +378,8 @@ namespace casita
          {
            if ( strcmp( entry.table[j], name ) == 0 )
            {
-             descr->paradigm = PARADIGM_CUDA;
-             descr->functionType     = entry.type;
+             descr->paradigm     = PARADIGM_CUDA;
+             descr->functionType = entry.type;
              set = true;
            }
          }
@@ -387,8 +392,8 @@ namespace casita
          {
            if ( strcmp( entry.table[j], name ) == 0 )
            {
-             descr->paradigm = PARADIGM_OCL;
-             descr->functionType     = entry.type;
+             descr->paradigm     = PARADIGM_OCL;
+             descr->functionType = entry.type;
              set = true;
            }
          }
@@ -401,8 +406,8 @@ namespace casita
          {
            if ( strcmp( entry.table[j], name ) == 0 )
            {
-             descr->paradigm = PARADIGM_MPI;
-             descr->functionType     = entry.type;
+             descr->paradigm     = PARADIGM_MPI;
+             descr->functionType = entry.type;
              set = true;
            }
          }

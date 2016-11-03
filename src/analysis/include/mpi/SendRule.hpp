@@ -58,7 +58,7 @@ namespace casita
         sendLeave->setReferencedStreamId( partnerProcessId );// for debugging in CP analysis
         delete data;
         
-        uint32_t  partnerMPIRank  =
+        uint32_t partnerMPIRank  =
           commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
 
         // replay MPI_Send
@@ -89,11 +89,11 @@ namespace casita
         
         // if the communication partner is an MPI_Irecv we can stop here
         // as no wait states can be found
-        if(buffer[CASITA_MPI_P2P_BUF_SIZE - 1] & MPI_IRECV )
+        /*if(buffer[CASITA_MPI_P2P_BUF_SIZE - 1] & MPI_IRECV )
         {
           return true;
         }
-        else if ( buffer[CASITA_MPI_P2P_BUF_SIZE - 1] & MPI_SEND || 
+        else */if ( buffer[CASITA_MPI_P2P_BUF_SIZE - 1] & MPI_SEND || 
                   buffer[CASITA_MPI_P2P_BUF_SIZE - 1] & MPI_ISEND )
         {
           // the communication partner should be a receive!!!
@@ -112,13 +112,19 @@ namespace casita
                                                             sendLeave );
             if ( sendRecordEdge )
             {
-              sendRecordEdge->makeBlocking( );
+              sendRecordEdge->makeBlocking();
+              
+              // add remote edge for critical path analysis
+              commonAnalysis->getMPIAnalysis().addRemoteMPIEdge(
+                sendLeave,
+                buffer[3], // remote node ID (receive leave)
+                partnerProcessId/*,
+                MPIAnalysis::MPI_EDGE_LOCAL_REMOTE*/ );
             }
             else
             {
-              std::cerr << "[" << sendLeave->getStreamId( ) 
-                        << "] SendRule: Record edge not found. CPA might fail!" 
-                        << std::endl;
+              UTILS_MSG( true, "[%"PRIu64"] SendRule: Activity edge not found.", 
+                         sendLeave->getStreamId() );
             }
             
             sendLeave->setCounter( WAITING_TIME, recvStartTime - sendStartTime );
@@ -130,13 +136,13 @@ namespace casita
                            sendStartTime - recvStartTime, streamWalkCallback );
         }
 
+        /* \todo: move this into the makeBlocking if?
         commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
           sendEnter,
-          (uint32_t)buffer[3],
+          buffer[3], // remote node ID (receive leave) \todo: buffer[2]? receive enter
           partnerProcessId,
-          MPIAnalysis::
-          MPI_EDGE_LOCAL_REMOTE );
-
+          MPIAnalysis::MPI_EDGE_LOCAL_REMOTE );
+        */
         return true;
       }
   };

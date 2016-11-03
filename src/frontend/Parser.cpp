@@ -182,13 +182,7 @@ namespace casita
     std::cout << "      --top=INTEGER       print top optimization candidates" << std::endl;
     std::cout << "  -p [--path]             print critical paths" << std::endl;
     std::cout << "     [--no-errors]        ignore non-fatal errors" << std::endl;
-    std::cout << "     [--ignore-nb-mpi]    treat non-blocking MPI functions as CPU functions" << std::endl;
-
-    std::cout << "     [--secure-mpi-cpa]   Perform MPI critical-path analysis with slave feedback" << std::endl
-      << "                          to ensure that a master has been found." << std::endl
-      << "                          (Avoids a potential deadlock situaton, when no master" << std::endl
-      << "                          has been found.)\n" << std::endl;
-
+    std::cout << "     [--ignore-impi]      treat non-blocking MPI functions as CPU functions" << std::endl;
     std::cout << "  -c [--interval-analysis=][uint32_t]   Run analysis in intervals (between global" << std::endl
       << "                          collectives) to reduce memory footprint. The optional value sets the " << std::endl
       << "                          number of pending graph nodes before an analysis run is started." << std::endl;
@@ -324,18 +318,12 @@ namespace casita
       }
 
       // ignore non blocking
-      else if( opt.find( "--ignore-nb-mpi" ) != std::string::npos )
+      else if( opt.find( "--ignore-impi" ) != std::string::npos )
       {
         options.ignoreAsyncMpi = true;
       }
 
-        // secure mpi cpa
-      else if( opt.find( "--secure-mpi-cpa" ) != std::string::npos )
-      {
-        options.criticalPathSecureMPI = true;
-      }
-
-        // interval analysis TODO: complete optional?
+      // interval analysis TODO: complete optional?
       else if( opt.compare( std::string( "-c" ) ) == 0 )
       {
         if( ++i < argc )
@@ -500,7 +488,6 @@ namespace casita
     options.outOtfFile = "casita.otf2";
     options.replaceCASITAoutput = false;
     options.printCriticalPath = false;
-    options.criticalPathSecureMPI = false;
     options.verbose = 0;
     options.topX = 20;
     options.ignoreAsyncMpi = false;

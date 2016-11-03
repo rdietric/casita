@@ -41,7 +41,7 @@ namespace casita
       apply( AnalysisParadigmMPI* analysis, GraphNode* irecvLeave )
       {
         // applied at MPI_Irecv leave
-        if ( !irecvLeave->isMPIIRecv( ) /*|| !irecvLeave->isLeave( )*/ )
+        if ( !irecvLeave->isMPI_Irecv( ) || irecvLeave->isEnter( ) )
         {
           return false;
         }
@@ -50,7 +50,7 @@ namespace casita
 
         uint64_t partnerProcessId = irecvLeave->getReferencedStreamId( );
         
-        //GraphNode* irecvEnter = irecvLeave->getGraphPair( ).first;
+        GraphNode* irecvEnter = irecvLeave->getGraphPair( ).first;
         
         EventStream::MPIIcommRecord* record = 
                           (EventStream::MPIIcommRecord* )irecvLeave->getData( );
@@ -58,9 +58,8 @@ namespace casita
         // check if the record has been invalidated/deleted
         if( NULL == record )
         {
-          std::cerr << "[" << irecvLeave->getStreamId( ) 
-                    << "] Irecv rule: Invalid record data." 
-                    << std::endl;
+          UTILS_MSG( true, "[%"PRIu64"] Irecv rule: Invalid record data.",
+                     irecvLeave->getStreamId());
           
           return false;
         }
@@ -80,10 +79,10 @@ namespace casita
         // send information to communication partner
         // the blocking MPI_Recv can evaluate them and e.g. stop wait state analysis
         uint64_t *buffer_send = record->sendBuffer;
-        buffer_send[0] = 0; //irecvEnter->getTime( );
-        buffer_send[1] = 0;
-        buffer_send[2] = 0;
-        buffer_send[3] = irecvLeave->getId( ); // 
+        buffer_send[0] = irecvEnter->getTime();
+        buffer_send[1] = irecvLeave->getTime();
+        buffer_send[2] = irecvEnter->getId();
+        buffer_send[3] = irecvLeave->getId(); // 
         buffer_send[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_IRECV; //recv.second->getType( );
 
         // Send indicator that this is an MPI_Irecv

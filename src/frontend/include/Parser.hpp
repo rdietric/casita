@@ -33,7 +33,6 @@ namespace casita
  {
    bool        createTraceFile;
    bool        printCriticalPath;
-   bool        criticalPathSecureMPI;
    bool        mergeActivities;
    bool        noErrors;
    bool        ignoreAsyncMpi;

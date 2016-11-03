@@ -81,8 +81,8 @@ namespace casita
         uint64_t allToOneStartTime = allToOneEnter->getTime( );
 
         sendBuffer[0] = allToOneStartTime;
-        sendBuffer[1] = allToOneEnter->getId( );
-        sendBuffer[2] = allToOneLeave->getId( );
+        sendBuffer[1] = allToOneEnter->getId();
+        sendBuffer[2] = allToOneLeave->getId();
         sendBuffer[3] = allToOneLeave->getStreamId( );
 
         MPI_CHECK( MPI_Allgather( sendBuffer, BUFFER_SIZE, MPI_UINT64_T,
@@ -121,8 +121,8 @@ namespace casita
               commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
                 allToOneLeave,
                 recvBuffer[i + 1],
-                recvBuffer[i + 3],
-                MPIAnalysis::MPI_EDGE_REMOTE_LOCAL );
+                recvBuffer[i + 3]/*,
+                MPIAnalysis::MPI_EDGE_REMOTE_LOCAL*/ );
             }
           }
 
@@ -165,8 +165,8 @@ namespace casita
             commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
               allToOneEnter,
               recvBuffer[rootMPIRank + 2],
-              recvBuffer[rootMPIRank + 3],
-              MPIAnalysis::MPI_EDGE_LOCAL_REMOTE );
+              recvBuffer[rootMPIRank + 3]/*,
+              MPIAnalysis::MPI_EDGE_LOCAL_REMOTE*/ );
           }
         }
 

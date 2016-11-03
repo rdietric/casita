@@ -62,7 +62,8 @@ CallbackHandler::printNode( GraphNode* node, EventStream* stream )
     }
 
     fprintf( stderr,
-             "[%12lu(%12.8fs):%10u,%5lu] [%20.20s] on [%15s:%11lu], [%s]",
+             "[%12"PRIu64"(%12.8fs):%10"PRIu64",%5"PRIu64"] [%20.20s] on "
+             "[%15s:%11"PRIu64"], [%s]",
              node->getTime(), analysis.getRealTime( node->getTime() ),
              node->getId(), node->getFunctionId(),
              node->getName(),
@@ -470,7 +471,8 @@ CallbackHandler::handleMPIComm( OTF2TraceReader* reader,
       pMPIType = EventStream::MPI_SEND;
       break;
     case io::MPI_ONEANDALL:
-      pMPIType = EventStream::MPI_ONEANDALL;
+      //pMPIType = EventStream::MPI_ONEANDALL;
+      pMPIType = EventStream::MPI_COLLECTIVE;
       break;
     default: throw RTException( "Unknown io::MPIType %u", mpiType );
   }
@@ -558,8 +560,7 @@ CallbackHandler::handleMPIIrecvRequest( OTF2TraceReader* reader,
                                         uint64_t requestId )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
-  AnalysisEngine&  analysis = handler->getAnalysis( );
-  EventStream*     stream   = analysis.getStream( streamId );
+  EventStream*     stream  = handler->getAnalysis( ).getStream(streamId);
   
   stream->saveMPIIrecvRequest( requestId );
 }

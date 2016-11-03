@@ -42,7 +42,7 @@ AnalysisParadigmMPI::AnalysisParadigmMPI( AnalysisEngine* analysisEngine,
   addRule( new SendRule( 1 ) );
   addRule( new CollectiveRule( 1 ) );
   addRule( new SendRecvRule( 1 ) );
-  addRule( new OneToAllRule( 1 ) );
+  //addRule( new OneToAllRule( 1 ) );
   //addRule( new AllToOneRule( 1 ) );
   
   // do not add the rules for non-blocking MPI communication, if it shall be ignored
@@ -79,12 +79,12 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
   EventStream* stream = commonAnalysis->getStream( node->getStreamId( ) );
   
   // handle non-blocking MPI communication enter/leave events
-  if( node->isMPIISend() )
+  if( node->isMPI_Isend() )
   {
     stream->setMPIIsendNodeData( node );
     return;
   }
-  else  if( node->isMPIIRecv() )
+  else  if( node->isMPI_Irecv() )
   {
     stream->addPendingMPIIrecvNode( node );
     return;
@@ -117,13 +117,13 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
         node->setReferencedStreamId( iter->partnerId );
         break;
 
-      case EventStream::MPI_ONEANDALL:
+      /*case EventStream::MPI_ONEANDALL:
         node->setReferencedStreamId( iter->partnerId );
         tmpId  = new uint64_t; // \TODO: this is never deleted
         *tmpId = iter->rootId;
         node->setData( tmpId ); 
         break;
-
+*/
       case EventStream::MPI_SEND:
         tmpId  = new uint64_t; // \TODO: not deleted in case of MPI_Sendrecv
         *tmpId = iter->partnerId;        
