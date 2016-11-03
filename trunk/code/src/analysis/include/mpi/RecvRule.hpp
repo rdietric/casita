@@ -59,63 +59,58 @@ namespace casita
                              MPI_COMM_WORLD, &status ) );
         
         GraphNode* recvEnter     = recvLeave->getGraphPair( ).first;
-        uint64_t   sendStartTime = buffer[0];  
+        uint64_t   sendStartTime = buffer[0];
+        uint64_t   sendEndTime   = buffer[1];
         uint64_t   recvStartTime = recvEnter->getTime( );
         uint64_t   recvEndTime   = recvLeave->getTime( );
 
-        
-        // TODO: MPI_Recv should be always blocking
-        // check for MPI_ISEND as partner and skip analysis
-        if ( buffer[CASITA_MPI_P2P_BUF_SIZE - 1] != MPI_ISEND )
+        // if send starts after receive, we found a late sender
+        if ( recvStartTime < sendStartTime )
         {
-          
-          // compute wait states and edges
-          if ( recvStartTime < sendStartTime )
+          Edge* recvRecordEdge = commonAnalysis->getEdge(recvEnter, recvLeave);
+
+          if ( recvRecordEdge )
           {
-            Edge* recvRecordEdge = commonAnalysis->getEdge( recvEnter,
-                                                            recvLeave );
-            
-            if ( recvRecordEdge )
-            {
-              recvRecordEdge->makeBlocking( );
-            }
-            else
-            {
-              std::cerr << "[" << recvLeave->getStreamId( ) 
-                        << "] RecvRule: Record edge not found. CPA might fail!" 
-                        << std::endl;
-            }
-            
-            recvLeave->setCounter( WAITING_TIME, sendStartTime - recvStartTime );
+            recvRecordEdge->makeBlocking();
+
+            commonAnalysis->getMPIAnalysis().addRemoteMPIEdge(
+              recvLeave,
+              buffer[2], // remote node ID (send enter)
+              partnerProcessId/*,
+              MPIAnalysis::MPI_EDGE_REMOTE_LOCAL*/ );
+          }
+          else
+          {
+            UTILS_MSG( true, "["PRIu64"] RecvRule: Record edge not found."
+                             "Critical path analysis might fail!", 
+                             recvLeave->getStreamId() );
+          }
+
+          recvLeave->setCounter( WAITING_TIME, sendStartTime - recvStartTime );
 
 #ifdef MPI_CP_MERGE
             analysis->getMPIAnalysis( ).addMPIEdge( recvEnter,
                                                     buffer[4],
                                                     partnerProcessId );
 #endif
-          }
 
-          if ( recvStartTime > sendStartTime )
+          // if receive starts after send AND send and recv are overlapping, 
+          // we found a later receiver
+          if ( recvStartTime > sendStartTime && sendEndTime > recvStartTime )
           {
             distributeBlame( commonAnalysis,
                              recvEnter,
                              recvStartTime - sendStartTime,
                              streamWalkCallback );
           }
-
-          commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
-            recvLeave,
-            (uint32_t)buffer[2],
-            partnerProcessId,
-            MPIAnalysis::MPI_EDGE_REMOTE_LOCAL );
         }
 
         // send local information to communication partner to compute wait states
         // use another tag to not mix up with replayed communication
         buffer[0] = recvStartTime;
         buffer[1] = recvEndTime;
-        buffer[2] = recvEnter->getId( );
-        buffer[3] = recvLeave->getId( );
+        buffer[2] = recvEnter->getId();
+        buffer[3] = recvLeave->getId();
         buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_RECV; //recv.second->getType( );
 
         MPI_CHECK( MPI_Send( buffer, 

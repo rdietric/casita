@@ -83,6 +83,10 @@ namespace casita
        return pair.first && pair.second;
      }
 
+     /**
+      * Get the other part of the activity.
+      * @return 
+      */
      GraphNode*
      getPartner( ) const
      {
@@ -261,6 +265,111 @@ namespace casita
 
       // return iterator to first element, if node could not be found
       return nodes.rend( );
+    }
+    
+    /**
+     * Binary search for a GraphNode in a vector of GraphNodes based on the node ID.
+     * 
+     * @param nodeId
+     * @param nodes
+     * @return 
+     */
+    static GraphNode*
+    findNode( uint64_t nodeId, const std::vector< GraphNode* >& nodes )
+    {
+      // the vector is empty
+      if ( nodes.size( ) == 0 )
+      {
+        return NULL;
+      }
+
+      // there is only one node in the vector
+      if ( nodes.size( ) == 1 )
+      {
+        return nodes.front();
+      }
+
+      // set start boundaries for the search
+      size_t indexMin = 0;
+      size_t indexMax = nodes.size( ) - 1;
+
+      size_t indexPrevMin = indexMin;
+      size_t indexPrevMax = indexMax;
+
+      size_t indexPrev = 0;
+      size_t indexPrev2 = 0;
+
+      // do a binary search
+      do
+      {
+        indexPrev2 = indexPrev;
+        indexPrev = indexPrevMax - ( indexPrevMax - indexPrevMin ) / 2;
+        size_t index = indexMax - ( indexMax - indexMin ) / 2;
+
+        assert( index < nodes.size( ) ); //, "index %lu indexMax %lu indexMin %lu", index, indexMax, indexMin );
+
+        // if we found the node at index ('middle' element)
+        // for uneven elements, index points on the element after the half
+        if ( nodes[index]->getId() == nodeId )
+        {
+          return nodes[index];
+        }
+
+        // indexMin == indexMax == index
+        // only the nodes[index] element was left, which did not match
+        // we can leave the loop
+        if ( indexMin == indexMax )
+        {
+          std::cerr << "Looking for node ID " 
+                    << nodeId << " - Wrong node found! Index (" 
+                    << index << ") node on break: "
+                    << nodes[index]->getUniqueName( ) << std::endl;
+
+          std::cerr << "Node sequence:" << std::endl;
+          for(size_t i = index - 3; i < index + 4; i++)
+          {
+            if( nodes[i] )
+              std::cerr << nodes[i]->getUniqueName( ) << std::endl;
+          }
+
+          std::cerr << " Previous compare node [" << indexPrevMin << ":" << indexPrevMax 
+                    << "]:" << nodes[indexPrev]->getUniqueName( )
+                    << " with result: " << ( nodeId < nodes[indexPrev]->getId() )
+                    << std::endl;
+
+          std::cerr << " Pre-Previous compare node: " << nodes[indexPrev2]->getUniqueName( )
+                    << " with result: " << ( nodeId < nodes[indexPrev2]->getId() )
+                    << std::endl;
+          break;
+        }
+
+        // use the sorted property of the list to halve the search space
+        // if node is before (less) than the node at current index
+        // nodes are not the same
+        if ( nodeId < nodes[index]->getId() )
+        {
+          // left side
+          indexPrevMax = indexMax;
+          indexMax = index - 1;
+        }
+        else
+        {
+          // right side
+          indexPrevMin = indexMin;
+          indexMin = index + 1;
+        }
+
+        // if node could not be found
+        if ( indexMin > indexMax )
+        {
+          break;
+        }
+
+      }
+      while ( true );
+
+      // return iterator to first element, if node could not be found
+      return nodes.front();
     }
 
    protected:

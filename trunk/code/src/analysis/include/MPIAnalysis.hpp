@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2014, 2016
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -35,14 +35,13 @@ namespace casita
      typedef struct
      {
        uint64_t streamID;
-       uint32_t nodeID;
+       uint64_t nodeID;
      } ProcessNodePair;
 
    private:
      typedef std::map< uint32_t, uint32_t > TokenTokenMap;
      typedef std::map< uint64_t, GraphNode* > IdNodeMap;
-     typedef std::map< uint64_t, IdNodeMap > RemoteNodeMap;
-     typedef std::map< GraphNode*, ProcessNodePair > ReverseRemoteNodeMap;
+     typedef std::map< GraphNode*, ProcessNodePair > RemoteNodeMap;
    public:
 
      typedef struct
@@ -113,17 +112,23 @@ namespace casita
      getMPICommGroup( uint32_t group ) const;
 
      void
-     addRemoteMPIEdge( GraphNode* localNode, uint32_t remoteNodeID,
-                       uint64_t remoteProcessID, MPIEdgeDirection direction );
-
+     addRemoteMPIEdge( GraphNode* localNode, uint64_t remoteNodeID,
+                       uint64_t remoteProcessID/*, MPIEdgeDirection direction*/ );
+/*
      bool
-     getRemoteMPIEdge( uint32_t remoteNodeId, uint64_t remoteProcessId,
+     getRemoteMPIEdge( uint64_t remoteNodeId, uint64_t remoteProcessId,
                        MPIEdge& edge );
-
+*/
      ProcessNodePair
      getRemoteNodeInfo( GraphNode* localNode, bool* valid );
+     
+     void
+     removeRemoteNode( GraphNode* localNode );
 
      std::set< uint32_t >
+     getMpiPartnersRanks( GraphNode* node );
+     
+     uint32_t
      getMpiPartnersRank( GraphNode* node );
 
      void
@@ -135,6 +140,8 @@ namespace casita
      TokenTokenMap        processRankMap;
      MPICommGroupMap      mpiCommGroupMap;
      MPIRemoteEdgeMap     remoteMpiEdgeMap;
-     ReverseRemoteNodeMap reverseRemoteNodeMap;
+     
+     //<! Map MPI nodes to remote nodes (stream ID, node ID), which represents an edge
+     RemoteNodeMap remoteNodeMap;  
  };
 }

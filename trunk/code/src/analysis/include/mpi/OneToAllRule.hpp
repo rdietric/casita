@@ -33,6 +33,13 @@ namespace casita
 
     private:
 
+      /**
+       * This rule might be broken as well in concerns of critical path detection
+       * and blame distribution. (Use collective rule instead.)
+       * @param analysis
+       * @param oneToAllLeave
+       * @return 
+       */
       bool
       apply( AnalysisParadigmMPI* analysis, GraphNode* oneToAllLeave )
       {
@@ -45,12 +52,12 @@ namespace casita
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
         // get the complete execution
-        GraphNode* oneToAllEnter = oneToAllLeave->getGraphPair( ).first;
-        uint32_t  mpiGroupId = oneToAllLeave->getReferencedStreamId( );
-        uint64_t* root = (uint64_t*)( oneToAllLeave->getData( ) );
+        GraphNode* oneToAllEnter = oneToAllLeave->getGraphPair().first;
+        uint32_t  mpiGroupId = oneToAllLeave->getReferencedStreamId();
+        uint64_t* root = (uint64_t*)( oneToAllLeave->getData() );
         if ( !root )
         {
-          ErrorUtils::getInstance( ).throwFatalError(
+          ErrorUtils::getInstance().throwFatalError(
             "Root must be known for MPI OneToAll" );
         }
 
@@ -64,16 +71,16 @@ namespace casita
 
         uint64_t rootStreamId = *root;
         
-        // TODO: used in CPA?
+        // \TODO: used in CPA?
         // delete root;
         
         // this translation seems wrong
-        uint32_t rootMPIRank = commonAnalysis->getMPIAnalysis( ).getMPIRank(
-                                               rootStreamId/*, mpiCommGroup*/ );
+        uint32_t rootMPIRank = commonAnalysis->getMPIAnalysis().getMPIRank(
+                                               rootStreamId );
         
         bool isRoot = false;
         // we compare OTF2 location IDs / references
-        if ( oneToAllLeave->getStreamId( ) == rootStreamId )
+        if ( oneToAllLeave->getStreamId() == rootStreamId )
         {
           isRoot = true;
         }
@@ -82,10 +89,12 @@ namespace casita
         uint32_t recvBufferSize    = BUFFER_SIZE;
 
         uint64_t  sendBuffer[BUFFER_SIZE];
+        
+        // allocate receive buffer depending on the communication group size
         uint64_t* recvBuffer = NULL;
         if( isRoot )
         {
-          recvBufferSize = mpiCommGroup.procs.size( ) * BUFFER_SIZE;
+          recvBufferSize = mpiCommGroup.procs.size() * BUFFER_SIZE;
           
           recvBuffer = new uint64_t[recvBufferSize];
           
@@ -93,17 +102,17 @@ namespace casita
           memset( recvBuffer, 0, recvBufferSize * sizeof( uint64_t ) );
         }
  
-        uint64_t oneToAllStartTime = oneToAllEnter->getTime( );
+        uint64_t oneToAllStartTime = oneToAllEnter->getTime();
         sendBuffer[0] = oneToAllStartTime;
-        //sendBuffer[1] = oneToAllLeave->getTime( );;
-        sendBuffer[1] = oneToAllEnter->getId( );
-        sendBuffer[2] = oneToAllLeave->getId( );
-        sendBuffer[3] = oneToAllLeave->getStreamId( );
+        sendBuffer[1] = oneToAllEnter->getId();
+        sendBuffer[2] = oneToAllLeave->getId();
+        sendBuffer[3] = oneToAllLeave->getStreamId();
 
         MPI_CHECK( MPI_Gather( sendBuffer, BUFFER_SIZE, MPI_UINT64_T,
                                recvBuffer, BUFFER_SIZE, MPI_UINT64_T,
                                rootMPIRank, mpiCommGroup.comm ) );
 
+        // the root has gathered all information now
         if ( isRoot )
         {
           // root computes its blame
@@ -120,8 +129,8 @@ namespace casita
             commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
               oneToAllEnter,
               recvBuffer[i + 2],
-              recvBuffer[i + 3],
-              MPIAnalysis::MPI_EDGE_LOCAL_REMOTE );
+              recvBuffer[i + 3]/*,
+              MPIAnalysis::MPI_EDGE_LOCAL_REMOTE*/ );
           }
 
           distributeBlame( commonAnalysis,
@@ -131,11 +140,6 @@ namespace casita
           
           delete[] recvBuffer;
         }
-        
-        //\TODO: needed?
-        //MPI_Barrier( mpiCommGroup.comm );
-
-        //memcpy( recvBuffer, sendBuffer, sizeof( uint64_t ) * BUFFER_SIZE );
         
         // use the fixed-size send buffer for each rank
         MPI_CHECK( MPI_Bcast( sendBuffer, BUFFER_SIZE, MPI_UINT64_T,
@@ -169,8 +173,8 @@ namespace casita
           commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
             oneToAllLeave,
             sendBuffer[1],
-            sendBuffer[3],
-            MPIAnalysis::MPI_EDGE_REMOTE_LOCAL );
+            sendBuffer[3]/*,
+            MPIAnalysis::MPI_EDGE_REMOTE_LOCAL*/ );
         }
 
         return true;

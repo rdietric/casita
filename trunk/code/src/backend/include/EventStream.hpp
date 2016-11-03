@@ -50,7 +50,7 @@ namespace casita
      // Types for blocking MPI communication
      enum MPIType
      {
-       MPI_SEND, MPI_RECV, MPI_COLLECTIVE, MPI_SENDRECV, MPI_ONEANDALL
+       MPI_SEND, MPI_RECV, MPI_COLLECTIVE, MPI_SENDRECV/*, MPI_ONEANDALL*/
      };
 
      typedef struct
@@ -71,7 +71,7 @@ namespace casita
        MPI_Request requests[2]; /**< internel MPI_Isend and MPI_Irecv request */
        uint64_t    sendBuffer[CASITA_MPI_P2P_BUF_SIZE]; /**< MPI_Isend buffer */
        uint64_t    recvBuffer[CASITA_MPI_P2P_BUF_SIZE]; /**< MPI_Irecv buffer */
-       GraphNode*  leaveNode;   /**< pointer to associated node of MPI Icomm */
+       GraphNode*  leaveNode;   /**< pointer to associated MPI_I[send|recv] node */
      } MPIIcommRecord;
      
      /**< Map of OTF2 request IDs (key) and the corresponding record data */
@@ -339,6 +339,16 @@ namespace casita
      bool
      waitForPendingMPIRequest( uint64_t requestId );
      
+     /**
+      * Remove an MPI request form the map, when it has been processed (e.g. 
+      * successful MPI_Test or MPI_Wait).
+      * 
+      * @param requestId OTF2 request ID for replayed non-blocking communication to be completed.
+      * 
+      * @return true, if the handle was found, otherwise false
+      */
+     void
+     removePendingMPIRequest( uint64_t requestId );
 
      /**
       * Wait for all pending MPI requests that are associated with the given node.

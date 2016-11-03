@@ -590,7 +590,8 @@ EventStream::saveMPIIsendRequest( uint64_t requestId )
 void
 EventStream::saveMPIIrecvRequest( uint64_t requestId )
 {
-  //std::cerr << "MPIIrecvRequest: mpiIrecvRequest = " << requestId << std::endl;
+  //UTILS_MSG( true, "[%"PRIu64"] Save MPIIrecvRequest %"PRIu64, this->id, requestId);
+  
   pendingMPIRequestId = requestId;
 }
 
@@ -598,7 +599,7 @@ EventStream::saveMPIIrecvRequest( uint64_t requestId )
  * Store the MPI_Irecv leave node together with the MPI_Request handle. The 
  * MPI_Irecv record provides the communication partner ID and the MPI_request to 
  * put it all together. 
- * See {@link #setMPIIrecvPartnerStreamId(uint64_t requestId, uint64_t partnerId)}.
+ * See {@link #handleMPIIrecvEventData(uint64_t requestId, uint64_t partnerId)}.
  * 
  * @param node the graph node of the MPI_Irecv leave record
  */
@@ -613,23 +614,16 @@ EventStream::addPendingMPIIrecvNode( GraphNode* node )
     record.requests[1] = MPI_REQUEST_NULL;
     record.requestId = pendingMPIRequestId;
     record.leaveNode = node;
-    /*
-    MPIIcommRecord *record = new MPIIcommRecord;
-    record->requests[0] = MPI_REQUEST_NULL;
-    record->requests[1] = MPI_REQUEST_NULL;
-    record->requestId = pendingMPIRequestId;
-    record->leaveNode = node;
-    *//*
-    std::cerr << "[" << this->id << "] New MPI_Irecv record: " << record 
-              << " Request ID: " << pendingMPIRequestId << std::endl;
-    */
+
+    //UTILS_MSG( true, "[%"PRIu64"] New MPI_Irecv record: %s Request ID: %"PRIu64,
+    //           this->id, node->getUniqueName().c_str(), pendingMPIRequestId );
+    
     // add new record to map
     mpiIcommRecords[pendingMPIRequestId] = record;
     
     // set node-specific data to a pointer to the record in the map
     node->setData( &mpiIcommRecords[pendingMPIRequestId] );
-    //node->setData( record );
-    
+
     //invalidate request ID variable
     pendingMPIRequestId = std::numeric_limits< uint64_t >::max( );
 }
@@ -648,7 +642,8 @@ void
 EventStream::handleMPIIrecvEventData( uint64_t requestId,
                                       uint64_t partnerId )
 {
-  //std::cerr << "MPIIrecv: mpiWaitRequest = " << requestId << std::endl;
+  //UTILS_MSG( true, "[%"PRIu64"] MPIIrecv: mpiWaitRequest = %"PRIu64, 
+  //                 this->id, requestId );
  
   mpiIcommRecords[requestId].leaveNode->setReferencedStreamId(partnerId);
   
@@ -685,8 +680,8 @@ EventStream::handleMPIIsendEventData( uint64_t requestId,
 void
 EventStream::setMPIIsendNodeData( GraphNode* node )
 {
-  UTILS_ASSERT( pendingMPIRequestId != std::numeric_limits< uint64_t >::max( ) 
-                 && mpiIsendPartner != std::numeric_limits< uint64_t >::max( ), 
+  UTILS_ASSERT( pendingMPIRequestId != std::numeric_limits< uint64_t >::max() 
+                 && mpiIsendPartner != std::numeric_limits< uint64_t >::max(), 
                 "MPI request or MPI partner ID is invalid!");
  
   // add new record to map
@@ -696,6 +691,9 @@ EventStream::setMPIIsendNodeData( GraphNode* node )
   record.leaveNode = node;
   record.requestId = pendingMPIRequestId;
   mpiIcommRecords[pendingMPIRequestId] = record;
+  
+  //UTILS_MSG( true, "[%"PRIu64"] New MPI_Isend record: %s Request ID: %"PRIu64,
+  //           this->id, node->getUniqueName().c_str(), pendingMPIRequestId );
   
   // set node-specific data to a pointer to the record in the map
   node->setData( &mpiIcommRecords[pendingMPIRequestId] );
@@ -728,12 +726,9 @@ EventStream::setMPIWaitNodeData( GraphNode* node )
   
   if( pendingRequests.size( ) == 1 )
   {
-    // set OTF2 request ID as node-specific data
+    // set MPIIcommRecord data as node-specific data
     // the request ID has to be already in the map from Irecv or Isend record
     node->setData( &mpiIcommRecords[ pendingRequests.back( ) ] );
-
-    // !!! invalidate node-specific data when deleting this entry
-    mpiIcommRecords[ pendingRequests.back( ) ].leaveNode = node;
 
     // request ID is consumed, therefore pop it from the vector
     pendingRequests.pop_back( );
@@ -801,7 +796,7 @@ EventStream::waitForPendingMPIRequest( uint64_t requestId )
     if ( it->first == requestId )
     {
       UTILS_DBG_MSG( DEBUG_MPI_ICOMM,
-                     "[%u] Finish requests (%p) associated with OTF2 request ID %llu \n",
+                     "[%"PRIu64"] Finish requests (%p) associated with OTF2 request ID %llu \n",
                      this->id, it->second, requestId);
       
       if( it->second.requests[0] != MPI_REQUEST_NULL )
@@ -817,10 +812,6 @@ EventStream::waitForPendingMPIRequest( uint64_t requestId )
       // invalidate node-specific data
       it->second.leaveNode->setData(NULL);
       
-      // delete allocated memory
-      //delete it->second;
-      //it->second = 0;
-      
       mpiIcommRecords.erase( it );
 
       return true;
@@ -834,6 +825,38 @@ EventStream::waitForPendingMPIRequest( uint64_t requestId )
              this->id, requestId );
 
   return false;
+}
+
+/**
+ * Remove an MPI request form the map, when it has been processed (e.g. 
+ * successful MPI_Test or MPI_Wait).
+ * 
+ * @param requestId OTF2 request ID for replayed non-blocking communication to be completed.
+ * 
+ * @return true, if the handle was found, otherwise false
+ */
+void
+EventStream::removePendingMPIRequest( uint64_t requestId )
+{ 
+  // invalidate node-specific data for the MPI_Isend or MPI_Irecv
+  try {
+    mpiIcommRecords.at( requestId ).leaveNode->setData(NULL);
+  }
+  catch (const std::out_of_range& oor) 
+  {
+    UTILS_MSG( true, 
+               "[%"PRIu64"] OTF2 MPI request ID %llu could not be found. "
+               "Has already completed? (%s)", this->id, requestId, oor.what() ); 
+  }
+  
+  // remove the request from map
+  size_t erasedRequests = mpiIcommRecords.erase( requestId );
+  
+  if( erasedRequests > 1 )
+  {
+    UTILS_MSG( true, "[%u] Found %llu entries for OTF2 MPI request ID %llu.",
+                     this->id, erasedRequests, requestId );
+  }
 }
 
 /**
@@ -1048,6 +1071,7 @@ EventStream::walkForward( GraphNode*         node,
   SortedGraphNodeList::const_reverse_iterator iter_tmp = findNode( node );
   SortedGraphNodeList::const_iterator iter = iter_tmp.base( );
 
+  // iterate forward over the list of nodes
   for (; iter != nodes.end( ); ++iter )
   {
     result = callback( userData, *iter );

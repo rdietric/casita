@@ -376,8 +376,9 @@ AnalysisEngine::addNewGraphNode( uint64_t            time,
 void 
 AnalysisEngine::createIntermediateBegin( )
 {
-  // clean all lists in the graph and delete edges, node objects are deleted via the streams
-  this->graph.cleanup( true );
+  // clean all lists in the graph and delete edges, 
+  // node objects are deleted via the streams
+  graph.cleanup( true );
   
   //this->reset();
 
@@ -426,8 +427,6 @@ AnalysisEngine::createIntermediateBegin( )
       // delete all remaining nodes
       for (; it != nodes.end( ); ++it )
       {
-        //UTILS_MSG(true, "[%"PRIu64"] Delete node %s", p->getId(), getNodeInfo(*it).c_str() );
-        
         // do not remove CUDA nodes that might be required later
         if( (*it)->isCUDA() )
         {
@@ -478,6 +477,9 @@ AnalysisEngine::createIntermediateBegin( )
           
           //continue;
         }
+        
+        //UTILS_MSG( true , 
+        //  "[%"PRIu64"] Delete node %s", p->getId(), getNodeInfo(*it).c_str() );
         
         delete( *it );
       }

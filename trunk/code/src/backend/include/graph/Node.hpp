@@ -28,8 +28,7 @@
 
 namespace casita
 {
- typedef uint32_t NodeId;
- static NodeId globalNodeId = 0;
+ static uint64_t globalNodeId = 0;
 
  enum RecordType
  {
@@ -397,14 +396,14 @@ namespace casita
      }
 
      bool
-     isMPIIRecv( ) const
+     isMPI_Irecv( ) const
      {
 
        return isMPI( ) && ( nodeType & MPI_IRECV );
      }
 
      bool
-     isMPIISend( ) const
+     isMPI_Isend( ) const
      {
 
        return isMPI( ) && ( nodeType & MPI_ISEND );
@@ -753,7 +752,7 @@ namespace casita
        counters.clear( );
      }
 
-     uint32_t
+     uint64_t
      getId( ) const
      {
        return id;
@@ -980,7 +979,7 @@ namespace casita
      }
 
    protected:
-     NodeId         id;           /*<< node ID */
+     uint64_t       id;           //!< node ID
      uint64_t       time;
      uint64_t       streamId;
      uint64_t       functionId;

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -159,35 +159,35 @@ MPIAnalysis::getMPICommGroup( uint32_t group ) const
 }
 
 void
-MPIAnalysis::addRemoteMPIEdge( GraphNode*       localNode,
-                               uint32_t         remoteNodeID,
-                               uint64_t         remoteStreamID,
-                               MPIEdgeDirection direction )
+MPIAnalysis::addRemoteMPIEdge( GraphNode* localNode,
+                               uint64_t   remoteNodeID,
+                               uint64_t   remoteStreamID/*,
+                               MPIEdgeDirection direction*/ )
 {
-  MPIEdge edge;
+  /*MPIEdge edge;
   edge.direction      = direction;
   edge.localNode      = localNode;
   edge.remoteNodeID   = remoteNodeID;
   edge.remoteStreamID = remoteStreamID;
-  remoteMpiEdgeMap[remoteStreamID][remoteNodeID] = edge;
+  remoteMpiEdgeMap[remoteStreamID][remoteNodeID] = edge;*/
 
   ProcessNodePair pair;
-  pair.nodeID         = remoteNodeID;
-  pair.streamID       = remoteStreamID;
+  pair.nodeID   = remoteNodeID;
+  pair.streamID = remoteStreamID;
 
-  reverseRemoteNodeMap[localNode] = pair;
+  remoteNodeMap[localNode] = pair;
 }
-
+/*
 bool
-MPIAnalysis::getRemoteMPIEdge( uint32_t remoteNodeId, uint64_t remoteProcessId,
+MPIAnalysis::getRemoteMPIEdge( uint64_t remoteNodeId, uint64_t remoteProcessId,
                                MPIAnalysis::MPIEdge& edge )
 {
   MPIRemoteEdgeMap::const_iterator pIter = remoteMpiEdgeMap.find(
     remoteProcessId );
-  if ( pIter != remoteMpiEdgeMap.end( ) )
+  if ( pIter != remoteMpiEdgeMap.end() )
   {
     MPIIdEdgeMap::const_iterator nIter = pIter->second.find( remoteNodeId );
-    if ( nIter != pIter->second.end( ) )
+    if ( nIter != pIter->second.end() )
     {
       edge = nIter->second;
       return true;
@@ -195,14 +195,16 @@ MPIAnalysis::getRemoteMPIEdge( uint32_t remoteNodeId, uint64_t remoteProcessId,
   }
 
   return false;
-}
+}*/
 
 MPIAnalysis::ProcessNodePair
 MPIAnalysis::getRemoteNodeInfo( GraphNode* localNode, bool* valid )
 {
-  ReverseRemoteNodeMap::const_iterator iter = reverseRemoteNodeMap.find(
-    localNode );
-  if ( iter != reverseRemoteNodeMap.end( ) )
+  RemoteNodeMap::const_iterator iter = 
+    remoteNodeMap.find( localNode );
+  
+  // if we found the edge
+  if ( iter != remoteNodeMap.end() )
   {
     if ( valid )
     {
@@ -220,18 +222,42 @@ MPIAnalysis::getRemoteNodeInfo( GraphNode* localNode, bool* valid )
   }
 }
 
+void
+MPIAnalysis::removeRemoteNode( GraphNode* localNode )
+{
+  remoteNodeMap.erase( localNode );
+}
+
 /**
  * Reset structures that are local to an interval in the trace.
  */
 void
 MPIAnalysis::reset( )
 {
-  reverseRemoteNodeMap.clear( );
-  remoteMpiEdgeMap.clear( );
+  // 
+  if( remoteNodeMap.size() > 0 ) 
+  {
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+               "[%u] Clear %lu remote nodes. Critical path analysis might fail otherwise.", 
+               mpiRank, remoteNodeMap.size() );
+    
+    if( Parser::getVerboseLevel() > VERBOSE_BASIC )
+    {
+      for( RemoteNodeMap::const_iterator it = remoteNodeMap.begin(); 
+           it != remoteNodeMap.end(); ++it )
+      {
+        UTILS_MSG( true, "[%u] Node %s has open remote node %"PRIu64" on stream %"PRIu64, 
+                   mpiRank, it->first->getUniqueName().c_str(), 
+                   it->second.nodeID, it->second.streamID );
+      }
+    }
+    
+    remoteNodeMap.clear();
+  }
 }
 
 std::set< uint32_t >
-MPIAnalysis::getMpiPartnersRank( GraphNode* node )
+MPIAnalysis::getMpiPartnersRanks( GraphNode* node )
 {
   std::set< uint32_t > partners;
 
@@ -245,25 +271,19 @@ MPIAnalysis::getMpiPartnersRank( GraphNode* node )
     node = node->getGraphPair( ).second;
   }
 
-  if ( node->isMPIRecv( ) || node->isMPISend( ) /*|| 
-       node->isMPIISend( ) || node->isMPIIRecv( )*/ )
+  if ( node->isMPIRecv() || node->isMPISend() || node->isMPIWait() )
   {
     partners.insert( getMPIRank( node->getReferencedStreamId( ) ) );
   }
 
-  /*if ( node->isMPISend( ) )
-  {
-    partners.insert( getMPIRank( *( (uint64_t*)( node->getData( ) ) ) ) );
-  }*/
-
-  if ( node->isMPICollective( ) || node->isMPIOneToAll( ) ||
-       node->isMPIAllToOne( ) )
+  if ( node->isMPICollective( ) /*|| node->isMPIOneToAll( ) ||
+       node->isMPIAllToOne( )*/ )
   {
     uint32_t mpiGroupId = node->getReferencedStreamId( );
     const MPICommGroup& tmpMpiCommGroup = getMPICommGroup( mpiGroupId );
     for ( std::set< uint64_t >::const_iterator iter =
-            tmpMpiCommGroup.procs.begin( );
-          iter != tmpMpiCommGroup.procs.end( ); ++iter )
+            tmpMpiCommGroup.procs.begin();
+          iter != tmpMpiCommGroup.procs.end(); ++iter )
     {
       partners.insert( getMPIRank( *iter ) );
     }
