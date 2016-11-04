@@ -647,16 +647,16 @@ EventStream::handleMPIIrecvEventData( uint64_t requestId,
   
   if( mpiIcommRecords.count( requestId ) > 0 )
   {
-    mpiIcommRecords[requestId].leaveNode->setReferencedStreamId(partnerId);
+    mpiIcommRecords[requestId].leaveNode->setReferencedStreamId( partnerId );
 
     // temporarily store the request that is consumed by MPI_Wait[all] leave event
-    pendingRequests.push_back(requestId);
+    pendingRequests.push_back( requestId );
   }
   else
   {
-    UTILS_MSG( true, "[%"PRIu64"] MPI_Irecv communication event: Could not find"
-               " communication record with request ID %"PRIu64" and "
-               "communication partner %"PRIu64, this->id, requestId, partnerId );
+    UTILS_MSG( true, "[%"PRIu64"<-%"PRIu64"] Ignore MPI_Irecv communication "
+                     "over interval boundaries. (OTF2 request: %"PRIu64")", 
+                     this->id, partnerId, requestId );
   }
 }
 
@@ -710,8 +710,8 @@ EventStream::setMPIIsendNodeData( GraphNode* node )
   node->setReferencedStreamId( mpiIsendPartner ); 
   
   //invalidate temporary stored request and partner ID
-  pendingMPIRequestId = std::numeric_limits< uint64_t >::max( );
-  mpiIsendPartner = std::numeric_limits< uint64_t >::max( );
+  pendingMPIRequestId = std::numeric_limits< uint64_t >::max();
+  mpiIsendPartner = std::numeric_limits< uint64_t >::max();
 }
 
 /**
@@ -1366,6 +1366,7 @@ EventStream::reset( )
     UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE, 
                "[%"PRIu64"] Clear list of pending non-blocking MPI communication "
                "records (%lu)!", this->id, this->mpiIcommRecords.size() );
+    
     mpiIcommRecords.clear();
   }
 }
