@@ -644,11 +644,20 @@ EventStream::handleMPIIrecvEventData( uint64_t requestId,
 {
   //UTILS_MSG( true, "[%"PRIu64"] MPIIrecv: mpiWaitRequest = %"PRIu64, 
   //                 this->id, requestId );
- 
-  mpiIcommRecords[requestId].leaveNode->setReferencedStreamId(partnerId);
   
-  // temporarily store the request that is consumed by MPI_Wait[all] leave event
-  pendingRequests.push_back(requestId);
+  if( mpiIcommRecords.count( requestId ) > 0 )
+  {
+    mpiIcommRecords[requestId].leaveNode->setReferencedStreamId(partnerId);
+
+    // temporarily store the request that is consumed by MPI_Wait[all] leave event
+    pendingRequests.push_back(requestId);
+  }
+  else
+  {
+    UTILS_MSG( true, "[%"PRIu64"] MPI_Irecv communication event: Could not find"
+               " communication record with request ID %"PRIu64" and "
+               "communication partner %"PRIu64, this->id, requestId, partnerId );
+  }
 }
 
 /**
@@ -706,7 +715,7 @@ EventStream::setMPIIsendNodeData( GraphNode* node )
 }
 
 /**
- * Sets node-specific data for the given MPI_Wait or MPI_Test leave node.
+ * Sets node-specific data for the given MPI_Wait leave node.
  * Consumes the pending OTF2 request ID. Both, MPI_Wait and MPI_Test can
  * complete a non-blocking MPI communication. In an OTF2 trace, completed 
  * communication operations are between ENTER and LEAVE of MPI_Wait[all],
@@ -719,23 +728,32 @@ EventStream::setMPIIsendNodeData( GraphNode* node )
  */
 void
 EventStream::setMPIWaitNodeData( GraphNode* node )
-{
-//  UTILS_ASSERT( pendingRequests.size( ) == 1, 
-//                "List of pending OTF2 request IDs != 1 (%llu).\n", 
-//                pendingRequests.size( ) );
-  
+{  
   if( pendingRequests.size( ) == 1 )
   {
-    // set MPIIcommRecord data as node-specific data
+    uint64_t pendingReqId = pendingRequests.back();
+    
     // the request ID has to be already in the map from Irecv or Isend record
-    node->setData( &mpiIcommRecords[ pendingRequests.back( ) ] );
+    if( mpiIcommRecords.count( pendingReqId ) >0 )
+    {
+      // set MPIIcommRecord data as node-specific data
+      node->setData( &mpiIcommRecords[ pendingReqId ] );
 
-    // request ID is consumed, therefore pop it from the vector
-    pendingRequests.pop_back( );
+      // request ID is consumed, therefore pop it from the vector
+      pendingRequests.pop_back();
+    }
+    else
+    {
+      UTILS_MSG( true, "[%"PRIu64"] MPI_Wait node: Could not find communication"
+                 " record with request ID %"PRIu64" and communication partner %"
+                 PRIu64, this->id, pendingReqId );
+    }
   }
   else if( pendingRequests.size( ) == 0 )
   {
-    //\todo: no need to store this node, need to detect in TraceWriter as well
+    // assign waiting time to this node, as it is unnecessary
+    node->setCounter( WAITING_TIME, 
+                      node->getTime() - node->getGraphPair().first->getTime() );
   }
   else
   {
@@ -753,17 +771,91 @@ EventStream::setMPIWaitNodeData( GraphNode* node )
 void
 EventStream::setMPIWaitallNodeData( GraphNode* node )
 {
-  UTILS_ASSERT( pendingRequests.size() > 0, 
-                "List of pending OTF2 request IDs !> 0.\n");
+  //UTILS_ASSERT( pendingRequests.size() > 0, 
+  //              "List of pending OTF2 request IDs !> 0.\n");
   
-  MPIIcommRequestList::const_iterator it = pendingRequests.begin();
-  
-  for( ; it != pendingRequests.end( ); ++it )
+  if( pendingRequests.size() > 0 )
   {
-    mpiIcommRecords[*it].leaveNode = node;
+    // create a copy of the pending requests
+    MPIIcommRequestList* copyList = new MPIIcommRequestList( pendingRequests );
+    node->setData( copyList );
+
+    pendingRequests.clear();
   }
-  
-  pendingRequests.clear( );
+  else
+  {
+    // assign waiting time to this node, as it is unnecessary
+    node->setCounter( WAITING_TIME, 
+                      node->getTime() - node->getGraphPair().first->getTime() );
+    
+    // make sure the WaitAllRule is not triggered
+    node->setData( NULL );
+  }
+}
+
+/**
+ * Consumes the pending OTF2 request ID and remove the corresponding record, as 
+ * MPI_Test does not influence the critical path. If it completes a non-blocking
+ * communication it is not even waiting time. In an OTF2 trace, completed 
+ * communication operations are between ENTER and LEAVE of MPI_Wait[all],
+ * MPI_Test[all].
+ * 
+ * If there are no pending request, no communication operation has completed 
+ * here.
+ * 
+ * @param node the graph node of the MPI_Test leave record
+ */
+void
+EventStream::handleMPITest( GraphNode* node )
+{  
+  if( pendingRequests.size( ) == 1 )
+  {
+    // remove the record
+    mpiIcommRecords.erase( pendingRequests.back() );
+
+    // request ID is consumed, therefore pop it from the vector
+    pendingRequests.pop_back( );
+  }
+  else if( pendingRequests.size( ) == 0 )
+  {
+    // assign waiting time to this node, as it is unnecessary
+    node->setCounter( WAITING_TIME, 
+                      node->getTime() - node->getGraphPair().first->getTime() );
+  }
+  else
+  {
+    UTILS_MSG( true, "List of pending OTF2 request IDs > 1 (#%llu) at %s", 
+               pendingRequests.size( ), node->getUniqueName().c_str() );
+  }
+}
+
+/**
+ * Consumes the pending OTF2 request IDs and removes the associated 
+ * communication records.
+ * 
+ * @param node the graph node of the MPI_Testall leave record
+ */
+void
+EventStream::handleMPITestall( GraphNode* node )
+{  
+  if( pendingRequests.size() > 0 )
+  {
+    // iterate over all associated requests
+    EventStream::MPIIcommRequestList::const_iterator it = pendingRequests.begin();
+    for( ; it != pendingRequests.end(); ++it )
+    {
+      // remove associated record, as data is not used
+      removePendingMPIRequest( *it );
+    }
+    
+    pendingRequests.clear();
+  }
+  else
+  {
+    // assign waiting time to this node, as it is unnecessary
+    node->setCounter( WAITING_TIME, 
+                      node->getTime() - node->getGraphPair().first->getTime() );
+  }
 }
 
 /**
@@ -796,8 +888,8 @@ EventStream::waitForPendingMPIRequest( uint64_t requestId )
     if ( it->first == requestId )
     {
       UTILS_DBG_MSG( DEBUG_MPI_ICOMM,
-                     "[%"PRIu64"] Finish requests (%p) associated with OTF2 request ID %llu \n",
-                     this->id, it->second, requestId);
+                     "[%"PRIu64"] Finish requests (%p) associated with OTF2 "
+                     "request ID %llu \n", this->id, it->second, requestId);
       
       if( it->second.requests[0] != MPI_REQUEST_NULL )
       {
@@ -820,11 +912,33 @@ EventStream::waitForPendingMPIRequest( uint64_t requestId )
       it++;
   }
   
-  UTILS_MSG( true, 
-             "[%u] OTF2 MPI request ID %llu could not be found. Has already completed?\n",
-             this->id, requestId );
+  UTILS_MSG( true, "[%"PRIu64"] OTF2 MPI request ID %"PRIu64" could not be found."
+                   " Has already completed?", this->id, requestId );
 
   return false;
+}
+
+/**
+ * Get the MPI non-blocking communication record by OTF2 request ID.
+ * 
+ * @param requestId OTF2 request ID
+ * 
+ * @return the corresponding MPI non-blocking communication record
+ */
+EventStream::MPIIcommRecord*
+EventStream::getPendingMPIIcommRecord( uint64_t requestId )
+{
+  // invalidate node-specific data for the MPI_Isend or MPI_Irecv
+  try {
+    return &( mpiIcommRecords.at(requestId) );
+  }
+  catch (const std::out_of_range& oor) 
+  {
+    UTILS_MSG( true, 
+               "[%"PRIu64"] OTF2 MPI request ID %"PRIu64" could not be found. "
+               "Has already completed? (%s)", this->id, requestId, oor.what() );
+    return NULL;
+  }
 }
 
 /**
@@ -838,24 +952,18 @@ EventStream::waitForPendingMPIRequest( uint64_t requestId )
 void
 EventStream::removePendingMPIRequest( uint64_t requestId )
 { 
-  // invalidate node-specific data for the MPI_Isend or MPI_Irecv
-  try {
-    mpiIcommRecords.at( requestId ).leaveNode->setData(NULL);
-  }
-  catch (const std::out_of_range& oor) 
+  // "Because all elements in a map container are unique, count can only 
+  //  return 1 (if the element is found) or zero (otherwise)."
+  if( mpiIcommRecords.count( requestId ) > 0 )
   {
-    UTILS_MSG( true, 
-               "[%"PRIu64"] OTF2 MPI request ID %llu could not be found. "
-               "Has already completed? (%s)", this->id, requestId, oor.what() ); 
+    // invalidate node-specific data for the MPI_Isend or MPI_Irecv
+    mpiIcommRecords[ requestId ].leaveNode->setData(NULL);
+    mpiIcommRecords.erase( requestId );
   }
-  
-  // remove the request from map
-  size_t erasedRequests = mpiIcommRecords.erase( requestId );
-  
-  if( erasedRequests > 1 )
+  else
   {
-    UTILS_MSG( true, "[%u] Found %llu entries for OTF2 MPI request ID %llu.",
-                     this->id, erasedRequests, requestId );
+    UTILS_MSG( true, "[%"PRIu64"] OTF2 MPI request ID %"PRIu64" could not be "
+                     "found. Has already completed?", this->id, requestId );
   }
 }
 
@@ -878,9 +986,9 @@ EventStream::waitForPendingMPIRequests( GraphNode* node )
     if ( it->second.leaveNode == node )
     {
       UTILS_DBG_MSG( DEBUG_MPI_ICOMM,
-                     "[%u] Finish requests (%p) associated with OTF2 request ID "
-                     "%llu (in waitForPendingMPIRequests())\n",
-                     this->id, it->second, it->second.requestId);
+                     "[%"PRIu64"] Finish requests (%p) associated with OTF2 "
+                     "request ID %"PRIu64" in waitForPendingMPIRequests()",
+                     this->id, it->second, it->second.requestId );
       
       if( it->second.requests[0] != MPI_REQUEST_NULL )
       {
@@ -913,9 +1021,7 @@ EventStream::waitForPendingMPIRequests( GraphNode* node )
 }
 
 /**
- * Analysis rules for non-blocking MPI communication:
- * 
- * Wait for open MPI_Request handles. Should be called before MPI_Finalize().
+ * Wait for open MPI_Request handles. 
  */
 void
 EventStream::waitForAllPendingMPIRequests( )
@@ -923,8 +1029,8 @@ EventStream::waitForAllPendingMPIRequests( )
   MPIIcommRecordMap::iterator it = mpiIcommRecords.begin();
   
   UTILS_MSG( mpiIcommRecords.size() > 0,
-             "[%llu] Number of pending MPI request handles at MPI_Finalize: %lu \n", 
-             this->id, mpiIcommRecords.size() );
+             "[%"PRIu64"] Number of pending MPI request handles at "
+             "MPI_Finalize: %lu", this->id, mpiIcommRecords.size() );
 
   for (; it != mpiIcommRecords.end( ); ++it )
   {
@@ -940,8 +1046,6 @@ EventStream::waitForAllPendingMPIRequests( )
     
     // invalidate node-specific data
     it->second.leaveNode->setData( NULL );
-    //delete it->second; 
-    //it->second = 0;
   }
 
   // clear the map of pending non-blocking MPI operations
@@ -949,8 +1053,6 @@ EventStream::waitForAllPendingMPIRequests( )
 }
 
 /**
- * Analysis rules for non-blocking MPI communication:
- * 
  * Test for completed MPI_Request handles. Can be used to decrease the number of 
  * open MPI request handles, e.g. at blocking collective operations.
  * This might improve the performance of the MPI implementation. 
@@ -958,7 +1060,6 @@ EventStream::waitForAllPendingMPIRequests( )
 void
 EventStream::testAllPendingMPIRequests( )
 {
-  
   MPIIcommRecordMap::iterator it = mpiIcommRecords.begin();
   
   while ( it != mpiIcommRecords.end( ) )
@@ -976,9 +1077,10 @@ EventStream::testAllPendingMPIRequests( )
     if( finished[0] && finished[1] )
     {
       
-      UTILS_DBG_MSG( DEBUG_MPI_ICOMM, "[%u] Finished requests (%p) with OTF2 request ID"
-                                      " %llu in testAllPendingMPIRequests()\n", 
-                                      this->id, it->second, it->second.requestId);
+      UTILS_DBG_MSG( DEBUG_MPI_ICOMM, 
+                     "[%"PRIu64"] Finished requests (%p) with OTF2 request ID"
+                     " %"PRIu64" in testAllPendingMPIRequests()\n", 
+                     this->id, it->second, it->second.requestId);
       
       // invalidate node-specific data
       it->second.leaveNode->setData( NULL );
@@ -1261,8 +1363,9 @@ EventStream::reset( )
   // clear list of pending non-blocking MPI communication records
   if( !(mpiIcommRecords.empty()) )
   {
-    UTILS_MSG( true, "[%"PRIu64"] Clear list of pending non-blocking MPI communication records (%lu)!", 
-                     this->id, this->mpiIcommRecords.size() );
+    UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE, 
+               "[%"PRIu64"] Clear list of pending non-blocking MPI communication "
+               "records (%lu)!", this->id, this->mpiIcommRecords.size() );
     mpiIcommRecords.clear();
   }
 }

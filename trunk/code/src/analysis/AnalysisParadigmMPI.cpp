@@ -76,7 +76,7 @@ AnalysisParadigmMPI::getParadigm( )
 void
 AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
 {
-  EventStream* stream = commonAnalysis->getStream( node->getStreamId( ) );
+  EventStream* stream = commonAnalysis->getStream( node->getStreamId() );
   
   // handle non-blocking MPI communication enter/leave events
   if( node->isMPI_Isend() )
@@ -89,21 +89,32 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
     stream->addPendingMPIIrecvNode( node );
     return;
   }
-  else if( node->isMPIWait() || node->isMPITest() )
+  else if( node->isMPIWait() )
   {
     stream->setMPIWaitNodeData( node );
     return;
-  }else if( node->isMPIWaitall() )
+  }
+  else if( node->isMPI_Test() )
+  {
+    stream->handleMPITest( node );
+    return;
+  }
+  else if( node->isMPIWaitall() )
   {
     stream->setMPIWaitallNodeData( node );
     return;
   }
+  else if( node->isMPI_Testall() )
+  {
+    stream->handleMPITestall( node );
+    return;
+  }
 
   // handle blocking MPI communication events
-  EventStream::MPICommRecordList mpiCommRecords = stream->getPendingMPIRecords( );
+  EventStream::MPICommRecordList mpiCommRecords = stream->getPendingMPIRecords();
   for ( EventStream::MPICommRecordList::const_iterator iter =
-          mpiCommRecords.begin( );
-        iter != mpiCommRecords.end( ); ++iter )
+          mpiCommRecords.begin();
+        iter != mpiCommRecords.end(); ++iter )
   {
     uint64_t* tmpId = NULL;
 

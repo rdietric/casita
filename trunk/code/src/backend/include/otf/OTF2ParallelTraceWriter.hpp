@@ -103,8 +103,7 @@ namespace casita
                                const char*     originalFilename,
                                bool            writeToFile,
                                AnalysisMetric* metrics,
-                               bool            ignoreAsyncMpi,
-                               int             verbose );
+                               bool            ignoreAsyncMpi );
       virtual
       ~OTF2ParallelTraceWriter( );
 

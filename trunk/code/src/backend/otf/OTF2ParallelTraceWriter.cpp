@@ -148,15 +148,13 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t        mpiRank,
                                                   const char*     originalFilename,
                                                   bool            writeToFile,
                                                   AnalysisMetric* metrics,
-                                                  bool            ignoreAsyncMpi,
-                                                  int             verbose )
+                                                  bool            ignoreAsyncMpi )
   :
     writeToFile( writeToFile ),
     mpiRank( mpiRank ),
     mpiSize( mpiSize ),
     cTable( metrics ),
     ignoreAsyncMpi( ignoreAsyncMpi ),
-    verbose( verbose ),
     ompForkJoinRef( 0 ),
     global_def_writer( NULL ),
     processNodes( NULL ),
@@ -191,7 +189,7 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
     boost_filename.filename( ), "" ).string( );
   pathToFile     = boost_path.parent_path().string();
 
-  UTILS_MSG( mpiRank == 0 && verbose >= VERBOSE_BASIC, 
+  UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
              "[0] PATH: '%s'", pathToFile.c_str( ) );
   
   #else
@@ -327,12 +325,13 @@ OTF2ParallelTraceWriter::clearOpenEdges( )
 {
   if( openEdges.size() )
   {
-    UTILS_MSG( verbose >= VERBOSE_BASIC, "[%" PRIu64 "] Clear open edge(s)", 
-               currentStream->getId() );
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+               "[%" PRIu64 "] Clear open edge(s)", currentStream->getId() );
     for ( OpenEdgesList::const_iterator edgeIter = openEdges.begin( );
         edgeIter != openEdges.end( ); ++edgeIter)
     {
-      UTILS_MSG( verbose >= VERBOSE_BASIC, "  %s", (*edgeIter)->getName().c_str() );
+      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+                 "  %s", (*edgeIter)->getName().c_str() );
     }
     openEdges.clear();
   }
@@ -439,8 +438,8 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions( )
                                         global_def_reader,
                                         &definitions_read );
 
-  UTILS_MSG( mpiRank == 0 && verbose >= VERBOSE_BASIC, 
-             "[0] Read and wrote %lu definitions", definitions_read );
+  UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+             "[0] Read and wrote %"PRIu64" definitions", definitions_read );
 
   // add fork/join "region" to support internal OMP-fork/join model
   // ( OMP-fork/join is a node in CASITA internally )
@@ -585,13 +584,13 @@ OTF2ParallelTraceWriter::setupAttributeList( void )
 void
 OTF2ParallelTraceWriter::setupEventReader( uint64_t processId )
 {
-  UTILS_MSG( verbose >= VERBOSE_ANNOY, "[%u] Start writing for process %lu", 
-                                       mpiRank, processId );
+  UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_ANNOY, 
+             "[%"PRIu32"] Start writing for process %"PRIu64, mpiRank, processId );
 
   if ( isFirstProcess )
   {
     // \todo: only once!
-    UTILS_MSG( verbose >= VERBOSE_BASIC &&  mpiRank == 0, 
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC &&  mpiRank == 0, 
                "[0] Write OTF2 trace file with CASITA counters.\n");
     OTF2_Reader_OpenEvtFiles( reader );
     OTF2_Reader_OpenDefFiles( reader );
@@ -674,8 +673,8 @@ OTF2ParallelTraceWriter::writeStream( EventStream*  stream,
   if( stream->getPeriod().second == 0 )
     return true;
   
-  UTILS_MSG( verbose >= VERBOSE_SOME, "[%u] Write stream %s", 
-             mpiRank, stream->getName() );
+  UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_SOME, 
+             "[%"PRIu32"] Write stream %s", mpiRank, stream->getName() );
   
   //\todo: this prohibits parallelization
   currentStream = stream;
@@ -693,7 +692,8 @@ OTF2ParallelTraceWriter::writeStream( EventStream*  stream,
     // but some special handling, e.g. for the CP is needed
     while( (*currentNodeIter)->isAtomic() )
     {
-      UTILS_MSG( verbose >= VERBOSE_ALL, "[%u] TraceWriter: Skip atomic event: %s", 
+      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_ALL, 
+                 "[%"PRIu32"] TraceWriter: Skip atomic event: %s", 
                  mpiRank, (*currentNodeIter)->getUniqueName().c_str( ) );
      
       // first part of the condition should be wrong for the global source node
