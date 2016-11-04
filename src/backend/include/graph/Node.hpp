@@ -105,10 +105,11 @@ namespace casita
    MPI_IRECV     = ( 1 << 12 ),
    MPI_WAITALL   = ( 1 << 13 ),
    MPI_TEST      = ( 1 << 14 ),
-   MPI_INIT      = ( 1 << 15 ),
-   MPI_FINALIZE  = ( 1 << 16 ),
-   MPI_ALLRANKS  = ( 1 << 17 ), // all ranks are involved in the MPI operation
-   MPI_BLOCKING  = ( 1 << 18 )  // blocking MPI operation
+   MPI_TESTALL   = ( 1 << 15 ),
+   MPI_INIT      = ( 1 << 16 ),
+   MPI_FINALIZE  = ( 1 << 17 ),
+   MPI_ALLRANKS  = ( 1 << 18 ), // all ranks are involved in the MPI operation
+   MPI_BLOCKING  = ( 1 << 19 )  // blocking MPI operation
  };
 
  enum NodeTypeOMP
@@ -410,10 +411,17 @@ namespace casita
      }
      
      bool
-     isMPITest( ) const
+     isMPI_Test( ) const
      {
 
        return isMPI( ) && ( nodeType & MPI_TEST );
+     }
+     
+     bool
+     isMPI_Testall( ) const
+     {
+
+       return isMPI( ) && ( nodeType & MPI_TESTALL );
      }
 
      bool

@@ -1,8 +1,10 @@
-------------------- CASITA 1.5 ---------------------------
+------------------- CASITA 1.6 ---------------------------
 MPI
-- added late sender/receiver rules for MPI_Wait
-  (generate graph nodes for enter events of non-blocking 
-   MPI routines again)
+- added late sender/receiver rules for MPI_Wait and 
+  MPI_Waitall (generate graph nodes for enter events of 
+  non-blocking MPI routines again)
+- handle MPI_Test and MPI_Testall to close MPI requests
+  and remove respective internal data
 - simplified critical path detection for MPI 
   (reduced memory and communication overhead)
 - fixed detection of the last MPI node in an interval

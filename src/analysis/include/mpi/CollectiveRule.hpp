@@ -51,15 +51,13 @@ namespace casita
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
         
-        // wait or test for pending non-blocking MPI communication
-        if ( colLeave->isMPIFinalize() )
+        // test for pending non-blocking MPI communication (to close open requests)
+        if ( !colLeave->isMPIInit() )
         {
-          analysis->getCommon()->getStream( colLeave->getStreamId() )->waitForAllPendingMPIRequests();
+          analysis->getCommon()->getStream( colLeave->getStreamId() )
+                               ->testAllPendingMPIRequests();
         }
-        else if ( !colLeave->isMPIInit() )
-        {
-          analysis->getCommon()->getStream( colLeave->getStreamId() )->testAllPendingMPIRequests();
-        }
+        
         /*
         UTILS_MSG( 0 == strcmp( colLeave->getName(), "MPI_Reduce" ), 
                    "[%u] MPI collective: %s", colLeave->getStreamId(), colLeave->getUniqueName().c_str());

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2015-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -100,7 +100,7 @@ namespace casita
             }
             else
             {
-              UTILS_MSG( true, "[%"PRIu64"] WaitRule: Activity edge not found.", 
+              UTILS_MSG( true, "[%"PRIu64"] MPI_Wait rule: Activity edge not found.", 
                                waitLeave->getStreamId() );
             }
 
@@ -128,7 +128,7 @@ namespace casita
         else
         {
           UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
-                     "[%" PRIu64 "]MPI_Wait rule: No request to wait for!", 
+                     "[%" PRIu64 "] MPI_Wait rule: No request to wait for!", 
                      waitLeave->getStreamId() );
         }
 

@@ -621,8 +621,7 @@ void
 AnalysisEngine::writeOTF2Definitions( std::string filename,
                                       std::string origFilename,
                                       bool        writeToFile,
-                                      bool        ignoreAsyncMpi,
-                                      int         verbose)
+                                      bool        ignoreAsyncMpi )
 {
   EventStreamGroup::EventStreamList allStreams;
   
@@ -636,13 +635,12 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
   {
     // \todo: only the first time
     writer = new OTF2ParallelTraceWriter(
-      mpiAnalysis.getMPIRank( ),
-      mpiAnalysis.getMPISize( ),
-      origFilename.c_str( ),
+      mpiAnalysis.getMPIRank(),
+      mpiAnalysis.getMPISize(),
+      origFilename.c_str(),
       writeToFile,
-      &( this->getCtrTable( ) ),
-      ignoreAsyncMpi,
-      verbose );
+      &( this->getCtrTable() ),
+      ignoreAsyncMpi );
 
     if ( !writeToFile )
     {
@@ -655,12 +653,12 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
     throw RTException( "Could not create trace writer" );
   }
 
-  writer->open( filename.c_str( ), 100 );
+  writer->open( filename.c_str(), 100 );
   
   if( writeToFile )
   {
-    writer->writeAnalysisMetricDefinitions( );
-    writer->setupAttributeList( );
+    writer->writeAnalysisMetricDefinitions();
+    writer->setupAttributeList();
   }
 
   MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
@@ -671,7 +669,7 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
   {
     EventStream* p = *pIter;
 
-    if ( p->isRemoteStream( ) )
+    if ( p->isRemoteStream() )
     {
       continue;
     }
@@ -689,12 +687,10 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
 /**
  * Write process events to OTF2 output.
  * 
- * @param verbose verbose level
- * 
  * @return true, if events are available, otherwise false
  */
 bool
-AnalysisEngine::writeOTF2EventStreams( int verbose )
+AnalysisEngine::writeOTF2EventStreams( )
 {
   assert(writer);
   
@@ -736,7 +732,7 @@ AnalysisEngine::writeOTF2EventStreams( int verbose )
     events_read += events_read_per_stream;
   }
   
-  if( getMPIRank() == 0 && verbose >= VERBOSE_BASIC ){
+  if( getMPIRank() == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC ){
     UTILS_MSG( events_available, 
                "[0] Writer interrupted by callback: Read %lu events", 
                events_read );
@@ -766,8 +762,9 @@ AnalysisEngine::checkPendingMPIRequests( )
   {
     if( (*pIter)->havePendingMPIRequests( ) )
     {
-      UTILS_MSG( true, "[%u] There are pending MPI requests on stream %d (%s)!", 
-                       getMPIRank(), (*pIter)->getId( ), (*pIter)->getName( ) );
+      UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE, 
+                 "[%"PRIu32"] There are pending MPI requests on stream %"PRIu64" (%s)!", 
+                 getMPIRank(), (*pIter)->getId( ), (*pIter)->getName( ) );
     }
   }
 }

@@ -321,6 +321,30 @@ namespace casita
      setMPIWaitallNodeData( GraphNode* node );
      
      /**
+      * Consumes the pending OTF2 request ID and remove the corresponding record, as 
+      * MPI_Test does not influence the critical path. If it completes a non-blocking
+      * communication it is not even waiting time. In an OTF2 trace, completed 
+      * communication operations are between ENTER and LEAVE of MPI_Wait[all],
+      * MPI_Test[all].
+      * 
+      * If there are no pending request, no communication operation has completed 
+      * here.
+      * 
+      * @param node the graph node of the MPI_Test leave record
+      */
+     void
+     handleMPITest( GraphNode* node );
+     
+     /**
+      * Consumes the pending OTF2 request IDs and removes the associated 
+      * communication records.
+      * 
+      * @param node the graph node of the MPI_Testall leave record
+      */
+     void
+     handleMPITestall( GraphNode* node );
+     
+     /**
       * Return whether we have pending MPI requests or not.
       * 
       * @return true, if we have pending MPI requests in the list.
@@ -338,6 +362,9 @@ namespace casita
       */
      bool
      waitForPendingMPIRequest( uint64_t requestId );
+     
+     MPIIcommRecord*
+     getPendingMPIIcommRecord( uint64_t requestId );
      
      /**
       * Remove an MPI request form the map, when it has been processed (e.g. 

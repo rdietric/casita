@@ -344,8 +344,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
       analysis.writeOTF2Definitions( options.outOtfFile,
                                      options.filename,
                                      options.createTraceFile, // let the trace writer know if it should write an OTF output
-                                     options.ignoreAsyncMpi,
-                                     options.verbose );
+                                     options.ignoreAsyncMpi );
       
       UTILS_MSG( mpiRank == 0, "[0] Writing result to %s", 
                  Parser::getInstance().getPathToFile().c_str( ) );
@@ -359,7 +358,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     }
 
     // writes the OTF2 event streams and computes blame for CPU functions
-    if( analysis.writeOTF2EventStreams( options.verbose ) == false && events_available )
+    if( analysis.writeOTF2EventStreams() == false && events_available )
     {
       UTILS_MSG( true, "[%d] Reader and writer are not synchronous! Aborting ...", 
                        mpiRank );
