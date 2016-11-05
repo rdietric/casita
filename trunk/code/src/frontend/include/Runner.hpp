@@ -33,7 +33,6 @@ namespace casita
  {
    private:
      typedef std::vector< MPIAnalysis::CriticalPathSection > SectionsList;
-     typedef std::vector< MPIAnalysis::ProcessNodePair > MPINodeList;
 
    public:
 

@@ -36,12 +36,12 @@ namespace casita
      {
        uint64_t streamID;
        uint64_t nodeID;
-     } ProcessNodePair;
+     } RemoteNode;
 
    private:
      typedef std::map< uint32_t, uint32_t > TokenTokenMap;
      typedef std::map< uint64_t, GraphNode* > IdNodeMap;
-     typedef std::map< GraphNode*, ProcessNodePair > RemoteNodeMap;
+     typedef std::map< GraphNode*, RemoteNode > RemoteNodeMap;
    public:
 
      typedef struct
@@ -66,11 +66,7 @@ namespace casita
 
      typedef struct
      {
-       //uint64_t prevStreamID;
        uint64_t streamID;
-       /* uint64_t nextStreamID;
-       uint32_t nodeStartID;
-       uint32_t nodeEndID;*/
        GraphNode* startNode;
        GraphNode* endNode;
      } CriticalPathSection;
@@ -94,9 +90,6 @@ namespace casita
      uint32_t
      getMPIRank( uint64_t streamId ) const;
 
-     /*uint32_t
-     getMPIRank( uint64_t streamId, const MPICommGroup& commGroup ) const;*/
-
      void
      setMPIRank( uint64_t streamId, uint32_t rank );
 
@@ -113,13 +106,9 @@ namespace casita
 
      void
      addRemoteMPIEdge( GraphNode* localNode, uint64_t remoteNodeID,
-                       uint64_t remoteProcessID/*, MPIEdgeDirection direction*/ );
-/*
-     bool
-     getRemoteMPIEdge( uint64_t remoteNodeId, uint64_t remoteProcessId,
-                       MPIEdge& edge );
-*/
-     ProcessNodePair
+                       uint64_t remoteProcessID );
+
+     RemoteNode
      getRemoteNodeInfo( GraphNode* localNode, bool* valid );
      
      void

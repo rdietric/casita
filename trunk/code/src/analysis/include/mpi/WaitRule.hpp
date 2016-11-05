@@ -68,18 +68,24 @@ namespace casita
           {
             MPI_CHECK( MPI_Wait( &(record->requests[0]), MPI_STATUS_IGNORE ) );
           }
-            
-          //uint64_t p2pPartnerStartTime = record->recvBuffer[0];
           
           // MPI_Wait[all] on remote process can only start after end of MPI_I*
-          uint64_t p2pPartnerStopTime = record->recvBuffer[1];
+          uint64_t p2pPartnerTime = record->recvBuffer[1];
           
+          // if the partner is MPI_Send|Recv use the start time as wait is
+          // included in blocking MPI
+          if( record->recvBuffer[CASITA_MPI_P2P_BUF_SIZE - 1] == MPI_RECV || 
+              record->recvBuffer[CASITA_MPI_P2P_BUF_SIZE - 1] == MPI_SEND )
+          {
+            p2pPartnerTime = record->recvBuffer[0];
+          }
+
           GraphNode* waitEnter   = waitLeave->getGraphPair().first;
           uint64_t waitStartTime = waitEnter->getTime();
-
+          
           // if this wait started before the communication partner operation,
           // we found a late sender or receiver
-          if( waitStartTime < p2pPartnerStopTime )
+          if( waitStartTime < p2pPartnerTime )
           {
             //UTILS_MSG( true, "[%"PRIu64"] WaitRule: Found late sender/receiver", 
             //           waitLeave->getStreamId() );
@@ -99,8 +105,11 @@ namespace casita
                 waitLeave,
                 record->recvBuffer[2], // remote node ID (leave event)
                 record->leaveNode->getReferencedStreamId() ); // remote process ID
-              //\todo: add blame (== waiting time) here
               
+              // mark this node as blocking to enable the MPI streamWalkCallback
+              // if this is not set, it will be not handled as blocking MPI and
+              // blame is distributed to the previous blocking MPI leave node
+              waitLeave->addType( MPI_BLOCKING );
             }
             else
             {
@@ -109,15 +118,8 @@ namespace casita
             }
 
             waitLeave->setCounter( WAITING_TIME, 
-                                   p2pPartnerStopTime - waitEnter->getTime());
+                                   p2pPartnerTime - waitEnter->getTime());
           }
-
-          /* timing information on the other wait operation was necessary for 
-           * blame distribution
-          distributeBlame( analysis,
-                           waitEnter,
-                           waitStartTime - p2pPartnerStartTime,
-                           streamWalkCallback );*/
 
           // also wait for the other MPI_Request associated with the send buffer
           if( record->requests[1] != MPI_REQUEST_NULL )
