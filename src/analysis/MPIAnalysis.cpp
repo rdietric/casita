@@ -158,46 +158,28 @@ MPIAnalysis::getMPICommGroup( uint32_t group ) const
   throw RTException( "Request for unknown MPI comm group %u", group );
 }
 
+/**
+ * Add an MPI edge from the local node to a remote node that is identified by
+ * node ID and stream ID.
+ * 
+ * @param localNode
+ * @param remoteNodeID
+ * @param remoteStreamID
+ * @param blame
+ */
 void
 MPIAnalysis::addRemoteMPIEdge( GraphNode* localNode,
                                uint64_t   remoteNodeID,
-                               uint64_t   remoteStreamID/*,
-                               MPIEdgeDirection direction*/ )
+                               uint64_t   remoteStreamID )
 {
-  /*MPIEdge edge;
-  edge.direction      = direction;
-  edge.localNode      = localNode;
-  edge.remoteNodeID   = remoteNodeID;
-  edge.remoteStreamID = remoteStreamID;
-  remoteMpiEdgeMap[remoteStreamID][remoteNodeID] = edge;*/
+  RemoteNode rnode;
+  rnode.nodeID   = remoteNodeID;
+  rnode.streamID = remoteStreamID;
 
-  ProcessNodePair pair;
-  pair.nodeID   = remoteNodeID;
-  pair.streamID = remoteStreamID;
-
-  remoteNodeMap[localNode] = pair;
+  remoteNodeMap[localNode] = rnode;
 }
-/*
-bool
-MPIAnalysis::getRemoteMPIEdge( uint64_t remoteNodeId, uint64_t remoteProcessId,
-                               MPIAnalysis::MPIEdge& edge )
-{
-  MPIRemoteEdgeMap::const_iterator pIter = remoteMpiEdgeMap.find(
-    remoteProcessId );
-  if ( pIter != remoteMpiEdgeMap.end() )
-  {
-    MPIIdEdgeMap::const_iterator nIter = pIter->second.find( remoteNodeId );
-    if ( nIter != pIter->second.end() )
-    {
-      edge = nIter->second;
-      return true;
-    }
-  }
 
-  return false;
-}*/
-
-MPIAnalysis::ProcessNodePair
+MPIAnalysis::RemoteNode
 MPIAnalysis::getRemoteNodeInfo( GraphNode* localNode, bool* valid )
 {
   RemoteNodeMap::const_iterator iter = 
@@ -218,7 +200,7 @@ MPIAnalysis::getRemoteNodeInfo( GraphNode* localNode, bool* valid )
     {
       *valid = false;
     }
-    return MPIAnalysis::ProcessNodePair( );
+    return MPIAnalysis::RemoteNode( );
   }
 }
 

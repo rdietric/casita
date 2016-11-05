@@ -27,6 +27,7 @@
 #include <vector>       /* clock_t, clock, CLOCKS_PER_SEC */
 
 #include "Runner.hpp"
+#include "../analysis/include/mpi/MPIRulesCommon.hpp"
 
 using namespace casita;
 using namespace casita::io;
@@ -1117,7 +1118,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
   
   const int MPI_CPA_TAG = 19;
 
-  const size_t BUFFER_SIZE = 2;
+  const size_t BUFFER_SIZE = 3;
   uint64_t sendBfr[BUFFER_SIZE];
   uint64_t recvBfr[BUFFER_SIZE];
 
@@ -1199,7 +1200,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
           
           // check if the given node has a remote edge (currently just check 
           // whether the edge is available and ignore return value)
-          MPIAnalysis::ProcessNodePair pnPair = // (stream ID, node ID)
+          MPIAnalysis::RemoteNode pnPair = // (stream ID, node ID)
             analysis.getMPIAnalysis( ).getRemoteNodeInfo( currentNode,
                                                           &nodeHasRemoteInfo );
           
@@ -1230,10 +1231,20 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
 
           uint32_t mpiPartnerRank = 
             analysis.getMPIAnalysis().getMPIRank( pnPair.streamID );
-                    
+                 
           // prepare send buffer
           sendBfr[0] = pnPair.nodeID;
           sendBfr[1] = NO_MSG; // no specific message
+          
+          // transfer blame for MPI_Wait[all]
+          if( currentNode->isMPIWait() || currentNode->isMPIWaitall() )
+          {
+            sendBfr[2] = currentNode->getCounter( WAITING_TIME, NULL );
+          }
+          else
+          {
+            sendBfr[2] = 0;
+          }
 
           UTILS_DBG_MSG( DEBUG_CPA_MPI,
                          "[%u]  testing remote MPI worker %u for remote edge to"
@@ -1390,14 +1401,14 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
                      nextNodeID ); // continuation node ID
 
       // binary search for continuation node
-      GraphNode* slaveNode = 
+      GraphNode* slaveLeaveNode = 
         GraphNode::findNode( nextNodeID, mpiGraph->getNodes() );
 
-      // if the node could not be found, do a sequential search
-      if( !slaveNode || slaveNode->getId() != nextNodeID )
+      //////// if the node could not be found, do a sequential search //////////
+      if( !slaveLeaveNode || slaveLeaveNode->getId() != nextNodeID )
       {
         // reset slaveNode
-        slaveNode = NULL;
+        slaveLeaveNode = NULL;
 
         // sequential search 
         for( Graph::NodeList::const_iterator iter = mpiGraph->getNodes().begin();
@@ -1405,12 +1416,12 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
         {
           if( (*iter)->getId() == nextNodeID )
           {
-            slaveNode = ( *iter );
+            slaveLeaveNode = ( *iter );
             break;
           }
         }
 
-        if( !slaveNode )
+        if( !slaveLeaveNode )
         {
           if( nextNodeID < mpiGraph->getNodes().front()->getId() )
           {
@@ -1427,13 +1438,26 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
           //slaveNode = mpiGraph->getNodes().front();
         }
       }
+      //////////////////////////////////////////////////////////////////////////
+      
+      // set slave leave and enter node
+      slaveLeaveNode = slaveLeaveNode->getGraphPair().second;
+      GraphNode* slaveEnterNode = slaveLeaveNode->getGraphPair().first;
+      
+      if( recvBfr[2] > 0 )
+      {
+        distributeBlame( &analysis,
+                       slaveEnterNode,
+                       0,
+                       mpi::streamWalkCallback );
+      }
 
       //this rank is the new master
       isMaster = true;
-      slaveNode->getGraphPair().second->setCounter( CRITICAL_PATH, 1 );
+      slaveLeaveNode->setCounter( CRITICAL_PATH, 1 );
 
-      lastNode       = slaveNode->getGraphPair().second;
-      currentNode    = slaveNode->getGraphPair().first;
+      lastNode       = slaveLeaveNode;
+      currentNode    = slaveEnterNode;
       sectionEndNode = lastNode;
 
       UTILS_DBG_MSG( DEBUG_CPA_MPI,
