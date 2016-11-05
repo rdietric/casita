@@ -1203,10 +1203,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   eventDesc.recordType = event.type; 
   const bool mapsInternalNode = FunctionTable::getAPIFunctionType(
     eventName.c_str( ), &eventDesc, deviceStreamMap[event.location], false );  
-  
-  
-  
-  
+
   //UTILS_MSG( mpiRank == 0, "Event name: '%s' (%d), maps internal: %d", 
   //           eventName.c_str( ), event.type, (int)mapsInternalNode );
 

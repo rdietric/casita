@@ -69,14 +69,17 @@ namespace casita
             MPI_CHECK( MPI_Wait( &(record->requests[0]), MPI_STATUS_IGNORE ) );
           }
             
-          // get start time of send operation
-          uint64_t p2pPartnerStartTime = record->recvBuffer[0];
+          //uint64_t p2pPartnerStartTime = record->recvBuffer[0];
+          
+          // MPI_Wait[all] on remote process can only start after end of MPI_I*
+          uint64_t p2pPartnerStopTime = record->recvBuffer[1];
+          
           GraphNode* waitEnter   = waitLeave->getGraphPair().first;
           uint64_t waitStartTime = waitEnter->getTime();
 
           // if this wait started before the communication partner operation,
           // we found a late sender or receiver
-          if( waitStartTime < p2pPartnerStartTime )
+          if( waitStartTime < p2pPartnerStopTime )
           {
             //UTILS_MSG( true, "[%"PRIu64"] WaitRule: Found late sender/receiver", 
             //           waitLeave->getStreamId() );
@@ -95,8 +98,9 @@ namespace casita
               analysis->getMPIAnalysis().addRemoteMPIEdge(
                 waitLeave,
                 record->recvBuffer[2], // remote node ID (leave event)
-                record->leaveNode->getReferencedStreamId()/*, // remote process ID
-                MPIAnalysis::MPI_EDGE_REMOTE_LOCAL*/ );
+                record->leaveNode->getReferencedStreamId() ); // remote process ID
+              //\todo: add blame (== waiting time) here
+              
             }
             else
             {
@@ -105,7 +109,7 @@ namespace casita
             }
 
             waitLeave->setCounter( WAITING_TIME, 
-                                  p2pPartnerStartTime - waitEnter->getTime());
+                                   p2pPartnerStopTime - waitEnter->getTime());
           }
 
           /* timing information on the other wait operation was necessary for 

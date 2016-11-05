@@ -64,7 +64,7 @@ namespace casita
         uint64_t *buffer = record->sendBuffer;
         
         buffer[0] = isendEnter->getTime(); // isend start time
-        buffer[1] = 0; // leave time is not relevant 
+        buffer[1] = isendLeave->getTime(); // isend leave time
         buffer[2] = isendEnter->getId( );  // send start node
         buffer[3] = isendLeave->getId( ); // send leave node
         buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_ISEND; //send.second->getType( );

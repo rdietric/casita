@@ -654,6 +654,8 @@ EventStream::handleMPIIrecvEventData( uint64_t requestId,
   }
   else
   {
+    // if non-blocking communication over interval boundaries occurs it would
+    // probably not influence the critical path or generate waiting time or blame
     UTILS_MSG( true, "[%"PRIu64"<-%"PRIu64"] Ignore MPI_Irecv communication "
                      "over interval boundaries. (OTF2 request: %"PRIu64")", 
                      this->id, partnerId, requestId );
