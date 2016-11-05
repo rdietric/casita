@@ -1203,6 +1203,8 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
             analysis.getMPIAnalysis( ).getRemoteNodeInfo( currentNode,
                                                           &nodeHasRemoteInfo );
           
+          //\todo: retrieve blame from MPI_I* patterns and send it to the target
+          
           // check enter event
           if( !nodeHasRemoteInfo )
           {

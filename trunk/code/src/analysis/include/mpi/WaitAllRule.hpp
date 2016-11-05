@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2015-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -56,8 +56,9 @@ namespace casita
           GraphNode* waitAllEnter  = waitAllLeave->getGraphPair().first;
           uint64_t   waitStartTime = waitAllEnter->getTime();
           
+          // MPI_Wait[all] on remote process can only start after end of MPI_I*
           // determine the last MPI_I[recv|send]
-          uint64_t latestCommPartnerStartTime = waitStartTime;
+          uint64_t latestCommPartnerStopTime = waitStartTime;
           EventStream::MPIIcommRecord* latestRecord = NULL;
           
           // iterate over all associated requests
@@ -88,18 +89,18 @@ namespace casita
             }
 
             // get start time of send operation
-            uint64_t p2pPartnerStartTime = record->recvBuffer[0];
+            uint64_t p2pPartnerStopTime = record->recvBuffer[1];
             
             // if this wait started before the communication partner operation,
             // we found a late sender or receiver
             // we are interested in the latest to determine waiting time
-            if( waitStartTime < p2pPartnerStartTime && 
-                latestCommPartnerStartTime < p2pPartnerStartTime )
+            if( waitStartTime < p2pPartnerStopTime && 
+                latestCommPartnerStopTime < p2pPartnerStopTime )
             {
               //UTILS_MSG( true, "[%"PRIu64"] WaitRule: Found late sender/receiver", 
               //           waitLeave->getStreamId() );
 
-                latestCommPartnerStartTime = p2pPartnerStartTime;
+                latestCommPartnerStopTime = p2pPartnerStopTime;
                 
                 // do not delete the MPIIcommRecord, yet
                 latestRecord = record;
@@ -138,7 +139,7 @@ namespace casita
             }
 
             waitAllLeave->setCounter( WAITING_TIME, 
-                         latestCommPartnerStartTime - waitAllEnter->getTime() );
+                          latestCommPartnerStopTime - waitAllEnter->getTime() );
           }
           
           // clear the list and delete it

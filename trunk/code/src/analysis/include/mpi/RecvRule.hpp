@@ -76,8 +76,7 @@ namespace casita
             commonAnalysis->getMPIAnalysis().addRemoteMPIEdge(
               recvLeave,
               buffer[2], // remote node ID (send enter)
-              partnerProcessId/*,
-              MPIAnalysis::MPI_EDGE_REMOTE_LOCAL*/ );
+              partnerProcessId );
           }
           else
           {
