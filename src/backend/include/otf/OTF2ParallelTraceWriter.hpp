@@ -75,21 +75,34 @@ namespace casita
         uint64_t lastEnterTime;
       } ActivityGroup;
 
+      // sort activities by blame on critical path 
+      // (if equal CP time, then blame, then function ID)
       typedef struct
       {
         bool
         operator()( const ActivityGroup& g1, const ActivityGroup& g2 ) const
-        {
-          double rating1 = g1.fractionBlame + g1.fractionCP;
-          double rating2 = g2.fractionBlame + g2.fractionCP;
-
-          if ( rating1 == rating2 )
+        { 
+          if ( g1.blameOnCP == g2.blameOnCP )
           {
-            return g1.functionId > g2.functionId;
+            if( g1.totalDurationOnCP == g2.totalDurationOnCP )
+            {
+              if( g1.totalBlame == g2.totalBlame )
+              {
+                return g1.functionId > g2.functionId;
+              }
+              else
+              {
+                return g1.totalBlame > g2.totalBlame;
+              }
+            }
+            else
+            {
+              return g1.totalDurationOnCP > g2.totalDurationOnCP;
+            }
           }
           else
           {
-            return rating1 > rating2;
+            return g1.blameOnCP > g2.blameOnCP;
           }
         }
       } ActivityGroupCompare;

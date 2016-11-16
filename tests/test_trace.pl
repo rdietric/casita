@@ -57,7 +57,7 @@ sub test_trace
     }
 
     # check that a optimization report is found
-    my @profile = grep (/(\w+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)%\s+(\d+\.\d+)\s+(\d+\.\d+)%\s+(\d+\.\d+)/, @output);
+    my @profile = grep (/(\w+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)/, @output);
     
     if (not ($#profile + 1 > 0))
     {
@@ -74,16 +74,16 @@ sub test_trace
     {
         my $oline = $_;
         
-        if ($oline =~ /(.+)\s+(\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)%\s+(\d+\.\d+)\s+(\d+\.\d+)%\s+(\d+\.\d+)/)
+        if ($oline =~ /(.+)\s+(\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)/)
         {
             my $fname  = $1;
             my $occ    = $2;
             my $time   = $3;
             my $tcp    = $4;
-            my $fcp    = $5;
-            my $bcp    = $6;  # blame on critical path
-            my $fgb    = $7;
-            my $rating = $8;
+            my $fcp    = $5;  # CP ratio
+            my $fgb    = $6;  # blame ratio
+            my $rating = $7;  # blame + CP
+            my $bcp    = $8;  # blame on CP
             
             #print "$fname,$occ,$time,$tcp,$fcp,$fgb,$rating\n";
 

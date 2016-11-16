@@ -4,7 +4,8 @@ CUDA
   interval boundaries
 
 MISC
-- added new metric "Blame on CP"
+- activity impact rating is now based on the new metric 
+  "Blame on CP"
 - removed unused code
 
 ------------------- CASITA 1.6 ---------------------------
