@@ -478,7 +478,7 @@ OTF2TraceReader::readDefinitions( )
   UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
              "[0] Read %" PRIu64 " definitions in Phase 2", definitions_read );
 
-  /* add forkjoin "region" to support internal OMP-fork/join model */
+  // add forkjoin "region" to support internal OMP-fork/join model
   uint32_t stringSize = definitionTokenStringMap.size( );
   definitionTokenStringMap[stringSize] = OTF2_OMP_FORKJOIN_INTERNAL;
   ompForkJoinRef = functionNameTokenMap.size( );

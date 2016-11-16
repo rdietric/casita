@@ -378,6 +378,21 @@ namespace casita
          {
            if ( strcmp( entry.table[j], name ) == 0 )
            {
+             /* CUDA event record enter nodes do not carry any additional information
+             if( entry.type == CUDA_EV_LAUNCH )
+             {
+               if( descr->recordType == RECORD_ENTER )
+               {
+                 descr->paradigm     = PARADIGM_CPU;
+                 descr->functionType = MISC_CPU;
+                 return false;
+               }
+               else
+               {
+                 descr->recordType = RECORD_SINGLE;
+               }
+             }*/
+             
              descr->paradigm     = PARADIGM_CUDA;
              descr->functionType = entry.type;
              set = true;
@@ -508,11 +523,11 @@ namespace casita
          }
          return true;
        }
-
-       // if it is an OpenMP fork join event
+       
+       // if it is an OpenMP fork/join event
        if ( strstr( name, OTF2_OMP_FORKJOIN_INTERNAL ) )
        {
-         descr->functionType     = OMP_FORKJOIN;
+         descr->functionType = OMP_FORKJOIN;
          descr->paradigm = PARADIGM_OMP;
          return true;
        }

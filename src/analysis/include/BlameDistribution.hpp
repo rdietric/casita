@@ -148,13 +148,14 @@ namespace casita
       // if edge is from enter to leave node of a region (represents a region)
       if ( edge->isRegion() ) 
       {
-        uint64_t edgeRegionExclTime = edge->getDuration() - edge->getCPUNodesExclTime();
+        uint64_t edgeCPURegionTime  = edge->getCPUNodesExclTime();
+        uint64_t edgeNodeRegionTime = edge->getDuration() - edgeCPURegionTime;
         
-        if( edgeRegionExclTime > 0 )
+        if( edgeNodeRegionTime > 0 )
         {
           //\todo: accuracy gets lost here, store result into double
           uint64_t ratioBlame = (double) totalBlame
-                              * (double) edgeRegionExclTime
+                              * (double) edgeNodeRegionTime
                               / (double) totalTimeToBlame;
           
           // check for zero to avoid unnecessary find in incCounter()
@@ -167,7 +168,7 @@ namespace casita
         if( edge->getCPUNodesExclTime() )
         {
           double cpuBlame = (double) totalBlame
-                          * (double) ( edge->getCPUNodesExclTime() )
+                          * (double) edgeCPURegionTime
                           / (double) totalTimeToBlame;
           
           edge->addCPUBlame( cpuBlame );
@@ -177,7 +178,7 @@ namespace casita
       {
         // all blame on the edge, if it is not a region
         double cpuBlame = (double) totalBlame
-          * (double) ( edge->getDuration() )
+          * (double) edge->getDuration()
           / (double) totalTimeToBlame;
 
         if( cpuBlame > 0 )

@@ -27,6 +27,7 @@
 
 #include "mpi/AnalysisParadigmMPI.hpp"
 #include "omp/AnalysisParadigmOMP.hpp"
+#include "cuda/AnalysisParadigmCUDA.hpp"
 
 #include "otf/OTF2ParallelTraceWriter.hpp"
 
@@ -380,13 +381,20 @@ AnalysisEngine::createIntermediateBegin( )
   // node objects are deleted via the streams
   graph.cleanup( true );
   
-  //this->reset();
+  // reset MPI-related objects (before deleting nodes!)
+  this->getMPIAnalysis().reset();
+  
+  // reset several structures in other analysis paradigms
+  this->reset();
 
   EventStreamGroup::EventStreamList streams;
   getStreams( streams );
   
   // sort streams by ID with host streams first
   // std::sort( streams.begin( ), streams.end( ), EventStream::streamSort );
+  
+  cuda::AnalysisParadigmCUDA* cudaAnalysis = 
+    (cuda::AnalysisParadigmCUDA*)this->getAnalysisParadigm( PARADIGM_CUDA );
   
   for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin( );
         iter != streams.end( ); ++iter )
@@ -433,30 +441,9 @@ AnalysisEngine::createIntermediateBegin( )
           // incomplete (only enter exists) and unsynchronized kernels are not deleted
           if( (*it)->isCUDAKernel() )
           {
-            if( (*it)->hasPartner() )
+            // do not delete kernels that have not yet been synchronized
+            if( cudaAnalysis->isKernelPending( *it ) )
             {
-              // kernel leave has not yet been synchronized (compare BlameKernelRule)
-              if( (*it)->getGraphPair().second->getLink() == NULL )
-              {
-                UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-                           "[%"PRIu64"] Do not delete unsynchronized kernel %s", 
-                           p->getId(), getNodeInfo( *it ).c_str() );
-                continue;
-              }
-            }
-            /* enter kernel nodes without partner must not be deleted
-            else if( (*it)->isEnter() )
-            {
-              UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-                         "[%"PRIu64"] Do not delete incomplete kernel %s", 
-                         p->getId(), getNodeInfo( *it ).c_str() );
-              continue;
-            }*/
-
-            if( ( (*it)->isEnter() && !(*it)->hasPartner() ) || 
-                ( (*it)->hasPartner() && (*it)->getGraphPair().second->getLink() == NULL ) )
-            {
-              
               continue;
             }
           }
@@ -467,6 +454,12 @@ AnalysisEngine::createIntermediateBegin( )
           {
             //UTILS_MSG(true, "[%"PRIu64"] Do not delete %s", p->getId(), 
             //                getNodeInfo( *it ).c_str() );
+            continue;
+          }
+          else
+          // if CUDA event record node has not yet been synchronized
+          if( (*it)->isCUDAEventLaunch() && (*it)->isLeave() && (*it)->getData() == NULL )
+          {
             continue;
           }
           
@@ -489,7 +482,7 @@ AnalysisEngine::createIntermediateBegin( )
     }
     
     // clean up stream internal data, keep graphData (first and last node)
-    p->reset( );
+    p->reset();
 
     // create a new global begin node on the MPI synchronization point stream
     if( isMpiStream )
@@ -530,15 +523,12 @@ AnalysisEngine::createIntermediateBegin( )
     }
   }
   streams.clear();
-  
-  // reset MPI-related objects
-  this->getMPIAnalysis().reset();
 }
 
 void
 AnalysisEngine::reset( )
 {
-  GraphEngine::reset( );
+  //GraphEngine::reset( );
   for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin( );
         iter != analysisParadigms.end( ); ++iter )
   {

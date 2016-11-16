@@ -461,6 +461,11 @@ EventStream::getFirstPendingKernel( )
   return NULL;
 }
 
+/**
+ * Remove the first pending kernel from the list and mark it as synchronized.
+ * 
+ * @return the kernel leave node that has been removed
+ */
 GraphNode*
 EventStream::consumeFirstPendingKernel( )
 {
@@ -495,7 +500,7 @@ EventStream::consumePendingKernels( GraphNode* kernelLeave )
   }
 
   // erase a range of kernels
-  SortedGraphNodeList::iterator iterBegin = pendingKernels.begin( );
+  SortedGraphNodeList::iterator iterBegin = pendingKernels.begin();
   SortedGraphNodeList::iterator iter = iterBegin;
   while( iter != pendingKernels.end() )
   {
@@ -511,9 +516,9 @@ EventStream::consumePendingKernels( GraphNode* kernelLeave )
 }
 
 void
-EventStream::clearPendingKernels( )
+EventStream::clearPendingKernels()
 {
-  pendingKernels.clear( );
+  pendingKernels.clear();
 }
 
 void
@@ -522,7 +527,7 @@ EventStream::setPendingKernelsSyncLink( GraphNode* syncLeave )
   for( SortedGraphNodeList::iterator it = pendingKernels.begin( );
        it != pendingKernels.end(); ++it )
   {
-    (*it)->setLink(syncLeave);
+    (*it)->setLink( syncLeave );
   }
 }
 
@@ -1309,18 +1314,22 @@ EventStream::reset( )
   nodesAdded = false;
   
   // Check pending (unsynchronized) CUDA kernels
-  if( !(this->pendingKernels.empty()) && Parser::getVerboseLevel() >= VERBOSE_BASIC )
+  if( !(this->pendingKernels.empty()) && Parser::getVerboseLevel() > VERBOSE_BASIC )
   {
-    UTILS_MSG( true, "[%"PRIu64"] %lz unsynchronized kernels found!", 
+    UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
+               "[%"PRIu64"] %lz pending kernels found!", 
                      this->id, this->pendingKernels.size() );
     
-    if( Parser::getVerboseLevel() >= VERBOSE_SOME )
+    if( Parser::getVerboseLevel() > VERBOSE_BASIC )
     {
       for( SortedGraphNodeList::const_iterator it = pendingKernels.begin();
            it != pendingKernels.end(); ++it )
       {
         UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
                    "   %s", ( *it )->getUniqueName().c_str() );
+        
+        //if( !isKernelPending )
+        //pendingKernels.erase(  )
       }
     }
     

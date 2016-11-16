@@ -39,11 +39,8 @@ namespace casita
         {
           return false;
         }
-
-        GraphNode* ppr = analysis->getInnerMostFork();
-
-        // if forkjoin stack is empty, just add this fork node to the stack
-        if ( ppr == NULL )
+        
+        if( node->isOMPForkJoinRegion() && node->isEnter())
         {
           analysis->pushFork( node );
           
@@ -52,6 +49,8 @@ namespace casita
         
         ////////////////////////////////////////////////////////////////////////
         // this is an OpenMP join node
+        
+        GraphNode* ppr = analysis->getInnerMostFork();
         
         UTILS_ASSERT( ppr->getFunctionId( ) == node->getFunctionId( ),
                       "[%" PRIu64 "] OpenMP join %s does not match the open fork %s",

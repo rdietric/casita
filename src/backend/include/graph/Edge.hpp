@@ -46,18 +46,13 @@ namespace casita
          duration    = 0;
        }
 
-       cpuNodes              = 0;
-       cpuBlame              = 0;
-       
-       // set both to end->getTime() for initial CPU time to be 0
-       //cpuEvtStartTime = end->getTime( );
-       //cpuEvtEndTime   = end->getTime( );
+       cpuNodes           = 0;
+       cpuBlame           = 0;
 
-       this->properties      = properties;
-       this->edgeDuration    = duration;
-       this->initialDuration = duration;
-       this->edgeWeight      = computeWeight( duration, isBlocking( ) );
-       this->edgeParadigm    = edgeParadigm;
+       this->properties   = properties;
+       this->edgeDuration = duration;
+       this->edgeWeight   = computeWeight( duration, isBlocking( ) );
+       this->edgeParadigm = edgeParadigm;
      }
 
      bool
@@ -76,12 +71,6 @@ namespace casita
      getDuration( ) const
      {
        return edgeDuration;
-     }
-
-     uint64_t
-     getInitialDuration( ) const
-     {
-       return initialDuration;
      }
 
      uint64_t
@@ -135,13 +124,6 @@ namespace casita
        return name.str( );
      }
 
-     void
-     setDuration( uint64_t duration )
-     {
-       edgeDuration = duration;
-       edgeWeight   = computeWeight( edgeDuration, isBlocking( ) );
-     }
-
      bool
      isBlocking( ) const
      {
@@ -151,30 +133,30 @@ namespace casita
      void
      makeBlocking( )
      {
-       edgeWeight  = std::numeric_limits< uint64_t >::max( );
+       edgeWeight  = std::numeric_limits< uint64_t >::max();
        properties |= EDGE_IS_BLOCKING;
      }
 
      bool
-     causesWaitState( ) const
+     causesWaitState() const
      {
        return properties & EDGE_CAUSES_WAITSTATE;
      }
 
      GraphNode*
-     getStartNode( ) const
+     getStartNode() const
      {
        return pair.first;
      }
 
      GraphNode*
-     getEndNode( ) const
+     getEndNode() const
      {
        return pair.second;
      }
 
      GraphNode::GraphNodePair&
-     getNodes( )
+     getNodes()
      {
        return pair;
      }
@@ -182,7 +164,7 @@ namespace casita
      bool
      isReverseEdge( ) const
      {
-       return pair.first->getTime( ) > pair.second->getTime( );
+       return pair.first->getTime() > pair.second->getTime( );
      }
 
      bool
@@ -236,32 +218,16 @@ namespace casita
      }
 
      void
-     addCPUData( uint32_t nodes, 
-                 //uint64_t startTime, uint64_t endTime, 
-                 uint64_t exclCPUEvtTime )
+     addCPUData( uint32_t nodes, uint64_t exclCPUEvtTime )
      {
        UTILS_ASSERT( cpuNodes == 0, "Can not set CPU data multiple times" );
 
        if ( nodes > 0 )
        {
          cpuNodes = nodes;
-         //cpuEvtStartTime = startTime;
-         //cpuEvtEndTime = endTime;
          cpuEvtExclTime = exclCPUEvtTime;
        }
      }
-
-     /*uint64_t
-     getCPUNodesStartTime( )
-     {
-       return cpuEvtStartTime;
-     }
-
-     uint64_t
-     getCPUNodesEndTime( )
-     {
-       return cpuEvtEndTime;
-     }*/
      
      /**
       * Get the time of regions that are explicitly created by CPU events for this edge. 
@@ -273,12 +239,6 @@ namespace casita
      {
        return cpuEvtExclTime;
      }
-
-     /*uint32_t
-     getNumberOfCPUNodes( )
-     {
-       return cpuNodes;
-     }*/
 
      void
      addCPUBlame( double blame )
@@ -295,14 +255,12 @@ namespace casita
    private:
      int      properties;
      uint64_t edgeDuration;
-     uint64_t initialDuration;
      uint64_t edgeWeight;
      Paradigm edgeParadigm;
+     
      GraphNode::GraphNodePair pair;
 
      uint32_t cpuNodes;
-     uint64_t cpuEvtStartTime;
-     uint64_t cpuEvtEndTime;
      uint64_t cpuEvtExclTime; //<! time of regions from CPU events between the edge nodes
      
      double cpuBlame;

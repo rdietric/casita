@@ -24,8 +24,6 @@
 
 #include <otf2/otf2.h>
 
-#define BLAME_COUNTER 1
-
 namespace casita
 {
   enum MetricType
@@ -78,24 +76,21 @@ namespace casita
  // This table does not define the OTF2 definition ID!
  static const MetricEntry METRIC_TABLE[] =
  {
-#if defined(BLAME_COUNTER)
    { BLAME,         "Blame",         
                     "Amount of caused waiting time", 
                     COUNTER_ABSOLUT_LAST, false },
-#else
-   { BLAME,         "Blame",         
-                    "Amount of caused waiting time", ATTRIBUTE,            false },
-#endif
    { WAITING_TIME,  "Waiting Time",  
-                    "Time in a wait state",          ATTRIBUTE,            false },
+                    "Time in a wait state",          
+                    ATTRIBUTE, false },
    { CRITICAL_PATH, "Critical Path", 
-                    "On the critical path boolean",  COUNTER_ABSOLUT_NEXT, false },
+                    "On the critical path boolean",  
+                    COUNTER_ABSOLUT_NEXT, false },
    // internal metrics
-   { OMP_REGION_ID,        "OpenMP 4.0 Region ID",         
+   { OMP_REGION_ID,        "OpenMP Target Region ID",         
                            "", METRIC_MODE_UNKNOWN, true },
-   { OMP_PARENT_REGION_ID, "OpenMP 4.0 Parent Region ID",  
+   { OMP_PARENT_REGION_ID, "OpenMP Target Parent Region ID",  
                            "", METRIC_MODE_UNKNOWN, true },
-   { OMP_IGNORE_BARRIER,   "OpenMP 4.0 Collapsed Barrier", 
+   { OMP_IGNORE_BARRIER,   "OpenMP Target Collapsed Barrier", 
                            "", METRIC_MODE_UNKNOWN, true }
  };
 

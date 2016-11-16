@@ -63,22 +63,42 @@ namespace casita
 
         // get cuEventRecord leave node
         EventNode* eventRecordLeave = analysis->getEventRecordLeave(
-          ( (EventNode*)syncLeave )->getEventId( ) );
+          ( (EventNode*)syncLeave )->getEventId() );
 
+        // the event record might have been deleted in intermediate flush
         if ( !eventRecordLeave )
         {
-          UTILS_MSG( true, " * Ignoring event sync %s without matching event record",
-                           syncLeave->getUniqueName( ).c_str( ) );
+          UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
+                     " * Ignoring event sync %s without matching event record",
+                     syncLeave->getUniqueName().c_str() );
           return false;
         }
 
+        // set the link to NULL as this event has been synchronized and the node
+        // can be deleted in intermediate flush
+        eventRecordLeave->setLink( NULL );
+        
         // get the event stream of CUDA event
         EventStream* refProcess = commonAnalysis->getStream(
-          eventRecordLeave->getReferencedStreamId( ) );
+          eventRecordLeave->getReferencedStreamId() );
+        
+        if( refProcess == NULL )
+        {
+          UTILS_MSG( true, "[%"PRIu32"] EventSyncRule: Referenced stream (%"PRIu64
+                           ") %s (%f) on stream %s  not found!",
+                     commonAnalysis->getMPIRank(),
+                     eventRecordLeave->getReferencedStreamId(),
+                     syncLeave->getUniqueName().c_str(),
+                     commonAnalysis->getRealTime( syncLeave->getTime() ),
+                     commonAnalysis->getStream( syncLeave->getStreamId() )->getName());
+          
+          return false;
+        }
+        
         EventStreamGroup::EventStreamList deviceProcs;
 
         // put all device streams in the list, if we are synchronizing with the NULL stream
-        if ( refProcess->isDeviceNullStream( ) )
+        if ( refProcess->isDeviceNullStream() )
         {
           commonAnalysis->getAllDeviceStreams( deviceProcs );
         }
@@ -87,14 +107,14 @@ namespace casita
           deviceProcs.push_back( refProcess );
         }
         
-        //GraphNode* eventRecordEnter = eventRecordLeave->getGraphPair( ).first;
+        //GraphNode* eventRecordEnter = eventRecordLeave->getGraphPair().first;
         uint64_t eventRecordEnterTime = 
-                (eventRecordLeave->getGraphPair( ).first)->getTime();
+                (eventRecordLeave->getGraphPair().first)->getTime();
 
         bool ruleResult = false;
         
         for ( EventStreamGroup::EventStreamList::const_iterator iter =
-                deviceProcs.begin( ); iter != deviceProcs.end( ); ++iter )
+                deviceProcs.begin(); iter != deviceProcs.end(); ++iter )
         {
           uint64_t strmId = ( *iter )->getId( );
           // get last kernel launch leave node of the given device stream 
@@ -106,10 +126,10 @@ namespace casita
             continue;
           }
 
-          GraphNode* kernelLaunchEnter = kernelLaunchLeave->getGraphPair( ).first;
+          GraphNode* kernelLaunchEnter = kernelLaunchLeave->getGraphPair().first;
 
           // the kernel launch enter event has a link to the kernel it launches
-          GraphNode* kernelEnter = ( GraphNode* )kernelLaunchEnter->getLink( );
+          GraphNode* kernelEnter = ( GraphNode* )kernelLaunchEnter->getLink();
           if ( !kernelEnter )
           {
             // if this happens, the KernelExecutionRule has not been applied,
@@ -118,24 +138,24 @@ namespace casita
             // analysis->printDebugInformation( ( (EventNode*)syncLeave )->getEventId( ) );
 
             UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME, 
-              "[%u] Cannot apply EventSyncRule for %s (%f) on stream %s.\n"
+              "[%"PRIu32"] EventSyncRule on %s (%f) failed.\n"
               "Synchronize returned before kernel %s (%f) on stream "
               "[%u, %s] finished. Deferring node ...",
-              commonAnalysis->getMPIRank( ),
-              syncLeave->getUniqueName( ).c_str( ),
-              commonAnalysis->getRealTime( syncLeave->getTime( ) ),
-              commonAnalysis->getStream( syncLeave->getStreamId( ) )->getName( ),
-              kernelLaunchEnter->getUniqueName( ).c_str( ),
-              commonAnalysis->getRealTime( kernelLaunchEnter->getTime( ) ),
-              kernelLaunchEnter->getReferencedStreamId( ),
+              commonAnalysis->getMPIRank(),
+              syncLeave->getUniqueName().c_str(),
+              commonAnalysis->getRealTime( syncLeave->getTime() ),
+              kernelLaunchEnter->getUniqueName().c_str(),
+              commonAnalysis->getRealTime( kernelLaunchEnter->getTime() ),
+              kernelLaunchEnter->getReferencedStreamId(),
               commonAnalysis->getStream( 
-                kernelLaunchEnter->getReferencedStreamId( ) )->getName( ) );
+                kernelLaunchEnter->getReferencedStreamId() )->getName() );
             
             // Store the node in a pending list and process it later.
             // Walk forward does not work, because other rules have to be processed first.
             
             // Make sure to defer next KernelExecutionRule as well!!!
-            //\todo: mark the kernelLaunch enter node (set the data field to syncEvtLeave node)
+            //\todo: mark the kernelLaunch enter node 
+            // (set the data field to syncEvtLeave node)
             kernelLaunchEnter->setData( syncLeave );
             
             // deferring does not work here
@@ -143,9 +163,9 @@ namespace casita
             
             deviceProcs.clear();
             return false;
-          }
+          }          
 
-          GraphNode* kernelLeave = kernelEnter->getGraphPair( ).second;
+          GraphNode* kernelLeave = kernelEnter->getGraphPair().second;
           if ( !kernelLeave )
           {
             throw RTException(
@@ -163,12 +183,17 @@ namespace casita
           }
           else if ( kernelLeave->getTime( ) > syncLeave->getTime( ) )
           {
+            UTILS_MSG( true, "[%"PRIu32"] EventSyncRule on %s (%f) failed!", 
+                       commonAnalysis->getMPIRank(),
+                       syncLeave->getUniqueName().c_str(),
+                       commonAnalysis->getRealTime( syncLeave->getTime() ) );
+            // if the kernelLeave has been deleted in intermediate flush the 
+            // following message creates a segmentation fault
             UTILS_MSG( true, "Host-Device time displacement: %s > %s (%llu s)",
-                      kernelLeave->getUniqueName( ).c_str( ), 
-                      syncLeave->getUniqueName( ).c_str( ),
+                      kernelLeave->getUniqueName().c_str(), 
+                      syncLeave->getUniqueName().c_str(),
                       commonAnalysis->getRealTime(
-                        kernelLeave->getTime( ) - syncLeave->getTime( ) ) 
-                     );
+                        kernelLeave->getTime() - syncLeave->getTime() ));
           }
 
           /* ignore delta ticks for now until we have a better heuristic */
@@ -202,6 +227,9 @@ namespace casita
         
         // clear list of device processes
         deviceProcs.clear();
+        
+        // mark this event record node as handled/synchronized
+        eventRecordLeave->setData( syncLeave );
 
         return ruleResult;
       }

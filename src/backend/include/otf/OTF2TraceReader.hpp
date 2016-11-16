@@ -228,10 +228,10 @@ namespace casita
       isChildOf( uint64_t child, uint64_t parent );
 
       int
-      getProcessingPhase( );
+      getProcessingPhase();
       
       void*
-      getUserData( );
+      getUserData();
       
       HandleEnter             handleEnter;
       HandleLeave             handleLeave;
@@ -567,7 +567,7 @@ namespace casita
       uint64_t         timerOffset;
       uint64_t         traceLength;
       uint32_t         ompForkJoinRef;
-
+      
       int processingPhase;
   };
  }

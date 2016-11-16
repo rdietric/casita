@@ -928,7 +928,7 @@ namespace casita
      }
 
      Node*
-     getLink( ) const
+     getLink() const
      {
        return link;
      }
@@ -1008,8 +1008,20 @@ namespace casita
      
      uint64_t referencedStream;
      
+     
      //!< metric type, counter value
      std::map< MetricType, uint64_t > counters;
+     
+     // map costs = map object + node overhead
+     // from http://info.prelert.com/blog/stl-container-memory-usage
+     // GNU Standard C++ Library v3: 48 bytes + 32 bytes (min 48 bytes)
+     // Visual C++ 12: 16 bytes + 32 bytes (min 48 bytes as one more node than size of map needed)
+     // LLVM's libc++: 24 bytes + 32 bytes (min 24 bytes)
+     
+     // individual values cost 1 + 8 + 8 = 17 bytes
+     // bool criticalPath;
+     // uint64_t waitingTime
+     // double blame; // types: late sender, late receiver, OpenMP barrier, MPI collective
  };
 
  typedef struct
