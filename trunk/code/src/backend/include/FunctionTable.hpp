@@ -320,22 +320,21 @@ namespace casita
      getAPIFunctionType( const char* name, FunctionDescriptor* descr,
                          bool deviceStream, bool deviceNullStream )
      {
-       descr->paradigm = PARADIGM_CPU;
-       descr->functionType     = 0;
-       
-       bool ignoreAsyncMpi = Parser::getInstance().getProgramOptions().ignoreAsyncMpi;
+       descr->paradigm     = PARADIGM_CPU;
+       descr->functionType = 0;
 
-       bool set = false;
+       bool set = false; // remember if paradigm and function type has been set
 
-       // handle non-blocking MPI communication
+       // check for non-blocking MPI communication
        for ( size_t i = 0; i < fTableEntriesMPIAsync; ++i )
        {
          FTableEntry entry = fTableMPIAsync[i];
          for ( size_t j = 0; j < entry.numEntries; ++j )
          {
+           // if we found a non-blocking MPI event
            if ( strcmp( entry.table[j], name ) == 0 )
            {
-             if ( ignoreAsyncMpi )
+             if ( Parser::getInstance().getProgramOptions().ignoreAsyncMpi )
              {
                descr->paradigm     = PARADIGM_CPU;
                descr->functionType = MISC_CPU;
@@ -370,14 +369,22 @@ namespace casita
          }
        }
 
-       // handle CUDA functions
+       // check for CUDA functions
        for ( size_t i = 0; i < fTableEntriesCUDA; ++i )
        {
          FTableEntry entry = fTableCUDA[i];
          for ( size_t j = 0; j < entry.numEntries; ++j )
          {
+           // if we found a CUDA function
            if ( strcmp( entry.table[j], name ) == 0 )
            {
+             if ( Parser::getInstance().getProgramOptions().ignoreCUDA )
+             {
+               descr->paradigm     = PARADIGM_CPU;
+               descr->functionType = MISC_CPU;
+               return false;
+             }
+             
              /* CUDA event record enter nodes do not carry any additional information
              if( entry.type == CUDA_EV_LAUNCH )
              {

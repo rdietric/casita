@@ -36,6 +36,7 @@ namespace casita
    bool        mergeActivities;
    bool        noErrors;
    bool        ignoreAsyncMpi;
+   bool        ignoreCUDA;
    uint32_t    analysisInterval;
    bool        createRatingCSV;
    int         verbose;

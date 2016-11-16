@@ -205,9 +205,6 @@ namespace casita
      
      // available analysis paradigms (identified during reading the trace)
      int availableParadigms;
-     bool foundCUDA;
-     bool foundOpenCL;
-     bool foundOMP;
  };
 
 }

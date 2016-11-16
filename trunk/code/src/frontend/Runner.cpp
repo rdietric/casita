@@ -128,6 +128,11 @@ Runner::startAnalysisRun( )
   {
     analysis.addAnalysisParadigm( new cuda::AnalysisParadigmCUDA( &analysis ) );
   }
+  else
+  {
+    // avoid the generation of CUDA graph nodes
+    Parser::getInstance().getProgramOptions().ignoreCUDA = true;
+  }
   
   if( analysis.haveParadigm( PARADIGM_OCL ) )
   {
