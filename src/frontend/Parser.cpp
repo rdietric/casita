@@ -183,6 +183,7 @@ namespace casita
     std::cout << "  -p [--path]             print critical paths" << std::endl;
     std::cout << "     [--no-errors]        ignore non-fatal errors" << std::endl;
     std::cout << "     [--ignore-impi]      treat non-blocking MPI functions as CPU functions" << std::endl;
+    std::cout << "     [--ignore-cuda]      treat CUDA functions as CPU functions" << std::endl;
     std::cout << "  -c [--interval-analysis=][uint32_t]   Run analysis in intervals (between global" << std::endl
       << "                          collectives) to reduce memory footprint. The optional value sets the " << std::endl
       << "                          number of pending graph nodes before an analysis run is started." << std::endl;
@@ -321,6 +322,12 @@ namespace casita
       else if( opt.find( "--ignore-impi" ) != std::string::npos )
       {
         options.ignoreAsyncMpi = true;
+      }
+      
+      // ignore non blocking
+      else if( opt.find( "--ignore-cuda" ) != std::string::npos )
+      {
+        options.ignoreCUDA = true;
       }
 
       // interval analysis TODO: complete optional?
@@ -491,6 +498,7 @@ namespace casita
     options.verbose = 0;
     options.topX = 20;
     options.ignoreAsyncMpi = false;
+    options.ignoreCUDA = false;
     options.createRatingCSV = true;
   }
 

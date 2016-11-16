@@ -146,7 +146,7 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
   if ( isGPUNull )
   {
     streamType = EventStream::ES_DEVICE_NULL;
-    analysis.addDetectedParadigm( PARADIGM_CUDA );
+    //analysis.addDetectedParadigm( PARADIGM_CUDA );
   }
   else
   {
@@ -154,11 +154,11 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
     {
       streamType = EventStream::ES_DEVICE;
       
-      if( strstr( name, "CUDA" ) )
+      /*if( strstr( name, "CUDA" ) )
       {
         analysis.addDetectedParadigm( PARADIGM_CUDA );
       }
-      else
+      else*/
       {
         analysis.addDetectedParadigm( PARADIGM_OCL );
       }
@@ -200,10 +200,17 @@ CallbackHandler::handleDefAttribute( OTF2TraceReader* reader,
                                      const char*      name,
                                      const char*      description )
 {
-  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
+  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
   
   // add attribute ID
-  handler->getAnalysis( ).getCtrTable().addAttributeId( attributeId );
+  handler->getAnalysis().getCtrTable().addAttributeId( attributeId );
+  
+  // Check the defined OTF2 attributes for the predefined CUDA_STREAM_REF 
+  // If not defined, do not perform CUDA analysis!
+  if( strcmp( name, "CUDA_STREAM_REF" ) == 0 )
+  {
+    handler->getAnalysis().addDetectedParadigm( PARADIGM_CUDA );
+  }
 }
 
 void
@@ -242,6 +249,7 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionDesc );
   
   // check for function with the OpenMP paradigm
+  // \todo: do this check with the definitions
   if ( functionDesc.paradigm == PARADIGM_OMP )
   {
     analysis.addDetectedParadigm( PARADIGM_OMP );
@@ -331,6 +339,13 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   if ( Node::isCUDAEventType( functionType.paradigm, functionType.functionType ) )
   {
     uint64_t eventId  = readKeyValUInt64( reader, SCOREP_CUDA_EVENTREF, list );
+    
+    if ( eventId == 0 )
+    {
+      UTILS_MSG( true, "No eventId for event found" );
+      return false;
+    }
+    
     uint32_t cuResult = readKeyVal( reader, SCOREP_CUDA_CURESULT, list );
     EventNode::FunctionResultType fResult = EventNode::FR_UNKNOWN;
     if ( cuResult == CUDA_SUCCESS )
@@ -338,18 +353,12 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
       fResult = EventNode::FR_SUCCESS;
     }
 
-    leaveNode = handler->getAnalysis( ).addNewEventNode( time,
-                                                         eventId,
-                                                         fResult,
-                                                         stream,
-                                                         funcName,
-                                                         &functionType );
-
-    if ( eventId == 0 )
-    {
-      throw RTException( "No eventId for event node %s found",
-                         leaveNode->getUniqueName( ).c_str( ) );
-    }
+    leaveNode = handler->getAnalysis().addNewEventNode( time,
+                                                        eventId,
+                                                        fResult,
+                                                        stream,
+                                                        funcName,
+                                                        &functionType );
   }
   else
   {
@@ -361,7 +370,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
 
   leaveNode->setFunctionId( functionId );
 
-  analysis.handleKeyValuesLeave( reader, leaveNode, leaveNode->getGraphPair( ).first, list );
+  analysis.handleKeyValuesLeave( reader, leaveNode, leaveNode->getGraphPair().first, list );
   
   // additional handling for special nodes (e.g. MPI communication)
   analysis.handlePostLeave( leaveNode );
@@ -369,24 +378,23 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   // for debugging
   handler->printNode( leaveNode, stream );
   
-//  if ( functionType.paradigm == PARADIGM_CUDA )
-//  {
-//    std::cerr << "[" << streamId << "] Adding CUDA event " << leaveNode->getUniqueName() << std::endl;
-//  }
+  //UTILS_MSG( functionType.paradigm == PARADIGM_CUDA, 
+  //           "[%"PRIu64"] Adding CUDA event %s", 
+  //           streamId, leaveNode->getUniqueName().c_str() );
   
   // if analysis should be run in intervals (between global collectives)
   if ( analysis.getMPISize() > 1 && 
        Parser::getInstance().getProgramOptions().analysisInterval &&
       // if we have read a global blocking collective, we can start the analysis
        ( leaveNode->isMPICollective( ) /*|| leaveNode->isMPIAllToOne() || leaveNode->isMPIOneToAll()*/ ) &&
-       !( leaveNode->isMPIInit( ) ) && !( leaveNode->isMPIFinalize( ) ) )
+       !( leaveNode->isMPIInit() ) && !( leaveNode->isMPIFinalize() ) )
   {
-    const uint32_t mpiGroupId = leaveNode->getReferencedStreamId( );
+    const uint32_t mpiGroupId = leaveNode->getReferencedStreamId();
     const MPIAnalysis::MPICommGroup& mpiCommGroup =
-      analysis.getMPIAnalysis( ).getMPICommGroup( mpiGroupId ); 
+      analysis.getMPIAnalysis().getMPICommGroup( mpiGroupId ); 
 
     // if the collective is global (collective group size == number of analysis ranks)
-    if ( mpiCommGroup.procs.size( ) == analysis.getMPISize() )
+    if ( mpiCommGroup.procs.size() == analysis.getMPISize() )
     {
       // mark as global operation over all processes
       leaveNode->addType( MPI_ALLRANKS );

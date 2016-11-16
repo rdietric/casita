@@ -711,7 +711,6 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_String( void*          userData,
 {
 
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
-  //\todo: change to char* ?
   uint32_t max_length = 1000;
   std::string str( string, strnlen( string, max_length ) );
   tr->getDefinitionTokenStringMap( )[self] = str;
@@ -755,13 +754,13 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Attribute( void*             userD
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
   std::string      s  = tr->getKeyName( name );
-  tr->getNameKeysMap( ).insert( std::make_pair( s, self ) );
-  tr->getKeyNameMap( ).insert( std::make_pair( self, s ) );
+  tr->getNameKeysMap().insert( std::make_pair( s, self ) );
+  tr->getKeyNameMap().insert( std::make_pair( self, s ) );
 
   if ( tr->handleDefAttribute )
   {
-    tr->handleDefAttribute( tr, 0, self, s.c_str( ), tr->getKeyName(
-                             description ).c_str( ) );
+    tr->handleDefAttribute( tr, 0, self, s.c_str(), tr->getKeyName(
+                             description ).c_str() );
   }
 
   return OTF2_CALLBACK_SUCCESS;
