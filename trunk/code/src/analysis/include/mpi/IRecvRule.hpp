@@ -41,31 +41,31 @@ namespace casita
       apply( AnalysisParadigmMPI* analysis, GraphNode* irecvLeave )
       {
         // applied at MPI_Irecv leave
-        if ( !irecvLeave->isMPI_Irecv( ) || irecvLeave->isEnter( ) )
+        if ( !irecvLeave->isMPI_Irecv() || irecvLeave->isEnter() )
         {
           return false;
         }
         
-        AnalysisEngine* commonAnalysis = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon();
 
-        uint64_t partnerProcessId = irecvLeave->getReferencedStreamId( );
         
-        GraphNode* irecvEnter = irecvLeave->getGraphPair( ).first;
         
         EventStream::MPIIcommRecord* record = 
-                          (EventStream::MPIIcommRecord* )irecvLeave->getData( );
+                          (EventStream::MPIIcommRecord* )irecvLeave->getData();
         
         // check if the record has been invalidated/deleted
         if( NULL == record )
         {
-          UTILS_MSG( true, "[%"PRIu64"] Irecv rule: Invalid record data.",
+          UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE, 
+                     "[%"PRIu64"] Irecv rule: Invalid record data.",
                      irecvLeave->getStreamId());
           
           return false;
         }
 
-        uint32_t partnerMPIRank =
-          commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
+        uint64_t partnerProcessId = irecvLeave->getReferencedStreamId();
+        uint32_t partnerMPIRank   =
+          commonAnalysis->getMPIAnalysis().getMPIRank( partnerProcessId );
 
         // replay MPI_Irecv (receive buffer is never read as data are first valid in MPI_Wait[all])
         MPI_CHECK( MPI_Irecv( record->recvBuffer, 
@@ -75,6 +75,8 @@ namespace casita
                               CASITA_MPI_REPLAY_TAG, 
                               MPI_COMM_WORLD, 
                               &(record->requests[0]) ) );
+        
+        GraphNode* irecvEnter = irecvLeave->getGraphPair().first;
         
         // send information to communication partner
         // the blocking MPI_Recv can evaluate them and e.g. stop wait state analysis

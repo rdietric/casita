@@ -3,6 +3,10 @@ CUDA
 - improved handling of CUDA events and CUDA kernels over
   interval boundaries
 
+MPI
+- try to ignore MPI_I[send|recv] regions without 
+  communication information (CASITA aborted before)
+
 MISC
 - activity impact rating is now based on the new metric 
   "Blame on CP"

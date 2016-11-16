@@ -158,7 +158,7 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
       {
         analysis.addDetectedParadigm( PARADIGM_CUDA );
       }
-      else*/
+      else*/if( NULL == strstr( name, "CUDA" ) )
       {
         analysis.addDetectedParadigm( PARADIGM_OCL );
       }
