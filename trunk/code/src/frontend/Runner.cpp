@@ -1572,15 +1572,15 @@ Runner::printAllActivities( )
 
   if ( mpiRank == 0 )
   {
-    printf( "\n%50s %10s %11s %11s %7s %10s %8s %7s\n",
+    printf( "\n%50s %10s %11s %11s %6s %8s %8s %10s\n",
             "Activity Group",
             "Calls",
             "Time[s]",
             "Time on CP",
             "CP[\%]",
-            "Blame on CP",
             "Blame[\%]",
-            "Rating" );
+            "Blame+CP",
+            "Blame on CP" );
     //printf( "-------------------------------------------------- ---------- ----"
     //        "------- ----------- ------- ----------- -------- ------\n" );
     printf( "--------------------------------------------------\n" );
@@ -1596,8 +1596,8 @@ Runner::printAllActivities( )
       
     // for all activity groups
     for ( OTF2ParallelTraceWriter::ActivityGroupMap::iterator iter =
-            activityGroupMap->begin( );
-          iter != activityGroupMap->end( ); ++iter )
+            activityGroupMap->begin();
+          iter != activityGroupMap->end(); ++iter )
     {
       iter->second.fractionCP = 0.0;
       if ( iter->second.totalDurationOnCP > 0 )
@@ -1605,7 +1605,7 @@ Runner::printAllActivities( )
         iter->second.fractionCP =
           (double)iter->second.totalDurationOnCP / (double)globalLengthCP;
       }
-
+      
       sortedActivityGroups.insert( iter->second );
     }
       
@@ -1622,8 +1622,8 @@ Runner::printAllActivities( )
       
       summaryFile = fopen(Filename.c_str(),"w");
       fprintf(summaryFile, "Activity Group;Calls;Time [s];Time on CP [s];"
-                           "CP Ratio [%%];Blame on CP [s];"
-                           "Fraction Global Blame [%%];Rating\n" );
+                           "CP Ratio [%%];Global Blame Ratio [%%];"
+                           "Blame+CP;Blame on CP [s]\n" );
     }
     
     uint32_t sumInstances   = 0;
@@ -1649,15 +1649,15 @@ Runner::printAllActivities( )
         sumFractionCP    += iter->fractionCP;
         sumFractionBlame += iter->fractionBlame;
       
-        printf( "%50.50s %10u %11f %11f %6.2f%% %11f %7.2f%% %7.4f\n",
+        printf( "%50.50s %10u %11f %11f %6.2f %8.4f %6.6f %11.6f\n",
                 analysis.getFunctionName( iter->functionId ),
                 iter->numInstances,
                 analysis.getRealTime( iter->totalDuration ),
                 analysis.getRealTime( iter->totalDurationOnCP ),
                 100.0 * iter->fractionCP,
-                analysis.getRealTime( iter->blameOnCP ),
                 100.0 * iter->fractionBlame,
-                iter->fractionCP + iter->fractionBlame );
+                iter->fractionCP + iter->fractionBlame,
+                analysis.getRealTime( iter->blameOnCP ) );
         
         ++ctr;
       }
@@ -1670,24 +1670,25 @@ Runner::printAllActivities( )
                  analysis.getRealTime( iter->totalDuration ),
                  analysis.getRealTime( iter->totalDurationOnCP ),
                  100.0 * iter->fractionCP,
-                 analysis.getRealTime( iter->blameOnCP ),
                  100.0 * iter->fractionBlame,
-                 iter->fractionCP + iter->fractionBlame );
+                 iter->fractionCP + iter->fractionBlame,
+                 analysis.getRealTime( iter->blameOnCP ) );
       }
     }
     
     printf( "--------------------------------------------------\n"
-            "%48.48s%2lu %10u %11lf %11lf %6.2lf%% %11lf %7.2lf%%\n",
+            "%48.48s%2lu %10u %11lf %11lf %6.2lf %8.4lf %20.6lf\n",
               "Sum of Top ",
               ctr,
               sumInstances,
               analysis.getRealTime( sumDuration ),
               analysis.getRealTime( sumDurationCP ),
               100.0 * sumFractionCP,
-              analysis.getRealTime( sumBlameOnCP ),
-              100.0 * sumFractionBlame );
+              100.0 * sumFractionBlame, 
+              analysis.getRealTime( sumBlameOnCP ) );
     
-    if (options.createRatingCSV){
+    if (options.createRatingCSV)
+    {
       fclose(summaryFile);
     }
   }

@@ -76,7 +76,7 @@ main( int argc, char** argv )
     // if selected as parameter, the summary statistics are merged and printed
     if ( options.mergeActivities )
     {
-      UTILS_MSG_NOBR( mpiRank == 0, "Generate optimization rating:" );
+      UTILS_MSG_NOBR( mpiRank == 0, "Generate activity impact rating:" );
       
       clock_t ts_merge = clock() - timestamp;
 
