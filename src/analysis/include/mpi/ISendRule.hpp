@@ -45,28 +45,34 @@ namespace casita
       apply( AnalysisParadigmMPI* analysis, GraphNode* isendLeave )
       {
         // applied at MPI_ISend leave
-        if ( !isendLeave->isMPI_Isend( ) || isendLeave->isEnter( ) )
+        if ( !isendLeave->isMPI_Isend() || isendLeave->isEnter() )
         {
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon();
 
-        GraphNode* isendEnter = isendLeave->getGraphPair( ).first;
-        
         EventStream::MPIIcommRecord* record = 
                 (EventStream::MPIIcommRecord* ) isendLeave->getData( );
         
         // check if the record has been invalidated/deleted
-        UTILS_MSG( NULL == record, "[%" PRIu64 "] MPI_Isend rule: Invalid record data.",
-                                   isendLeave->getStreamId( ) );
+        if( NULL == record )
+        {
+          UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE, 
+                     "[%" PRIu64 "] MPI_Isend rule: Invalid record data.",
+                     isendLeave->getStreamId());
+          
+          return false;
+        }
+        
+        GraphNode* isendEnter = isendLeave->getGraphPair().first;
         
         uint64_t *buffer = record->sendBuffer;
         
         buffer[0] = isendEnter->getTime(); // isend start time
         buffer[1] = isendLeave->getTime(); // isend leave time
-        buffer[2] = isendEnter->getId( );  // send start node
-        buffer[3] = isendLeave->getId( ); // send leave node
+        buffer[2] = isendEnter->getId();  // send start node
+        buffer[3] = isendLeave->getId(); // send leave node
         buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_ISEND; //send.second->getType( );
         
         uint64_t partnerProcessId = isendLeave->getReferencedStreamId();

@@ -611,8 +611,21 @@ EventStream::saveMPIIrecvRequest( uint64_t requestId )
 void
 EventStream::addPendingMPIIrecvNode( GraphNode* node )
 {
-    UTILS_ASSERT( pendingMPIRequestId != std::numeric_limits< uint64_t >::max( ),
-                  "MPI_Irecv request ID invalid! Trace file might be corrupted!");
+//    UTILS_ASSERT( pendingMPIRequestId != std::numeric_limits< uint64_t >::max(),
+//                  "MPI_Irecv request ID invalid! Trace file might be corrupted!");
+    
+    if( pendingMPIRequestId == std::numeric_limits< uint64_t >::max() )
+    {
+      UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE,
+                 "[%"PRIu64"] At %s: MPI request ID %"PRIu64" is invalid."
+                 "Trace file might be corrupted!",
+                 this->id, node->getUniqueName().c_str(), pendingMPIRequestId );
+      
+      // "inform" MPI_Irecv rule that this node is invalid
+      node->setData( NULL );
+      
+      return;
+    }
     
     MPIIcommRecord record;
     record.requests[0] = MPI_REQUEST_NULL;
@@ -696,9 +709,24 @@ EventStream::handleMPIIsendEventData( uint64_t requestId,
 void
 EventStream::setMPIIsendNodeData( GraphNode* node )
 {
-  UTILS_ASSERT( pendingMPIRequestId != std::numeric_limits< uint64_t >::max() 
-                 && mpiIsendPartner != std::numeric_limits< uint64_t >::max(), 
-                "MPI request or MPI partner ID is invalid!");
+//  UTILS_ASSERT( pendingMPIRequestId != std::numeric_limits< uint64_t >::max() 
+//                 && mpiIsendPartner != std::numeric_limits< uint64_t >::max(), 
+//                "[%"PRIu64"] %s MPI request %"PRIu64" or MPI partner ID %"PRIu64
+//                " is invalid", this->id, node->getUniqueName().c_str(),
+//                pendingMPIRequestId, mpiIsendPartner );
+  
+  if( pendingMPIRequestId == std::numeric_limits< uint64_t >::max() ||
+      mpiIsendPartner == std::numeric_limits< uint64_t >::max() )
+  {
+    UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE,
+               "[%"PRIu64"] At %s: MPI request %"PRIu64" or MPI partner ID %"PRIu64
+               " is invalid. Trace file might be corrupted!", this->id, 
+               node->getUniqueName().c_str(), pendingMPIRequestId, mpiIsendPartner );
+    // "inform" MPI_Isend rule that this node is invalid
+    node->setData( NULL );
+    
+    return;
+  }
  
   // add new record to map
   MPIIcommRecord record;
