@@ -64,6 +64,9 @@ namespace casita
                             GraphNode*        node,
                             GraphNode*        oldNode,
                             OTF2KeyValueList* list );
+      
+      bool
+      isKernelPending( GraphNode* kernelNode );
 
       void
       setLastEventLaunch( EventNode* eventLaunchLeave );

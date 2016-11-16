@@ -479,7 +479,7 @@ OTF2ParallelTraceWriter::writeDefProcess( uint64_t id, uint64_t parentId,
  * Write definitions for self-defined (analysis) metrics to output trace file.
  */
 void
-OTF2ParallelTraceWriter::writeAnalysisMetricDefinitions( )
+OTF2ParallelTraceWriter::writeAnalysisMetricDefinitions()
 {
   for ( size_t i = 0; i < NUM_DEFAULT_METRICS; ++i )
   {
@@ -807,7 +807,8 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& co
   {
     activityGroupMap[event.regionRef].functionId   = event.regionRef;
     activityGroupMap[event.regionRef].numInstances = 0;
-    activityGroupMap[event.regionRef].totalBlame = 0;
+    activityGroupMap[event.regionRef].totalBlame   = 0;
+    activityGroupMap[event.regionRef].blameOnCP    = 0;
     
     /*UTILS_MSG( strcmp( getRegionName(event.regionRef).c_str(), "clFinish" ) == 0, 
                "[%u] Add %s to activity group map", 
@@ -836,7 +837,7 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& co
   }
 
   // add duration, CP time and blame to current function on stack
-  if ( activityIter != activityStack.end( ) && activityIter->second.size( ) > 0 )
+  if ( activityIter != activityStack.end() && activityIter->second.size() > 0 )
   {
     uint32_t currentActivity = activityIter->second.top( );
     
@@ -844,10 +845,13 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& co
     uint64_t timeDiff = event.time - lastEventTime[event.location];
 
     activityGroupMap[currentActivity].totalDuration += timeDiff;
-
-    activityGroupMap[currentActivity].totalDurationOnCP += onCP ? timeDiff : 0;
-
-    activityGroupMap[currentActivity].totalBlame += counters[ BLAME ];
+    activityGroupMap[currentActivity].totalBlame    += counters[ BLAME ];
+    
+    if( onCP )
+    {
+      activityGroupMap[currentActivity].totalDurationOnCP += timeDiff;
+      activityGroupMap[currentActivity].blameOnCP         += counters[ BLAME ];
+    }
     
     /*UTILS_MSG( strcmp( getRegionName(event.regionRef).c_str(), "clFinish" ) == 0,
                "[%u] %s (type %d): on stack %s\t (%d) (Real-time: %lf), onCP: %d, "

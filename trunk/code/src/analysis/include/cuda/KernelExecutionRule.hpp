@@ -59,12 +59,10 @@ namespace casita
 
         if ( !launchEnterEvent )
         {
-          //ErrorUtils::getInstance( ).throwError( 
-          UTILS_MSG( true, 
-            "[%u] Applying KernelExecutionRule failed. "
-            "Found kernel %s without matching kernel launch.",
-            commonAnalysis->getMPIRank( ),
-            kernelLeave->getUniqueName( ).c_str( ) );
+          UTILS_MSG( true, "[%"PRIu32"] Applying KernelExecutionRule failed. "
+                           "Found kernel %s without matching kernel launch.",
+                           commonAnalysis->getMPIRank(),
+                           kernelLeave->getUniqueName().c_str() );
           
           return false;
         }

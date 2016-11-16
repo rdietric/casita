@@ -53,9 +53,6 @@ namespace casita
 
         GraphNode* syncEnter = syncLeave->getGraphPair( ).first;
 
-        /* ignore delta ticks for now until we have a better heuristic */
-        /* uint64_t syncDeltaTicks = commonAnalysis->getDeltaTicks( ); */
-
         bool ruleResult = false;
         
         // find all referenced (device) streams of this synchronization
@@ -116,11 +113,11 @@ namespace casita
 
               ruleResult    = true;
               isFirstKernel = false;
-              deviceStream->consumeFirstPendingKernel( );
+              deviceStream->consumeFirstPendingKernel();
             }
             else // late sync: all pending kernels are synchronized
             {
-              // \todo: set link to sync leave node (mark kernel as synchronized)
+              // set link to sync leave node (mark kernel as synchronized)
               deviceStream->setPendingKernelsSyncLink( syncLeave );
               deviceStream->clearPendingKernels( );
               break;

@@ -260,8 +260,8 @@ GraphEngine::newEventNode( uint64_t                      time,
 }
 
 Edge*
-GraphEngine::newEdge( GraphNode* source, GraphNode* target, int properties,
-                      Paradigm* edgeType )
+GraphEngine::newEdge( GraphNode* source, GraphNode* target, 
+                      int properties, Paradigm* edgeType )
 {
   Paradigm paradigm = PARADIGM_ALL;
   if ( edgeType )
@@ -277,7 +277,8 @@ GraphEngine::newEdge( GraphNode* source, GraphNode* target, int properties,
   }
 
   Edge* newEdge = new Edge( source, target,
-                      target->getTime( ) - source->getTime( ), properties, paradigm );
+                            target->getTime( ) - source->getTime( ), 
+                            properties, paradigm );
   //std::cerr << "[" << n1->getStreamId() << "] Add Edge " << n1->getUniqueName() 
   //          << " to " << n2->getUniqueName() << std::endl;
   graph.addEdge( newEdge );
@@ -581,8 +582,8 @@ GraphEngine::sanityCheckEdge( Edge* edge, uint32_t mpiRank )
   }
   else
   {
-    expectedTime = edge->getEndNode( )->getTime( ) -
-                   edge->getStartNode( )->getTime( );
+    expectedTime = 
+      edge->getEndNode()->getTime() - edge->getStartNode()->getTime();
   }
 
   if ( edge->getDuration( ) != expectedTime )
@@ -593,16 +594,6 @@ GraphEngine::sanityCheckEdge( Edge* edge, uint32_t mpiRank )
             edge->getName( ).c_str( ),
             expectedTime,
             edge->getDuration( ) );
-  }
-
-  if ( edge->isIntraStreamEdge( ) &&
-       getStream( edge->getStartNode( )->getStreamId( ) )->isHostStream( )
-       &&
-       edge->getDuration( ) != edge->getInitialDuration( ) )
-  {
-    throw RTException(
-            "[%u] Sanity check failed: edge %s has not its initial duration",
-            mpiRank, edge->getName( ).c_str( ) );
   }
 
   if ( !edge->isBlocking( ) && edge->getStartNode( )->isWaitstate( ) &&
@@ -803,8 +794,8 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
         paradigm );
       if ( predPnmIter != predNodeMap.end( ) )
       {
-        GraphNode* pred = predPnmIter->second;
-        int edgeProp    = EDGE_NONE;
+        GraphNode* pred     = predPnmIter->second;
+        int        edgeProp = EDGE_NONE;
 
         // check if this leave node is the end of a blocking operation
         if ( pred->isEnter( ) && node->isLeave( ) )

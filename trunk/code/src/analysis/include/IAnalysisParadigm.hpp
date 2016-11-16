@@ -111,7 +111,7 @@ namespace casita
      static bool
      rulePriorityCompare( AbstractRule* r1, AbstractRule* r2 )
      {
-       /* sort in descending order */
+       // sort in descending order
        return r2->getPriority( ) < r1->getPriority( );
      }
 

@@ -101,19 +101,18 @@ namespace casita
                      uint64_t                     parentId,
                      const std::string            name,
                      EventStream::EventStreamType streamType,
-                     /*Paradigm                     paradigm,*/
                      bool                         remoteStream = false );
 
      Edge*
-     newEdge( GraphNode* n1, GraphNode* n2, int properties = EDGE_NONE,
-              Paradigm* edgeType = NULL );
+     newEdge( GraphNode* n1, GraphNode* n2, 
+              int properties = EDGE_NONE, Paradigm* paradigm = NULL );
 
      GraphNode*
      newGraphNode( uint64_t          time,
                    uint64_t          streamId,
                    const std::string name,
                    Paradigm          paradigm,
-                   RecordType    recordType,
+                   RecordType        recordType,
                    int               nodeType );
 
      EventNode*
@@ -123,7 +122,7 @@ namespace casita
                    EventNode::FunctionResultType fResult,
                    const std::string             name,
                    Paradigm                      paradigm,
-                   RecordType                recordType,
+                   RecordType                    recordType,
                    int                           nodeType );
 
      GraphNode*

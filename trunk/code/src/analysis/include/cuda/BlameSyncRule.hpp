@@ -52,7 +52,7 @@ namespace casita
         /* get the complete execution */
         GraphNode* syncEnter = syncLeave->getGraphPair( ).first;
 
-        uint64_t syncDeltaTicks = commonAnalysis->getDeltaTicks( );
+        uint64_t syncDeltaTicks = commonAnalysis->getDeltaTicks();
 
         bool ruleResult = false;
         
@@ -67,19 +67,20 @@ namespace casita
         {
           EventStream* deviceProcess = *pIter;
 
-          if ( !syncEnter->referencesStream( deviceProcess->getId( ) ) )
+          // ignore that are not synchronized here
+          if ( !syncEnter->referencesStream( deviceProcess->getId() ) )
           {
             continue;
           }
 
-          /* test that there is a pending kernel (leave) */
-          GraphNode* kernelLeave = deviceProcess->getFirstPendingKernel( );
+          // test for a pending kernel (leave)
+          GraphNode* kernelLeave = deviceProcess->getFirstPendingKernel();
           if ( !kernelLeave )
           {
             break;
           }
 
-          // Blame the sync if it is noticeably longer executed after the kernels end
+          // Blame the sync if it is noticeably longer executed after the kernel end
           // if (sync starts before kernel ends)
           // AND (sync end time - kernel end time) > sync delta
           if ( ( syncEnter->getTime( ) < kernelLeave->getTime( ) ) &&
@@ -106,15 +107,13 @@ namespace casita
               {
                 // insert a new synthetic graph node for the wait state enter
                 FunctionDescriptor functionDesc;
-                functionDesc.paradigm = PARADIGM_CUDA;
+                functionDesc.paradigm     = PARADIGM_CUDA;
                 functionDesc.functionType = CUDA_WAITSTATE;
-                functionDesc.recordType = RECORD_ENTER;
+                functionDesc.recordType   = RECORD_ENTER;
                 
                 commonAnalysis->addNewGraphNode(
-                  std::max( lastLeaveNode->getTime( ),
-                            kernelLeave->getTime( ) ),
-                  deviceProcess, NAME_WAITSTATE,
-                  &functionDesc );
+                  std::max( lastLeaveNode->getTime(), kernelLeave->getTime() ),
+                  deviceProcess, NAME_WAITSTATE, &functionDesc );
               }
 
             }
@@ -123,9 +122,9 @@ namespace casita
               // if last leave node is not a wait state
               // insert a new synthetic graph node for the wait state enter
               FunctionDescriptor functionDesc;
-              functionDesc.paradigm = PARADIGM_CUDA;
+              functionDesc.paradigm =     PARADIGM_CUDA;
               functionDesc.functionType = CUDA_WAITSTATE;
-              functionDesc.recordType = RECORD_ENTER;
+              functionDesc.recordType =   RECORD_ENTER;
                 
               commonAnalysis->addNewGraphNode(
                 kernelLeave->getTime( ),
@@ -137,9 +136,9 @@ namespace casita
             if ( !waitLeave )
             {
               FunctionDescriptor functionDesc;
-              functionDesc.paradigm = PARADIGM_CUDA;
+              functionDesc.paradigm =     PARADIGM_CUDA;
               functionDesc.functionType = CUDA_WAITSTATE;
-              functionDesc.recordType = RECORD_LEAVE;
+              functionDesc.recordType =   RECORD_LEAVE;
               
               waitLeave = commonAnalysis->addNewGraphNode(
                 syncLeave->getTime( ),
@@ -154,16 +153,18 @@ namespace casita
 
             // set counters
             syncLeave->incCounter( BLAME,
-                                   syncLeave->getTime( ) -
-                                   kernelLeave->getTime( ) );
-            //waitLeave->getPartner()->
+                                   syncLeave->getTime() -
+                                   kernelLeave->getTime() );
             waitLeave->incCounter( WAITING_TIME,
-                                   syncLeave->getTime( ) -
-                                   kernelLeave->getTime( ) );
-
-            deviceProcess->clearPendingKernels( );
+                                   syncLeave->getTime() -
+                                   kernelLeave->getTime() );
+            
             ruleResult = true;
           }
+          
+          // mark all kernels of this process as synchronized and clear the list
+          deviceProcess->setPendingKernelsSyncLink( syncLeave );
+          deviceProcess->clearPendingKernels();
         }
 
         return ruleResult;

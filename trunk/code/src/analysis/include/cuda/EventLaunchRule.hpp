@@ -40,17 +40,16 @@ namespace casita
       bool
       apply( AnalysisParadigmCUDA* analysis, GraphNode* evtRecLeave )
       {
-        if ( !evtRecLeave->isCUDAEventLaunch( ) || !evtRecLeave->isLeave( ) )
+        if ( !evtRecLeave->isCUDAEventLaunch() || !evtRecLeave->isLeave() )
         {
           return false;
         }
 
-        AnalysisEngine* commonAnalysis     = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon();
 
-        // get the complete execution
-        GraphNode::GraphNodePair& evRecord = evtRecLeave->getGraphPair( );
-        EventStream*    refProcess         = commonAnalysis->getStream(
-          evtRecLeave->getReferencedStreamId( ) );
+        //GraphNode* evtRecEnter = evtRecLeave->getGraphPair().first;
+        EventStream* refProcess = commonAnalysis->getStream(
+          evtRecLeave->getReferencedStreamId() );
         
         if ( !refProcess )
         {
@@ -65,34 +64,30 @@ namespace casita
         {
           RTException(
             "Process %s referenced by event launch %s is a host stream",
-            refProcess->getName( ), evtRecLeave->getUniqueName( ).c_str( ) );
+            refProcess->getName(), evtRecLeave->getUniqueName().c_str() );
         }
 
         analysis->setEventProcessId(
-          ( (EventNode*)evtRecLeave )->getEventId( ), refProcess->getId( ) );
+          ( (EventNode*)evtRecLeave )->getEventId(), refProcess->getId() );
 
-        // if event is on NULL stream, test if any kernel launch can be found
-        if ( refProcess->isDeviceNullStream( ) )
+        // if event is not on NULL stream, set link to 
+        /*if ( !( refProcess->isDeviceNullStream() ) )
         {
-          analysis->setLastEventLaunch( (EventNode*)( evRecord.second ) );
-          return true;
-        }
-        else
-        {
-          // otherwise, test on its stream only
           GraphNode* kernelLaunchLeave = analysis->getLastKernelLaunchLeave(
-                              evRecord.first->getTime( ), refProcess->getId() );
+                              evtRecEnter->getTime(), refProcess->getId() );
 
           if ( kernelLaunchLeave )
           {
-            evRecord.second->setLink( (GraphNode*)kernelLaunchLeave );
+            evtRecLeave->setLink( (GraphNode*)kernelLaunchLeave );
           }
+        }*/
+        
+        // set link to mark this node as not handled
+        //evtRecLeave->setLink( evtRecLeave );
+        
+        analysis->setLastEventLaunch( (EventNode*)( evtRecLeave ) );
 
-          analysis->setLastEventLaunch( (EventNode*)( evRecord.second ) );
-          return true;
-        }
-
-        return false;
+        return true;
       }
   };
  }

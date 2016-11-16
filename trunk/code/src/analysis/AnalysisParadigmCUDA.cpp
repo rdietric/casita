@@ -57,24 +57,24 @@ AnalysisParadigmCUDA::reset()
   UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
              "Cleanup CUDA support structures" );
   
-  // clean up pending kernel launches
+  /* clean up pending kernel launches
   if( pendingKernelLaunchMap.size() )
-  {    
+  {
     size_t pendingOperations = 0;
     for ( IdNodeListMap::iterator mapIter = pendingKernelLaunchMap.begin( );
           mapIter != pendingKernelLaunchMap.end( ); ++mapIter )
     {
       pendingOperations += mapIter->second.size();
       
-      /*if( Parser::getVerboseLevel() >= VERBOSE_BASIC )
-      {
-        GraphNode::GraphNodeList list = mapIter->second;
-        for(GraphNode::GraphNodeList::const_iterator it = mapIter->second.begin(); 
-            it != mapIter->second.end(); ++it )
-        {
-          UTILS_MSG( true, "#### %s",  commonAnalysis->getNodeInfo(*it).c_str() );
-        }
-      }*/
+//      if( Parser::getVerboseLevel() >= VERBOSE_BASIC )
+//      {
+//        GraphNode::GraphNodeList list = mapIter->second;
+//        for(GraphNode::GraphNodeList::const_iterator it = mapIter->second.begin(); 
+//            it != mapIter->second.end(); ++it )
+//        {
+//          UTILS_MSG( true, "#### %s",  commonAnalysis->getNodeInfo(*it).c_str() );
+//        }
+//      }
       
       mapIter->second.clear();
     }
@@ -85,17 +85,17 @@ AnalysisParadigmCUDA::reset()
 
 
     pendingKernelLaunchMap.clear();
-  }
+  }*/
     
   // clear event record/launch map and event query map
   if( eventLaunchMap.size() )
   {
-    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+    UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
                "... %llu event launches/records",
                eventLaunchMap.size() );
     eventLaunchMap.clear();
   }
-  
+  /*
   // clear event query map
   if( eventQueryMap.size() )
   {
@@ -139,7 +139,7 @@ AnalysisParadigmCUDA::reset()
              "... %llu event stream mappings",
              eventProcessMap.size() );
     eventProcessMap.clear();
-  }
+  }*/
 }
 
 Paradigm
@@ -226,10 +226,44 @@ AnalysisParadigmCUDA::handleKeyValuesLeave( OTF2TraceReader*     reader,
 //////////////////////////////////////////////////////////////
 ////////////// CUDA rules support functions //////////////////
 
+// \todo: could be static
+bool
+AnalysisParadigmCUDA::isKernelPending( GraphNode* kernelNode )
+{
+  if( kernelNode->hasPartner() )
+  {
+    // kernel leave has not yet been synchronized (compare BlameKernelRule)
+    if( kernelNode->getGraphPair().second->getLink() == NULL )
+    {
+      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+                 "[%"PRIu32"] Do not delete unsynchronized kernel %s", 
+                 this->commonAnalysis->getMPIRank(), 
+                 this->commonAnalysis->getNodeInfo( kernelNode ).c_str() );
+      return false;
+    }
+  }
+  /* enter kernel nodes without partner must NOT be deleted
+  else if( kernelNode->isEnter() )
+  {
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+               "[%"PRIu64"] Do not delete incomplete kernel %s", 
+               p->getId(), getNodeInfo( *it ).c_str() );
+    continue;
+  }*/
+
+  if( ( kernelNode->isEnter() && !kernelNode->hasPartner() ) || 
+      ( kernelNode->hasPartner() && kernelNode->getGraphPair().second->getLink() == NULL ) )
+  {
+    return false;
+  }
+  
+  return true;
+}
+
 void
 AnalysisParadigmCUDA::setLastEventLaunch( EventNode* eventLaunchLeave )
 {
-  eventLaunchMap[eventLaunchLeave->getEventId( )] = eventLaunchLeave;
+  eventLaunchMap[eventLaunchLeave->getEventId()] = eventLaunchLeave;
 }
 
 EventNode*
@@ -447,7 +481,7 @@ void
 AnalysisParadigmCUDA::addStreamWaitEvent( uint64_t   deviceProcId,
                                           EventNode* streamWaitLeave )
 {
-  EventStream* nullStream = commonAnalysis->getNullStream( );
+  EventStream* nullStream = commonAnalysis->getNullStream();
   if ( nullStream && nullStream->getId( ) == deviceProcId )
   {
     StreamWaitTagged* swTagged = new StreamWaitTagged( );
@@ -456,9 +490,8 @@ AnalysisParadigmCUDA::addStreamWaitEvent( uint64_t   deviceProcId,
   }
   else
   {
-    /* Remove any pending streamWaitEvent with the same event ID since
-     * they */
-    /* it is replaced by this new streamWaitLeave. */
+    // Remove any pending streamWaitEvent with the same event ID since
+    // it is replaced by this new streamWaitLeave.
     EventNode::EventNodeList& eventNodeList =
       streamWaitMap[deviceProcId];
     for ( EventNode::EventNodeList::iterator iter = eventNodeList.begin( );

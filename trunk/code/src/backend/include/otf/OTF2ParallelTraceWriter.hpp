@@ -69,6 +69,7 @@ namespace casita
         uint64_t totalDuration;
         uint64_t totalDurationOnCP;
         uint64_t totalBlame;
+        uint64_t blameOnCP;
         double   fractionCP;
         double   fractionBlame;
         uint64_t lastEnterTime;
@@ -184,9 +185,6 @@ namespace casita
       //!< counter to assign IDs to string definitions
       uint64_t      counterForStringDefinitions;
       
-      //!< counter to assign IDs to MetricInstances
-      //uint64_t      counterForMetricInstanceId;
-      
       //!< counter to assign IDs to attribute types
       uint64_t      counterForAttributeId;
       
@@ -250,10 +248,8 @@ namespace casita
       //!< save last counter values to avoid writing of unused counter records
       CounterMap lastCounterValues;
       
-#if defined(BLAME_COUNTER)
       //!< activity value stack map < event.location, stack of CounterMaps >
       CounterStackMap leaveCounterStack;
-#endif
 
       //!< Keep track of activity stack per process.
       ActivityStackMap activityStack;
