@@ -62,7 +62,8 @@ namespace casita
         UTILS_MSG( 0 == strcmp( colLeave->getName(), "MPI_Reduce" ), 
                    "[%u] MPI collective: %s", colLeave->getStreamId(), colLeave->getUniqueName().c_str());
         */
-        GraphNode* colEnter = colLeave->getGraphPair( ).first;
+        
+        GraphNode* colEnter = colLeave->getGraphPair().first;
         
         uint32_t mpiGroupId = colLeave->getReferencedStreamId( );
         const MPIAnalysis::MPICommGroup& mpiCommGroup =
@@ -118,7 +119,7 @@ namespace casita
 
         // this is not the last -> blocking + remoteEdge to lastEnter
         if ( lastEnterProcessId != colLeave->getStreamId( ) ) // collStartTime < lastEnterTime )
-        {           
+        {
           Edge* collRecordEdge = commonAnalysis->getEdge( colEnter, colLeave );
           
           if ( collRecordEdge )
@@ -134,9 +135,8 @@ namespace casita
           }
           else
           {
-            std::cerr << "[" << colLeave->getStreamId( ) 
-                      << "] CollectiveRule: Record edge not found. CPA might fail!" 
-                      << std::endl;
+            UTILS_WARNING( "[%"PRIu64"] MPI collective rule: Record edge not "
+                           "found. CPA might fail!", colLeave->getStreamId() );
           }
           
           // set the wait state counter for this blocking region

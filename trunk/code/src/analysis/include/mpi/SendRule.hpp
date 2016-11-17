@@ -37,18 +37,18 @@ namespace casita
       apply( AnalysisParadigmMPI* analysis, GraphNode* sendLeave )
       {
         /* applied at MPI_Send leave */
-        if ( !sendLeave->isMPISend( ) || !sendLeave->isLeave( ) )
+        if ( !sendLeave->isMPISend() || !sendLeave->isLeave() )
         {
           return false;
         }
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        GraphNode* sendEnter = sendLeave->getGraphPair( ).first;
+        GraphNode* sendEnter = sendLeave->getGraphPair().first;
         
         // send
-        uint64_t sendStartTime = sendEnter->getTime( );
-        uint64_t sendEndTime   = sendLeave->getTime( );
+        uint64_t sendStartTime = sendEnter->getTime();
+        uint64_t sendEndTime   = sendLeave->getTime();
 
         // allocated in class AnalysisParadigmMPI, still used in CPA later
         uint64_t* data = (uint64_t*)( sendLeave->getData( ) );
@@ -59,7 +59,7 @@ namespace casita
         delete data;
         
         uint32_t partnerMPIRank  =
-          commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
+          commonAnalysis->getMPIAnalysis().getMPIRank( partnerProcessId );
 
         // replay MPI_Send
         uint64_t buffer[CASITA_MPI_P2P_BUF_SIZE];
@@ -68,7 +68,7 @@ namespace casita
         buffer[1] = sendEndTime;
         buffer[2] = sendEnter->getId( );
         buffer[3] = sendLeave->getId( );
-        buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_SEND;//send.second->getType( );
+        buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_SEND;
         MPI_CHECK( MPI_Send( buffer, 
                              CASITA_MPI_P2P_BUF_SIZE, 
                              CASITA_MPI_P2P_ELEMENT_TYPE,
@@ -77,33 +77,25 @@ namespace casita
         
         // receive the communication partner start time to compute wait states
         // use another tag to not mix up with replayed communication
-        MPI_Status status;
         uint64_t   recvStartTime = 0;
-        MPI_CHECK( MPI_Recv( buffer, 
-                             CASITA_MPI_P2P_BUF_SIZE, 
-                             CASITA_MPI_P2P_ELEMENT_TYPE,
-                             partnerMPIRank,
-                             CASITA_MPI_REVERS_REPLAY_TAG, MPI_COMM_WORLD, &status ) );
-        recvStartTime = buffer[0];
+        MPI_CHECK( MPI_Recv( buffer, CASITA_MPI_P2P_BUF_SIZE, 
+                             CASITA_MPI_P2P_ELEMENT_TYPE, partnerMPIRank,
+                             CASITA_MPI_REVERS_REPLAY_TAG, MPI_COMM_WORLD, 
+                             MPI_STATUS_IGNORE ) );
         
-        
-        // if the communication partner is an MPI_Irecv we can stop here
-        // as no wait states can be found
-        /*if(buffer[CASITA_MPI_P2P_BUF_SIZE - 1] & MPI_IRECV )
+        // the communication partner should be a receive!!!
+        if ( buffer[CASITA_MPI_P2P_BUF_SIZE - 1] & MPI_SEND || 
+             buffer[CASITA_MPI_P2P_BUF_SIZE - 1] & MPI_ISEND )
         {
-          return true;
-        }
-        else */if ( buffer[CASITA_MPI_P2P_BUF_SIZE - 1] & MPI_SEND || 
-                  buffer[CASITA_MPI_P2P_BUF_SIZE - 1] & MPI_ISEND )
-        {
-          // the communication partner should be a receive!!!
-          std::cerr << "[" << sendLeave->getStreamId( ) 
-                    << "] SendRule: Partner rank " << partnerMPIRank 
-                    << " is MPI_[I]SEND "
-                    << buffer[CASITA_MPI_P2P_BUF_SIZE - 1] << std::endl;
+          UTILS_WARNING( "[%"PRIu64"] MPI_Send rule: Partner rank %"PRIu32" is"
+                         "MPI_[I]SEND %"PRIu64, sendLeave->getStreamId(),
+                         partnerMPIRank, buffer[CASITA_MPI_P2P_BUF_SIZE - 1] );
+          
+          return false;
         }
         
         // compute wait states
+        recvStartTime = buffer[0];
         if ( ( sendStartTime <= recvStartTime ) )
         {
           if ( sendStartTime < recvStartTime )

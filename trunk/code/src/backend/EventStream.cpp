@@ -617,9 +617,8 @@ EventStream::addPendingMPIIrecvNode( GraphNode* node )
     if( pendingMPIRequestId == std::numeric_limits< uint64_t >::max() )
     {
       UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE,
-                 "[%"PRIu64"] At %s: MPI request ID %"PRIu64" is invalid."
-                 "Trace file might be corrupted!",
-                 this->id, node->getUniqueName().c_str(), pendingMPIRequestId );
+                 "%s: no request ID. Trace file might be corrupted!", 
+                 node->getUniqueName().c_str() );
       
       // "inform" MPI_Irecv rule that this node is invalid
       node->setData( NULL );
@@ -718,10 +717,20 @@ EventStream::setMPIIsendNodeData( GraphNode* node )
   if( pendingMPIRequestId == std::numeric_limits< uint64_t >::max() ||
       mpiIsendPartner == std::numeric_limits< uint64_t >::max() )
   {
-    UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE,
-               "[%"PRIu64"] At %s: MPI request %"PRIu64" or MPI partner ID %"PRIu64
-               " is invalid. Trace file might be corrupted!", this->id, 
-               node->getUniqueName().c_str(), pendingMPIRequestId, mpiIsendPartner );
+    if( pendingMPIRequestId == mpiIsendPartner )
+    {
+      UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE,
+                 "%s: Neither MPI request ID nor partner available. "
+                 "Corrupted trace file?", node->getUniqueName().c_str() );
+    }
+    else
+    {
+      UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE,
+                 "%s: no MPI request ID (%"PRIu64") or partner (%"PRIu64"). "
+                 "Corrupted trace file?", node->getUniqueName().c_str(), 
+                 pendingMPIRequestId, mpiIsendPartner );
+    }
+
     // "inform" MPI_Isend rule that this node is invalid
     node->setData( NULL );
     

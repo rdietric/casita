@@ -58,8 +58,8 @@ namespace casita
         // check if the record has been invalidated/deleted
         if( NULL == record )
         {
-          UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE, 
-                     "[%" PRIu64 "] MPI_Isend rule: Invalid record data.",
+          UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_TIME, 
+                     "[%" PRIu64 "] MPI_Isend rule: No record data.",
                      isendLeave->getStreamId());
           
           return false;
