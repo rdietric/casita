@@ -37,32 +37,31 @@ namespace casita
       apply( AnalysisParadigmMPI* analysis, GraphNode* recvLeave )
       {
         // applied only at MPI_Recv leave
-        if ( !recvLeave->isMPIRecv( ) || !recvLeave->isLeave( ) )
+        if ( !recvLeave->isMPIRecv() || !recvLeave->isLeave() )
         {
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon();
 
-        uint64_t partnerProcessId = recvLeave->getReferencedStreamId( );
+        uint64_t partnerProcessId = recvLeave->getReferencedStreamId();
         uint32_t partnerMPIRank   =
-          commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
+          commonAnalysis->getMPIAnalysis().getMPIRank( partnerProcessId );
         
         // replay receive and retrieve information from communication partner
         uint64_t   buffer[CASITA_MPI_P2P_BUF_SIZE];
-        MPI_Status status;
         MPI_CHECK( MPI_Recv( buffer, 
                              CASITA_MPI_P2P_BUF_SIZE, 
                              CASITA_MPI_P2P_ELEMENT_TYPE,
                              partnerMPIRank, 
                              CASITA_MPI_REPLAY_TAG, 
-                             MPI_COMM_WORLD, &status ) );
+                             MPI_COMM_WORLD, MPI_STATUS_IGNORE ) );
         
-        GraphNode* recvEnter     = recvLeave->getGraphPair( ).first;
+        GraphNode* recvEnter     = recvLeave->getGraphPair().first;
         uint64_t   sendStartTime = buffer[0];
         uint64_t   sendEndTime   = buffer[1];
-        uint64_t   recvStartTime = recvEnter->getTime( );
-        uint64_t   recvEndTime   = recvLeave->getTime( );
+        uint64_t   recvStartTime = recvEnter->getTime();
+        uint64_t   recvEndTime   = recvLeave->getTime();
 
         // if send starts after receive, we found a late sender
         if ( recvStartTime < sendStartTime )
@@ -87,12 +86,6 @@ namespace casita
 
           recvLeave->setCounter( WAITING_TIME, sendStartTime - recvStartTime );
 
-#ifdef MPI_CP_MERGE
-            analysis->getMPIAnalysis( ).addMPIEdge( recvEnter,
-                                                    buffer[4],
-                                                    partnerProcessId );
-#endif
-
           // if receive starts after send AND send and recv are overlapping, 
           // we found a later receiver
           if ( recvStartTime > sendStartTime && sendEndTime > recvStartTime )
@@ -110,7 +103,7 @@ namespace casita
         buffer[1] = recvEndTime;
         buffer[2] = recvEnter->getId();
         buffer[3] = recvLeave->getId();
-        buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_RECV; //recv.second->getType( );
+        buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_RECV;
 
         MPI_CHECK( MPI_Send( buffer, 
                              CASITA_MPI_P2P_BUF_SIZE, 

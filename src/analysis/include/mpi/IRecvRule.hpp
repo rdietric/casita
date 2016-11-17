@@ -56,8 +56,8 @@ namespace casita
         // check if the record has been invalidated/deleted
         if( NULL == record )
         {
-          UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE, 
-                     "[%"PRIu64"] Irecv rule: Invalid record data.",
+          UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_TIME, 
+                     "[%"PRIu64"] MPI_Irecv rule: No record data.",
                      irecvLeave->getStreamId());
           
           return false;
@@ -85,7 +85,7 @@ namespace casita
         buffer_send[1] = irecvLeave->getTime();
         buffer_send[2] = irecvEnter->getId();
         buffer_send[3] = irecvLeave->getId(); // 
-        buffer_send[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_IRECV; //recv.second->getType( );
+        buffer_send[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_IRECV;
 
         // Send indicator that this is an MPI_Irecv
         // use another tag to not mix up with replayed communication
