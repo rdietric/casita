@@ -1,3 +1,25 @@
-CASITA
+CASITA is a tool for automatic analysis of OTF2 trace files that have been 
+generated with Score-P. It determines program activities with high impact on the
+total program runtime and the load balancing. CASITA generates an OTF2 trace 
+with additional information such as the critical path, waiting time, and the
+cause of wait states. The same metrics are used to generate a summary profile 
+which rates activities according their potential to improve the program runtime 
+and the load balancing.
 
-http://www.mcs.anl.gov/events/workshops/ashes/2014/slides/ashes14-schmitt.pdf
+Publications:
+
+"CASITA: A Tool for Identifying Critical Optimization Targets in Distributed 
+Heterogeneous Applications"
+http://dx.doi.org/10.1109/ICPPW.2014.35
+
+"Scalable critical-path analysis and optimization guidance for hybrid MPI-CUDA 
+applications"
+http://dx.doi.org/10.1177/1094342016661865
+
+"Critical-blame analysis for OpenMP 4.0 offloading on Intel Xeon Phi"
+http://dx.doi.org/10.1016/j.jss.2015.12.050
+
+"Integrating Critical-Blame Analysis for Heterogeneous Applications into the 
+Score-P Workflow"
+http://dx.doi.org/10.1007/978-3-319-16012-2_8
+
