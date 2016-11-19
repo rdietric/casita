@@ -150,15 +150,8 @@ namespace casita
      void
      removeEdge( Edge* e );
 
-     /* query timeline objects */
-     GraphNode*
-     getLastNode( ) const;
-
      GraphNode*
      getSourceNode( ) const;
-
-     GraphNode*
-     getLastGraphNode( ) const;
 
      GraphNode*
      getFirstTimedGraphNode( Paradigm paradigm ) const;

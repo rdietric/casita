@@ -30,6 +30,8 @@
 /** Number of elements for replayed MPI communication */
 #define CASITA_MPI_P2P_BUF_SIZE 5
 
+#define CASITA_MPI_P2P_BUF_LAST 4
+
 /** MPI type of buffer elements */
 #define CASITA_MPI_P2P_ELEMENT_TYPE MPI_UINT64_T
 

@@ -153,10 +153,6 @@ namespace casita
                      waitAllLeave->getStreamId() );
         }
 
-        // Wait for all requests that are associated to this MPI_Waitall
-        //analysis->getCommon()->getStream( waitAllLeave->getStreamId() )
-        //                            ->waitForPendingMPIRequests( waitAllLeave );
-
         return true;
       }
   };

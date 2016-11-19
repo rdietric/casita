@@ -97,7 +97,10 @@ void
 EventStreamGroup::getAllStreams( EventStreamList& streams,
                                  Paradigm         paradigm ) const
 {
+  // clear stream list
   streams.clear( );
+  
+  // add all streams
   streams.assign( hostStreams.begin( ), hostStreams.end( ) );
   if ( nullStream )
   {
@@ -105,16 +108,21 @@ EventStreamGroup::getAllStreams( EventStreamList& streams,
   }
   streams.insert( streams.end( ), deviceStreams.begin( ), deviceStreams.end( ) );
 
+  // iterate over streams
   for ( EventStreamList::iterator iter = streams.begin( ); iter != streams.end( ); )
   {
-    EventStreamList::iterator current = iter;
-    iter++;
-
-    EventStream* p = *current;
+    EventStream* p = *iter;
     GraphNode*   lastGNode = p->getLastNode( paradigm );
-    if ( !lastGNode || ( lastGNode->isProcess( ) ) )
+    
+    // if we did not find a last node OR the last node is atomic process or 
+    // intermediate node
+    if ( !lastGNode || lastGNode->isProcess() )
     {
-      streams.erase( current );
+      iter = streams.erase( iter );
+    }
+    else
+    {
+      ++iter;
     }
   }
 }
@@ -132,7 +140,8 @@ EventStreamGroup::getHostStreams( ) const
 }
 
 void
-EventStreamGroup::getAllDeviceStreams( EventStreamGroup::EventStreamList& newDeviceStreams ) const
+EventStreamGroup::getAllDeviceStreams( 
+                     EventStreamGroup::EventStreamList& newDeviceStreams ) const
 {
   newDeviceStreams.clear( );
   if ( nullStream )

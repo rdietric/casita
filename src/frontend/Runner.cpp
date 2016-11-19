@@ -1073,8 +1073,7 @@ Runner::findLastMpiNode( GraphNode** node )
     lastMpiNodeTime = myLastMpiNode->getTime( );
   }
   
-  // \todo: it might be better to use gather + bcast 
-  //        (more secure to have only one last MPI node)
+  // \todo: MPI_Allreduce with MPI_OP = MPI_MAXLOC
   MPI_CHECK( MPI_Allgather( &lastMpiNodeTime, 1, MPI_UINT64_T,
                             nodeTimes, 1, MPI_UINT64_T, MPI_COMM_WORLD ) );
 
@@ -1095,8 +1094,8 @@ Runner::findLastMpiNode( GraphNode** node )
 
     UTILS_DBG_MSG( DEBUG_CPA_MPI,
                    "[%u] critical path reverse replay starts at node %s (%f)",
-                   mpiRank, myLastMpiNode->getUniqueName( ).c_str( ),
-                   analysis.getRealTime( myLastMpiNode->getTime( ) ) );
+                   mpiRank, myLastMpiNode->getUniqueName().c_str(),
+                   analysis.getRealTime( myLastMpiNode->getTime() ) );
    
   }
   
@@ -1148,40 +1147,62 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
 
   while ( true )
   {
+    ///////////////////////////// master ////////////////////////////////
     if ( isMaster )
     {
-      ///////////////////////////// master ////////////////////////////////
+      if( !currentNode )
+      {
+        UTILS_WARNING( "[%u] CPA master: No current node! Abort CPA.", mpiRank );
+        
+        // savely abort CPA
+        // the first MPI node should be an intermediate start node or MPI_Init 
+        // enter and therefore end the critical path analysis
+        currentNode = analysis.getFirstTimedGraphNode( PARADIGM_MPI );
+        continue;
+      }
+      
+      // verbose output
       if ( lastNode )
       {
         UTILS_MSG( options.verbose >= VERBOSE_ANNOY,
                    "[%u] isMaster, currentNode = %s (%f), lastNode = %s (%f)",
-                   mpiRank, currentNode->getUniqueName( ).c_str( ),
-                   analysis.getRealTime( currentNode->getTime( ) ),
-                   lastNode->getUniqueName( ).c_str( ),
-                   analysis.getRealTime( lastNode->getTime( ) ) );
+                   mpiRank, currentNode->getUniqueName().c_str(),
+                   analysis.getRealTime( currentNode->getTime() ),
+                   lastNode->getUniqueName().c_str(),
+                   analysis.getRealTime( lastNode->getTime() ) );
       }
       else
       {
         UTILS_MSG( options.verbose >= VERBOSE_ANNOY,
                    "[%u] isMaster, currentNode = %s (%f)",
-                   mpiRank, currentNode->getUniqueName( ).c_str( ),
-                   analysis.getRealTime( currentNode->getTime( ) ) );
+                   mpiRank, currentNode->getUniqueName().c_str(),
+                   analysis.getRealTime( currentNode->getTime() ) );
       }
 
-      UTILS_MSG( lastNode && ( lastNode->getId( ) <= currentNode->getId( ) ),
+      UTILS_MSG( lastNode && ( lastNode->getId() <= currentNode->getId() ),
                  "[%u] ! [Warning] current node ID %"PRIu64" (%s) is not strictly "
                  "decreasing; last node ID %"PRIu64" (%s)", 
-                 mpiRank, currentNode->getId( ), currentNode->getUniqueName().c_str(),
-                 lastNode->getId( ), lastNode->getUniqueName().c_str() );
-
-      UTILS_MSG( currentNode == NULL, "currentNode == NULL" );
+                 mpiRank, currentNode->getId(), currentNode->getUniqueName().c_str(),
+                 lastNode->getId(), lastNode->getUniqueName().c_str() );
       
       //\todo: the intermediate begin has to be the start of a section
-      if ( currentNode->isLeave( ) ) // isLeave
+      if ( currentNode->isLeave() ) // isLeave
       {
         Edge* activityEdge = 
-          analysis.getEdge( currentNode->getPartner(), currentNode );
+          analysis.getEdge( currentNode->getGraphPair().first, currentNode );
         
+        if( !activityEdge )
+        {
+          UTILS_WARNING( "[%u] CPA master: No activity edge found for %s. Abort CPA.", 
+                         mpiRank, currentNode->getUniqueName().c_str() );
+          
+          // savely abort CPA
+          // the first MPI node should be an intermediate start node or MPI_Init 
+          // enter and therefore end the critical path analysis
+          currentNode = analysis.getFirstTimedGraphNode( PARADIGM_MPI );
+          continue;
+        }
+
         // CP changes stream on blocking edges
         if ( activityEdge->isBlocking() )
         {
@@ -1211,13 +1232,11 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
             analysis.getMPIAnalysis( ).getRemoteNodeInfo( currentNode,
                                                           &nodeHasRemoteInfo );
           
-          //\todo: retrieve blame from MPI_I* patterns and send it to the target
-          
           // check enter event
           if( !nodeHasRemoteInfo )
           {
             pnPair = // (stream ID, node ID)
-            analysis.getMPIAnalysis( ).getRemoteNodeInfo( 
+            analysis.getMPIAnalysis().getRemoteNodeInfo( 
               currentNode->getGraphPair().first, &nodeHasRemoteInfo );
             
             // if still no remote node found, continue as master

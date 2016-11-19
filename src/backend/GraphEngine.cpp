@@ -156,13 +156,6 @@ const
   }
 }
 
-void
-GraphEngine::getStreams( EventStreamGroup::EventStreamList& streams,
-                         Paradigm                           paradigm ) const
-{
-  streamGroup.getAllStreams( streams, paradigm );
-}
-
 const EventStreamGroup::EventStreamList&
 GraphEngine::getHostStreams( ) const
 {
@@ -328,70 +321,42 @@ GraphEngine::getSourceNode( ) const
 }
 
 GraphNode*
-GraphEngine::getLastNode( ) const
-{
-  GraphNode* lastNode = NULL;
-  EventStreamGroup::EventStreamList streams;
-  streamGroup.getAllStreams( streams );
-
-  for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin( );
-        iter != streams.end( ); ++iter )
-  {
-    GraphNode* lastStreamNode = ( *iter )->getLastNode( );
-    if ( lastStreamNode )
-    {
-      if ( lastNode == NULL )
-      {
-        lastNode = lastStreamNode;
-      }
-      else
-      {
-        if ( lastStreamNode->getTime( ) > lastNode->getTime( ) )
-        {
-          lastNode = lastStreamNode;
-        }
-      }
-    }
-  }
-  
-  streams.clear();
-
-  return lastNode;
-}
-
-GraphNode*
-GraphEngine::getLastGraphNode( ) const
-{
-  return getLastGraphNode( PARADIGM_ALL );
-}
-
-GraphNode*
 GraphEngine::getFirstTimedGraphNode( Paradigm paradigm ) const
 {
   GraphNode* firstNode = NULL;
   EventStreamGroup::EventStreamList streams;
   streamGroup.getAllStreams( streams );
 
-  for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin( );
-        iter != streams.end( ); ++iter )
+  for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin();
+        iter != streams.end(); ++iter )
   {
     EventStream* p = *iter;
-    EventStream::SortedGraphNodeList& nodes = p->getNodes( );
-    GraphNode*   firstStreamGNode           = NULL;
-
-    for ( EventStream::SortedGraphNodeList::const_iterator nIter = nodes.begin( );
-          nIter != nodes.end( ); ++nIter )
+    GraphNode* firstStreamGNode = NULL;
+    
+    // if the paradigms is MPI, we can use this shortcut
+    if( paradigm == PARADIGM_MPI )
     {
-      GraphNode* n = *nIter;
-      if ( ( n->getTime( ) > 0 ) && ( !n->isAtomic( ) ) )
+      firstStreamGNode = p->getFirstNode( PARADIGM_MPI );
+    }
+    else
+    {
+      EventStream::SortedGraphNodeList& nodes = p->getNodes();
+      for ( EventStream::SortedGraphNodeList::const_iterator nIter = nodes.begin();
+            nIter != nodes.end(); ++nIter )
       {
-        if ( n->hasParadigm( paradigm ) )
+        GraphNode* n = *nIter;
+        if ( ( n->getTime() > 0 ) && ( !n->isAtomic() ) )
         {
-          firstStreamGNode = n;
-          break;
+          if ( n->hasParadigm( paradigm ) )
+          {
+            firstStreamGNode = n;
+            break;
+          }
         }
       }
     }
+    
+    
 
     if ( firstStreamGNode )
     {
@@ -408,16 +373,25 @@ GraphEngine::getFirstTimedGraphNode( Paradigm paradigm ) const
       }
     }
   }
+  
+  streams.clear();
 
   return firstNode;
 }
 
+/**
+ * Obtain the last (largest time stamp) graph node for a given paradigm.
+ * 
+ * @param paradigm
+ * 
+ * @return 
+ */
 GraphNode*
 GraphEngine::getLastGraphNode( Paradigm paradigm ) const
 {
   GraphNode* lastNode = NULL;
   EventStreamGroup::EventStreamList streams;
-  streamGroup.getAllStreams( streams );
+  streamGroup.getAllStreams( streams ); 
 
   for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin( );
         iter != streams.end( ); ++iter )
@@ -433,7 +407,8 @@ GraphEngine::getLastGraphNode( Paradigm paradigm ) const
       }
       else
       {
-        if ( lastStreamGNode->getTime( ) > lastNode->getTime( ) )
+        //if ( lastStreamGNode->getTime() > lastNode->getTime() )
+        if ( Node::compareLess( lastNode, lastStreamGNode ) )
         {
           lastNode = lastStreamGNode;
         }

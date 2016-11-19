@@ -69,7 +69,7 @@ namespace casita
             MPI_CHECK( MPI_Wait( &(record->requests[0]), MPI_STATUS_IGNORE ) );
           }
           
-          // MPI_Wait[all] on remote process can only start after end of MPI_I*
+          // MPI_Wait on remote process can only start after end of MPI_I*
           uint64_t p2pPartnerTime = record->recvBuffer[1];
           
           // if the partner is MPI_Send|Recv use the start time as wait is

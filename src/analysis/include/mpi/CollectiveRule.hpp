@@ -44,7 +44,7 @@ namespace casita
       apply( AnalysisParadigmMPI* analysis, GraphNode* colLeave )
       {
         // applied at MPI collective leave
-        if ( !colLeave->isMPICollective( ) || !colLeave->isLeave( ) )
+        if ( !colLeave->isMPICollective() || !colLeave->isLeave() )
         {
           return false;
         }
@@ -95,6 +95,7 @@ namespace casita
         sendBuffer[2] = colLeave->getId();
         sendBuffer[3] = colLeave->getStreamId();
 
+        //\todo: replace with a custom MPI_Allreduce
         MPI_CHECK( MPI_Allgather( sendBuffer, BUFFER_SIZE, MPI_UINT64_T,
                                   recvBuffer, BUFFER_SIZE, MPI_UINT64_T, 
                                   mpiCommGroup.comm ) );
@@ -130,8 +131,7 @@ namespace casita
             commonAnalysis->getMPIAnalysis().addRemoteMPIEdge(
               colLeave, // local leave node
               lastEnterRemoteNodeId, // remote leave node ID
-              lastEnterProcessId/*,
-              MPIAnalysis::MPI_EDGE_REMOTE_LOCAL*/ );
+              lastEnterProcessId );
           }
           else
           {

@@ -152,8 +152,8 @@ EventStream::hasLastGlobalEvent( )
 GraphNode*
 EventStream::getLastNode( ) const
 {
-  //\todo: use lastNode ???
-  return getLastNode( PARADIGM_ALL );
+  return lastNode;
+  //return getLastNode( PARADIGM_ALL );
 }
 
 GraphNode*
@@ -162,39 +162,44 @@ EventStream::getLastNode( Paradigm paradigm ) const
   size_t     i           = 0;
   GraphNode* tmpLastNode = NULL;
 
+  // for all paradigms
   for ( i = 0; i < NODE_PARADIGM_COUNT; ++i )
   {
     Paradigm tmpP = (Paradigm)( 1 << i );
-    if ( tmpP & paradigm )
+    
+    // if the last node for a given paradigm is set
+    if ( ( tmpP & paradigm ) && graphData[i].lastNode )
     {
-      if ( graphData[i].lastNode )
-      {
-        tmpLastNode = graphData[i].lastNode;
-        break;
-      }
+      tmpLastNode = graphData[i].lastNode;
+      break;
     }
-
   }
-
+  
+  // if we found a node, iterate over the other paradigms to find a later node
   i++;
-
   for (; i < NODE_PARADIGM_COUNT; ++i )
   {
     Paradigm tmpP = (Paradigm)( 1 << i );
-    if ( tmpP & paradigm )
+    
+    // if the last node for a given paradigm is set AND it is later than the 
+    // already found node
+    if ( ( tmpP & paradigm ) && graphData[i].lastNode &&
+         Node::compareLess( tmpLastNode, graphData[i].lastNode ) )
     {
-      if ( graphData[i].lastNode &&
-           Node::compareLess( tmpLastNode, graphData[i].lastNode ) )
-      {
-        tmpLastNode = graphData[i].lastNode;
-      }
+      tmpLastNode = graphData[i].lastNode;
     }
-
   }
 
   return tmpLastNode;
 }
 
+/**
+ * Get the first node of a given paradigm.
+ * \todo: this works only for single paradigms and NOT for e.g. PARADIGM_ALL
+ * 
+ * @param paradigm
+ * @return 
+ */
 GraphNode*
 EventStream::getFirstNode( Paradigm paradigm ) const
 {
