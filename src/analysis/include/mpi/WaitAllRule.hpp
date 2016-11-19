@@ -71,8 +71,8 @@ namespace casita
             // wait for MPI_Irecv or MPI_Isend
             if( !(record->leaveNode->isMPI_Irecv() || record->leaveNode->isMPI_Isend()) )
             {
-              UTILS_MSG( true, "[%"PRIu64"] WaitRule: Neither waiting for receive"
-                         " nor send! (%s)", waitAllLeave->getStreamId(), 
+              UTILS_MSG( true, "[%"PRIu64"] WaitRule: Only MPI_Isend and "
+                         "MPI_Irecv are supported! (%s)", waitAllLeave->getStreamId(), 
                          record->leaveNode->getUniqueName().c_str() );
               return false;
             }
