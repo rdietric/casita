@@ -2,6 +2,8 @@
 CUDA
 - improved handling of CUDA events and CUDA kernels over
   interval boundaries
+- avoid CUDA analysis if input trace does not meet the
+  requirements (CUDA stream references)
 
 MPI
 - try to ignore MPI_I[send|recv] regions without 
