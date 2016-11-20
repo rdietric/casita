@@ -23,3 +23,28 @@ http://dx.doi.org/10.1016/j.jss.2015.12.050
 Score-P Workflow"
 http://dx.doi.org/10.1007/978-3-319-16012-2_8
 
+
+CASITA analysis requirements:
+
+MPI analysis is based on replaying the MPI communication in forward and backward 
+direction, which means that the respective communication records have to be 
+available in the trace. CASITA also needs the region enter and leave events of 
+MPI communication functions. Currently, the MPI support is limited to blocking 
+and non-blocking point-to-point communication. 
+
+OpenMP analysis is based on the OPARI2 instrumentation. Required are the 
+fork/join, parallel begin/end, and the barrier begin/end records. Both, MPI and 
+OpenMP analysis work with the default Score-P configuration. 
+
+CUDA analysis is supported since Score-P 1.3. CASITA's CUDA analysis has several
+requirements on the OTF2 trace file to work correctly. These are CUDA driver API
+functions that synchronize with the device (including blocking CUDA memory 
+copies and CUDA event queries) as well as CUDA kernel launch and CUDA event 
+record. Furthermore, kernels and references have to be collected. The minimum
+set of Score-P CUDA recording features is "driver,kernel,references" which can 
+be set with the environment variable SCORE_CUDA_ENABLE.
+
+OpenCL analysis also requires references, e.g. to record the OpenCL queue a 
+kernel is enqueued to or synchronized with clFinish. This is currently only 
+implemented in a Score-P development branch. OpenACC analysis is indirectly 
+supported with the low-level paradigms CUDA and OpenCL.
