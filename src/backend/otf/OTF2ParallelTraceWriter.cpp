@@ -77,7 +77,7 @@ postFlush( void* userData, OTF2_FileType fileType,
   return 0;
 }
 
-/** Necessary for OTF2 to work in MPI-Mode */
+/** Necessary for OTF2 to work in MPI-Mode 
 static inline size_t
 otf2_mpi_type_to_size( OTF2_Type type )
 {
@@ -100,13 +100,12 @@ otf2_mpi_type_to_size( OTF2_Type type )
     default:
       return 0;
   }
-}
+}*/
 
-/** Necessary for OTF2 to work in MPI-Mode */
+/** Necessary for OTF2 to work in MPI-Mode 
 static inline MPI_Datatype
 otf2_to_mpi_type( OTF2_Type type )
 {
-
   switch ( type )
   {
     case OTF2_TYPE_UINT8:
@@ -130,8 +129,7 @@ otf2_to_mpi_type( OTF2_Type type )
     default:
       return 0;
   }
-
-}
+}*/
 
 /**
  *

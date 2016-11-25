@@ -226,10 +226,10 @@ namespace casita
    "MPI_Sendrecv"
  };
 
- static const char* FTABLE_MPI_MISC[]          =
- {
+ //static const char* FTABLE_MPI_MISC[]          =
+ //{
    //"MPI_Bsend", "MPI_Cancel", "MPI_Probe"
- };
+ //};
 
  static const size_t      fTableEntriesCUDA = 9;
  static const FTableEntry fTableCUDA[fTableEntriesCUDA] =
@@ -256,7 +256,7 @@ namespace casita
    { OCL_WAITSTATE, 1, FTABLE_GPU_WAITSTATE }
  };
 
- static const size_t      fTableEntriesMPI = 8;
+ static const size_t      fTableEntriesMPI = 7;
  static const FTableEntry fTableMPI[fTableEntriesMPI] =
  {
    { MPI_INIT, 2, FTABLE_MPI_INIT },
@@ -267,7 +267,7 @@ namespace casita
 //   { MPI_ONETOALL, 2, FTABLE_MPI_ONETOALL }, // oneToAll rule might be broken
 //   { MPI_ALLTOONE, 0, FTABLE_MPI_ALLTOONE }, // allToOne rule is broken
    { MPI_SENDRECV, 1, FTABLE_MPI_SENDRECV },
-   { MPI_MISC, 0, FTABLE_MPI_MISC },
+//   { MPI_MISC, 0, FTABLE_MPI_MISC },
    { MPI_WAITSTATE, 1, FTABLE_GPU_WAITSTATE }
  };
 
