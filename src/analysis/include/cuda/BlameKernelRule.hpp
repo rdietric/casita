@@ -65,7 +65,7 @@ namespace casita
           EventStream* deviceStream = *pIter;
 
           // ignore device streams that are not referenced by this sync
-          if ( !syncEnter->referencesStream( deviceStream->getId( ) ) )
+          if ( !syncEnter->referencesStream( deviceStream->getId() ) )
           {
             continue;
           }
@@ -74,17 +74,14 @@ namespace casita
           bool isFirstKernel = true;
           while ( true )
           {
-            GraphNode* kernelLeave = deviceStream->getFirstPendingKernel( );
+            GraphNode* kernelLeave = deviceStream->getFirstPendingKernel();
             if ( !kernelLeave )
             {
               break;
             }
 
-            GraphNode* kernelEnter = kernelLeave->getGraphPair( ).first;
-
             // Early sync: sync start time < kernel end time
-            //\todo: What if other kernels are concurrently executed during the sync?
-            if ( syncEnter->getTime( ) < kernelLeave->getTime( ) )
+            if ( syncEnter->getTime() < kernelLeave->getTime() )
             {
               if ( isFirstKernel )
               {
@@ -94,8 +91,9 @@ namespace casita
 
               commonAnalysis->getEdge( syncEnter, syncLeave )->makeBlocking( );
 
+              GraphNode* kernelEnter = kernelLeave->getGraphPair().first;
+              
               // set counters (to sync leave node)
-              //\todo: set counters of enter nodes
               syncLeave->incCounter( WAITING_TIME,
                                      std::min( syncLeave->getTime(),
                                                kernelLeave->getTime() ) -
@@ -119,7 +117,7 @@ namespace casita
             {
               // set link to sync leave node (mark kernel as synchronized)
               deviceStream->setPendingKernelsSyncLink( syncLeave );
-              deviceStream->clearPendingKernels( );
+              deviceStream->clearPendingKernels();
               break;
             }
           }

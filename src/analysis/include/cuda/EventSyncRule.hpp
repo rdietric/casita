@@ -61,7 +61,7 @@ namespace casita
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        // get cuEventRecord leave node
+        // use the CUDA event ID to get cuEventRecord leave node
         EventNode* eventRecordLeave = analysis->getEventRecordLeave(
           ( (EventNode*)syncLeave )->getEventId() );
 

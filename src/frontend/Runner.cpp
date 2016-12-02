@@ -1601,8 +1601,8 @@ Runner::printAllActivities( )
             "Calls",
             "Time[s]",
             "Time on CP",
-            "CP[%%]",
-            "Blame[%%]",
+            "CP[%]",
+            "Blame[%]",
             "Blame+CP",
             "Blame on CP" );
     //printf( "-------------------------------------------------- ---------- ----"

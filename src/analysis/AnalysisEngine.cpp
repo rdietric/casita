@@ -429,11 +429,11 @@ AnalysisEngine::createIntermediateBegin( )
         UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
                    "[%"PRIu64"] Do not delete incomplete kernel %s",
                    p->getId(), getNodeInfo( nodes.back() ).c_str() );
-        nodes.pop_back( );
+        nodes.pop_back();
       }
       
       // delete all remaining nodes
-      for (; it != nodes.end( ); ++it )
+      for (; it != nodes.end(); ++it )
       {
         // do not remove CUDA nodes that might be required later
         if( (*it)->isCUDA() )

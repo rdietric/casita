@@ -171,8 +171,8 @@ AnalysisParadigmCUDA::handlePostLeave( GraphNode* node )
 }
 
 void
-AnalysisParadigmCUDA::handleKeyValuesEnter( OTF2TraceReader*     reader,
-                                            GraphNode*        node,
+AnalysisParadigmCUDA::handleKeyValuesEnter( OTF2TraceReader*  reader,
+                                            GraphNode*        enterNode,
                                             OTF2KeyValueList* list )
 {
   uint64_t refValue     = 0;
@@ -187,7 +187,7 @@ AnalysisParadigmCUDA::handleKeyValuesEnter( OTF2TraceReader*     reader,
        list->getLocationRef( (uint32_t)streamRefKey,
                              &refValue ) == OTF2KeyValueList::KV_SUCCESS )
   {
-    node->setReferencedStreamId( refValue );
+    enterNode->setReferencedStreamId( refValue );
   }
 }
 
@@ -195,14 +195,14 @@ AnalysisParadigmCUDA::handleKeyValuesEnter( OTF2TraceReader*     reader,
  * Set the referenced stream for both given nodes (leave and enter).
  * 
  * @param reader
- * @param node
- * @param oldNode
+ * @param leaveNode
+ * @param enterNode
  * @param list
  */
 void
-AnalysisParadigmCUDA::handleKeyValuesLeave( OTF2TraceReader*     reader,
-                                            GraphNode*        node,
-                                            GraphNode*        oldNode,
+AnalysisParadigmCUDA::handleKeyValuesLeave( OTF2TraceReader*  reader,
+                                            GraphNode*        leaveNode,
+                                            GraphNode*        enterNode,
                                             OTF2KeyValueList* list )
 {
   uint64_t refValue     = 0;
@@ -217,8 +217,8 @@ AnalysisParadigmCUDA::handleKeyValuesLeave( OTF2TraceReader*     reader,
        list->getLocationRef( (uint32_t)streamRefKey,
                              &refValue ) == OTF2KeyValueList::KV_SUCCESS )
   {
-    node->setReferencedStreamId( refValue );
-    oldNode->setReferencedStreamId( refValue );
+    leaveNode->setReferencedStreamId( refValue );
+    enterNode->setReferencedStreamId( refValue );
   }
 }
 
@@ -236,28 +236,23 @@ AnalysisParadigmCUDA::isKernelPending( GraphNode* kernelNode )
     if( kernelNode->getGraphPair().second->getLink() == NULL )
     {
       UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-                 "[%"PRIu32"] Do not delete unsynchronized kernel %s", 
-                 this->commonAnalysis->getMPIRank(), 
+                 "[%"PRIu64"] Do not delete unsynchronized kernel %s", 
+                 kernelNode->getStreamId(), 
                  this->commonAnalysis->getNodeInfo( kernelNode ).c_str() );
-      return false;
+      return true;
     }
   }
-  /* enter kernel nodes without partner must NOT be deleted
+  // enter kernel nodes without partner must NOT be deleted
   else if( kernelNode->isEnter() )
   {
     UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
                "[%"PRIu64"] Do not delete incomplete kernel %s", 
-               p->getId(), getNodeInfo( *it ).c_str() );
-    continue;
-  }*/
-
-  if( ( kernelNode->isEnter() && !kernelNode->hasPartner() ) || 
-      ( kernelNode->hasPartner() && kernelNode->getGraphPair().second->getLink() == NULL ) )
-  {
-    return false;
+               kernelNode->getStreamId(), 
+               this->commonAnalysis->getNodeInfo( kernelNode ).c_str() );
+    return true;
   }
   
-  return true;
+  return false;
 }
 
 void

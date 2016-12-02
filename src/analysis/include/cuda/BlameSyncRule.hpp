@@ -49,14 +49,9 @@ namespace casita
 
         AnalysisEngine* commonAnalysis = analysis->getCommon( );
 
-        /* get the complete execution */
-        GraphNode* syncEnter = syncLeave->getGraphPair( ).first;
-
-        uint64_t syncDeltaTicks = commonAnalysis->getDeltaTicks();
-
         bool ruleResult = false;
         
-        /* find all referenced (device) streams */
+        // find all referenced (device) streams
         EventStreamGroup::EventStreamList deviceStreams;
         commonAnalysis->getAllDeviceStreams( deviceStreams );
 
@@ -67,6 +62,8 @@ namespace casita
         {
           EventStream* deviceProcess = *pIter;
 
+          GraphNode* syncEnter = syncLeave->getGraphPair( ).first;
+          
           // ignore that are not synchronized here
           if ( !syncEnter->referencesStream( deviceProcess->getId() ) )
           {
@@ -79,6 +76,8 @@ namespace casita
           {
             break;
           }
+          
+          uint64_t syncDeltaTicks = commonAnalysis->getDeltaTicks();
 
           // Blame the sync if it is noticeably longer executed after the kernel end
           // if (sync starts before kernel ends)

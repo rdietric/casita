@@ -346,6 +346,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
       return false;
     }
     
+    // get the function result (only evaluated for cuEventQuery)
     uint32_t cuResult = readKeyVal( reader, SCOREP_CUDA_CURESULT, list );
     EventNode::FunctionResultType fResult = EventNode::FR_UNKNOWN;
     if ( cuResult == CUDA_SUCCESS )
@@ -370,6 +371,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
 
   leaveNode->setFunctionId( functionId );
 
+  // applied for offloading paradigms only
   analysis.handleKeyValuesLeave( reader, leaveNode, leaveNode->getGraphPair().first, list );
   
   // additional handling for special nodes (e.g. MPI communication)

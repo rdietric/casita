@@ -43,45 +43,45 @@ namespace casita
       bool
       apply( AnalysisParadigmCUDA* analysis, GraphNode* syncLeave )
       {
-        if ( !syncLeave->isCUDASync( ) || !syncLeave->isLeave( ) )
+        if ( !syncLeave->isCUDASync() || !syncLeave->isLeave() )
         {
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon( );
-
-        GraphNode* syncEnter = syncLeave->getGraphPair( ).first;
+        AnalysisEngine* commonAnalysis = analysis->getCommon();
 
         bool ruleResult = false;
-        /* find all referenced (device) streams */
+        
+        // find all referenced (device) streams
         EventStreamGroup::EventStreamList deviceStreams;
         commonAnalysis->getAllDeviceStreams( deviceStreams );
 
         for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-                deviceStreams.begin( );
-              pIter != deviceStreams.end( );
+                deviceStreams.begin();
+              pIter != deviceStreams.end();
               ++pIter )
         {
           EventStream* deviceProcess = *pIter;
 
-          if ( !syncEnter->referencesStream( deviceProcess->getId( ) ) )
+          GraphNode* syncEnter = syncLeave->getGraphPair().first;
+          if ( !syncEnter->referencesStream( deviceProcess->getId() ) )
           {
             continue;
           }
 
           // test that there is a pending kernel leave
-          GraphNode* kernelLeave = deviceProcess->getFirstPendingKernel( );
+          GraphNode* kernelLeave = deviceProcess->getFirstPendingKernel();
 
           // if kernel ends before synchronization starts
-          if ( kernelLeave && kernelLeave->getTime( ) <= syncEnter->getTime( ) )
+          if ( kernelLeave && kernelLeave->getTime() <= syncEnter->getTime() )
           {
             GraphNode* lastLeaveNode = commonAnalysis->getLastLeaveNode(
-              syncLeave->getTime( ), deviceProcess->getId( ) );
+              syncLeave->getTime(), deviceProcess->getId() );
             GraphNode* waitEnter = NULL, * waitLeave = NULL;
 
-            if ( lastLeaveNode && lastLeaveNode->isWaitstate( ) )
+            if ( lastLeaveNode && lastLeaveNode->isWaitstate() )
             {
-              if ( lastLeaveNode->getTime( ) == syncLeave->getTime( ) )
+              if ( lastLeaveNode->getTime() == syncLeave->getTime() )
               {
                 waitLeave = lastLeaveNode;
               }
