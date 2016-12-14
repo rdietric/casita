@@ -38,7 +38,6 @@ AnalysisEngine::AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize ) :
   mpiAnalysis( mpiRank, mpiSize ),
   writer( NULL ),
   maxFunctionId( 0 ),
-  //pendingMPICommForWaitAll( 0 ),
   waitStateFuncId( 0 ),
   maxMetricClassId( 0 ),
   maxMetricMemberId( 0 ),
@@ -46,47 +45,44 @@ AnalysisEngine::AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize ) :
   availableParadigms ( 0 )
 {
   // add analysis paradigms
-  // \todo: only if paradigm found
   // \todo: Where deleted?
-  //addAnalysisParadigm( new cuda::AnalysisParadigmCUDA( this ) );
-  //addAnalysisParadigm( new opencl::AnalysisParadigmOpenCL( this ) );
-  addAnalysisParadigm( new omp::AnalysisParadigmOMP( this ) );
+  //addAnalysisParadigm( new omp::AnalysisParadigmOMP( this ) );
   addAnalysisParadigm( new mpi::AnalysisParadigmMPI( this, mpiRank, mpiSize ) );
 }
 
-AnalysisEngine::~AnalysisEngine( )
+AnalysisEngine::~AnalysisEngine()
 {
-  for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin( );
-        iter != analysisParadigms.end( ); ++iter )
+  for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
+        iter != analysisParadigms.end(); ++iter )
   {
     delete iter->second;
   }
   if ( writer != NULL )
   {
-    writer->close( );
+    writer->close();
     delete writer;
   }
 }
 
 uint32_t
-AnalysisEngine::getMPIRank( )
+AnalysisEngine::getMPIRank()
 {
-  return mpiAnalysis.getMPIRank( );
+  return mpiAnalysis.getMPIRank();
 }
 
 uint32_t
-AnalysisEngine::getMPISize( )
+AnalysisEngine::getMPISize()
 {
-  return mpiAnalysis.getMPISize( );
+  return mpiAnalysis.getMPISize();
 }
 
 MPIAnalysis&
-AnalysisEngine::getMPIAnalysis( )
+AnalysisEngine::getMPIAnalysis()
 {
   return mpiAnalysis;
 }
 
-//\todo: not implemented for OMP and MPI
+//\todo: not implemented for MPI
 void 
 AnalysisEngine::addDetectedParadigm( Paradigm paradigm )
 {

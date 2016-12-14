@@ -38,9 +38,15 @@ namespace casita
       apply( AnalysisParadigmOMP* analysis, GraphNode* node )
       {
         // ignore non-OpenMP-compute nodes
-        if ( !node->isOMPParallel( ) )
+        if ( !( node->isOMPParallel() || node->isOMPImplicitTask() ) )
         {
           return false;
+        }
+        
+        // if node has no caller (e.g. first node on a stream after parallel region begin)
+        if( !node->getCaller() && node->isLeave() )
+        {
+          
         }
 
         // if this is the first compute node (no compute region is set)

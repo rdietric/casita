@@ -27,7 +27,7 @@ namespace casita
 {
  #if defined( BOOST_AVAILABLE )
  namespace po = boost::program_options;
-#endif
+ #endif
  
  typedef struct
  {
@@ -55,7 +55,7 @@ namespace casita
      static Parser&
      getInstance( );
      
-     static int getVerboseLevel( );
+     static int getVerboseLevel();
 
      bool
      init_with_boost( int argc, char** argv ) throw ( std::runtime_error );
@@ -64,7 +64,7 @@ namespace casita
      init_without_boost( int mpiRank, int argc, char** argv ) throw ( std::runtime_error );
      
      ProgramOptions&
-     getProgramOptions( );
+     getProgramOptions();
      
      void
      printHelp();
@@ -75,7 +75,7 @@ namespace casita
      std::string
      getOutArchiveName()
      {
-         return outArchiveName;
+       return outArchiveName;
      }
      
      std::string
@@ -85,7 +85,7 @@ namespace casita
      }
 
    private:
-     Parser( );
+     Parser();
 
      Parser( Parser& cc );
      
@@ -99,7 +99,7 @@ namespace casita
      endsWith( std::string const& str, std::string const& ext );
      
      void
-     setDefaultValues( );
+     setDefaultValues();
 
      ProgramOptions options;
      std::string pathToFile;

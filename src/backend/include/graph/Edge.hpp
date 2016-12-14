@@ -83,8 +83,8 @@ namespace casita
      getName( ) const
      {
        std::stringstream name;
-       name << "[" << pair.first->getUniqueName( ).c_str( ) << ", " <<
-       pair.second->getUniqueName( ).c_str( ) << ", (";
+       name << "[" << pair.first->getUniqueName() << ", " <<
+       pair.second->getUniqueName() << ", (";
 
        if ( edgeParadigm == PARADIGM_ALL )
        {
@@ -94,47 +94,65 @@ namespace casita
        {
          if ( edgeParadigm & PARADIGM_CUDA )
          {
-           name << "CUDA,";
+           name << "CUDA";
          }
          if ( edgeParadigm & PARADIGM_MPI )
          {
-           name << "MPI,";
+           name << ",MPI";
          }
          if ( edgeParadigm & PARADIGM_OMP )
          {
-           name << "OMP,";
+           name << ",OMP";
          }
          if ( edgeParadigm & PARADIGM_CPU )
          {
-           name << "CPU,";
+           name << ",CPU";
          }
        }
 
        name << ") ";
 
-       if ( isInterProcessEdge( ) )
+       if ( isInterProcessEdge() )
        {
-         name << "(inter)]";
+         name << "(inter)";
        }
        else
        {
-         name << "(intra)]";
+         name << "(intra)";
+       }
+       
+       if( isBlocking() )
+       {
+         name << " is blocking";
+       }
+       
+       if( causesWaitState() )
+       {
+         name << ", causes wait state";
        }
 
+       name << "]";
+       
        return name.str( );
      }
 
      bool
-     isBlocking( ) const
+     isBlocking() const
      {
        return properties & EDGE_IS_BLOCKING;
      }
 
      void
-     makeBlocking( )
+     makeBlocking()
      {
        edgeWeight  = std::numeric_limits< uint64_t >::max();
        properties |= EDGE_IS_BLOCKING;
+     }
+     
+     void
+     unblock()
+     {
+       properties &= !EDGE_IS_BLOCKING;
      }
 
      bool
@@ -162,21 +180,21 @@ namespace casita
      }
 
      bool
-     isReverseEdge( ) const
+     isReverseEdge() const
      {
-       return pair.first->getTime() > pair.second->getTime( );
+       return pair.first->getTime() > pair.second->getTime();
      }
 
      bool
-     isIntraStreamEdge( ) const
+     isIntraStreamEdge() const
      {
-       return pair.first->getStreamId( ) == pair.second->getStreamId( );
+       return pair.first->getStreamId() == pair.second->getStreamId();
      }
 
      bool
-     isInterProcessEdge( ) const
+     isInterProcessEdge() const
      {
-       return pair.first->getStreamId( ) != pair.second->getStreamId( );
+       return pair.first->getStreamId() != pair.second->getStreamId();
      }
      
      /**
@@ -186,7 +204,7 @@ namespace casita
       * @return 
       */
      bool
-     isRegion( ) const
+     isRegion() const
      {      
        if( isIntraStreamEdge() )
        {

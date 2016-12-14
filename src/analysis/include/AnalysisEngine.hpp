@@ -23,6 +23,7 @@
 #include "MPIAnalysis.hpp"
 #include "cuda/AnalysisParadigmCUDA.hpp"
 #include "opencl/AnalysisParadigmOpenCL.hpp"
+#include "omp/AnalysisParadigmOMP.hpp"
 
 #include "otf/OTF2TraceReader.hpp"
 #include "otf/OTF2ParallelTraceWriter.hpp"

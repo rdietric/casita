@@ -493,41 +493,45 @@ namespace casita
        // neither an MPI nor CUDA API nor OpenCL API function
 
        // check if an OpenMP instrumented region
-       if ( strstr( name, "!$omp" ) )
+       if( strncmp( name, "!$omp", 5 ) == 0 ) // if( strstr( name, "!$omp" ) )
        {
          descr->paradigm = PARADIGM_OMP;
          
-         if ( strstr( name, "barrier" ) )
+         if ( strstr( name+5, "barrier" ) ) // this includes wait_barrier
          {
            descr->functionType = OMP_SYNC;
          }
          else // not a barrier
          {
-           if ( strstr( name, "target " ) || strstr( name, "targetmap " ) )
+           if ( strstr( name+5, "target " ) || strstr( name+5, "targetmap " ) )
            {
              descr->functionType = OMP_TARGET_OFFLOAD;
            }
-           else 
+           else if ( strstr( name+5, "offloading flush" ) )
            {
-             if ( strstr( name, "offloading flush" ) )
+             descr->functionType = OMP_TARGET_FLUSH;
+           }
+           else
+           {
+             // threads of a parallel region start with 
+             // OPARI2: parallel begin event || OMPT: implicit task begin event
+             if( strstr( name+5, "parallel" ) )
              {
-               descr->functionType = OMP_TARGET_FLUSH;
+               descr->functionType = OMP_PARALLEL;
+             }
+             else if( strstr( name+5, "implicit_task" ) )
+             {
+               descr->functionType = OMP_IMPLICIT_TASK;
              }
              else
              {
-               if( strstr( name, "parallel" ) )
-               {
-                 descr->functionType = OMP_PARALLEL;
-               }
-               else
-               {
-                 descr->functionType = OMP_MISC;
-                 descr->paradigm = PARADIGM_CPU;
-                 return false;
-               }
+               descr->functionType = OMP_MISC;
+               descr->paradigm = PARADIGM_CPU;
+               return false;
              }
            }
-         }
+          }
+
          return true;
        }
        

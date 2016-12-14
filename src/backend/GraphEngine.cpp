@@ -773,9 +773,9 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
         int        edgeProp = EDGE_NONE;
 
         // check if this leave node is the end of a blocking operation
-        if ( pred->isEnter( ) && node->isLeave( ) )
+        if ( pred->isEnter() && node->isLeave() )
         {
-          if ( pred->isWaitstate( ) && node->isWaitstate( ) )
+          if ( pred->isWaitstate() && node->isWaitstate() )
           {
             edgeProp |= EDGE_IS_BLOCKING;
           }

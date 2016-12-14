@@ -562,19 +562,21 @@ void
 Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
                         GraphNode::GraphNodeList& path ) const
 {
-  const uint64_t INFINITE  = std::numeric_limits< uint64_t >::max( );
+  const uint64_t INFINITE = std::numeric_limits< uint64_t >::max( );
 
   // assume that the node list nodes is sorted by time
 
   GraphNode* currentNode = endNode;
+  
   // revers-iterate over the graph nodes as long as the the start node is before the current node
   //while ( currentNode != startNode )
   while ( Node::compareLess( startNode, currentNode ) )
   {
+    // make sure that there are edges
     if ( hasInEdges( currentNode ) )
     {
-      uint64_t maxWeight = 0;
-      GraphNode* predecessorNode = NULL;
+      uint64_t maxWeight = 0; // reset max weigth
+      GraphNode* predecessorNode = NULL; // predecessor not yet found
       
       // iterate over the in edges of the node (ignore blocking)
       const Graph::EdgeList& inEdges = getInEdges( currentNode );
@@ -590,8 +592,12 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
                    currentNode->getUniqueName().c_str(),
                    edge->getStartNode()->getUniqueName().c_str(), curWeight );
         */
-        if ( edge->isReverseEdge() || ( !edge->isBlocking() && 
-                              curWeight > maxWeight && curWeight != INFINITE ) )
+        
+        // if edge is not blocking AND weight is more than current but not infinite
+        // (weight is complementary to duration)
+        // revert edges have to be inter process to avoid endless loops
+        if ( ( edge->isReverseEdge() && edge->isInterProcessEdge() ) || 
+             ( !edge->isBlocking() && curWeight > maxWeight && curWeight != INFINITE ) )
         {
           maxWeight = curWeight;
           predecessorNode = edge->getStartNode();
@@ -607,12 +613,14 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
                    predecessorNode->getUniqueName().c_str(), maxWeight);*/
         path.push_front( currentNode );
         
-        if( currentNode != predecessorNode ) // check for endless lopp
+        if( currentNode != predecessorNode ) // check for endless loop
         {
           currentNode = predecessorNode;
           continue;
         }  
       }
+      
+      // TODO: predecessor could still be NULL here
     }
 
     // the most 

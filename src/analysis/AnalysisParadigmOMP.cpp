@@ -15,6 +15,7 @@
 #include "omp/OMPForkJoinRule.hpp"
 #include "omp/OMPComputeRule.hpp"
 #include "omp/OMPBarrierRule.hpp"
+#include "omp/OMPTComputeRule.hpp"
 #include "omp/OMPTargetRule.hpp"
 #include "omp/OMPTargetBarrierRule.hpp"
 
@@ -25,9 +26,18 @@ using namespace casita::io;
 AnalysisParadigmOMP::AnalysisParadigmOMP( AnalysisEngine* analysisEngine ) :
   IAnalysisParadigm( analysisEngine )
 {
-  addRule( new OMPForkJoinRule( 1 ) );
-  addRule( new OMPComputeRule( 1 ) );
-  addRule( new OMPBarrierRule( 1 ) );
+  
+  // use different rules for OMPT and OPARI2 instrumentation
+  if( analysisEngine->haveParadigm( PARADIGM_OMPT ) )
+  {
+    addRule( new OMPTComputeRule( 1 ) );
+  }
+  else
+  {
+    addRule( new OMPForkJoinRule( 1 ) );
+    addRule( new OMPComputeRule( 1 ) );
+    addRule( new OMPBarrierRule( 1 ) );
+  }
   
   // add OpenMP target rules only, if a MIC device stream is available
   if( analysisEngine->haveParadigm( PARADIGM_OMP_TARGET ) )
@@ -55,36 +65,113 @@ AnalysisParadigmOMP::handlePostLeave( GraphNode* node )
     popOmpTargetRegion( node );
   }
 
-  if ( node->isOMPSync( ) )
+  if ( node->isOMPSync() )
   {
-    /* mark this barrier if it has callees */
-    if ( !commonAnalysis->getEdge( node->getPartner( ), node ) )
+    Edge *edge = commonAnalysis->getEdge( node->getPartner( ), node );
+    
+    // mark this barrier if it has callees 
+    if ( !edge )
     {
       node->setCounter( OMP_IGNORE_BARRIER, 1 );
+      //UTILS_WARNING( "Ignore barrier for %s", node->getUniqueName().c_str());
+    }
+    
+    // if a sync operation is nested into another sync 
+    // (e.g. wait_barrier inside of barrier)
+    if( node->getCaller() && node->getCaller()->isOMPSync() )
+    {
+      if( edge && edge->isBlocking() )
+      {
+        edge->unblock();
+        UTILS_WARNING( "Unblock edge %s", edge->getName().c_str() );
+      }
+    }
+  }
+  
+  if( commonAnalysis->haveParadigm( PARADIGM_OMPT ) )
+  {
+    // node has no caller AND is not parallel (e.g. implicit task)
+    if( !node->getCaller() && !node->isOMPParallel() )
+    {
+      UTILS_WARNING( "No caller for %s", node->getUniqueName().c_str());
+
+      // parallel leave event has not been read yet!
+      // therefore, edge cannot been created yet.
     }
   }
 }
 
+/**
+ * TODO: parts could be moved to analysis (rules)
+ * 
+ * @param reader
+ * @param node
+ * @param list
+ */
 void
 AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
                                            GraphNode*        node,
                                            OTF2KeyValueList* list )
 {
-  int32_t streamRefKey = -1;
+  // if the trace has been generated with OMPT instrumentation
+  if( commonAnalysis->haveParadigm( PARADIGM_OMPT ) )
+  {
+    int32_t streamRefKey = -1;
+    uint64_t parallel_id = 0;
+
+    // get the parallel region ID, 
+    streamRefKey = reader->getFirstKey( SCOREP_OMPT_PARALLEL_ID );
+    if ( streamRefKey > -1 && list && list->getSize() > 0 &&
+         list->getUInt64( (uint32_t)streamRefKey, &parallel_id ) == 
+                                                  OTF2KeyValueList::KV_SUCCESS )
+    {
+      // if parallel region enter event
+      if( node->isOMPParallel() )
+      {
+        if( ompParallelIdNodeMap.count( parallel_id ) > 0 )
+        {
+          UTILS_WARNING( "Overwriting OMPT parallel region ID for %s!",
+                         commonAnalysis->getNodeInfo( node ).c_str() );
+        }
+        
+        // store parallel region ID
+        ompParallelIdNodeMap[ parallel_id ] = node;
+      }
+      // if node has no caller (first event on a stream), but no parallel
+      else if ( !node->getCaller() )
+      {
+        // create dependency edge to associated parallel region begin event
+        if( ompParallelIdNodeMap.count( parallel_id ) > 0 )
+        {
+          // add edge for critical path analysis
+          commonAnalysis->newEdge( ompParallelIdNodeMap[ parallel_id ], node );
+          
+          // add link to store dependency for leave event
+          node->setLink( ompParallelIdNodeMap[ parallel_id ] );
+        }
+        else
+        {
+          UTILS_WARNING( "OMPT parallel region ID  for %s not available!",
+                         commonAnalysis->getNodeInfo( node ).c_str() );
+        }
+      }
+    }
+  }
 
   // this is only for offloaded regions
   if ( commonAnalysis->getStream( node->getStreamId( ) )->getStreamType( )
        == EventStream::ES_DEVICE )
   {
+    int32_t streamRefKey = -1;
     uint64_t key_value = 0;
 
-    /* parent region id */
+    // parent region id
     streamRefKey = reader->getFirstKey( SCOREP_OMP_TARGET_PARENT_REGION_ID );
     if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
-         list->getUInt64( (uint32_t)streamRefKey,
-                          &key_value ) == OTF2KeyValueList::KV_SUCCESS )
+         list->getUInt64( (uint32_t)streamRefKey, &key_value ) == 
+                                                  OTF2KeyValueList::KV_SUCCESS )
     {
-      /* only create intra-device dependency edges for first event on each stream */
+      // only create intra-device dependency edges for first event on each stream
       if ( !node->getCaller( ) )
       {
         GraphNode* parentNode = findOmpTargetParentRegion( node, key_value );

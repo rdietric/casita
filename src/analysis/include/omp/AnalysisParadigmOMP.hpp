@@ -32,10 +32,11 @@ namespace casita
       typedef std::stack< GraphNode* > OmpNodeStack;
       typedef std::map< uint64_t, OmpNodeStack > pendingOMPKernelStackMap;
       typedef std::map< uint64_t, GraphNode* > OmpEventMap;
+      typedef std::map< uint64_t, GraphNode* > IdNodeMap;
       typedef std::map< uint64_t, std::pair<
                           std::map< uint64_t, GraphNode* >,
-                          std::vector< uint64_t > > >
-      OmpStreamRegionsMap;
+                          std::vector< uint64_t > > > OmpStreamRegionsMap
+      ;
 
       AnalysisParadigmOMP( AnalysisEngine* analysisEngine );
 
@@ -128,33 +129,32 @@ namespace casita
       findOmpTargetParentRegion( GraphNode* node, uint64_t parentRegionId );
 
     private:
-      /* log the OMP enter events, needed to resolve
-      * nested function calls */
+      //<! key: parallel region ID, value: parallel enter node
+      IdNodeMap ompParallelIdNodeMap;
+      
+      //<! log the OpenMP enter events, needed to resolve nested function calls
       pendingOMPKernelStackMap ompBackTraceStackMap;
 
-      /* remember last omp event per stream -> needed to resolve
-       * nested function calls */
+      //<! remember last OpenMP event per stream to resolve nested function calls
       OmpEventMap lastOmpEventMap;
       
       //<! Stack of open parallel regions (fork-join regions)
       OmpNodeStack forkJoinStack;
 
-      /* keep track of omp kernels between forkjoins */
+      //<! keep track of omp kernels between forkjoins
       OmpEventMap ompComputeTrackMap;
 
-      /* collect barriers from different streams */
+      //<! collect barriers from different streams
       GraphNode::GraphNodeList ompBarrierListHost;
       IdPairNodeListMap ompBarrierListDevice;
 
-      /* keep track of last OMP Target Begin on each event stream */
+      //<! keep track of last OMP Target Begin on each event stream
       OmpEventMap ompTargetRegionBeginMap;
 
-      /* keep track of the first event on each device stream after an
-       *OMP target begin */
+      //<! keep track of the first event on each device stream after an OpenMP target begin
       OmpEventMap ompTargetDeviceFirstEventMap;
 
-      /* keep track of the last event on each device stream before an
-       *OMP target end */
+      //<! keep track of the last event on each device stream before an OpenMP target end
       OmpEventMap ompTargetDeviceLastEventMap;
 
       OmpStreamRegionsMap ompTargetStreamRegionsMap;

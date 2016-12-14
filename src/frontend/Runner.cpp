@@ -139,6 +139,11 @@ Runner::startAnalysisRun( )
     analysis.addAnalysisParadigm( new opencl::AnalysisParadigmOpenCL( &analysis ) );
   }
   
+  if( analysis.haveParadigm( PARADIGM_OMP ) )
+  {
+    analysis.addAnalysisParadigm( new omp::AnalysisParadigmOMP( &analysis ) );
+  }
+  
   // TODO:
   analysis.getMPIAnalysis( ).createMPICommunicatorsFromMap( );
   
@@ -213,6 +218,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   
   clock_t time_events_read   = 0;
   clock_t time_events_write  = 0;
+  clock_t time_events_flush   = 0;
   clock_t time_analysis_mpi  = 0;
   clock_t time_analysis_omp  = 0;
   clock_t time_analysis_cuda = 0;
@@ -233,27 +239,27 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     // for interval analysis
     if( events_available )
     {
-      bool start_analysis = false;
-      uint64_t nodeSizes[mpiSize];
+      time_tmp = clock();
       
+      bool start_analysis = false;
+
       // get the last node's ID
       uint64_t last_node_id = analysis.getGraph().getNodes().back()->getId();
       uint64_t current_pending_nodes = last_node_id - interval_node_id;
       interval_node_id = last_node_id;
       
-      // gather pending nodes on all processes
-      MPI_CHECK( MPI_Allgather( &current_pending_nodes, 1, MPI_UINT64_T,
-                                nodeSizes, 1, MPI_UINT64_T, MPI_COMM_WORLD ) );
+      // \todo: this is expensive, because we add for every global collective an additional MPI_Allreduce
+      // gather maximum pending nodes on all processes
+      uint64_t maxNodes = 0;
+      MPI_CHECK( MPI_Allreduce( &current_pending_nodes, &maxNodes, 1, 
+                                MPI_UINT64_T, MPI_MAX, MPI_COMM_WORLD ) );
 
-      // check all processes for a reasonable number of analyzable nodes
-      for ( int i = 0; i < mpiSize; ++i )
+      if ( options.analysisInterval < maxNodes )
       {
-        if ( options.analysisInterval < nodeSizes[i] )
-        {
-          start_analysis = true;
-          break;
-        }
+        start_analysis = true;
       }
+      
+      time_events_flush += clock() - time_tmp;
       
       // if we didn't find a process with enough work, continue reading
       if( !start_analysis )
@@ -341,7 +347,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     
     // write the first already analyzed part (with local event readers and writers)
     
-    time_tmp = clock( );
+    time_tmp = clock();
     
     // write OTF2 definitions for this MPI rank (only once)
     if( !otf2_def_written )
@@ -380,7 +386,9 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     if( events_available )
     {
       // create intermediate graph (reset and clear graph objects)
+      time_tmp = clock();
       analysis.createIntermediateBegin();
+      time_events_flush += clock() - time_tmp;
     }
     
     // necessary?
@@ -419,7 +427,8 @@ Runner::processTrace( OTF2TraceReader* traceReader )
                ( (float) time_events_write ) / CLOCKS_PER_SEC );
 
     UTILS_MSG( options.analysisInterval,
-               "Number of analysis intervals: %u", ++analysis_intervals );
+               "Number of analysis intervals: %u (Cleanup nodes took %f seconds)", 
+               ++analysis_intervals, ( (float) time_events_flush ) / CLOCKS_PER_SEC );
   }
   
   UTILS_MSG( options.verbose >= VERBOSE_SOME, 
@@ -1063,17 +1072,16 @@ Runner::findLastMpiNode( GraphNode** node )
 {
   uint64_t lastMpiNodeTime = 0;
   int      lastMpiRank     = mpiRank;
-  uint64_t nodeTimes[mpiSize];
   
   *node = NULL;
 
   GraphNode* myLastMpiNode = analysis.getLastGraphNode( PARADIGM_MPI );
   if ( myLastMpiNode )
   {
-    lastMpiNodeTime = myLastMpiNode->getTime( );
+    lastMpiNodeTime = myLastMpiNode->getTime();
   }
   
-  // \todo: MPI_Allreduce with MPI_OP = MPI_MAXLOC
+  uint64_t nodeTimes[mpiSize];
   MPI_CHECK( MPI_Allgather( &lastMpiNodeTime, 1, MPI_UINT64_T,
                             nodeTimes, 1, MPI_UINT64_T, MPI_COMM_WORLD ) );
 
@@ -1086,6 +1094,16 @@ Runner::findLastMpiNode( GraphNode** node )
     }
   }
   
+  /* \todo: MPI_Allreduce with MPI_OP = MPI_MAXLOC, we need MPI_UINT64_t_INT
+  struct { 
+        long val; 
+        int  rank; 
+  } thisMpiNode, lastMpiNode; 
+  thisMpiNode.val = lastMpiNodeTime;
+  thisMpiNode.rank = mpiRank;
+  MPI_CHECK( MPI_Allreduce( &thisMpiNode, &lastMpiNode, 1, MPI_LONG_INT,
+                            MPI_MAXLOC, MPI_COMM_WORLD ) );*/
+
   *node = myLastMpiNode;
   
   if ( lastMpiRank == mpiRank )

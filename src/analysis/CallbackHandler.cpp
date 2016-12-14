@@ -138,8 +138,8 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
                                    bool              isGPUNull )
 {
   CallbackHandler* handler  =
-    (CallbackHandler*)( reader->getUserData( ) );
-  AnalysisEngine&  analysis = handler->getAnalysis( );
+    (CallbackHandler*)( reader->getUserData() );
+  AnalysisEngine&  analysis = handler->getAnalysis();
 
   EventStream::EventStreamType streamType = EventStream::ES_HOST;
 
@@ -169,6 +169,10 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
       
       analysis.addDetectedParadigm( PARADIGM_OMP_TARGET );
     }
+    else if  ( strstr( name, "OMP thread" ) )
+    {
+      analysis.addDetectedParadigm( PARADIGM_OMP );
+    }
   }
 
   UTILS_MSG( Parser::getInstance().getVerboseLevel() >= VERBOSE_BASIC,
@@ -187,8 +191,10 @@ CallbackHandler::handleDefFunction( OTF2TraceReader* reader,
                                     const char*      name,
                                     uint32_t         functionGroupId )
 {
-  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
-  handler->getAnalysis( ).addFunction( functionId, name );
+  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
+  AnalysisEngine&  analysis = handler->getAnalysis();
+  
+  analysis.addFunction( functionId, name );
   
   //\todo: check for MPI paradigm
 }
@@ -201,15 +207,25 @@ CallbackHandler::handleDefAttribute( OTF2TraceReader* reader,
                                      const char*      description )
 {
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
+  AnalysisEngine&  analysis = handler->getAnalysis();
   
   // add attribute ID
-  handler->getAnalysis().getCtrTable().addAttributeId( attributeId );
+  analysis.getCtrTable().addAttributeId( attributeId );
   
   // Check the defined OTF2 attributes for the predefined CUDA_STREAM_REF 
   // If not defined, do not perform CUDA analysis!
-  if( strcmp( name, "CUDA_STREAM_REF" ) == 0 )
+  if( strcmp( name, SCOREP_CUDA_STREAMREF ) == 0 )
   {
-    handler->getAnalysis().addDetectedParadigm( PARADIGM_CUDA );
+    analysis.addDetectedParadigm( PARADIGM_CUDA );
+  }
+  
+  // if we found the definition of an OMPT parallel ID
+  if( strcmp( name, SCOREP_OMPT_PARALLEL_ID ) == 0 )
+  {
+    analysis.addDetectedParadigm( PARADIGM_OMPT );
+    UTILS_MSG( Parser::getInstance().getVerboseLevel() >= VERBOSE_BASIC &&
+               analysis.getMPIRank() == 0,
+               "[OpenMP] Using OMPT analysis flavor." );
   }
 }
 
@@ -248,12 +264,11 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   functionDesc.recordType = RECORD_ENTER; // needed to determine correct function type
   AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionDesc );
   
-  // check for function with the OpenMP paradigm
-  // \todo: do this check with the definitions
+  /* check for function with the OpenMP paradigm (move check to handle process definitions)
   if ( functionDesc.paradigm == PARADIGM_OMP )
   {
     analysis.addDetectedParadigm( PARADIGM_OMP );
-  }
+  }*/
 
   // for CPU functions no graph node is created
   // only start time, end time and number of CPU events between nodes is stored

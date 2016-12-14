@@ -68,26 +68,25 @@ namespace casita
 
         // check if all barriers were passed
         //\todo: this does not work for nested parallel regions
-        if ( streams.size( ) == barrierList.size( ) )
+        if ( streams.size() == barrierList.size() )
         {
-          GraphNode::GraphNodeList::const_iterator iter = barrierList.begin( );
+          GraphNode::GraphNodeList::const_iterator iter = barrierList.begin();
         
           // keep enter event with latest enter timestamp
           GraphNode* latestEnterNode = *iter;                               
-
-          uint64_t blame = 0;
           
           // find last barrierEnter
-          for (; iter != barrierList.end( ); ++iter )
+          for (; iter != barrierList.end(); ++iter )
           {
-            if ( ( *iter )->getTime( ) > latestEnterNode->getTime( ) )
+            if ( ( *iter )->getTime() > latestEnterNode->getTime() )
             {
               latestEnterNode = *iter;
             }
           }
-          
+
           // accumulate blame, set edges from latest enter to all other leaves
-          for ( iter = barrierList.begin( ); iter != barrierList.end( ); ++iter )
+          uint64_t blame = 0;
+          for ( iter = barrierList.begin(); iter != barrierList.end(); ++iter )
           {
             GraphNode::GraphNodePair& barrier = ( *iter )->getGraphPair( );
             
@@ -97,23 +96,23 @@ namespace casita
               Edge* barrierEdge = commonAnalysis->getEdge( barrier.first,
                                                            barrier.second );
               UTILS_ASSERT( barrierEdge, "no edge %s, %s",
-                            barrier.first->getUniqueName( ).c_str( ),
-                            barrier.second->getUniqueName( ).c_str( ) );
+                            barrier.first->getUniqueName().c_str(),
+                            barrier.second->getUniqueName().c_str() );
 
               // make this barrier a blocking wait state
-              barrierEdge->makeBlocking( );
+              barrierEdge->makeBlocking();
               
               // compute waiting time for this barrier region
               barrier.second->setCounter( WAITING_TIME,
-                                          latestEnterNode->getTime( ) -
-                                          barrier.first->getTime( ) );
+                                          latestEnterNode->getTime() -
+                                          barrier.first->getTime() );
 
               // create edge from latest barrier enter to other leaves
               // (non-blocking edge from blocking barrier leave node)
               commonAnalysis->newEdge( latestEnterNode, barrier.second,
                                        EDGE_CAUSES_WAITSTATE );
 
-              blame += latestEnterNode->getTime( ) - barrier.first->getTime( );
+              blame += latestEnterNode->getTime() - barrier.first->getTime();
             }
           }
 

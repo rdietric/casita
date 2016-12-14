@@ -45,17 +45,18 @@ namespace casita
    PARADIGM_OCL           = ( 1 << 2 ),
    PARADIGM_MPI           = ( 1 << 3 ),
    PARADIGM_OMP           = ( 1 << 4 ),
-   PARADIGM_OMP_TARGET    = ( 1 << 5 ),
+   PARADIGM_OMPT          = ( 1 << 5 ),
+   PARADIGM_OMP_TARGET    = ( 1 << 6 ),
 
    PARADIGM_COMPUTE_LOCAL = 
-           ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_OCL | PARADIGM_OMP ),
+           ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_OCL | PARADIGM_OMP | PARADIGM_OMPT ),
            
    PARADIGM_ALL           =
      ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_OCL | PARADIGM_MPI | 
-       PARADIGM_OMP | PARADIGM_OMP_TARGET )
+       PARADIGM_OMP | PARADIGM_OMPT | PARADIGM_OMP_TARGET )
  };
 
- const size_t NODE_PARADIGM_COUNT   = 7;
+ const size_t NODE_PARADIGM_COUNT   = 8;
  const size_t NODE_PARADIGM_INVALID = ( 1 << NODE_PARADIGM_COUNT );
 
  enum NodeTypeMisc
@@ -117,10 +118,11 @@ namespace casita
    OMP_SYNC           = ( 1 << 1 ),
    OMP_FORKJOIN       = ( 1 << 2 ),
    OMP_PARALLEL       = ( 1 << 3 ),
-   OMP_MISC           = ( 1 << 4 ),
-   OMP_WAITSTATE      = ( 1 << 5 ),
-   OMP_TARGET_OFFLOAD = ( 1 << 6 ),
-   OMP_TARGET_FLUSH   = ( 1 << 7 )
+   OMP_IMPLICIT_TASK  = ( 1 << 4 ),
+   OMP_MISC           = ( 1 << 5 ),
+   OMP_WAITSTATE      = ( 1 << 6 ),
+   OMP_TARGET_OFFLOAD = ( 1 << 7 ),
+   OMP_TARGET_FLUSH   = ( 1 << 8 )
  };
 
  typedef struct
@@ -509,6 +511,12 @@ namespace casita
      isOMPParallel( ) const
      {
        return isOMP( ) && ( nodeType & OMP_PARALLEL );
+     }
+     
+     bool
+     isOMPImplicitTask( ) const
+     {
+       return isOMP( ) && ( nodeType & OMP_IMPLICIT_TASK );
      }
 
      bool

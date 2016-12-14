@@ -38,7 +38,7 @@ namespace casita
       // if this node has no caller (parallel begin should have no caller)
       // (e.g. is not nested) AND node time is smaller then last node in the 
       // list (back walk)
-      if( node->getCaller() == NULL &&
+      if( node->getCaller() == NULL && listAndWaitTime->list.size() &&
           node->getTime() < listAndWaitTime->list.back()->getTime() )
       {
         // add interval end node to walk list

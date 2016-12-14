@@ -11,6 +11,15 @@ MPI
 - fixed blame distribution in MPI_Recv rule
 - added check for send-receive overlap in MPI_Send rule
 
+OpenMP
+- added support for OpenMP tracing with OMPT as 
+  implemented in Score-P branch TRY_TUD_mic_offloading
+  which is based on the OpenMP runtime available at
+  https://github.com/OpenMPToolsInterface/LLVM-openmp/
+  tree/omp4-buffer
+- use process definitions to identify OpenMP in the trace
+  (instead of OpenMP events)
+
 MISC
 - activity impact rating is now based on the new metric 
   "Blame on CP"
