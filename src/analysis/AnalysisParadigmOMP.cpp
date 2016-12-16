@@ -17,7 +17,6 @@
 #include "omp/OMPForkJoinRule.hpp"
 #include "omp/OMPComputeRule.hpp"
 #include "omp/OMPBarrierRule.hpp"
-#include "omp/OMPTComputeRule.hpp"
 #include "omp/OMPTargetRule.hpp"
 #include "omp/OMPTargetBarrierRule.hpp"
 
@@ -30,11 +29,7 @@ AnalysisParadigmOMP::AnalysisParadigmOMP( AnalysisEngine* analysisEngine ) :
 {
   
   // use different rules for OMPT and OPARI2 instrumentation
-  if( analysisEngine->haveParadigm( PARADIGM_OMPT ) )
-  {
-    //addRule( new OMPTComputeRule( 1 ) );
-  }
-  else
+  if( !analysisEngine->haveParadigm( PARADIGM_OMPT ) )
   {
     addRule( new OMPForkJoinRule( 1 ) );
     addRule( new OMPComputeRule( 1 ) );
