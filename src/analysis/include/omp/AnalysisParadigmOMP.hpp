@@ -134,10 +134,8 @@ namespace casita
       //<! key: parallel region ID, value: parallel enter node
       IdNodeMap ompParallelIdNodeMap;
       
-      //<! key: parallel region ID, value: (parallel enter node, last barrier leave node)
-      IdNodePairMap ompParallelMap;
-      
-      IdNodeMap ompParallelIdPenterBleaveMap;
+      //<! key: parallel region ID, value: parallel enter node
+      //IdNodeMap ompParallelIdNodeMap;
       
       //<! key: parallel enter node, value: latest barrier leave node
       NodeNodeMap ompParallelLastBarrierMap;

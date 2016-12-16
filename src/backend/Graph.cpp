@@ -572,7 +572,7 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
   //while ( currentNode != startNode )
   while ( Node::compareLess( startNode, currentNode ) )
   {
-    UTILS_WARNING("Process node: %s", currentNode->getUniqueName().c_str() );
+    //UTILS_WARNING("Process node: %s", currentNode->getUniqueName().c_str() );
     
     // make sure that there are edges
     if ( hasInEdges( currentNode ) )
@@ -588,8 +588,7 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
         Edge* edge = *eIter;
         uint64_t curWeight = edge->getWeight();
         /*
-        UTILS_MSG( startNode->getStreamId() == 0 && startNode->getId() >= 277 && 
-                   endNode->getId() <= 360 && inEdges.size() > 0, 
+        UTILS_MSG( currentNode->getId() == 122, 
                    "%s has potential path to %s (weight: %llu)", 
                    currentNode->getUniqueName().c_str(),
                    edge->getStartNode()->getUniqueName().c_str(), curWeight );
@@ -623,18 +622,16 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
         }  
       }
     }
-
-    // the most 
-    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-               "%s has no in edges", currentNode->getUniqueName().c_str() );
     
     // use direct predecessor of currentNode (on same stream, if currentNode has a caller)
     Graph::NodeList::const_reverse_iterator rit = 
       GraphNode::findNode( currentNode, nodes );
     GraphNode* predecessorNode = *(++rit);
     
+    // if current node has a caller (there are more event on this stream)
     if( currentNode->getCaller() )
     {
+      // move to the previous node on same stream
       while( currentNode->getStreamId() != predecessorNode->getStreamId() )
       {
         predecessorNode = *(++rit);
@@ -642,10 +639,12 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
     }
     
     UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-               "Use predecessor: %s <- %s", 
+               "%s has no in edges. Use predecessor: %s <- %s", 
+               currentNode->getUniqueName().c_str(),
                predecessorNode->getUniqueName().c_str(), 
                currentNode->getUniqueName().c_str() );
     
+    // add the current node to the critical nodes
     path.push_front( currentNode );
     
     if( currentNode != predecessorNode ) // check for endless loop
@@ -656,26 +655,8 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
     {
       break;
     }
-    
-    /*
-    Graph::NodeList::const_reverse_iterator rit = 
-      GraphNode::findNode( endNode, nodes );
-    if ( *rit != endNode ) 
-    {
-      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME, 
-                 "Binary search did not find %s. "
-                 "Perform sequential search for convenience ...", 
-                 endNode->getUniqueName().c_str() );
-      rit = find( nodes.rbegin(), nodes.rend(), endNode );
-    }
-
-    ++rit;
-    currentNode = *rit;
-
-    break;*/
   }
   
+  // add the start node to the critical nodes
   path.push_front( startNode );
-  
-  
 }
