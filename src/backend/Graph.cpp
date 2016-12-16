@@ -572,15 +572,17 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
   //while ( currentNode != startNode )
   while ( Node::compareLess( startNode, currentNode ) )
   {
+    UTILS_WARNING("Process node: %s", currentNode->getUniqueName().c_str() );
+    
     // make sure that there are edges
     if ( hasInEdges( currentNode ) )
     {
-      uint64_t maxWeight = 0; // reset max weigth
+      uint64_t maxWeight = 0; // reset max weight
       GraphNode* predecessorNode = NULL; // predecessor not yet found
       
       // iterate over the in edges of the node (ignore blocking)
       const Graph::EdgeList& inEdges = getInEdges( currentNode );
-      for ( Graph::EdgeList::const_iterator eIter = inEdges.begin( );
+      for ( Graph::EdgeList::const_iterator eIter = inEdges.begin();
             eIter != inEdges.end( ); ++eIter )
       {
         Edge* edge = *eIter;
@@ -611,6 +613,7 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
                    endNode->getId() <= 360, "%s is on the CP to %s (weight: %llu)", 
                    currentNode->getUniqueName().c_str(),
                    predecessorNode->getUniqueName().c_str(), maxWeight);*/
+
         path.push_front( currentNode );
         
         if( currentNode != predecessorNode ) // check for endless loop
@@ -619,15 +622,44 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
           continue;
         }  
       }
-      
-      // TODO: predecessor could still be NULL here
     }
 
     // the most 
     UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
                "%s has no in edges", currentNode->getUniqueName().c_str() );
-
-    /*Graph::NodeList::const_reverse_iterator rit = GraphNode::findNode( endNode, nodes );
+    
+    // use direct predecessor of currentNode (on same stream, if currentNode has a caller)
+    Graph::NodeList::const_reverse_iterator rit = 
+      GraphNode::findNode( currentNode, nodes );
+    GraphNode* predecessorNode = *(++rit);
+    
+    if( currentNode->getCaller() )
+    {
+      while( currentNode->getStreamId() != predecessorNode->getStreamId() )
+      {
+        predecessorNode = *(++rit);
+      }
+    }
+    
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+               "Use predecessor: %s <- %s", 
+               predecessorNode->getUniqueName().c_str(), 
+               currentNode->getUniqueName().c_str() );
+    
+    path.push_front( currentNode );
+    
+    if( currentNode != predecessorNode ) // check for endless loop
+    {
+      currentNode = predecessorNode;
+    }
+    else
+    {
+      break;
+    }
+    
+    /*
+    Graph::NodeList::const_reverse_iterator rit = 
+      GraphNode::findNode( endNode, nodes );
     if ( *rit != endNode ) 
     {
       UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME, 
@@ -638,10 +670,12 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
     }
 
     ++rit;
-    currentNode = *rit;*/
+    currentNode = *rit;
 
-    break;
+    break;*/
   }
   
   path.push_front( startNode );
+  
+  
 }

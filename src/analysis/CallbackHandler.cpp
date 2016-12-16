@@ -389,7 +389,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   // applied for offloading paradigms only
   analysis.handleKeyValuesLeave( reader, leaveNode, leaveNode->getGraphPair().first, list );
   
-  // additional handling for special nodes (e.g. MPI communication)
+  // additional handling for special nodes (e.g. MPI communication and OpenMP)
   analysis.handlePostLeave( leaveNode );
 
   // for debugging

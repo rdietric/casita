@@ -45,10 +45,10 @@ namespace casita
         AnalysisEngine* commonAnalysis = analysis->getCommon();
         GraphNode*      barrierEnter   = barrierLeave->getGraphPair().first;
         EventStream*    nodeStream     = commonAnalysis->getStream(
-          barrierLeave->getStreamId( ) );
+          barrierLeave->getStreamId() );
 
         // this rule ignores device streams (see target barrier rule)
-        if ( nodeStream->isDeviceStream( ) )
+        if ( nodeStream->isDeviceStream() )
         {
           return false;
         }
@@ -88,7 +88,7 @@ namespace casita
           uint64_t blame = 0;
           for ( iter = barrierList.begin(); iter != barrierList.end(); ++iter )
           {
-            GraphNode::GraphNodePair& barrier = ( *iter )->getGraphPair( );
+            GraphNode::GraphNodePair& barrier = ( *iter )->getGraphPair();
             
             // for blocking barrier regions
             if ( barrier.first != latestEnterNode )

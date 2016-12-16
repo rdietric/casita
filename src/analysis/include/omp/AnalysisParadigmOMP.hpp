@@ -31,12 +31,12 @@ namespace casita
     public:
       typedef std::stack< GraphNode* > OmpNodeStack;
       typedef std::map< uint64_t, OmpNodeStack > pendingOMPKernelStackMap;
-      typedef std::map< uint64_t, GraphNode* > OmpEventMap;
+      typedef std::map< GraphNode*, GraphNode* > NodeNodeMap;
       typedef std::map< uint64_t, GraphNode* > IdNodeMap;
-      typedef std::map< uint64_t, std::pair<
-                          std::map< uint64_t, GraphNode* >,
-                          std::vector< uint64_t > > > OmpStreamRegionsMap
-      ;
+      typedef std::map< uint64_t, std::pair< GraphNode*, GraphNode* > > IdNodePairMap;
+      typedef std::map< uint64_t, std::vector< std::vector< GraphNode* > > > ParallelBarrierMap;
+      typedef std::map< uint64_t, std::pair< IdNodeMap, std::vector<uint64_t> > > 
+              OmpStreamRegionsMap;
 
       AnalysisParadigmOMP( AnalysisEngine* analysisEngine );
 
@@ -129,33 +129,47 @@ namespace casita
       findOmpTargetParentRegion( GraphNode* node, uint64_t parentRegionId );
 
     private:
+      //// OMPT related ////
+      
       //<! key: parallel region ID, value: parallel enter node
       IdNodeMap ompParallelIdNodeMap;
+      
+      //<! key: parallel region ID, value: (parallel enter node, last barrier leave node)
+      IdNodePairMap ompParallelMap;
+      
+      IdNodeMap ompParallelIdPenterBleaveMap;
+      
+      //<! key: parallel enter node, value: latest barrier leave node
+      NodeNodeMap ompParallelLastBarrierMap;
+      
+      //<! As there might be multiple barriers in a parallel region ...
+      
+      ///////////////////////
       
       //<! log the OpenMP enter events, needed to resolve nested function calls
       pendingOMPKernelStackMap ompBackTraceStackMap;
 
       //<! remember last OpenMP event per stream to resolve nested function calls
-      OmpEventMap lastOmpEventMap;
+      IdNodeMap lastOmpEventMap;
       
       //<! Stack of open parallel regions (fork-join regions)
       OmpNodeStack forkJoinStack;
 
       //<! keep track of omp kernels between forkjoins
-      OmpEventMap ompComputeTrackMap;
+      IdNodeMap ompComputeTrackMap;
 
       //<! collect barriers from different streams
       GraphNode::GraphNodeList ompBarrierListHost;
       IdPairNodeListMap ompBarrierListDevice;
 
       //<! keep track of last OMP Target Begin on each event stream
-      OmpEventMap ompTargetRegionBeginMap;
+      IdNodeMap ompTargetRegionBeginMap;
 
       //<! keep track of the first event on each device stream after an OpenMP target begin
-      OmpEventMap ompTargetDeviceFirstEventMap;
+      IdNodeMap ompTargetDeviceFirstEventMap;
 
       //<! keep track of the last event on each device stream before an OpenMP target end
-      OmpEventMap ompTargetDeviceLastEventMap;
+      IdNodeMap ompTargetDeviceLastEventMap;
 
       OmpStreamRegionsMap ompTargetStreamRegionsMap;
   };
