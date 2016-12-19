@@ -139,11 +139,10 @@ namespace casita
                    analysis->getMPIRank(),
                    currentWalkNode->getUniqueName().c_str(),
                    lastWalkNode->getUniqueName().c_str());
-      /*
-      UTILS_MSG( strcmp( currentWalkNode->getName(), "clCreateContextFromType") == 0,
-                       "Current walk node: %s",
-                       currentWalkNode->getUniqueName().c_str() );
-      */
+      
+      //UTILS_MSG( currentWalkNode->getId() == 19, "Current walk node: %s",
+      //           currentWalkNode->getUniqueName().c_str() );
+      
       // blame distribution depends on the edge type
       // if edge is from enter to leave node of a region (represents a region)
       if ( edge->isRegion() ) 

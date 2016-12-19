@@ -497,6 +497,13 @@ namespace casita
        {
          descr->paradigm = PARADIGM_OMP;
          
+         /*if ( strstr( name+5, "wait_barrier" ) ) // exclude wait_barrier
+         {
+           descr->functionType = OMP_MISC;
+           descr->paradigm = PARADIGM_CPU;
+           return false;
+         }
+         else */
          if ( strstr( name+5, "barrier" ) ) // this includes wait_barrier
          {
            descr->functionType = OMP_SYNC;

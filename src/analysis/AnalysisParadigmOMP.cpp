@@ -100,8 +100,9 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
             // do not create intra stream edge
             if( (*itBarrier)->getGraphPair().first != latestBarrierEnter )
             {
-              Edge *edge = commonAnalysis->newEdge( latestBarrierEnter, 
-                                    ( GraphNode * )parallelEnter->getData() );
+              Edge *edge = commonAnalysis->newEdge( 
+                latestBarrierEnter, ( GraphNode * )parallelEnter->getData(),
+                EDGE_CAUSES_WAITSTATE );
 
               // in case this edge was a reverse edge, unblock it
               edge->unblock();
@@ -110,13 +111,41 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
         }
         else // either only one barrier in the parallel region or the last one
         {
-          Edge *edge = commonAnalysis->newEdge( latestBarrierEnter, 
-                                    ( GraphNode * )parallelEnter->getData() );
+          Edge *edge = commonAnalysis->newEdge( 
+            latestBarrierEnter, ( GraphNode * )parallelEnter->getData(),
+            EDGE_CAUSES_WAITSTATE );
 
           // in case this edge was a reverse edge, unblock it
           edge->unblock();
         }
         
+        // accumulate blame, set edges from latest enter to all other leaves
+        uint64_t blame = 0;
+        for( itBarrier = itParallel->begin(); itBarrier != itParallel->end(); ++itBarrier )
+        {
+          GraphNode *barrierEnter = (*itBarrier)->getGraphPair().first;
+          if( barrierEnter != latestBarrierEnter )
+          {
+            // compute waiting time and blame for this barrier region
+            uint64_t waitingTime = 
+              latestBarrierEnter->getTime() - barrierEnter->getTime();
+            
+            // set waiting time counter
+            (*itBarrier)->setCounter( WAITING_TIME, waitingTime );
+            
+            // add waiting time to blame
+            blame += waitingTime;
+          }
+        }
+
+        //UTILS_WARNING("Distribute blame %"PRIu64" to %s", blame, 
+        //               commonAnalysis->getNodeInfo( latestBarrierEnter).c_str() );
+        
+        distributeBlame( commonAnalysis,
+                         latestBarrierEnter,
+                         blame,
+                         streamWalkCallback );
+
         // clear barrier vector after processing the respective barrier
         itParallel->clear();
       }
@@ -161,11 +190,18 @@ AnalysisParadigmOMP::omptBarrierRule( GraphNode* syncLeave )
 {
   // ignore sync operations that are nested into another sync
   // (e.g. wait_barrier inside of barrier)
-  if( !( syncLeave->getCaller() && syncLeave->getCaller()->isOMPSync() ) )
+  if( syncLeave->getCaller() && syncLeave->getCaller()->isOMPSync() )
+  {
+    // used in streamWalkCallback in OMPRulesCommon.hpp
+    syncLeave->setCounter( OMP_IGNORE_BARRIER, 1 );
+    //UTILS_WARNING( "Ignore barrier for %s", syncLeave->getUniqueName().c_str());
+  }
+  //if( !( syncLeave->getCaller() && syncLeave->getCaller()->isOMPSync() ) )
+  else  
   {
     ///// this is an outer sync
 
-    // make all in edges blocking (to not allow to walk in CPA)
+    // make all in edges blocking (to not walk this edge in CPA)
     const Graph::EdgeList& inEdges = 
       commonAnalysis->getGraph().getInEdges( syncLeave );
     for ( Graph::EdgeList::const_iterator eIter = inEdges.begin();
@@ -270,9 +306,10 @@ AnalysisParadigmOMP::handlePostLeave( GraphNode* ompLeave )
   {
     Edge *edge = commonAnalysis->getEdge( ompLeave->getPartner(), ompLeave );
     
-    // mark this barrier if it has no edge
+    // mark this barrier if it has no edge (outer sync)
     if ( !edge )
     {
+      // used in streamWalkCallback in OMPRulesCommon.hpp
       ompLeave->setCounter( OMP_IGNORE_BARRIER, 1 );
       //UTILS_WARNING( "Ignore barrier for %s", node->getUniqueName().c_str());
     }
@@ -397,7 +434,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
 }
 
 void
-AnalysisParadigmOMP::handleKeyValuesLeave( OTF2TraceReader*     reader,
+AnalysisParadigmOMP::handleKeyValuesLeave( OTF2TraceReader*  reader,
                                            GraphNode*        node,
                                            GraphNode*        oldNode,
                                            OTF2KeyValueList* list )
@@ -405,7 +442,7 @@ AnalysisParadigmOMP::handleKeyValuesLeave( OTF2TraceReader*     reader,
   uint64_t refValue     = 0;
   int32_t  streamRefKey = reader->getFirstKey( SCOREP_OMP_TARGET_LOCATIONREF );
 
-  if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
+  if ( streamRefKey > -1 && list && list->getSize() > 0 &&
        list->getLocationRef( (uint32_t)streamRefKey,
                              &refValue ) == OTF2KeyValueList::KV_SUCCESS )
   {
@@ -506,9 +543,9 @@ AnalysisParadigmOMP::addBarrierEventToList( GraphNode* node,
                                             int        matchingId )
 {
   GraphNode* leaveNode = node;
-  if ( node->isEnter( ) )
+  if ( node->isEnter() )
   {
-    leaveNode = node->getPartner( );
+    leaveNode = node->getPartner();
   }
 
   // only add barrier activities that have no callees
@@ -536,7 +573,7 @@ AnalysisParadigmOMP::clearBarrierEventList( bool device, GraphNode* caller, int 
   }
   else
   {
-    ompBarrierListHost.clear( );
+    ompBarrierListHost.clear();
   }
 }
 

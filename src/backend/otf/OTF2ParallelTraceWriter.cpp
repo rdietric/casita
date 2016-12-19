@@ -888,8 +888,8 @@ OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
   
   // iterate over all open edges (if any) and calculate total blame
   // \todo: sanity check for open edges
-  for ( OpenEdgesList::iterator edgeIter = openEdges.begin( );
-        edgeIter != openEdges.end( ); )
+  for ( OpenEdgesList::iterator edgeIter = openEdges.begin();
+        edgeIter != openEdges.end(); )
   {
     OpenEdgesList::iterator currentIter = edgeIter;
     OpenEdgesList::iterator nextIter    = ++edgeIter;
@@ -905,8 +905,8 @@ OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
          ( edge->getStartNode()->getTime() < eventTime ) )
     {
       // blame = blame(edge) * time(cpu_region)/time(edge)
-      totalBlame += (double)( edge->getCPUBlame( ) ) * (double)timeDiff 
-                  / (double)( edge->getDuration( ) );
+      totalBlame += (double)( edge->getCPUBlame() ) * (double)timeDiff 
+                  / (double)( edge->getDuration() );
     }
     else
     {
@@ -1269,7 +1269,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
               edgeIter != edges.end( ); edgeIter++ )
         {
           Edge* edge = *edgeIter;
-          
+
           if ( edge->getCPUBlame( ) > 0 )
           {
             openEdges.push_back( edge );
@@ -1408,7 +1408,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       
       // compute blame counter
       uint64_t blame = computeCPUEventBlame( event );
-
+      
       //\todo: validate the following if, which affects only the OTF2 output
       if( blame )
         tmpCounters[BLAME] = blame;

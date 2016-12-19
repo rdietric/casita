@@ -1,83 +1,75 @@
-------------------- CASITA 1.7 ---------------------------
+---------------------------------- CASITA 1.7 ----------------------------------
 CUDA
-- improved handling of CUDA events and CUDA kernels over
-  interval boundaries
-- avoid CUDA analysis if input trace does not meet the
-  requirements (CUDA stream references)
+- improved handling of CUDA events and CUDA kernels over interval boundaries
+- avoid CUDA analysis if input trace does not meet the requirements 
+  (CUDA stream references)
 
 MPI
-- try to ignore MPI_I[send|recv] regions without 
-  communication information (CASITA aborted before)
+- try to ignore MPI_I[send|recv] regions without communication information 
+  (CASITA aborted before)
 - fixed blame distribution in MPI_Recv rule
 - added check for send-receive overlap in MPI_Send rule
 
 OpenMP
-- added critical path detection for OMPT-based OpenMP 
+- added critical path detection and blame distribution for OMPT-based OpenMP 
   traces (Score-P branch TRY_TUD_mic_offloading)
-- use OTF2 location definitions to detect whether the 
-  trace contains OpenMP events
+- use OTF2 location definitions to detect whether the trace contains OpenMP 
+  events
 
 MISC
-- activity impact rating is now based on the new metric 
-  "Blame on CP"
+- activity impact rating is now based on the new metric "Blame on CP"
 - removed unused code
 
 
-------------------- CASITA 1.6 ---------------------------
+---------------------------------- CASITA 1.6 ----------------------------------
 MPI
-- added late sender/receiver rules for wait states in 
-  MPI_Wait and MPI_Waitall (generate graph nodes for enter
-  events of non-blocking MPI routines again)
-- added blame distribution for MPI_Wait and MPI_Waitall
-  later sender/receiver pattern
-- handle MPI_Test and MPI_Testall to close MPI requests
-  and remove respective internal data
-- simplified critical path detection for MPI 
-  (reduced memory and communication overhead)
+- added late sender/receiver rules for wait states in MPI_Wait and MPI_Waitall 
+  (generate graph nodes for enter events of non-blocking MPI routines again)
+- added blame distribution for MPI_Wait and MPI_Waitall later sender/receiver 
+  pattern
+- handle MPI_Test and MPI_Testall to close MPI requests and remove respective 
+  internal data
+- simplified critical path detection for MPI (reduced memory and communication 
+  overhead)
 - fixed detection of the last MPI node in an interval
-- use collective rule for all collectives 
-  (one-to-all, all-to-one, barrier, etc.)
+- use collective rule for all collectives (one-to-all, all-to-one, barrier, etc)
 
 
-------------------- CASITA 1.5 ---------------------------
+---------------------------------- CASITA 1.5 ----------------------------------
 
 MPI
-- handle enter events of non-blocking MPI routines as CPU
-  events to reduce memory overhead
-- fixed the detection of the MPI root process for 
-  one-to-all communication
-- handle MPI all-to-one communication with MPI collective
-   rule instead of the broken one-to-all rule
+- handle enter events of non-blocking MPI routines as CPU events to reduce 
+  memory overhead
+- fixed the detection of the MPI root process for one-to-all communication
+- handle MPI all-to-one communication with MPI collective rule instead of the 
+  broken one-to-all rule
 
 OpenMP
 - fixed critical path detection for OpenMP programs
-- reduce CASITA memory footprint by handling OpenMP events
-  other than parallel and fork/join as CPU events
-- prepared OpenMP support for nested OpenMP parallel 
-  regions
+- reduce CASITA memory footprint by handling OpenMP events other than parallel 
+  and fork/join as CPU events
+- prepared OpenMP support for nested OpenMP parallel regions
 
 CUDA
-- avoid deletion of CUDA nodes at the end of analysis
-  intervals, if nodes are potentially used afterwards
+- avoid deletion of CUDA nodes at the end of analysis intervals, if nodes are 
+  potentially used afterwards
 
 OpenCL
 - added support for OpenCL synchronization routines
 
 Misc
 - fixed blame distribution for all supported paradigms
-- dramatically reduced runtime of local critical path
-  detection
+- dramatically reduced runtime of local critical path detection
 - added command line option to replace CASITA output files
 - improved debugging output and documentation
 - removed revision number in CASITA versioning
 
 
-------------------- CASITA 1.4.1 -------------------------
+--------------------------------- CASITA 1.4.1 ---------------------------------
 
-- corrected computation and visualization of the begin and
-  end of the critical path
+- corrected computation and visualization of the begin and end of the critical 
+  path
 - added flag to specify the number of top rated functions
-- fixed several bugs in the MPI critical path analysis
-  output
+- fixed several bugs in the MPI critical path analysis output
 - boost is not required any more
 - added csv output for optimization rating

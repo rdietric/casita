@@ -656,13 +656,14 @@ Runner::computeCriticalPath( )
     UTILS_MSG( options.verbose >= VERBOSE_BASIC,
                "Single process: Detect local critical path (CUDA, OpenCL, OpenMP)" );
 
-    Graph& subGraph = analysis.getGraph( );
+    Graph& graph = analysis.getGraph();
 
     getCriticalPathIntern( analysis.getSourceNode( ),
                            analysis.getLastGraphNode( PARADIGM_COMPUTE_LOCAL ),
-                           criticalNodes, subGraph );
+                           criticalNodes, graph );
     
-    subGraph.cleanup( true );
+    // edges are needed for blame distribution in OTF2ParallelTraceWriter::processNextEvent()
+    //graph.cleanup( true );
   }
   
   if ( criticalNodes.size( ) == 0 )
