@@ -19,6 +19,7 @@
 #include "AnalysisEngine.hpp"
 #include "IAnalysisParadigm.hpp"
 
+using namespace std;
 using namespace casita::io;
 
 namespace casita
@@ -29,13 +30,18 @@ namespace casita
     public IAnalysisParadigm
   {
     public:
-      typedef std::stack< GraphNode* > OmpNodeStack;
-      typedef std::map< uint64_t, OmpNodeStack > pendingOMPKernelStackMap;
-      typedef std::map< GraphNode*, GraphNode* > NodeNodeMap;
-      typedef std::map< uint64_t, GraphNode* > IdNodeMap;
-      typedef std::map< uint64_t, std::pair< GraphNode*, GraphNode* > > IdNodePairMap;
-      typedef std::map< uint64_t, std::vector< std::vector< GraphNode* > > > ParallelBarrierMap;
-      typedef std::map< uint64_t, std::pair< IdNodeMap, std::vector<uint64_t> > > 
+      typedef stack< GraphNode* > OmpNodeStack;
+      typedef map< uint64_t, OmpNodeStack > pendingOMPKernelStackMap;
+      typedef map< uint64_t, GraphNode* > IdNodeMap;
+      
+      typedef stack< pair< GraphNode*, uint64_t > > BarrierCountStack;
+      typedef map< uint64_t, BarrierCountStack > StreamParallelBarrierMap;
+      
+      typedef vector< GraphNode* > GraphNodeVec;
+      typedef vector< GraphNodeVec > VecNodeVec;
+      typedef map< GraphNode*, VecNodeVec > BarrierNodesMap;
+      
+      typedef map< uint64_t, pair< IdNodeMap, vector<uint64_t> > > 
               OmpStreamRegionsMap;
 
       AnalysisParadigmOMP( AnalysisEngine* analysisEngine );
@@ -45,7 +51,7 @@ namespace casita
 
       Paradigm
       getParadigm( );
-
+      
       void
       handlePostLeave( GraphNode* node );
 
@@ -134,13 +140,11 @@ namespace casita
       //<! key: parallel region ID, value: parallel enter node
       IdNodeMap ompParallelIdNodeMap;
       
-      //<! key: parallel region ID, value: parallel enter node
-      //IdNodeMap ompParallelIdNodeMap;
+      //<! key: stream ID, value: stack of barrier, number pair
+      StreamParallelBarrierMap ompParallelBarriersMap;
       
-      //<! key: parallel enter node, value: latest barrier leave node
-      NodeNodeMap ompParallelLastBarrierMap;
-      
-      //<! As there might be multiple barriers in a parallel region ...
+      //<! key: parallel enter node, value: vector of barriers with vector of corresponding barrier nodes
+      BarrierNodesMap ompBarrierNodesMap;
       
       ///////////////////////
       
@@ -170,6 +174,12 @@ namespace casita
       IdNodeMap ompTargetDeviceLastEventMap;
 
       OmpStreamRegionsMap ompTargetStreamRegionsMap;
+
+      void
+      omptParallelRule( GraphNode* ompLeave );
+      
+      void
+      omptBarrierRule( GraphNode* syncLeave );
   };
  }
 }

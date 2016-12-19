@@ -52,6 +52,205 @@ AnalysisParadigmOMP::getParadigm( )
   return PARADIGM_OMP;
 }
 
+void 
+AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
+{
+  GraphNode *parallelEnter = ompLeave->getGraphPair().first;
+    
+  // at parallel leave (AND enter available)
+  if( ompLeave->isOMPParallel() && parallelEnter )
+  {      
+    // evaluate barriers in current parallel region
+    if( ompBarrierNodesMap.count( parallelEnter ) > 0 )
+    {
+      for( VecNodeVec::iterator itParallel = 
+             ompBarrierNodesMap[parallelEnter].begin();
+           itParallel != ompBarrierNodesMap[parallelEnter].end(); ++itParallel )
+      {
+        UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC,
+                     "[OMPT] Parallel region %s with %u barrier(s) on %u threads", 
+                     parallelEnter->getUniqueName().c_str(),
+                     (unsigned int) ompBarrierNodesMap[parallelEnter].size(),
+                     (unsigned int) itParallel->size() );
+
+        /// find latest barrier enter ///
+        GraphNode *latestBarrierEnter = NULL;
+        GraphNodeVec::const_iterator itBarrier = itParallel->begin();
+        for( ;itBarrier != itParallel->end(); ++itBarrier )
+        {
+          //UTILS_WARNING( "[OMPT] Barrier %s", (*itBarrier)->getUniqueName().c_str() );
+
+          // set the latest barrier
+          if( latestBarrierEnter == NULL || 
+              Node::compareLess( latestBarrierEnter, (*itBarrier)->getGraphPair().first ) )
+          {
+              latestBarrierEnter = (*itBarrier)->getGraphPair().first;
+          }
+        }
+
+        // if there is more than one barrier in the parallel region AND
+        // this is not the last barrier in the parallel region
+        if( itParallel->size() > 1 && 
+            ompBarrierNodesMap[parallelEnter].back() != (*itParallel) )
+        {
+          // iterate over the barrier nodes again and create dependency edges
+          // from latest barrier enter node to all other barrier leave nodes
+          for( itBarrier = itParallel->begin(); itBarrier != itParallel->end(); ++itBarrier )
+          {
+            // do not create intra stream edge
+            if( (*itBarrier)->getGraphPair().first != latestBarrierEnter )
+            {
+              Edge *edge = commonAnalysis->newEdge( latestBarrierEnter, 
+                                    ( GraphNode * )parallelEnter->getData() );
+
+              // in case this edge was a reverse edge, unblock it
+              edge->unblock();
+            }
+          }
+        }
+        else // either only one barrier in the parallel region or the last one
+        {
+          Edge *edge = commonAnalysis->newEdge( latestBarrierEnter, 
+                                    ( GraphNode * )parallelEnter->getData() );
+
+          // in case this edge was a reverse edge, unblock it
+          edge->unblock();
+        }
+        
+        // clear barrier vector after processing the respective barrier
+        itParallel->clear();
+      }
+      
+      // clear vector of barriers
+      ompBarrierNodesMap[parallelEnter].clear();
+
+      // remove parallel region from map
+      ompBarrierNodesMap.erase( parallelEnter );
+
+      // iterate over all stream parallel barrier stack
+      for( StreamParallelBarrierMap::iterator itStream = 
+             ompParallelBarriersMap.begin();
+           ompParallelBarriersMap.end() != itStream; ++itStream )
+      {
+        // remove the parallel region from the stack, if this stream a member
+        if( !itStream->second.empty() &&
+            itStream->second.top().first == parallelEnter )
+        {
+          itStream->second.pop();
+          //UTILS_WARNING( "[OMPT] Close parallel region %s", 
+          //               parallelEnter->getUniqueName().c_str() );
+        }
+      }
+    }
+    else
+    {
+      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC,
+                 "[OMPT] Parallel region %s without barriers.", 
+                 parallelEnter->getUniqueName().c_str());
+    }
+  }
+}
+
+/**
+ * Handle synchronization leave nodes. 
+ * 
+ * @param syncLeave
+ */
+void 
+AnalysisParadigmOMP::omptBarrierRule( GraphNode* syncLeave )
+{
+  // ignore sync operations that are nested into another sync
+  // (e.g. wait_barrier inside of barrier)
+  if( !( syncLeave->getCaller() && syncLeave->getCaller()->isOMPSync() ) )
+  {
+    ///// this is an outer sync
+
+    // make all in edges blocking (to not allow to walk in CPA)
+    const Graph::EdgeList& inEdges = 
+      commonAnalysis->getGraph().getInEdges( syncLeave );
+    for ( Graph::EdgeList::const_iterator eIter = inEdges.begin();
+          eIter != inEdges.end( ); ++eIter )
+    {
+      (*eIter)->makeBlocking();
+    }
+    
+    // \todo: Does delete in edges affects blame distribution?
+
+    //// get parallel region enter ////
+
+    // get first parallel region compute event (e.g. implicit task enter)
+    // OR the parallel enter itself for barriers on the master thread
+    GraphNode* parallelEnter = syncLeave;
+    while( parallelEnter->getCaller() )
+    {
+      parallelEnter = parallelEnter->getCaller();
+
+      // if we found a parallel region, it is the master thread's barrier
+      if( parallelEnter->isOMPParallel() )
+      {
+        break;
+      }
+    }
+
+    // if we found the parallel region enter
+    if( parallelEnter->isOMPParallel() )
+    {
+      //UTILS_WARNING( "Found barrier leave on master thread (%s)!",  
+      //               ompLeave->getUniqueName().c_str() );
+
+      // set the link of the parallel enter to its last barrier
+      parallelEnter->setData( syncLeave );
+    }
+    else
+    {
+      // first compute region on a thread
+      if( NULL == parallelEnter->getLink() )
+      {
+        UTILS_WARNING( "[OMPT] %s has no link to parallel enter node!",  
+                       parallelEnter->getUniqueName().c_str() );
+      }
+      else
+      {
+        // get parallel region event which is linked from the first compute event
+        parallelEnter = (GraphNode*) parallelEnter->getLink();
+      }
+    }
+
+    // save the current barrier number of the parallel region
+    if( parallelEnter )
+    {
+      // if the stream has an entry and it is still the same parallel region
+      if( ompParallelBarriersMap.count( syncLeave->getStreamId() ) > 0 && 
+          !ompParallelBarriersMap[syncLeave->getStreamId()].empty() && // needed for next check
+          ompParallelBarriersMap[syncLeave->getStreamId()].top().first == parallelEnter )
+      {
+        ompParallelBarriersMap[syncLeave->getStreamId()].top().second++;
+      }
+      else //new stream or new parallel region
+      {
+        ompParallelBarriersMap[syncLeave->getStreamId()].push( make_pair( parallelEnter, 0 ) );
+      }
+
+      // if parallel region is already registered
+      //if( ompBarrierNodesMap.count( parallelEnter ) > 0 )
+      {
+        uint64_t barrierNum = ompParallelBarriersMap[syncLeave->getStreamId()].top().second;
+        try
+        {
+          ompBarrierNodesMap[parallelEnter].at(barrierNum).push_back( syncLeave );
+        }
+        catch(const std::out_of_range& oor)
+        {
+          GraphNodeVec barriers;
+          barriers.push_back( syncLeave );
+          ompBarrierNodesMap[parallelEnter].push_back( barriers );
+          //UTILS_MSG( true, "New vector of barriers created (%s)", oor.what() );
+        }
+      }
+    }
+  }
+}
+
 /**
  * Handle leave nodes of the OpenMP paradigm during the trace read process.
  * 
@@ -67,140 +266,29 @@ AnalysisParadigmOMP::handlePostLeave( GraphNode* ompLeave )
     popOmpTargetRegion( ompLeave );
   }
 
-  //\todo: move into barrier rule?
   if ( ompLeave->isOMPSync() )
   {
     Edge *edge = commonAnalysis->getEdge( ompLeave->getPartner(), ompLeave );
     
-    // mark this barrier if it has callees 
+    // mark this barrier if it has no edge
     if ( !edge )
     {
       ompLeave->setCounter( OMP_IGNORE_BARRIER, 1 );
       //UTILS_WARNING( "Ignore barrier for %s", node->getUniqueName().c_str());
     }
 
-    // this applies only to OMPT events
+    // // this is basically the barrier rule for OMPT-based OpenMP traces
     if( commonAnalysis->haveParadigm( PARADIGM_OMPT ) )
     {
-      // ignore sync operations that are nested into another sync
-      // (e.g. wait_barrier inside of barrier)
-      if( !( ompLeave->getCaller() && ompLeave->getCaller()->isOMPSync() ) )
-      {
-        ///// this is an outer sync
-        
-        // get edge to predecessor node
-        edge = commonAnalysis->getEdge( ompLeave->getGraphPair().first, ompLeave );
-        
-        // make all in edges blocking
-        const Graph::EdgeList& inEdges = 
-          commonAnalysis->getGraph().getInEdges( ompLeave );
-        for ( Graph::EdgeList::const_iterator eIter = inEdges.begin();
-              eIter != inEdges.end( ); ++eIter )
-        {
-          (*eIter)->makeBlocking();
-        }
-        
-        //// get parallel region enter ////
-        
-        // get first parallel region compute event (e.g. implicit task enter)
-        // OR the parallel enter itself for barriers on the master thread
-        GraphNode* parallelEnter = ompLeave;
-        while( parallelEnter->getCaller() )
-        {
-          parallelEnter = parallelEnter->getCaller();
-          
-          // if we found a parallel region, it is the master thread's barrier
-          if( parallelEnter->isOMPParallel() )
-          {
-            break;
-          }
-        }
-        
-        if( parallelEnter->isOMPParallel() )
-        {
-          //UTILS_WARNING( "Found barrier leave on master thread (%s)!",  
-          //               ompLeave->getUniqueName().c_str() );
-          
-          // set the link of the parallel enter to its last barrier
-          parallelEnter->setData( ompLeave );
-        }
-        else
-        {
-          // first compute region on a thread
-          if( NULL == parallelEnter->getLink() )
-          {
-            UTILS_WARNING( "[OMPT] %s has no link to parallel enter node!",  
-                           parallelEnter->getUniqueName().c_str() );
-          }
-          else
-          {
-            // get parallel region event which is linked from the first compute event
-            parallelEnter = (GraphNode*) parallelEnter->getLink();
-          }
-        }
-
-        // if no barrier has been set for the given parallel enter
-        // OR the current barrier event has entered the barrier later
-        if( ompParallelLastBarrierMap.count( parallelEnter ) == 0 || 
-            Node::compareLess( ompParallelLastBarrierMap[ parallelEnter ]->getGraphPair().first,
-                               ompLeave->getGraphPair().first ) )
-        {
-            ompParallelLastBarrierMap[ parallelEnter ] = ompLeave;
-            //UTILS_WARNING( "[OMPT] Set latestBarrier %s for %s", 
-            //               ompLeave->getUniqueName().c_str(),
-            //               parallelEnter->getUniqueName().c_str() );
-        }
-      }
+      omptBarrierRule( ompLeave );
     }
   }
   
   // this applies only to OMPT events
   if( commonAnalysis->haveParadigm( PARADIGM_OMPT ) )
   {
-    //// Parallel Rule /////
-    
-    GraphNode *parallelEnter = ompLeave->getGraphPair().first;
-    
-    // at parallel leave (AND enter available)
-    if( ompLeave->isOMPParallel() && parallelEnter )
-    {
-      // use parallel enter node to get the last barrier leave
-      if( ompParallelLastBarrierMap.count( parallelEnter ) > 0 )
-      {
-        GraphNode *barrierEnter = 
-          ompParallelLastBarrierMap[ parallelEnter ]->getGraphPair().first;
-        
-        /* unblock barrier region that is entering last 
-        //(in case barrier time should be part of the critical path)
-        Edge *edge = commonAnalysis->getEdge( barrierEnter, latestBarrierLeave );
-        if( edge )
-        {
-          edge->unblock();
-        }
-        else
-        {
-          //UTILS_WARNING( "Edge should be available. Create it???" );
-          commonAnalysis->newEdge( barrierEnter, latestBarrierLeave, EDGE_NONE );
-        }*/
-
-        // add dependency edge between barrier leave and parallel leave
-        //commonAnalysis->getGraph().removeInEdges( ( GraphNode * )parallelEnter->getData() );
-        
-        Edge *edge = commonAnalysis->newEdge( barrierEnter, 
-                                      ( GraphNode * )parallelEnter->getData() );
-        
-        // in case this edge was a reverse edge, unblock it
-        edge->unblock();
-        
-        //UTILS_WARNING( "Edge %s created! (%s)", edge->getName().c_str(),
-        //               parallelEnter->getUniqueName().c_str() );
-      }
-      else
-      {
-        UTILS_WARNING( "[OMPT] Could not create edge to %s. Critical path "
-                       "analysis might fail.", ompLeave->getUniqueName().c_str() );
-      }
-    }
+    // handle parallel region events and first event on OpenMP threads of a parallel region
+    omptParallelRule( ompLeave );
   }
 }
 
@@ -228,6 +316,8 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
          list->getUInt64( (uint32_t)streamRefKey, &parallel_id ) == 
                                                   OTF2KeyValueList::KV_SUCCESS )
     {
+      // we enter parallel region, either as master or worker thread ...
+      
       // if parallel region enter event
       if( node->isOMPParallel() )
       {

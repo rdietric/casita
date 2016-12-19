@@ -209,8 +209,7 @@ OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
   OTF2_Reader_CloseDefFiles( reader );
 
   OTF2_GlobalEvtReader* global_evt_reader        =
-    OTF2_Reader_GetGlobalEvtReader(
-      reader );
+    OTF2_Reader_GetGlobalEvtReader( reader );
 
   OTF2_GlobalEvtReaderCallbacks* event_callbacks =
     OTF2_GlobalEvtReaderCallbacks_New( );
@@ -1007,7 +1006,7 @@ OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadFork(
   //\todo: handle numberOfRequestedThreads
   return OTF2TraceReader::otf2CallbackEnter( locationID, time, userData,
                                              attributeList,
-                                             tr->getOmpForkJoinRef( ) );
+                                             tr->getOmpForkJoinRef() );
 }
 
 OTF2_CallbackCode
