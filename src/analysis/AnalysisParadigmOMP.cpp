@@ -88,28 +88,10 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
           }
         }
 
-        // if there is more than one barrier in the parallel region AND
-        // this is not the last barrier in the parallel region
-        if( itParallel->size() > 1 && 
-            ompBarrierNodesMap[parallelEnter].back() != (*itParallel) )
-        {
-          // iterate over the barrier nodes again and create dependency edges
-          // from latest barrier enter node to all other barrier leave nodes
-          for( itBarrier = itParallel->begin(); itBarrier != itParallel->end(); ++itBarrier )
-          {
-            // do not create intra stream edge
-            if( (*itBarrier)->getGraphPair().first != latestBarrierEnter )
-            {
-              Edge *edge = commonAnalysis->newEdge( 
-                latestBarrierEnter, ( GraphNode * )parallelEnter->getData(),
-                EDGE_CAUSES_WAITSTATE );
-
-              // in case this edge was a reverse edge, unblock it
-              edge->unblock();
-            }
-          }
-        }
-        else // either only one barrier in the parallel region or the last one
+        bool lastBarrier = ompBarrierNodesMap[parallelEnter].back() == (*itParallel);
+        
+        // if this is the last barrier in the parallel region
+        if( lastBarrier )
         {
           Edge *edge = commonAnalysis->newEdge( 
             latestBarrierEnter, ( GraphNode * )parallelEnter->getData(),
@@ -124,8 +106,22 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
         for( itBarrier = itParallel->begin(); itBarrier != itParallel->end(); ++itBarrier )
         {
           GraphNode *barrierEnter = (*itBarrier)->getGraphPair().first;
+          
+          // for all barriers nodes except the latest
           if( barrierEnter != latestBarrierEnter )
           {
+            // if this is not the last barrier in the region
+            if( !lastBarrier )
+            {
+              // create inter stream edge
+              Edge *edge = commonAnalysis->newEdge( 
+                latestBarrierEnter, ( GraphNode * )parallelEnter->getData(),
+                EDGE_CAUSES_WAITSTATE );
+              
+              // in case this edge was a reverse edge, unblock it
+              edge->unblock();
+            }
+
             // compute waiting time and blame for this barrier region
             uint64_t waitingTime = 
               latestBarrierEnter->getTime() - barrierEnter->getTime();
