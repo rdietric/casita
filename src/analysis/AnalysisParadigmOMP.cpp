@@ -337,6 +337,20 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
                                            GraphNode*        node,
                                            OTF2KeyValueList* list )
 {
+  if( commonAnalysis->haveParadigm( PARADIGM_OMP_TARGET ) )
+  {
+    int32_t streamRefKey = -1;
+    uint64_t device_id = 0;
+    
+    streamRefKey = reader->getFirstKey( SCOREP_OMPT_DEVICE_ID );
+    if ( streamRefKey > -1 && list && list->getSize() > 0 &&
+         list->getUInt64( (uint32_t)streamRefKey, &device_id ) == 
+                                                  OTF2KeyValueList::KV_SUCCESS )
+    {
+      
+    }
+  }
+  
   // if the trace has been generated with OMPT instrumentation
   if( commonAnalysis->haveParadigm( PARADIGM_OMPT ) )
   {

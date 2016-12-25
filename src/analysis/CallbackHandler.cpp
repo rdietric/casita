@@ -146,42 +146,29 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
   if ( isGPUNull )
   {
     streamType = EventStream::ES_DEVICE_NULL;
-    //analysis.addDetectedParadigm( PARADIGM_CUDA );
   }
-  else
+  else if ( isGPU )
   {
-    if ( isGPU )
-    {
       streamType = EventStream::ES_DEVICE;
-      
-      /*if( strstr( name, "CUDA" ) )
-      {
-        analysis.addDetectedParadigm( PARADIGM_CUDA );
-      }
-      else*/if( NULL == strstr( name, "CUDA" ) )
-      {
-        analysis.addDetectedParadigm( PARADIGM_OCL );
-      }
-    }
-    else if ( strstr( name, "MIC" ) )
-    {
-      streamType = EventStream::ES_DEVICE;
-      
-      analysis.addDetectedParadigm( PARADIGM_OMP_TARGET );
-    }
-    else if  ( strstr( name, "OMP thread" ) )
-    {
-      analysis.addDetectedParadigm( PARADIGM_OMP );
-    }
+  }
+    
+  if ( strstr( name, "MIC" ) )
+  {
+    streamType = EventStream::ES_DEVICE;
+
+    analysis.addDetectedParadigm( PARADIGM_OMP );
+    analysis.addDetectedParadigm( PARADIGM_OMP_TARGET );
+  }
+  else if ( strstr( name, "OMP thread" ) )
+  {
+    analysis.addDetectedParadigm( PARADIGM_OMP );
   }
 
   UTILS_MSG( Parser::getInstance().getVerboseLevel() >= VERBOSE_BASIC,
              "  [%u] Found stream %s (%"PRIu64") with type %u, parent %"PRIu64,
-             analysis.getMPIRank( ), name, streamId, streamType, parentId );
+             analysis.getMPIRank(), name, streamId, streamType, parentId );
 
-  analysis.newEventStream( streamId, parentId, name, streamType /*, PARADIGM_CUDA*/ );
-  
-  //\todo: check for OpenMP paradigm
+  analysis.newEventStream( streamId, parentId, name, streamType );
 }
 
 void
@@ -217,6 +204,13 @@ CallbackHandler::handleDefAttribute( OTF2TraceReader* reader,
   if( strcmp( name, SCOREP_CUDA_STREAMREF ) == 0 )
   {
     analysis.addDetectedParadigm( PARADIGM_CUDA );
+  }
+  
+  // Check the defined OTF2 attributes for the predefined SCOREP_OPENCL_QUEUEREF 
+  // If not defined, do not perform OpenCL analysis!
+  if( strcmp( name, SCOREP_OPENCL_QUEUEREF ) == 0 )
+  {
+    analysis.addDetectedParadigm( PARADIGM_OCL );
   }
   
   // if we found the definition of an OMPT parallel ID

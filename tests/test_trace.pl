@@ -94,14 +94,14 @@ sub test_trace
                 return 1;
             }
 
-            if ($fcp > 100.0)
+            if ($fcp > 100.5)
             {
                 print "@output \n\n";
                 print "Error: Invalid profile: fraction cp > 100% ($fcp, $fname)\n";
                 return 1;
             }
 
-            if ($fgb > 100.0)
+            if ($fgb > 100.5)
             {
                 print "@output \n\n";
                 print "Error: Invalid profile: fraction blame > 100% ($fgb, $fname)\n";
@@ -137,7 +137,7 @@ sub test_trace
         }
     }
 
-    if ($fgb_total > 100.0)
+    if ($fgb_total > 100.5)
     {
         print "@output \n\n";
         print "Error: Invalid profile: total fraction blame > 100% ($fgb_total)\n";

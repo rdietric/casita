@@ -1,8 +1,4 @@
 ---------------------------------- CASITA 1.7 ----------------------------------
-CUDA
-- improved handling of CUDA events and CUDA kernels over interval boundaries
-- avoid CUDA analysis if input trace does not meet the requirements 
-  (CUDA stream references)
 
 MPI
 - try to ignore MPI_I[send|recv] regions without communication information 
@@ -16,12 +12,22 @@ OpenMP
 - use OTF2 location definitions to detect whether the trace contains OpenMP 
   events
 
+CUDA
+- improved handling of CUDA events and CUDA kernels over interval boundaries
+- avoid CUDA analysis if input trace does not meet the requirements 
+  (CUDA stream references)
+
+OpenCL
+- avoid OpenCL analysis if input trace does not meet the requirements 
+  (OpenCL queue references); previous check was broken
+
 MISC
 - activity impact rating is now based on the new metric "Blame on CP"
 - removed unused code
 
 
 ---------------------------------- CASITA 1.6 ----------------------------------
+
 MPI
 - added late sender/receiver rules for wait states in MPI_Wait and MPI_Waitall 
   (generate graph nodes for enter events of non-blocking MPI routines again)
