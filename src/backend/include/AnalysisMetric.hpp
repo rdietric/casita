@@ -31,11 +31,12 @@ namespace casita
     BLAME = 0,         // amount of caused waiting time
     WAITING_TIME = 1,  // waiting time of a region
     CRITICAL_PATH = 2, // is a location/stream on the critical path
-    OMP_REGION_ID = 3,        // internal
-    OMP_PARENT_REGION_ID = 4, // internal
-    OMP_IGNORE_BARRIER = 5,   // internal
-
-    NUM_DEFAULT_METRICS = 6 // has to be the number of elements in METRIC_TABLE
+    NUM_DEFAULT_METRICS = 3, // has to be the number of non-internal metrics in METRIC_TABLE
+    
+    OMP_REGION_ID = 4,        // internal
+    OMP_PARENT_REGION_ID = 5, // internal
+    OMP_IGNORE_BARRIER = 6,   // internal
+    SLACK_TIME = 7            // internal
   };
   
   enum MetricMode

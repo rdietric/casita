@@ -51,7 +51,7 @@ main( int argc, char** argv )
   #if defined(BOOST_AVAILABLE)  
   if ( !Parser::getInstance( ).init_with_boost( argc, argv ) )
   #else
-  if ( !Parser::getInstance( ).init_without_boost( mpiRank, argc, argv ) )
+  if ( !Parser::getInstance( ).initialize( mpiRank, argc, argv ) )
   #endif
   {
     if (mpiRank == 0){

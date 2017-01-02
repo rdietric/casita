@@ -23,6 +23,8 @@
 #include <stdint.h>
 #include <list>
 
+using namespace std;
+
 namespace casita
 {
  #if defined( BOOST_AVAILABLE )
@@ -31,21 +33,21 @@ namespace casita
  
  typedef struct
  {
+   string      filename;
    bool        createTraceFile;
+   string      outOtfFile;
+   bool        replaceCASITAoutput;
+   bool        createRatingCSV;
+   size_t      topX;
+   string      predictionFilter;
    bool        printCriticalPath;
    bool        mergeActivities;
    bool        noErrors;
    bool        ignoreAsyncMpi;
    bool        ignoreCUDA;
    uint32_t    analysisInterval;
-   bool        createRatingCSV;
    int         verbose;
-   size_t      topX;
    int         eventsProcessed;
-   int         memLimit;
-   std::string outOtfFile;
-   std::string filename;
-   bool        replaceCASITAoutput;
  } ProgramOptions;
  
  
@@ -55,13 +57,14 @@ namespace casita
      static Parser&
      getInstance( );
      
-     static int getVerboseLevel();
+     static int 
+     getVerboseLevel();
+     
+     static vector < string >&
+     getPredictionFilter();
 
      bool
-     init_with_boost( int argc, char** argv ) throw ( std::runtime_error );
-
-     bool
-     init_without_boost( int mpiRank, int argc, char** argv ) throw ( std::runtime_error );
+     initialize( int mpiRank, int argc, char** argv ) throw ( std::runtime_error );
      
      ProgramOptions&
      getProgramOptions();
@@ -72,18 +75,18 @@ namespace casita
      /**
       * Return the OTF2 archive name (OTF2 file name without extension .otf2).
       */
-     std::string
+     string
      getOutArchiveName()
      {
        return outArchiveName;
      }
      
-     std::string
+     string
      getPathToFile()
      {
          return pathToFile;
      }
-
+     
    private:
      Parser();
 
@@ -96,14 +99,15 @@ namespace casita
      processArgs( int argc, char** argv);
      
      bool
-     endsWith( std::string const& str, std::string const& ext );
+     endsWith( string const& str, string const& ext );
      
      void
      setDefaultValues();
 
      ProgramOptions options;
-     std::string pathToFile;
-     std::string outArchiveName;
+     string pathToFile;
+     string outArchiveName;
+     vector < string > predictionFilter;
  };
 
 }
