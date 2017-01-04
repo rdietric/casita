@@ -87,6 +87,8 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
               latestBarrierEnter = (*itBarrier)->getGraphPair().first;
           }
         }
+        
+        UTILS_WARNING( "Latest barrier: %s", latestBarrierEnter->getUniqueName().c_str() );
 
         bool lastBarrier = ompBarrierNodesMap[parallelEnter].back() == (*itParallel);
         
@@ -96,6 +98,9 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
           Edge *edge = commonAnalysis->newEdge( 
             latestBarrierEnter, ( GraphNode * )parallelEnter->getData(),
             EDGE_CAUSES_WAITSTATE );
+          
+          UTILS_MSG( true, "Create edge for last barrier in the region: %s",
+                     edge->getName().c_str() );
 
           // in case this edge was a reverse edge, unblock it
           edge->unblock();
@@ -115,8 +120,10 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
             {
               // create inter stream edge
               Edge *edge = commonAnalysis->newEdge( 
-                latestBarrierEnter, ( GraphNode * )parallelEnter->getData(),
-                EDGE_CAUSES_WAITSTATE );
+                latestBarrierEnter, *itBarrier, EDGE_CAUSES_WAITSTATE );
+              
+              UTILS_MSG( true, "Create edge for barrier in the region: %s",
+                         edge->getName().c_str() );
               
               // in case this edge was a reverse edge, unblock it
               edge->unblock();
@@ -189,7 +196,7 @@ AnalysisParadigmOMP::omptBarrierRule( GraphNode* syncLeave )
   if( syncLeave->getCaller() && syncLeave->getCaller()->isOMPSync() )
   {
     // used in streamWalkCallback in OMPRulesCommon.hpp
-    syncLeave->setCounter( OMP_IGNORE_BARRIER, 1 );
+    syncLeave->setCounter( OMP_BARRIER_IGNORE, 1 );
     //UTILS_WARNING( "Ignore barrier for %s", syncLeave->getUniqueName().c_str());
   }
   //if( !( syncLeave->getCaller() && syncLeave->getCaller()->isOMPSync() ) )
@@ -306,7 +313,7 @@ AnalysisParadigmOMP::handlePostLeave( GraphNode* ompLeave )
     if ( !edge )
     {
       // used in streamWalkCallback in OMPRulesCommon.hpp
-      ompLeave->setCounter( OMP_IGNORE_BARRIER, 1 );
+      ompLeave->setCounter( OMP_BARRIER_IGNORE, 1 );
       //UTILS_WARNING( "Ignore barrier for %s", node->getUniqueName().c_str());
     }
 
@@ -545,7 +552,7 @@ AnalysisParadigmOMP::addBarrierEventToList( GraphNode* node,
   }
 
   // only add barrier activities that have no callees
-  if ( leaveNode->getCounter( OMP_IGNORE_BARRIER, NULL ) )
+  if ( leaveNode->getCounter( OMP_BARRIER_IGNORE, NULL ) )
   {
     return;
   }

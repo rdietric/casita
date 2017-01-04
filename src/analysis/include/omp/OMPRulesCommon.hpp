@@ -53,7 +53,7 @@ namespace casita
       if ( node->isLeave() && node->isOMPSync() )
       {
         // if the barrier is not considered blocking, continue walking
-        if ( node->getCounter(OMP_IGNORE_BARRIER, NULL) )
+        if ( node->getCounter(OMP_BARRIER_IGNORE, NULL) )
         {
           // add waiting time of current node which is not the list end
           listAndWaitTime->waitStateTime += node->getCounter(WAITING_TIME, NULL);

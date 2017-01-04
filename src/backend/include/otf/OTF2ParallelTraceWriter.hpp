@@ -116,8 +116,7 @@ namespace casita
                                uint32_t        mpiSize,
                                const char*     originalFilename,
                                bool            writeToFile,
-                               AnalysisMetric* metrics,
-                               bool            ignoreAsyncMpi );
+                               AnalysisMetric* metrics );
       virtual
       ~OTF2ParallelTraceWriter( );
 
@@ -139,6 +138,12 @@ namespace casita
        */
       void
       writeAnalysisMetricDefinitions( void );
+      
+      /**
+       * Write definitions for MUST correctness hints to output trace file.
+       */
+      void
+      writeCorrectnessCheckDefinitions( void );
       
       void
       setupAttributeList( void );
@@ -182,10 +187,7 @@ namespace casita
       ActivityGroupMap activityGroupMap;
       
       //!< pointer to the table of available counters
-      AnalysisMetric* cTable; 
-      
-      bool ignoreAsyncMpi;
-      int  verbose;
+      AnalysisMetric* cTable;
       
       uint64_t timerResolution;
       
@@ -196,15 +198,15 @@ namespace casita
       getRealTime(  uint64_t time );
       
       //!< counter to assign IDs to string definitions
-      uint64_t      counterForStringDefinitions;
+      uint64_t    counterForStringDefinitions;
       
       //!< counter to assign IDs to attribute types
-      uint64_t      counterForAttributeId;
+      uint64_t    counterForAttributeId;
       
       //!< regionReference for internal Fork/Join
-      uint32_t      ompForkJoinRef;
+      uint32_t    ompForkJoinRef;
 
-      std::string   outputFilename, originalFilename, pathToFile;
+      std::string outputFilename, originalFilename, pathToFile;
 
       //!< maps each process to corresponding evtWriter
       std::map< uint64_t, OTF2_EvtWriter* > evt_writerMap;
@@ -217,6 +219,17 @@ namespace casita
       MPI_Comm commGroup;
 
       std::map< uint32_t, const char* > idStringMap;
+      
+      // correctness
+      typedef struct
+      {
+        MetricType type;
+        uint64_t occurrence;
+        uint64_t current;
+      } ErrorEntry;
+      typedef std::map< uint64_t, ErrorEntry > ErrorMap;
+      
+      ErrorMap errorMap;
 
       //!< < metric ID, metric value >
       typedef std::map< MetricType, uint64_t > CounterMap;

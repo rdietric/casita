@@ -31,11 +31,15 @@ namespace casita
     BLAME = 0,         // amount of caused waiting time
     WAITING_TIME = 1,  // waiting time of a region
     CRITICAL_PATH = 2, // is a location/stream on the critical path
-    OMP_REGION_ID = 3,        // internal
-    OMP_PARENT_REGION_ID = 4, // internal
-    OMP_IGNORE_BARRIER = 5,   // internal
+    
+    NUM_DEFAULT_METRICS = 3, // has to be the number of elements in METRIC_TABLE
+    
+    OMP_BARRIER_ERROR = 4,     // correctness
 
-    NUM_DEFAULT_METRICS = 6 // has to be the number of elements in METRIC_TABLE
+    OMP_REGION_ID = 5,        // internal
+    OMP_PARENT_REGION_ID = 6, // internal
+    OMP_BARRIER_IGNORE = 7   // internal
+    
   };
   
   enum MetricMode
@@ -85,70 +89,85 @@ namespace casita
    { CRITICAL_PATH, "Critical Path", 
                     "On the critical path boolean",  
                     COUNTER_ABSOLUT_NEXT, false },
+                    
+   // correctness
+   { OMP_BARRIER_ERROR,   "MUST correctness check", 
+                           "Error: Thread passes a different barrier than other threads of the same team!", 
+                           ATTRIBUTE, true },
+                    
    // internal metrics
    { OMP_REGION_ID,        "OpenMP Target Region ID",         
                            "", METRIC_MODE_UNKNOWN, true },
    { OMP_PARENT_REGION_ID, "OpenMP Target Parent Region ID",  
                            "", METRIC_MODE_UNKNOWN, true },
-   { OMP_IGNORE_BARRIER,   "OpenMP Target Collapsed Barrier", 
-                           "", METRIC_MODE_UNKNOWN, true }
+   { OMP_BARRIER_IGNORE,   "OpenMP Target Collapsed Barrier", 
+                           "", METRIC_MODE_UNKNOWN, true }   
  };
 
  class AnalysisMetric
  {
-    private:
-      //! < key: metric type, value: OTF2 attribute or metric ID/ref
-      typedef std::map< MetricType, uint32_t > MetricTypeIdMap;
-
     public:
 
       typedef std::set< MetricType > MetricIdSet;
 
-     // Construct of class AnalysisMetric (used in GraphEngine)
-     // \todo: make singleton?
-     AnalysisMetric( ) :
-       maxCtrId( 0 ),
-       maxAttrId( 0 )
-     {
+      // Construct of class AnalysisMetric (used in GraphEngine)
+      // \todo: make singleton?
+      AnalysisMetric( ) :
+        maxCtrId( 0 ),
+        maxAttrId( 0 )
+      {
 
-     }
+      }
 
-     virtual
-     ~AnalysisMetric( )
-     {
-     }
+      virtual
+      ~AnalysisMetric( )
+      {
+      }
+
+      const MetricEntry*
+      getMetric( MetricType metricId ) const
+      {
+        if( metricId < NUM_DEFAULT_METRICS )
+        {
+          return &(METRIC_TABLE[metricId]);
+        }
+        else
+        {
+          return &(METRIC_TABLE[metricId - 1]);
+        }
+      }
+      
+      static const char*
+      getMetricDescription( MetricType metricId )
+      {
+        if( metricId < NUM_DEFAULT_METRICS )
+        {
+          return METRIC_TABLE[metricId].description;
+        }
+        else
+        {
+          return METRIC_TABLE[metricId - 1].description;
+        }
+      }
      
-     const MetricEntry*
-     getMetric( MetricType metricId ) const
-     {
-       if( metricId < NUM_DEFAULT_METRICS )
-       {
-         return &(METRIC_TABLE[metricId]);
-       }
-       else
-       {
-         return NULL;
-       }
-     }
-     
-     /**
-      * Get the OTF2 metric ID for the given metric type.
-      * 
-      * @param metric internal metric type
-      * @return OTF2 metric ID
-      */
-     uint32_t
-     getMetricId( MetricType metric )
-     {
-       return otf2Ids[ metric ];
-     }
+      /**
+       * Get the OTF2 metric ID for the given metric type.
+       * 
+       * @param metric internal metric type
+       * @return OTF2 metric ID
+       */
+      uint32_t
+      getMetricId( MetricType metric )
+      {
+        return otf2Ids[ metric ];
+      }
 
-     uint32_t
-     getNewCounterId( )
-     {
-       // starting with 0 (Ids in OTF2 need to start with 0)
-       return maxCtrId++;
-     }
+      uint32_t
+      getNewCounterId( )
+      {
+        // starting with 0 (Ids in OTF2 need to start with 0)
+        return maxCtrId++;
+      }
      
       uint32_t
       getNewAttributeId( )
@@ -156,17 +175,17 @@ namespace casita
         return maxAttrId++;
       }
 
-     const MetricIdSet&
-     getAllCounterIds( ) const
-     {
-       return ctrIDs;
-     }
-     
-     const MetricIdSet&
-     getAllMetricIds( ) const
-     {
-       return metricIds;
-     }
+      const MetricIdSet&
+      getAllCounterIds( ) const
+      {
+        return ctrIDs;
+      }
+
+      const MetricIdSet&
+      getAllMetricIds( ) const
+      {
+        return metricIds;
+      }
      
       void
       addAttributeId( uint32_t attrId )
@@ -210,14 +229,37 @@ namespace casita
         }
         else
         {
-          return std::numeric_limits< uint32_t >::max( );
+          return std::numeric_limits< uint32_t >::max();
+        }
+      }
+      
+      void
+      addStringRef( MetricType metricId, uint32_t stringRef )
+      {
+        metric2StringRefMap[metricId] = stringRef;
+      }
+      
+      uint32_t
+      getStringRef( MetricType metricId )
+      {
+        if( metric2StringRefMap.count( metricId ) > 0 )
+        {
+          return metric2StringRefMap[metricId];
+        }
+        else
+        {
+          return std::numeric_limits< uint32_t >::max();
         }
       }
 
    private:
+     //! < key: metric type, value: OTF2 attribute or metric ID/ref
+     typedef std::map< MetricType, uint32_t > MetricTypeIdMap;
+      
      uint32_t        maxCtrId;
      uint32_t        maxAttrId;
      MetricTypeIdMap otf2Ids;
+     MetricTypeIdMap metric2StringRefMap;
      MetricIdSet     ctrIDs;
      MetricIdSet     metricIds;
  };

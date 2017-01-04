@@ -116,8 +116,8 @@ namespace casita
           if ( numLeaveNodesInList == 1 )
           {
             // ignore this non-blocking barrier for blame distribution
-            tmpBarrierList.front( )->setCounter( OMP_IGNORE_BARRIER, 1 );
-            tmpBarrierList.back( )->setCounter( OMP_IGNORE_BARRIER, 1 );
+            tmpBarrierList.front( )->setCounter( OMP_BARRIER_IGNORE, 1 );
+            tmpBarrierList.back( )->setCounter( OMP_BARRIER_IGNORE, 1 );
 
             analysis->clearBarrierEventList( true, NULL, matchingId );
             return false;

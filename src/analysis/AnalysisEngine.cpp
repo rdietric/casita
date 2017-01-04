@@ -625,8 +625,7 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
       mpiAnalysis.getMPISize(),
       origFilename.c_str(),
       writeToFile,
-      &( this->getCtrTable() ),
-      ignoreAsyncMpi );
+      &( this->getCtrTable() ) );
 
     if ( !writeToFile )
     {
@@ -644,6 +643,9 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
   if( writeToFile )
   {
     writer->writeAnalysisMetricDefinitions();
+    
+    writer->writeCorrectnessCheckDefinitions();
+    
     writer->setupAttributeList();
   }
 

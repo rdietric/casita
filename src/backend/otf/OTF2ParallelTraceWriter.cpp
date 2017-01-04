@@ -145,14 +145,12 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t        mpiRank,
                                                   uint32_t        mpiSize,
                                                   const char*     originalFilename,
                                                   bool            writeToFile,
-                                                  AnalysisMetric* metrics,
-                                                  bool            ignoreAsyncMpi )
+                                                  AnalysisMetric* metrics )
   :
     writeToFile( writeToFile ),
     mpiRank( mpiRank ),
     mpiSize( mpiSize ),
     cTable( metrics ),
-    ignoreAsyncMpi( ignoreAsyncMpi ),
     ompForkJoinRef( 0 ),
     global_def_writer( NULL ),
     processNodes( NULL ),
@@ -168,6 +166,15 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t        mpiRank,
   flush_callbacks.otf2_pre_flush  = preFlush;
 
   commGroup = MPI_COMM_WORLD;
+  
+  //initialize error map
+  for(int i = 2; i < 5; i++ )
+  {
+    //errorMap[i] = new ErrorEntry();
+    errorMap[i].current = 1;
+    errorMap[i].occurrence = 3;
+    errorMap[i].type = OMP_BARRIER_ERROR;
+  }
 }
 
 OTF2ParallelTraceWriter::~OTF2ParallelTraceWriter( )
@@ -178,50 +185,11 @@ OTF2ParallelTraceWriter::~OTF2ParallelTraceWriter( )
 void
 OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles )
 {
-  #if defined(BOOST_AVAILABLE)  
-    
-  boost::filesystem::path boost_path     = boost::filesystem::system_complete(otfFilename);
-  boost::filesystem::path boost_filename = otfFilename;
-
-  outputFilename = boost::filesystem::change_extension(
-    boost_filename.filename( ), "" ).string( );
-  pathToFile     = boost_path.parent_path().string();
-
-  UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-             "[0] PATH: '%s'", pathToFile.c_str( ) );
-  
-  #else
-
   outputFilename = Parser::getInstance().getOutArchiveName();
   pathToFile = Parser::getInstance().getPathToFile();
   
-  #endif
-
-  
   if ( writeToFile )
-  {
-    #if defined(BOOST_AVAILABLE)
-    if ( mpiRank == 0 )
-    {
-          
-      /* remove trace dir */
-      if ( boost::filesystem::exists( pathToFile + std::string( "/" ) +
-                                      outputFilename ) )
-      {
-        boost::filesystem::remove_all( pathToFile + std::string(
-                                         "/" ) + outputFilename );
-      }
-
-      /* remove trace files */
-      if ( boost::filesystem::exists( otfFilename ) )
-      {
-        boost::filesystem::remove( otfFilename );
-        boost::filesystem::remove(
-          boost::filesystem::change_extension( otfFilename, "def" ) );
-      }
-    }
-    #endif
-    
+  {    
     MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
     // open new otf2 file
@@ -563,6 +531,44 @@ OTF2ParallelTraceWriter::writeAnalysisMetricDefinitions()
         }
       }
     }
+  }
+}
+
+/**
+ * Write definitions for MUST correctness hints to output trace file.
+ */
+void
+OTF2ParallelTraceWriter::writeCorrectnessCheckDefinitions()
+{
+  // all processes need to know the OTF2 IDs for the metrics/attributes
+  uint32_t newAttrId = cTable->newOtf2Id( OMP_BARRIER_ERROR );
+  
+  // only the root rank writes the global definitions
+  if ( mpiRank == 0 )
+  {
+    //UTILS_MSG(true, "Write correctness hint definition: %s", entry->name );
+
+    // write string definition for metric and/or attribute name
+    OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( global_def_writer,
+                                                  counterForStringDefinitions,
+                                                  "MUST correctness check" ) );
+
+    // write string definition for metric and/or attribute description
+    OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( global_def_writer,
+                                                  counterForStringDefinitions + 1,
+                                                  cTable->getMetricDescription( OMP_BARRIER_ERROR ) ) );
+
+    OTF2_CHECK( 
+      OTF2_GlobalDefWriter_WriteAttribute( global_def_writer, newAttrId, 
+                                           counterForStringDefinitions,
+                                           counterForStringDefinitions + 1,
+                                           OTF2_TYPE_STRING ) );
+    
+    // save OTF2 string reference for description
+    cTable->addStringRef( OMP_BARRIER_ERROR, counterForStringDefinitions + 1 );
+
+    // increase the string definition counter
+    counterForStringDefinitions += 2;
   }
 }
 
@@ -1205,6 +1211,28 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   eventDesc.recordType = event.type; 
   const bool mapsInternalNode = FunctionTable::getAPIFunctionType(
     eventName.c_str( ), &eventDesc, deviceStreamMap[event.location], false );  
+  
+  // on openmp barrier leave events
+  if( eventDesc.functionType == OMP_SYNC && writeToFile && event.type == RECORD_LEAVE )
+  {
+    int streamId = atoi(this->currentStream->getName()+10);
+    
+    if( this->errorMap.count(streamId) > 0 )
+    {
+      if( this->errorMap[streamId].current < this->errorMap[streamId].occurrence )
+      {
+        this->errorMap[streamId].current++;
+      }
+      else
+      {
+        UTILS_MSG(true, "Sync %llu (of %llu) in stream %llu", 
+              this->errorMap[streamId].current, this->errorMap[streamId].occurrence, streamId );
+        OTF2_CHECK( OTF2_AttributeList_AddStringRef( attributes, 
+                                                     cTable->getMetricId( OMP_BARRIER_ERROR ), 
+                                                     cTable->getStringRef( OMP_BARRIER_ERROR ) ) );
+      }
+    }
+  }
 
   //UTILS_MSG( mpiRank == 0, "Event name: '%s' (%d), maps internal: %d", 
   //           eventName.c_str( ), event.type, (int)mapsInternalNode );
@@ -1278,14 +1306,14 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       }
 
       // copy node counter values to temporary counter map
-      const AnalysisMetric::MetricIdSet& metricIdSet = cTable->getAllMetricIds( );
-      for ( AnalysisMetric::MetricIdSet::const_iterator metricIter = metricIdSet.begin( );
-            metricIter != metricIdSet.end( ); ++metricIter )
+      const AnalysisMetric::MetricIdSet& metricIdSet = cTable->getAllMetricIds();
+      for ( AnalysisMetric::MetricIdSet::const_iterator metricIter = metricIdSet.begin();
+            metricIter != metricIdSet.end(); ++metricIter )
       {
         const MetricType metricType = *metricIter;
         const MetricEntry* metric = cTable->getMetric( metricType );
 
-        if ( !( metric->isInternal ) )
+        if ( !( metric->isInternal ) && metric->type != OMP_BARRIER_ERROR )
         {
           tmpCounters[metricType] = currentNode->getCounter( metricType, NULL );
           
@@ -1296,7 +1324,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
             processOnCriticalPath[event.location] = (bool) tmpCounters[ CRITICAL_PATH ];
             
             // if next node is NOT on the CP
-            if( currentNodeIter + 1 != processNodes->end( ) &&  
+            if( currentNodeIter + 1 != processNodes->end() &&  
                 (*( currentNodeIter + 1 ) )->getCounter( CRITICAL_PATH, NULL ) == 0 )
             {
               processOnCriticalPath[event.location] = false;
@@ -1421,6 +1449,8 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   // write event with counters
   if ( writeToFile )
   {
+    // add correctness error attribute
+    
     writeEventsWithCounters( event, tmpCounters, false );
     writeEventsWithAttributes( event, tmpCounters );    
   }
@@ -2026,8 +2056,7 @@ OTF2ParallelTraceWriter::otf2CallbackEnter( OTF2_LocationRef    location,
   }
   
   if ( tw->mpiSize > 1 && Parser::getInstance().getProgramOptions().analysisInterval &&
-       time - tw->timerOffset == /*tw->currentStream->getPeriod().second*/
-                                   tw->currentStream->getLastEventTime() )
+       time - tw->timerOffset == tw->currentStream->getLastEventTime() )
   {
     return OTF2_CALLBACK_INTERRUPT;
   }
@@ -2037,7 +2066,7 @@ OTF2ParallelTraceWriter::otf2CallbackEnter( OTF2_LocationRef    location,
 }
 
 OTF2_CallbackCode
-OTF2ParallelTraceWriter::otf2CallbackLeave( OTF2_LocationRef    location, // streamID
+OTF2ParallelTraceWriter::otf2CallbackLeave( OTF2_LocationRef    location,
                                             OTF2_TimeStamp      time,
                                             uint64_t            eventPosition,
                                             void*               userData,
