@@ -1227,7 +1227,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       // on OpenMP barrier leave events (ignore wait_barrier)
       if( currentNode->isOMPSync() && 
           !( currentNode->getCaller() && currentNode->getCaller()->isOMPSync() ) && 
-          writeToFile && event.type == RECORD_LEAVE )
+          writeToFile && event.type == RECORD_ENTER )
       {
         int streamId = atoi(this->currentStream->getName()+10);
 
@@ -1245,8 +1245,13 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
                                                          cTable->getMetricId( OMP_BARRIER_ERROR ), 
                                                          cTable->getStringRef( OMP_BARRIER_ERROR ) ) );
 
+            uint64_t duration = ( currentNode->getPartner() == NULL ) ? 0 : 
+              currentNode->getPartner()->getTime()- currentNode->getTime();
+      
+      
             OTF2_CHECK( OTF2_MarkerWriter_WriteMarker( 
-              markerWriter, event.time, 0, 0, 
+              markerWriter, event.time, duration, 
+              0, // 0 as no other marker definition exists
               OTF2_MARKER_SCOPE_LOCATION, event.location,
               cTable->getMetricDescription( OMP_BARRIER_ERROR ) ) );
           }
