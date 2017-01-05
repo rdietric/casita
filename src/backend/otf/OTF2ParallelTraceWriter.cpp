@@ -30,10 +30,6 @@
 #define OTF2_MPI_UINT64_T MPI_UINT64_T
 #define OTF2_MPI_INT64_T MPI_INT64_T
 
-#if defined(BOOST_AVAILABLE) 
-#include <boost/filesystem.hpp>
-#endif
-
 #include <otf2/OTF2_MPI_Collectives.h>
 #include <map>
 
@@ -77,60 +73,6 @@ postFlush( void* userData, OTF2_FileType fileType,
   return 0;
 }
 
-/** Necessary for OTF2 to work in MPI-Mode 
-static inline size_t
-otf2_mpi_type_to_size( OTF2_Type type )
-{
-  switch ( type )
-  {
-    case OTF2_TYPE_UINT8:
-    case OTF2_TYPE_INT8:
-      return 1;
-    case OTF2_TYPE_UINT16:
-    case OTF2_TYPE_INT16:
-      return 2;
-    case OTF2_TYPE_UINT32:
-    case OTF2_TYPE_INT32:
-    case OTF2_TYPE_FLOAT:
-      return 4;
-    case OTF2_TYPE_UINT64:
-    case OTF2_TYPE_INT64:
-    case OTF2_TYPE_DOUBLE:
-      return 8;
-    default:
-      return 0;
-  }
-}*/
-
-/** Necessary for OTF2 to work in MPI-Mode 
-static inline MPI_Datatype
-otf2_to_mpi_type( OTF2_Type type )
-{
-  switch ( type )
-  {
-    case OTF2_TYPE_UINT8:
-    case OTF2_TYPE_INT8:
-      return MPI_CHAR;
-    case OTF2_TYPE_UINT16:
-    case OTF2_TYPE_INT16:
-      return MPI_SHORT;
-    case OTF2_TYPE_UINT32:
-      return MPI_UINT32_T;
-    case OTF2_TYPE_INT32:
-      return MPI_INT32_T;
-    case OTF2_TYPE_FLOAT:
-      return MPI_FLOAT;
-    case OTF2_TYPE_UINT64:
-      return MPI_UINT64_T;
-    case OTF2_TYPE_INT64:
-      return MPI_INT64_T;
-    case OTF2_TYPE_DOUBLE:
-      return MPI_DOUBLE;
-    default:
-      return 0;
-  }
-}*/
-
 /**
  *
  *
@@ -167,14 +109,16 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t        mpiRank,
 
   commGroup = MPI_COMM_WORLD;
   
-  //initialize error map
-  for(int i = 2; i < 5; i++ )
+  //todo: parse the MUST html! (for now: initialize error map hard-coded)
+  for(int i = 2; i < 7; i++ )
   {
-    //errorMap[i] = new ErrorEntry();
-    errorMap[i].current = 1;
-    errorMap[i].occurrence = 3;
+    errorMap[i].current = 1; // current event count
+    errorMap[i].occurrence = 3; // error occurrence at event count 3
     errorMap[i].type = OMP_BARRIER_ERROR;
   }
+  errorMap[8].current = 1;
+  errorMap[8].occurrence = 3;
+  errorMap[8].type = OMP_BARRIER_ERROR;
 }
 
 OTF2ParallelTraceWriter::~OTF2ParallelTraceWriter( )
@@ -189,7 +133,7 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
   pathToFile = Parser::getInstance().getPathToFile();
   
   if ( writeToFile )
-  {    
+  {
     MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
     // open new otf2 file
@@ -212,7 +156,7 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
   //counterForMetricInstanceId = 0;
   counterForAttributeId = 0;
 
-  reader          = OTF2_Reader_Open( originalFilename.c_str( ) );
+  reader = OTF2_Reader_Open( originalFilename.c_str() );
 
   OTF2_MPI_Reader_SetCollectiveCallbacks( reader, commGroup );
 
@@ -230,6 +174,9 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
   if ( writeToFile )
   {
     OTF2_Archive_OpenEvtFiles( archive );
+    
+    // get a marker writer
+    markerWriter = OTF2_Archive_GetMarkerWriter( archive );
   }
 
   MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
@@ -242,11 +189,14 @@ OTF2ParallelTraceWriter::close( )
   if ( writeToFile )
   {
     for ( std::map< uint64_t, OTF2_EvtWriter* >::iterator iter =
-            evt_writerMap.begin( );
-          iter != evt_writerMap.end( ); iter++ )
+            evt_writerMap.begin( ); iter != evt_writerMap.end( ); iter++ )
     {
       OTF2_Archive_CloseEvtWriter( archive, iter->second );
     }
+    
+    // close the marker writer
+    OTF2_Archive_CloseMarkerWriter( archive, markerWriter );
+    
     if ( mpiRank == 0 )
     {
       OTF2_Archive_CloseDefFiles( archive );
@@ -558,7 +508,7 @@ OTF2ParallelTraceWriter::writeCorrectnessCheckDefinitions()
                                                   counterForStringDefinitions + 1,
                                                   cTable->getMetricDescription( OMP_BARRIER_ERROR ) ) );
 
-    OTF2_CHECK( 
+    OTF2_CHECK(
       OTF2_GlobalDefWriter_WriteAttribute( global_def_writer, newAttrId, 
                                            counterForStringDefinitions,
                                            counterForStringDefinitions + 1,
@@ -566,6 +516,14 @@ OTF2ParallelTraceWriter::writeCorrectnessCheckDefinitions()
     
     // save OTF2 string reference for description
     cTable->addStringRef( OMP_BARRIER_ERROR, counterForStringDefinitions + 1 );
+    
+    // write definition for the barrier error marker
+    OTF2_CHECK( OTF2_MarkerWriter_WriteDefMarker( 
+                                  markerWriter,
+                                  0, // marker reference (only one is used for barrier errors)
+                                  "MUST correctness check",
+                                  cTable->getMetricDescription( OMP_BARRIER_ERROR ),
+                                  OTF2_SEVERITY_LOW ) );
 
     // increase the string definition counter
     counterForStringDefinitions += 2;
@@ -1211,28 +1169,6 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   eventDesc.recordType = event.type; 
   const bool mapsInternalNode = FunctionTable::getAPIFunctionType(
     eventName.c_str( ), &eventDesc, deviceStreamMap[event.location], false );  
-  
-  // on openmp barrier leave events
-  if( eventDesc.functionType == OMP_SYNC && writeToFile && event.type == RECORD_LEAVE )
-  {
-    int streamId = atoi(this->currentStream->getName()+10);
-    
-    if( this->errorMap.count(streamId) > 0 )
-    {
-      if( this->errorMap[streamId].current < this->errorMap[streamId].occurrence )
-      {
-        this->errorMap[streamId].current++;
-      }
-      else
-      {
-        UTILS_MSG(true, "Sync %llu (of %llu) in stream %llu", 
-              this->errorMap[streamId].current, this->errorMap[streamId].occurrence, streamId );
-        OTF2_CHECK( OTF2_AttributeList_AddStringRef( attributes, 
-                                                     cTable->getMetricId( OMP_BARRIER_ERROR ), 
-                                                     cTable->getStringRef( OMP_BARRIER_ERROR ) ) );
-      }
-    }
-  }
 
   //UTILS_MSG( mpiRank == 0, "Event name: '%s' (%d), maps internal: %d", 
   //           eventName.c_str( ), event.type, (int)mapsInternalNode );
@@ -1285,6 +1221,35 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
           currentNode->setFunctionId( newRegionRef );
         
           event.regionRef = newRegionRef;
+        }
+      }
+      
+      // on OpenMP barrier leave events (ignore wait_barrier)
+      if( currentNode->isOMPSync() && 
+          !( currentNode->getCaller() && currentNode->getCaller()->isOMPSync() ) && 
+          writeToFile && event.type == RECORD_LEAVE )
+      {
+        int streamId = atoi(this->currentStream->getName()+10);
+
+        if( this->errorMap.count(streamId) > 0 )
+        {
+          if( this->errorMap[streamId].current < this->errorMap[streamId].occurrence )
+          {
+            this->errorMap[streamId].current++;
+          }
+          else
+          {
+            //UTILS_MSG(true, "Sync %llu (of %llu) in stream %llu", 
+            //      this->errorMap[streamId].current, this->errorMap[streamId].occurrence, streamId );
+            OTF2_CHECK( OTF2_AttributeList_AddStringRef( attributes, 
+                                                         cTable->getMetricId( OMP_BARRIER_ERROR ), 
+                                                         cTable->getStringRef( OMP_BARRIER_ERROR ) ) );
+
+            OTF2_CHECK( OTF2_MarkerWriter_WriteMarker( 
+              markerWriter, event.time, 0, 0, 
+              OTF2_MARKER_SCOPE_LOCATION, event.location,
+              cTable->getMetricDescription( OMP_BARRIER_ERROR ) ) );
+          }
         }
       }
 

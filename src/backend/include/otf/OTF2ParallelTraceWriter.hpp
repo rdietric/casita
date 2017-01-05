@@ -211,6 +211,9 @@ namespace casita
       //!< maps each process to corresponding evtWriter
       std::map< uint64_t, OTF2_EvtWriter* > evt_writerMap;
       
+      //!< marker writer
+      OTF2_MarkerWriter* markerWriter;
+      
       OTF2_GlobalDefWriter* global_def_writer;
       OTF2_Archive* archive;
       OTF2_Reader*  reader;

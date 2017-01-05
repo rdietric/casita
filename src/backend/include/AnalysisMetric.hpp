@@ -138,6 +138,19 @@ namespace casita
       }
       
       static const char*
+      getMetricName( MetricType metricId )
+      {
+        if( metricId < NUM_DEFAULT_METRICS )
+        {
+          return METRIC_TABLE[metricId].name;
+        }
+        else
+        {
+          return METRIC_TABLE[metricId - 1].name;
+        }
+      }
+      
+      static const char*
       getMetricDescription( MetricType metricId )
       {
         if( metricId < NUM_DEFAULT_METRICS )
