@@ -108,16 +108,22 @@ namespace casita
       clearBarrierEventList( bool device, GraphNode* caller = NULL, int matchingId = 0 );
 
       void
-      setOmpTargetBegin( GraphNode* node );
+      setTargetEnter( GraphNode* node );
+      
+      GraphNode*
+      getTargetEnter( int targetDeviceId );
 
+      bool
+      isFirstTargetOffloadEvent( uint64_t streamId );
+      
       GraphNode*
       consumeOmpTargetBegin( uint64_t streamId );
 
       void
-      setOmpTargetFirstEvent( GraphNode* node );
+      setTargetOffloadFirstEvent( GraphNode* node );
 
       GraphNode*
-      consumeOmpTargetFirstEvent( uint64_t streamId );
+      consumTargetOffloadFirstEvent( uint64_t streamId );
 
       void
       setOmpTargetLastEvent( GraphNode* node );
@@ -147,6 +153,13 @@ namespace casita
       BarrierNodesMap ompBarrierNodesMap;
       
       ///////////////////////
+      
+      //// OMPT target related ////
+      
+      //<! target enter node of the current target region (assumes blocking target region)
+      GraphNode* currentTargetEnter;
+      
+      /////////////////////////////
       
       //<! log the OpenMP enter events, needed to resolve nested function calls
       pendingOMPKernelStackMap ompBackTraceStackMap;

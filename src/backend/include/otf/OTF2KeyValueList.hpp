@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -106,9 +106,15 @@ namespace casita
       }
 
       uint32_t
-      getSize( )
+      getSize()
       {
         return OTF2_AttributeList_GetNumberOfElements( list );
+      }
+      
+      bool
+      testAttribute( uint32_t attrID )
+      {
+        return OTF2_AttributeList_TestAttributeByID( list, attrID );
       }
 
     private:

@@ -36,6 +36,7 @@ EventStream::EventStream( uint64_t          id,
   streamType( eventStreamType ),
   remoteStream( remoteStream ),
   nodesAdded( false ),
+  deviceId ( -1 ),
   hasFirstCriticalNode( false ),
   hasLastEvent( false ),
   lastNode( NULL ),
@@ -106,15 +107,33 @@ EventStream::isDeviceStream( ) const
 }
 
 bool
-EventStream::isDeviceNullStream( ) const
+EventStream::isDeviceNullStream() const
 {
   return streamType & ES_DEVICE_NULL;
 }
 
 bool
-EventStream::isRemoteStream( ) const
+EventStream::isRemoteStream() const
 {
   return remoteStream;
+}
+
+void
+EventStream::setDeviceId( int deviceId )
+{
+  this->deviceId = deviceId;
+}
+
+/**
+ * Obtain the device ID that has been parsed from the name of the stream. It is
+ * -1 if unknown.
+ * 
+ * @return the device ID or -1 if unknown
+ */
+int
+EventStream::getDeviceId() const
+{
+  return deviceId;
 }
 
 /**

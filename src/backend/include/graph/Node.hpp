@@ -121,7 +121,7 @@ namespace casita
    OMP_IMPLICIT_TASK  = ( 1 << 4 ),
    OMP_MISC           = ( 1 << 5 ),
    OMP_WAITSTATE      = ( 1 << 6 ),
-   OMP_TARGET_OFFLOAD = ( 1 << 7 ),
+   OMP_TARGET         = ( 1 << 7 ),
    OMP_TARGET_FLUSH   = ( 1 << 8 )
  };
 
@@ -197,7 +197,7 @@ namespace casita
    { OMP_SYNC, "omp_sync" },
    { OMP_FORKJOIN, "omp_forkjoin" },
    { OMP_MISC, "omp_compute" },
-   { OMP_TARGET_OFFLOAD, "omp_target_offload" },
+   { OMP_TARGET, "omp_target" },
    { OMP_TARGET_FLUSH, "omp_target_flush" }
  };
 
@@ -520,9 +520,9 @@ namespace casita
      }
 
      bool
-     isOMPTargetOffload( ) const
+     isOMPTarget( ) const
      {
-       return isOMP( ) && ( nodeType & OMP_TARGET_OFFLOAD );
+       return isOMP( ) && ( nodeType & OMP_TARGET );
      }
 
      bool

@@ -152,7 +152,7 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
       streamType = EventStream::ES_DEVICE;
   }
     
-  if ( strstr( name, "MIC" ) )
+  if ( strstr( name, "MIC" ) || strstr( name, "target" ) )
   {
     streamType = EventStream::ES_DEVICE;
 
@@ -268,6 +268,7 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   // only start time, end time and number of CPU events between nodes is stored
   if ( functionDesc.paradigm == PARADIGM_CPU )
   {
+    //UTILS_MSG( true, "CPU event: %s", funcName );
     analysis.addCPUEvent( time, streamId, false );
     return;
   }

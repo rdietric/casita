@@ -108,6 +108,12 @@ namespace casita
 
      const char*
      getName( ) const;
+     
+     void
+     setDeviceId( int deviceId );
+     
+     int
+     getDeviceId( void ) const;
 
      EventStream::EventStreamType
      getStreamType( ) const;
@@ -437,6 +443,9 @@ namespace casita
      EventStreamType     streamType;
      bool                remoteStream;
      bool                nodesAdded; //!< has the stream new nodes?
+     
+     //!< device ID parsed from stream name, -1 if unknown
+     int deviceId;
      
      //!< first enter and last leave time
      std::pair< uint64_t, uint64_t > streamPeriod; 

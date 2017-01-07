@@ -20,6 +20,7 @@
 
 #include <stdio.h>
 #include <utility>
+#include <cstdlib>
 
 #include "GraphEngine.hpp"
 #include "FunctionTable.hpp"
@@ -57,7 +58,6 @@ GraphEngine::newEventStream( uint64_t                     id,
                              uint64_t                     parentId,
                              const std::string            name,
                              EventStream::EventStreamType streamType,
-                             /*Paradigm                     paradigm,*/
                              bool                         remoteStream )
 {
   //\todo: check whether that is always true
@@ -92,6 +92,15 @@ GraphEngine::newEventStream( uint64_t                     id,
     if ( streamType == EventStream::ES_DEVICE )
     {
       streamGroup.addDeviceStream( p );
+      
+      // try to figure out the device ID for OpenMP target threads
+      int deviceId = -1;
+      if( strstr( name.c_str(), "OMP target thread [" ) )
+      {
+        deviceId = atoi( name.c_str()+19 );
+      }
+      
+      p->setDeviceId( deviceId );
     }
     else if ( streamType == EventStream::ES_DEVICE_NULL )
     {
@@ -166,6 +175,17 @@ const EventStreamGroup::EventStreamList&
 GraphEngine::getDeviceStreams( ) const
 {
   return streamGroup.getDeviceStreams( );
+}
+
+void
+GraphEngine::getDeviceStreams( 
+  int deviceId, 
+  EventStreamGroup::EventStreamList& deviceStreams ) const
+{
+  if( deviceId == -1 )
+    return;
+  
+  streamGroup.getDeviceStreams( deviceId, deviceStreams );
 }
 
 void

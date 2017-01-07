@@ -76,6 +76,13 @@ namespace casita
       return true;
     }
 
+    /**
+     * 
+     * 
+     * @param userData
+     * @param node
+     * @return 
+     */
     static bool
     deviceStreamWalkCallback( void* userData, GraphNode* node )
     {
@@ -93,7 +100,7 @@ namespace casita
         }
       }
 
-      if ( node->isProcess() || (node->isEnter() && node->isOMPTargetOffload()) )
+      if ( node->isProcess() || (node->isEnter() && node->isOMPTarget()) )
       {
         return false;
       }

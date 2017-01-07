@@ -504,17 +504,18 @@ namespace casita
            return false;
          }
          else */
-         if ( strstr( name+5, "barrier" ) ) // this includes wait_barrier
+         if ( strstr( name+6, "barrier" ) ) // this includes wait_barrier
          {
            descr->functionType = OMP_SYNC;
          }
          else // not a barrier
          {
-           if ( strstr( name+5, "target " ) || strstr( name+5, "targetmap " ) )
+           // target regions (ignore target data regions)
+           if ( strstr( name+6, "target" ) && strstr( name+13, "data" ) == NULL )
            {
-             descr->functionType = OMP_TARGET_OFFLOAD;
+             descr->functionType = OMP_TARGET;
            }
-           else if ( strstr( name+5, "offloading flush" ) )
+           else if ( strstr( name+6, "offloading flush" ) )
            {
              descr->functionType = OMP_TARGET_FLUSH;
            }
@@ -522,11 +523,11 @@ namespace casita
            {
              // threads of a parallel region start with 
              // OPARI2: parallel begin event || OMPT: implicit task begin event
-             if( strstr( name+5, "parallel" ) )
+             if( strstr( name+6, "parallel" ) )
              {
                descr->functionType = OMP_PARALLEL;
              }
-             else if( strstr( name+5, "implicit_task" ) )
+             else if( strstr( name+6, "implicit" ) && strstr( name+14, "task" ) )
              {
                descr->functionType = OMP_IMPLICIT_TASK;
              }

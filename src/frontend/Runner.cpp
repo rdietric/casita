@@ -1559,17 +1559,17 @@ Runner::runAnalysis( Paradigm                          paradigm,
   }
 
   size_t ctr       = 0, last_ctr = 0;
-  size_t num_nodes = allNodes.size( );
+  size_t num_nodes = allNodes.size();
 
   // apply paradigm specific rules
   for ( EventStream::SortedGraphNodeList::const_iterator nIter = allNodes.begin( );
-        nIter != allNodes.end( ); ++nIter )
+        nIter != allNodes.end(); ++nIter )
   {
     GraphNode* node = *nIter;
     ctr++;
 
     // ignore non-paradigm rules
-    if ( !( node->getParadigm( ) & paradigm ) )
+    if ( !( node->getParadigm() & paradigm ) )
     {
       continue;
     }

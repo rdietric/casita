@@ -17,8 +17,8 @@
 #include "omp/OMPForkJoinRule.hpp"
 #include "omp/OMPComputeRule.hpp"
 #include "omp/OMPBarrierRule.hpp"
-#include "omp/OMPTargetRule.hpp"
-#include "omp/OMPTargetBarrierRule.hpp"
+#include "omp/OMPTTargetRule.hpp"
+//#include "omp/OMPTargetBarrierRule.hpp"
 
 using namespace casita;
 using namespace casita::omp;
@@ -27,6 +27,7 @@ using namespace casita::io;
 AnalysisParadigmOMP::AnalysisParadigmOMP( AnalysisEngine* analysisEngine ) :
   IAnalysisParadigm( analysisEngine )
 {
+  currentTargetEnter = NULL;
   
   // use different rules for OMPT and OPARI2 instrumentation
   if( !analysisEngine->haveParadigm( PARADIGM_OMPT ) )
@@ -39,8 +40,9 @@ AnalysisParadigmOMP::AnalysisParadigmOMP( AnalysisEngine* analysisEngine ) :
   // add OpenMP target rules only, if a MIC device stream is available
   if( analysisEngine->haveParadigm( PARADIGM_OMP_TARGET ) )
   {
-    addRule( new OMPTargetRule( 1 ) );
-    addRule( new OMPTargetBarrierRule( 1 ) );
+    addRule( new OMPTTargetRule( 1 ) );
+    //addRule( new OMPTargetRule( 1 ) );
+    //addRule( new OMPTargetBarrierRule( 1 ) );
   }
 }
 
@@ -339,31 +341,48 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
 {
   if( commonAnalysis->haveParadigm( PARADIGM_OMP_TARGET ) )
   {
-    int32_t streamRefKey = -1;
-    uint64_t device_id = 0;
+    int32_t devIdKey = reader->getFirstKey( SCOREP_OMPT_DEVICE_ID );
     
-    streamRefKey = reader->getFirstKey( SCOREP_OMPT_DEVICE_ID );
-    if ( streamRefKey > -1 && list && list->getSize() > 0 &&
-         list->getUInt64( (uint32_t)streamRefKey, &device_id ) == 
-                                                  OTF2KeyValueList::KV_SUCCESS )
+    if ( devIdKey > -1 && list && list->getSize() > 0 && 
+         list->testAttribute( (uint32_t)devIdKey ) )
     {
+      uint64_t device_id = 0;
       
+      list->getUInt64( (uint32_t)devIdKey, &device_id );
+      
+      //UTILS_MSG( true, "Found device id %"PRIu64" on %s", 
+      //           device_id, node->getUniqueName().c_str());
+      
+      // use this for the device ID instead of the stream ID
+      // referenced stream ID is initialized to zero!
+      node->setReferencedStreamId( device_id );
+      node->setData( (void*)1 );
+      
+      // todo: put this into target rule
+      currentTargetEnter = node;
+      //todo: add to list and use later when device id is found on device thread
+      
+      //todo: rule the creates edge from first device node to target enter node
+      // getDeviceStreamsByDeviceId
     }
   }
   
   // if the trace has been generated with OMPT instrumentation
   if( commonAnalysis->haveParadigm( PARADIGM_OMPT ) )
   {
-    int32_t streamRefKey = -1;
-    uint64_t parallel_id = 0;
-
     // get the parallel region ID, 
-    streamRefKey = reader->getFirstKey( SCOREP_OMPT_PARALLEL_ID );
-    if ( streamRefKey > -1 && list && list->getSize() > 0 &&
-         list->getUInt64( (uint32_t)streamRefKey, &parallel_id ) == 
-                                                  OTF2KeyValueList::KV_SUCCESS )
+    int32_t parallelIdKey = reader->getFirstKey( SCOREP_OMPT_PARALLEL_ID );
+    if ( parallelIdKey > -1 && list && list->getSize() > 0 &&
+         list->testAttribute( (uint32_t)parallelIdKey ) )
     {
       // we enter parallel region, either as master or worker thread ...
+      
+      uint64_t parallel_id = 0;
+      
+      list->getUInt64( (uint32_t)parallelIdKey, &parallel_id );      
+      
+      //UTILS_MSG( true, "Found parallel id %"PRIu64" on %s", 
+      //           parallel_id, node->getUniqueName().c_str());
       
       // if parallel region enter event
       if( node->isOMPParallel() )
@@ -378,7 +397,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
         ompParallelIdNodeMap[ parallel_id ] = node;
       }
       // if node has no caller (first event on a stream), but no parallel
-      else if ( !node->getCaller() )
+      else if ( node->getCaller() == NULL )
       {
         // create dependency edge to associated parallel region begin event
         if( ompParallelIdNodeMap.count( parallel_id ) > 0 )
@@ -391,14 +410,14 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
         }
         else
         {
-          UTILS_WARNING( "OMPT parallel region ID  for %s not available!",
+          UTILS_WARNING( "OMPT parallel region ID for %s not available!",
                          commonAnalysis->getNodeInfo( node ).c_str() );
         }
       }
     }
   }
 
-  // this is only for offloaded regions
+  /* this is only for offloaded regions (deprecated, used in libmpti implementation)
   if ( commonAnalysis->getStream( node->getStreamId( ) )->getStreamType( )
        == EventStream::ES_DEVICE )
   {
@@ -427,7 +446,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
       }
     }
 
-    /* region id */
+    // region id
     streamRefKey = reader->getFirstKey( SCOREP_OMP_TARGET_REGION_ID );
     if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
          list->getUInt64( (uint32_t)streamRefKey,
@@ -440,7 +459,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
         node->setCounter( OMP_REGION_ID, key_value );
       }
     }
-  }
+  }*/
 }
 
 void
@@ -588,22 +607,67 @@ AnalysisParadigmOMP::clearBarrierEventList( bool device, GraphNode* caller, int 
 }
 
 /**
- * Set the OpenMP target begin node for the node's stream. 
+ * Set the OpenMP target begin node on a host stream.
+ * \todo: the current measurement does not provide information reasonable 
+ * information on the correlation between host and device tasks
+ * It is assumed that a target region is blocking.
  * 
  * @param node OpenMP target begin node
  */
 void
-AnalysisParadigmOMP::setOmpTargetBegin( GraphNode* node )
+AnalysisParadigmOMP::setTargetEnter( GraphNode* node )
 {
-  if ( ompTargetRegionBeginMap.find( node->getStreamId( ) ) !=
-       ompTargetRegionBeginMap.end( ) )
+  if ( ompTargetRegionBeginMap.find( node->getStreamId() ) !=
+       ompTargetRegionBeginMap.end() )
   {
-    ErrorUtils::getInstance( ).outputMessage(
-      "[OpenMP Offloading]: Nested target regions detected. Replacing target begin with %s",
-      node->getUniqueName( ).c_str( ) );
+    UTILS_WARNING( "[OpenMP Offloading]: Nested target regions detected. "
+                   "Replacing target begin with %s",
+                   node->getUniqueName().c_str() );
   }
 
-  ompTargetRegionBeginMap[node->getStreamId( )] = node;
+  ompTargetRegionBeginMap[node->getStreamId()] = node;
+  
+  //currentTargetEnter = node;
+}
+
+/**
+ * Get the earliest OpenMP target enter node for a given targetDeviceId.
+ * 
+ * @param targetDeviceId target device ID (from OTF2 attribute)
+ */
+GraphNode*
+AnalysisParadigmOMP::getTargetEnter( int targetDeviceId )
+{
+  if( targetDeviceId == -1 )
+  {
+    UTILS_WARNING( "[OpenMP Offloading]: Cannot get target enter node! "
+                   "Invalid target device ID!" )
+    return NULL;
+  }
+  
+  //UTILS_MSG( true, "getTargetEnter for device id %d (%lu)", targetDeviceId, 
+  //           ompTargetRegionBeginMap.size() );
+
+  GraphNode* targetEnter = NULL;
+  for ( IdNodeMap::const_iterator it = ompTargetRegionBeginMap.begin();
+        it != ompTargetRegionBeginMap.end(); ++it )
+  {
+    GraphNode* currEnter = it->second;
+    
+    //UTILS_MSG( true, "Target data %p, refstream %llu", currEnter->getData(), 
+    //           currEnter->getReferencedStreamId() );
+    
+    if( currEnter->getData() && 
+        currEnter->getReferencedStreamId() == (uint64_t)targetDeviceId )
+    {
+      if( !targetEnter || ( targetEnter && Node::compareLess( currEnter, targetEnter ) ) )
+      {
+        targetEnter = currEnter;
+      }
+    }
+  }
+  
+  return targetEnter;
 }
 
 /**
@@ -627,21 +691,28 @@ AnalysisParadigmOMP::consumeOmpTargetBegin( uint64_t streamId )
   }
 }
 
-void
-AnalysisParadigmOMP::setOmpTargetFirstEvent( GraphNode* node )
+bool
+AnalysisParadigmOMP::isFirstTargetOffloadEvent( uint64_t streamId )
 {
-  if ( ompTargetDeviceFirstEventMap.find( node->getStreamId( ) ) ==
-       ompTargetDeviceFirstEventMap.end( ) )
+  return ompTargetDeviceFirstEventMap.find( streamId ) ==
+                                             ompTargetDeviceFirstEventMap.end();
+}
+
+void
+AnalysisParadigmOMP::setTargetOffloadFirstEvent( GraphNode* node )
+{
+  // if node is not yet in the map
+  if ( ompTargetDeviceFirstEventMap.find( node->getStreamId() ) ==
+       ompTargetDeviceFirstEventMap.end() )
   {
-    ompTargetDeviceFirstEventMap[node->getStreamId( )] = node;
+    ompTargetDeviceFirstEventMap[node->getStreamId()] = node;
   }
 }
 
 GraphNode*
-AnalysisParadigmOMP::consumeOmpTargetFirstEvent( uint64_t streamId )
+AnalysisParadigmOMP::consumTargetOffloadFirstEvent( uint64_t streamId )
 {
-  IdNodeMap::iterator iter = ompTargetDeviceFirstEventMap.find(
-    streamId );
+  IdNodeMap::iterator iter = ompTargetDeviceFirstEventMap.find( streamId );
   if ( iter == ompTargetDeviceFirstEventMap.end( ) )
   {
     return NULL;
@@ -657,10 +728,10 @@ AnalysisParadigmOMP::consumeOmpTargetFirstEvent( uint64_t streamId )
 void
 AnalysisParadigmOMP::setOmpTargetLastEvent( GraphNode* node )
 {
-  if ( ompTargetDeviceFirstEventMap.find( node->getStreamId( ) ) !=
-       ompTargetDeviceFirstEventMap.end( ) )
+  if ( ompTargetDeviceFirstEventMap.find( node->getStreamId() ) !=
+       ompTargetDeviceFirstEventMap.end() )
   {
-    ompTargetDeviceLastEventMap[node->getStreamId( )] = node;
+    ompTargetDeviceLastEventMap[node->getStreamId()] = node;
   }
 }
 
@@ -691,8 +762,8 @@ void
 AnalysisParadigmOMP::popOmpTargetRegion( GraphNode* node )
 {
   OmpStreamRegionsMap::iterator iter = ompTargetStreamRegionsMap.find(
-    node->getStreamId( ) );
-  if ( iter != ompTargetStreamRegionsMap.end( ) )
+    node->getStreamId() );
+  if ( iter != ompTargetStreamRegionsMap.end() )
   {
     uint64_t region_id = iter->second.second.back( );
     iter->second.second.pop_back( );
