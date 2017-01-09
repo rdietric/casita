@@ -38,6 +38,7 @@ namespace casita
       typedef map< uint64_t, BarrierCountStack > StreamParallelBarrierMap;
       
       typedef vector< GraphNode* > GraphNodeVec;
+      typedef map< uint64_t, GraphNodeVec > IdNodeVecMap;
       typedef vector< GraphNodeVec > VecNodeVec;
       typedef map< GraphNode*, VecNodeVec > BarrierNodesMap;
       
@@ -108,16 +109,22 @@ namespace casita
       clearBarrierEventList( bool device, GraphNode* caller = NULL, int matchingId = 0 );
 
       void
-      setOmpTargetBegin( GraphNode* node );
+      setTargetEnter( GraphNode* node );
+      
+      GraphNode*
+      getTargetEnter( int targetDeviceId );
 
+      bool
+      isFirstTargetOffloadEvent( uint64_t streamId );
+      
       GraphNode*
       consumeOmpTargetBegin( uint64_t streamId );
 
       void
-      setOmpTargetFirstEvent( GraphNode* node );
+      setTargetOffloadFirstEvent( GraphNode* node );
 
       GraphNode*
-      consumeOmpTargetFirstEvent( uint64_t streamId );
+      consumTargetOffloadFirstEvent( uint64_t streamId );
 
       void
       setOmpTargetLastEvent( GraphNode* node );
@@ -146,7 +153,18 @@ namespace casita
       //<! key: parallel enter node, value: vector of barriers with vector of corresponding barrier nodes
       BarrierNodesMap ompBarrierNodesMap;
       
+      // this is due to measurement artefacts
+      //<! vector of open nodes where parallel region was not opened
+      IdNodeVecMap ompOpenWorkerNodesMap;
+      
       ///////////////////////
+      
+      //// OMPT target related ////
+      
+      //<! key: parallel region ID, value: parallel enter node
+      IdNodeMap ompDeviceParallelIdNodeMap;
+      
+      /////////////////////////////
       
       //<! log the OpenMP enter events, needed to resolve nested function calls
       pendingOMPKernelStackMap ompBackTraceStackMap;

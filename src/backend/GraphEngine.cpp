@@ -9,17 +9,20 @@
  * directory for details.
  *
  * What this file does:
- * - provide interaction with Graph: create/delete nodes/Edges/streams, getter, setter
- * - Streams are event streams within a process (OMP,CUDA). Nodes are stored both in the graph (per process) and in each event stream (as a pointer)
- * - For every stream there is a start node, additionally, there is a global start node per process
- * - CPU Data is aggregated during reading of OTF (=graph creation) and added to edges between non-cpu events
- * - sanity-check (not sure if that's used anywhere in the program -> Deprecated)
+ * - provide interaction with Graph: create/delete nodes/Edges/streams
+ * - Streams are event streams within a process/thread (OMP,CUDA). 
+ * - Nodes are stored in the graph (per process) and in each event stream (as a pointer)
+ * - For every stream there is a start node, additionally, there is a global start node per MPI rank
+ * - CPU Data is aggregated during reading of OTF (=graph creation) and added 
+ *   to edges between non-CPU events
+ * - Sanity-check (not sure if that's used anywhere in the program -> Deprecated)
  * -
  *
  */
 
 #include <stdio.h>
 #include <utility>
+#include <cstdlib>
 
 #include "GraphEngine.hpp"
 #include "FunctionTable.hpp"
@@ -57,7 +60,6 @@ GraphEngine::newEventStream( uint64_t                     id,
                              uint64_t                     parentId,
                              const std::string            name,
                              EventStream::EventStreamType streamType,
-                             /*Paradigm                     paradigm,*/
                              bool                         remoteStream )
 {
   //\todo: check whether that is always true
@@ -92,6 +94,15 @@ GraphEngine::newEventStream( uint64_t                     id,
     if ( streamType == EventStream::ES_DEVICE )
     {
       streamGroup.addDeviceStream( p );
+      
+      // try to figure out the device ID for OpenMP target threads
+      int deviceId = -1;
+      if( strstr( name.c_str(), "OMP target thread [" ) )
+      {
+        deviceId = atoi( name.c_str()+19 );
+      }
+      
+      p->setDeviceId( deviceId );
     }
     else if ( streamType == EventStream::ES_DEVICE_NULL )
     {
@@ -166,6 +177,17 @@ const EventStreamGroup::EventStreamList&
 GraphEngine::getDeviceStreams( ) const
 {
   return streamGroup.getDeviceStreams( );
+}
+
+void
+GraphEngine::getDeviceStreams( 
+  int deviceId, 
+  EventStreamGroup::EventStreamList& deviceStreams ) const
+{
+  if( deviceId == -1 )
+    return;
+  
+  streamGroup.getDeviceStreams( deviceId, deviceStreams );
 }
 
 void
@@ -256,6 +278,10 @@ Edge*
 GraphEngine::newEdge( GraphNode* source, GraphNode* target, 
                       int properties, Paradigm* edgeType )
 {
+  if( target->getId() == 500 ){
+    UTILS_MSG( true, "bla");
+  }
+  
   Paradigm paradigm = PARADIGM_ALL;
   if ( edgeType )
   {
@@ -680,7 +706,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   }
 
   // to support nesting we use a stack to keep track of open activities
-  GraphNode* stackNode = topGraphNodeStack( stream->getId()/*node->getStreamId( )*/ );
+  GraphNode* stackNode = topGraphNodeStack( stream->getId() );
 
   if ( node->isLeave() )
   {
@@ -725,24 +751,28 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   for ( size_t p_index = 0; p_index < NODE_PARADIGM_COUNT; ++p_index )
   {
     Paradigm paradigm = (Paradigm)( 1 << p_index );
-    GraphNode::ParadigmNodeMap::const_iterator predPnmIter = predNodeMap.find(
-      paradigm );
-    GraphNode::ParadigmNodeMap::const_iterator nextPnmIter = nextNodeMap.find(
-      paradigm );
+    GraphNode::ParadigmNodeMap::const_iterator predPnmIter = 
+      predNodeMap.find( paradigm );
+    GraphNode::ParadigmNodeMap::const_iterator nextPnmIter = 
+      nextNodeMap.find( paradigm );
 
-    if ( predPnmIter != predNodeMap.end( ) && ( !directPredecessor ||
-                                                Node::compareLess(
-                                                  directPredecessor,
-                                                  predPnmIter->second ) ) )
+    // if we have a paradigm predecessor node AND 
+    // (there is no direct predecessor OR the direct predecessor is before paradigm predecessor)
+    if ( predPnmIter != predNodeMap.end() && 
+         ( !directPredecessor || Node::compareLess( directPredecessor, predPnmIter->second ) ) )
     {
+      // set the direct predecessor to the paradigm predecessor
       directPredecessor = predPnmIter->second;
       //std::cerr << "directPredecessor found: ";
       //std::cerr << directPredecessor->getUniqueName() << std::endl;
     }
 
-    if( nextPnmIter != nextNodeMap.end( ) && 
+    // if we have a paradigm successor AND
+    // (there is no direct successor OR the paradigm predecessor is before the direct successor)
+    if( nextPnmIter != nextNodeMap.end() && 
         ( !directSuccessor || Node::compareLess( nextPnmIter->second, directSuccessor ) ) )
     {
+      //set the direct successor to the paradigm successor
       directSuccessor = nextPnmIter->second;
     }
   }

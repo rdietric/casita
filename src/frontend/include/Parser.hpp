@@ -25,14 +25,11 @@
 
 namespace casita
 {
- #if defined( BOOST_AVAILABLE )
- namespace po = boost::program_options;
- #endif
- 
  typedef struct
  {
    bool        createTraceFile;
    bool        printCriticalPath;
+   bool        cpaLoopCheck;
    bool        mergeActivities;
    bool        noErrors;
    bool        ignoreAsyncMpi;

@@ -124,30 +124,29 @@ namespace casita
             GraphNode::GraphNodeList::const_iterator current_iter = iter;
             GraphNode::GraphNodeList::const_iterator next_iter    = ++iter;
 
-            if ( next_iter != waitsStateNodesList.end( ) )
+            if ( next_iter != waitsStateNodesList.end() )
             {
               commonAnalysis->getEdge( *current_iter,
-                                       *next_iter )->makeBlocking( );
+                                       *next_iter )->makeBlocking();
 
-              //\todo: write counter to enter event
               ( *next_iter )->setCounter( WAITING_TIME,
-                                          ( *next_iter )->getTime( ) -
-                                          ( *current_iter )->getTime( ) );
+                                          ( *next_iter )->getTime() -
+                                          ( *current_iter )->getTime() );
             }
           }
 
           /* add dependency edges */
           commonAnalysis->newEdge( targetBegin,
                                    firstEventNode,
-                                   EDGE_NONE )->getName( );
+                                   EDGE_NONE )->getName();
 
           commonAnalysis->newEdge( lastEventNode,
                                    node,
-                                   EDGE_CAUSES_WAITSTATE )->getName( );
+                                   EDGE_CAUSES_WAITSTATE )->getName();
 
           distributeBlame( commonAnalysis,
                            lastEventNode,
-                           node->getTime( ) - node->getPartner( )->getTime( ),
+                           node->getTime() - node->getPartner()->getTime(),
                            deviceStreamWalkCallback );
 
           return true;
@@ -155,13 +154,13 @@ namespace casita
         else
         {
           // for OpenMP target flush region leave node
-          if ( node->isOMPTargetFlush( ) )
+          if ( node->isOMPTargetFlush() )
           {
             GraphNode* targetBegin = 
-                    analysis->consumeOmpTargetBegin( node->getStreamId( ) );
+                    analysis->consumeOmpTargetBegin( node->getStreamId ) );
             if ( !targetBegin )
             {
-              ErrorUtils::getInstance( ).throwError(
+              ErrorUtils::getInstance().throwError(
                 "[OMPT] Found OMP target flush %s without target begin",
                 node->getUniqueName( ).c_str( ) );
             }

@@ -56,6 +56,9 @@ namespace casita
 
      const EventStreamList&
      getDeviceStreams( ) const;
+     
+     void
+     getDeviceStreams( int deviceId, EventStreamList& newDeviceStreams ) const;
 
      void
      getAllDeviceStreams( EventStreamList& newDeviceStreams ) const;

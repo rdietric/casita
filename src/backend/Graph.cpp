@@ -549,6 +549,37 @@ Graph::getLongestPath( GraphNode* startNode, GraphNode* endNode,
   }*/
 }
 
+void
+Graph::printInEdges( GraphNode* node ) const
+{
+  UTILS_MSG( true, "    In-edges for %s:", node->getUniqueName().c_str() );
+  const Graph::EdgeList& inEdges = getInEdges( node );
+  for ( Graph::EdgeList::const_iterator eIter = inEdges.begin();
+        eIter != inEdges.end( ); ++eIter )
+  {
+    Edge* edge = *eIter;
+    UTILS_MSG( true, "     %s", edge->getName().c_str() );
+  }
+}
+
+void
+Graph::printCircle( GraphNode* node, GraphNode::GraphNodeList& nodeList ) const
+{
+  UTILS_MSG( true, "Circular dependency in local critical path analysis!" );
+  UTILS_MSG( true, " %s", node->getUniqueName().c_str() );
+  for( GraphNode::GraphNodeList::const_iterator it = nodeList.begin();
+       it != nodeList.end(); ++it )
+  {
+    UTILS_MSG( true, "  <- %s", (*it)->getUniqueName().c_str() );
+    printInEdges( *it );
+    
+    if( node == *it )
+    {
+      return;
+    }
+  }
+}
+
 /**
  * Detect the longest/critical path between the given start and stop node.
  * \todo: get start and end iterator (check findNode() in EventStream())
@@ -613,9 +644,24 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
                    currentNode->getUniqueName().c_str(),
                    predecessorNode->getUniqueName().c_str(), maxWeight);*/
 
-        path.push_front( currentNode );
+        if( Parser::getInstance().getProgramOptions().cpaLoopCheck && 
+            GraphNode::search( currentNode, path ) )
+        {
+          UTILS_WARNING( "Circular loop detected in local critical path analysis at %s! ",
+                         currentNode->getUniqueName().c_str() );
+          
+          printCircle( currentNode, path );
+          
+          currentNode = path.front();
+          predecessorNode = currentNode; // ignore following endless loop check
+        }
+        else
+        {
+          path.push_front( currentNode );
+        }
         
-        if( currentNode != predecessorNode ) // check for endless loop
+        // check for endless loop between two nodes
+        if( currentNode != predecessorNode ) 
         {
           currentNode = predecessorNode;
           continue;
@@ -645,7 +691,18 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
                currentNode->getUniqueName().c_str() );
     
     // add the current node to the critical nodes
-    path.push_front( currentNode );
+    if( Parser::getInstance().getProgramOptions().cpaLoopCheck && 
+        GraphNode::search( currentNode, path ) )
+    {
+      UTILS_WARNING( "Try to insert %s twice on the critical path!",
+                     currentNode->getUniqueName().c_str() );
+      
+      printCircle( currentNode, path );
+    }
+    else
+    {
+      path.push_front( currentNode );
+    }
     
     if( currentNode != predecessorNode ) // check for endless loop
     {

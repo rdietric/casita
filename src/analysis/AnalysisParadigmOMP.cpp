@@ -17,8 +17,8 @@
 #include "omp/OMPForkJoinRule.hpp"
 #include "omp/OMPComputeRule.hpp"
 #include "omp/OMPBarrierRule.hpp"
-#include "omp/OMPTargetRule.hpp"
-#include "omp/OMPTargetBarrierRule.hpp"
+#include "omp/OMPTTargetRule.hpp"
+//#include "omp/OMPTargetBarrierRule.hpp"
 
 using namespace casita;
 using namespace casita::omp;
@@ -26,8 +26,7 @@ using namespace casita::io;
 
 AnalysisParadigmOMP::AnalysisParadigmOMP( AnalysisEngine* analysisEngine ) :
   IAnalysisParadigm( analysisEngine )
-{
-  
+{  
   // use different rules for OMPT and OPARI2 instrumentation
   if( !analysisEngine->haveParadigm( PARADIGM_OMPT ) )
   {
@@ -39,8 +38,9 @@ AnalysisParadigmOMP::AnalysisParadigmOMP( AnalysisEngine* analysisEngine ) :
   // add OpenMP target rules only, if a MIC device stream is available
   if( analysisEngine->haveParadigm( PARADIGM_OMP_TARGET ) )
   {
-    addRule( new OMPTargetRule( 1 ) );
-    addRule( new OMPTargetBarrierRule( 1 ) );
+    addRule( new OMPTTargetRule( 1 ) );
+    //addRule( new OMPTargetRule( 1 ) );        // libmpti is deprecated
+    //addRule( new OMPTargetBarrierRule( 1 ) ); //libmpti is deprecated
   }
 }
 
@@ -59,7 +59,7 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
     
   // at parallel leave (AND enter available)
   if( ompLeave->isOMPParallel() && parallelEnter )
-  {      
+  {
     // evaluate barriers in current parallel region
     if( ompBarrierNodesMap.count( parallelEnter ) > 0 )
     {
@@ -172,6 +172,41 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
       UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC,
                  "[OMPT] Parallel region %s without barriers.", 
                  parallelEnter->getUniqueName().c_str());
+    }
+    
+    // remove this parallel region from parallel map AND
+    // check open parallel worker nodes
+    bool valid = false;
+    uint64_t parallel_id = parallelEnter->getCounter( OMPT_REGION_ID, &valid );
+    if( valid )
+    {
+      IdNodeMap &parallelMap = ompParallelIdNodeMap;
+      EventStream* parallelStream = 
+          commonAnalysis->getStream(parallelEnter->getStreamId());
+      if( parallelStream->isDeviceStream() )
+      {
+        parallelMap = ompDeviceParallelIdNodeMap;
+      }
+      
+      if( parallelMap.count( parallel_id ) > 0 )
+      {
+        parallelMap.erase( parallel_id );
+      }
+      
+      if( ompOpenWorkerNodesMap.count( parallel_id ) > 0 )
+      {
+        for( GraphNodeVec::const_iterator it = ompOpenWorkerNodesMap[parallel_id].begin();
+               it != ompOpenWorkerNodesMap[parallel_id].end(); ++it )
+        {
+          // if parallel node and open node are either both host or device streams
+          if( parallelStream->getStreamType() & 
+              commonAnalysis->getStream( (*it)->getStreamId() )->getStreamType() )
+          {
+            UTILS_WARNING( "[OMPT] Could not generate dependency for %s",
+                           (*it)->getUniqueName().c_str() );
+          }
+        }
+      }
     }
   }
 }
@@ -291,16 +326,18 @@ AnalysisParadigmOMP::omptBarrierRule( GraphNode* syncLeave )
 void
 AnalysisParadigmOMP::handlePostLeave( GraphNode* ompLeave )
 {
-  if ( ompLeave->isOMPForkJoinRegion() &&
+  // fork/join region on the target device
+  /*if ( ompLeave->isOMPForkJoinRegion() &&
        ( commonAnalysis->getStream( ompLeave->getStreamId() )->getStreamType()
          == EventStream::ES_DEVICE ) )
   {
     popOmpTargetRegion( ompLeave );
-  }
+  }*/
 
   if ( ompLeave->isOMPSync() )
   {
-    Edge *edge = commonAnalysis->getEdge( ompLeave->getPartner(), ompLeave );
+    // get sync region edge
+    Edge *edge = commonAnalysis->getEdge( ompLeave->getGraphPair().first, ompLeave );
     
     // mark this barrier if it has no edge (outer sync)
     if ( !edge )
@@ -310,7 +347,7 @@ AnalysisParadigmOMP::handlePostLeave( GraphNode* ompLeave )
       //UTILS_WARNING( "Ignore barrier for %s", node->getUniqueName().c_str());
     }
 
-    // // this is basically the barrier rule for OMPT-based OpenMP traces
+    // this is basically the barrier rule for OMPT-based OpenMP traces
     if( commonAnalysis->haveParadigm( PARADIGM_OMPT ) )
     {
       omptBarrierRule( ompLeave );
@@ -334,57 +371,139 @@ AnalysisParadigmOMP::handlePostLeave( GraphNode* ompLeave )
  */
 void
 AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
-                                           GraphNode*        node,
+                                           GraphNode*        enterNode,
                                            OTF2KeyValueList* list )
 {
   // if the trace has been generated with OMPT instrumentation
   if( commonAnalysis->haveParadigm( PARADIGM_OMPT ) )
   {
-    int32_t streamRefKey = -1;
-    uint64_t parallel_id = 0;
+    if( commonAnalysis->haveParadigm( PARADIGM_OMP_TARGET ) && 
+        enterNode->isOMPTarget() )
+    {
+      int32_t devIdKey = reader->getFirstKey( SCOREP_OMPT_DEVICE_ID );
 
+      if ( devIdKey > -1 && list && list->getSize() > 0 && 
+           list->testAttribute( (uint32_t)devIdKey ) )
+      {
+        uint64_t device_id = 0;
+
+        list->getUInt64( (uint32_t)devIdKey, &device_id );
+
+        //UTILS_MSG( true, "Found device id %"PRIu64" on %s", 
+        //           device_id, node->getUniqueName().c_str());
+
+        // use this for the device ID instead of the stream ID
+        // referenced stream ID is initialized to zero!
+        enterNode->setReferencedStreamId( device_id );
+        enterNode->setData( (void*)1 );
+      }
+    }
+  
     // get the parallel region ID, 
-    streamRefKey = reader->getFirstKey( SCOREP_OMPT_PARALLEL_ID );
-    if ( streamRefKey > -1 && list && list->getSize() > 0 &&
-         list->getUInt64( (uint32_t)streamRefKey, &parallel_id ) == 
-                                                  OTF2KeyValueList::KV_SUCCESS )
+    int32_t parallelIdKey = reader->getFirstKey( SCOREP_OMPT_PARALLEL_ID );
+    if ( parallelIdKey > -1 && list && list->getSize() > 0 &&
+         list->testAttribute( (uint32_t)parallelIdKey ) )
     {
       // we enter parallel region, either as master or worker thread ...
       
+      uint64_t parallel_id = 0;
+      
+      list->getUInt64( (uint32_t)parallelIdKey, &parallel_id );      
+      
+      //UTILS_MSG( true, "Found parallel id %"PRIu64" on %s", 
+      //           parallel_id, node->getUniqueName().c_str());
+      
       // if parallel region enter event
-      if( node->isOMPParallel() )
+      if( enterNode->isOMPParallel() )
       {
-        if( ompParallelIdNodeMap.count( parallel_id ) > 0 )
+        IdNodeMap &parallelMap = ompParallelIdNodeMap;
+        
+        EventStream* parallelStream = 
+          commonAnalysis->getStream(enterNode->getStreamId());
+        if( parallelStream->isDeviceStream() )
         {
-          UTILS_WARNING( "Overwriting OMPT parallel region ID for %s!",
-                         commonAnalysis->getNodeInfo( node ).c_str() );
+          parallelMap = ompDeviceParallelIdNodeMap;
         }
         
-        // store parallel region ID
-        ompParallelIdNodeMap[ parallel_id ] = node;
+        // if parallel region is already listed
+        if( parallelMap.count( parallel_id ) > 0 )
+        {
+          UTILS_WARNING( "[OMPT] Overwriting parallel region (%"PRIu64") %s with %s!",
+                         parallel_id,
+                         commonAnalysis->getNodeInfo( parallelMap[parallel_id] ).c_str(),
+                         commonAnalysis->getNodeInfo( enterNode ).c_str() );
+        }
+        
+        // store parallel region ID to associate other threads with this region
+        parallelMap[ parallel_id ] = enterNode;
+        
+        // store the parallel region id to remove this region from map at parallel leave
+        enterNode->setCounter( OMPT_REGION_ID, parallel_id );
+        
+        // due to measurement artefacts the parallel region was opened late
+        // for open nodes of this parallel region
+        if( ompOpenWorkerNodesMap.count( parallel_id ) > 0 )
+        {
+          UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
+                "[OMPT] Fix dependencies for parallel region %"PRIu64" at %s",
+                parallel_id, commonAnalysis->getNodeInfo( enterNode ).c_str() );
+          
+          GraphNodeVec::iterator it = 
+            ompOpenWorkerNodesMap[parallel_id].begin();
+          while( it != ompOpenWorkerNodesMap[parallel_id].end() )
+          {
+            // if parallel node and open node are either both host or device streams
+            if( parallelStream->getStreamType() & 
+                commonAnalysis->getStream( (*it)->getStreamId() )->getStreamType() )
+            {
+              // add edge for critical path analysis
+              commonAnalysis->newEdge( enterNode, *it );
+
+              // add link to store dependency for leave event
+              (*it)->setLink( enterNode );
+              
+              it = ompOpenWorkerNodesMap[ parallel_id ].erase( it );
+            }
+            else
+            {
+              ++it;
+            }
+          }
+        }
       }
       // if node has no caller (first event on a stream), but no parallel
-      else if ( !node->getCaller() )
+      else if ( enterNode->getCaller() == NULL )
       {
+        IdNodeMap &parallelMap = ompParallelIdNodeMap;
+        if( commonAnalysis->getStream( enterNode->getStreamId() )->isDeviceStream() )
+        {
+          parallelMap = ompDeviceParallelIdNodeMap;
+        }
+        
         // create dependency edge to associated parallel region begin event
-        if( ompParallelIdNodeMap.count( parallel_id ) > 0 )
+        if( parallelMap.count( parallel_id ) > 0 )
         {
           // add edge for critical path analysis
-          commonAnalysis->newEdge( ompParallelIdNodeMap[ parallel_id ], node );
+          commonAnalysis->newEdge( parallelMap[ parallel_id ], enterNode );
           
           // add link to store dependency for leave event
-          node->setLink( ompParallelIdNodeMap[ parallel_id ] );
+          enterNode->setLink( parallelMap[ parallel_id ] );
         }
         else
         {
-          UTILS_WARNING( "OMPT parallel region ID  for %s not available!",
-                         commonAnalysis->getNodeInfo( node ).c_str() );
+          UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
+                     "[OMPT] Parallel region %"PRIu64" at %s not available!",
+                     parallel_id,
+                     commonAnalysis->getNodeInfo( enterNode ).c_str() );
+          
+          // store in open dependency list (measurement artefacts)
+          ompOpenWorkerNodesMap[parallel_id].push_back( enterNode );
         }
       }
     }
   }
 
-  // this is only for offloaded regions
+  /* this is only for offloaded regions (deprecated, used in libmpti implementation)
   if ( commonAnalysis->getStream( node->getStreamId( ) )->getStreamType( )
        == EventStream::ES_DEVICE )
   {
@@ -413,7 +532,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
       }
     }
 
-    /* region id */
+    // region id
     streamRefKey = reader->getFirstKey( SCOREP_OMP_TARGET_REGION_ID );
     if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
          list->getUInt64( (uint32_t)streamRefKey,
@@ -426,7 +545,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
         node->setCounter( OMPT_REGION_ID, key_value );
       }
     }
-  }
+  }*/
 }
 
 void
@@ -574,22 +693,65 @@ AnalysisParadigmOMP::clearBarrierEventList( bool device, GraphNode* caller, int 
 }
 
 /**
- * Set the OpenMP target begin node for the node's stream. 
+ * Set the OpenMP target begin node on a host stream.
+ * \todo: the current measurement does not provide information reasonable 
+ * information on the correlation between host and device tasks
+ * It is assumed that a target region is blocking.
  * 
  * @param node OpenMP target begin node
  */
 void
-AnalysisParadigmOMP::setOmpTargetBegin( GraphNode* node )
+AnalysisParadigmOMP::setTargetEnter( GraphNode* node )
 {
-  if ( ompTargetRegionBeginMap.find( node->getStreamId( ) ) !=
-       ompTargetRegionBeginMap.end( ) )
+  if ( ompTargetRegionBeginMap.find( node->getStreamId() ) !=
+       ompTargetRegionBeginMap.end() )
   {
-    ErrorUtils::getInstance( ).outputMessage(
-      "[OpenMP Offloading]: Nested target regions detected. Replacing target begin with %s",
-      node->getUniqueName( ).c_str( ) );
+    UTILS_WARNING( "[OpenMP Offloading]: Nested target regions detected. "
+                   "Replacing target begin with %s",
+                   node->getUniqueName().c_str() );
   }
 
-  ompTargetRegionBeginMap[node->getStreamId( )] = node;
+  ompTargetRegionBeginMap[node->getStreamId()] = node;
+}
+
+/**
+ * Get the earliest OpenMP target enter node for a given targetDeviceId.
+ * 
+ * @param targetDeviceId target device ID (from OTF2 attribute)
+ */
+GraphNode*
+AnalysisParadigmOMP::getTargetEnter( int targetDeviceId )
+{
+  if( targetDeviceId == -1 )
+  {
+    UTILS_WARNING( "[OpenMP Offloading]: Cannot get target enter node! "
+                   "Invalid target device ID!" )
+    return NULL;
+  }
+  
+  //UTILS_MSG( true, "getTargetEnter for device id %d (%lu)", targetDeviceId, 
+  //           ompTargetRegionBeginMap.size() );
+
+  GraphNode* targetEnter = NULL;
+  for ( IdNodeMap::const_iterator it = ompTargetRegionBeginMap.begin();
+        it != ompTargetRegionBeginMap.end(); ++it )
+  {
+    GraphNode* currEnter = it->second;
+    
+    //UTILS_MSG( true, "Target data %p, refstream %llu", currEnter->getData(), 
+    //           currEnter->getReferencedStreamId() );
+    
+    if( currEnter->getData() && 
+        currEnter->getReferencedStreamId() == (uint64_t)targetDeviceId )
+    {
+      if( !targetEnter || ( targetEnter && Node::compareLess( currEnter, targetEnter ) ) )
+      {
+        targetEnter = currEnter;
+      }
+    }
+  }
+  
+  return targetEnter;
 }
 
 /**
@@ -601,7 +763,7 @@ GraphNode*
 AnalysisParadigmOMP::consumeOmpTargetBegin( uint64_t streamId )
 {
   IdNodeMap::iterator iter = ompTargetRegionBeginMap.find( streamId );
-  if ( iter == ompTargetRegionBeginMap.end( ) )
+  if ( iter == ompTargetRegionBeginMap.end() )
   {
     return NULL;
   }
@@ -613,22 +775,36 @@ AnalysisParadigmOMP::consumeOmpTargetBegin( uint64_t streamId )
   }
 }
 
-void
-AnalysisParadigmOMP::setOmpTargetFirstEvent( GraphNode* node )
+bool
+AnalysisParadigmOMP::isFirstTargetOffloadEvent( uint64_t streamId )
 {
-  if ( ompTargetDeviceFirstEventMap.find( node->getStreamId( ) ) ==
-       ompTargetDeviceFirstEventMap.end( ) )
+  return ompTargetDeviceFirstEventMap.find( streamId ) ==
+                                             ompTargetDeviceFirstEventMap.end();
+}
+
+void
+AnalysisParadigmOMP::setTargetOffloadFirstEvent( GraphNode* node )
+{
+  if( node->isLeave() )
   {
-    ompTargetDeviceFirstEventMap[node->getStreamId( )] = node;
+    UTILS_WARNING( "First offload event cannot be a leave (%s)! Using the "
+                   "respective enter instead.", node->getUniqueName().c_str() );
+    node = node->getGraphPair().first;
+  }
+  
+  // if node is not yet in the map
+  if ( ompTargetDeviceFirstEventMap.find( node->getStreamId() ) ==
+       ompTargetDeviceFirstEventMap.end() )
+  {
+    ompTargetDeviceFirstEventMap[node->getStreamId()] = node;
   }
 }
 
 GraphNode*
-AnalysisParadigmOMP::consumeOmpTargetFirstEvent( uint64_t streamId )
+AnalysisParadigmOMP::consumTargetOffloadFirstEvent( uint64_t streamId )
 {
-  IdNodeMap::iterator iter = ompTargetDeviceFirstEventMap.find(
-    streamId );
-  if ( iter == ompTargetDeviceFirstEventMap.end( ) )
+  IdNodeMap::iterator iter = ompTargetDeviceFirstEventMap.find( streamId );
+  if ( iter == ompTargetDeviceFirstEventMap.end() )
   {
     return NULL;
   }
@@ -643,10 +819,10 @@ AnalysisParadigmOMP::consumeOmpTargetFirstEvent( uint64_t streamId )
 void
 AnalysisParadigmOMP::setOmpTargetLastEvent( GraphNode* node )
 {
-  if ( ompTargetDeviceFirstEventMap.find( node->getStreamId( ) ) !=
-       ompTargetDeviceFirstEventMap.end( ) )
+  if ( ompTargetDeviceFirstEventMap.find( node->getStreamId() ) !=
+       ompTargetDeviceFirstEventMap.end() )
   {
-    ompTargetDeviceLastEventMap[node->getStreamId( )] = node;
+    ompTargetDeviceLastEventMap[node->getStreamId()] = node;
   }
 }
 
@@ -654,7 +830,7 @@ GraphNode*
 AnalysisParadigmOMP::consumeOmpTargetLastEvent( uint64_t streamId )
 {
   IdNodeMap::iterator iter = ompTargetDeviceLastEventMap.find( streamId );
-  if ( iter == ompTargetDeviceLastEventMap.end( ) )
+  if ( iter == ompTargetDeviceLastEventMap.end() )
   {
     return NULL;
   }
@@ -669,22 +845,22 @@ AnalysisParadigmOMP::consumeOmpTargetLastEvent( uint64_t streamId )
 void
 AnalysisParadigmOMP::pushOmpTargetRegion( GraphNode* node, uint64_t regionId )
 {
-  ompTargetStreamRegionsMap[node->getStreamId( )].first[regionId] = node;
-  ompTargetStreamRegionsMap[node->getStreamId( )].second.push_back( regionId );
+  ompTargetStreamRegionsMap[node->getStreamId()].first[regionId] = node;
+  ompTargetStreamRegionsMap[node->getStreamId()].second.push_back( regionId );
 }
 
 void
 AnalysisParadigmOMP::popOmpTargetRegion( GraphNode* node )
 {
   OmpStreamRegionsMap::iterator iter = ompTargetStreamRegionsMap.find(
-    node->getStreamId( ) );
-  if ( iter != ompTargetStreamRegionsMap.end( ) )
+    node->getStreamId() );
+  if ( iter != ompTargetStreamRegionsMap.end() )
   {
-    uint64_t region_id = iter->second.second.back( );
-    iter->second.second.pop_back( );
+    uint64_t region_id = iter->second.second.back();
+    iter->second.second.pop_back();
     iter->second.first.erase( region_id );
 
-    if ( iter->second.second.empty( ) )
+    if ( iter->second.second.empty() )
     {
       ompTargetStreamRegionsMap.erase( iter );
     }
@@ -697,10 +873,10 @@ AnalysisParadigmOMP::findOmpTargetParentRegion( GraphNode* node,
 {
   /* search all current streams with parallel region ids */
   for ( OmpStreamRegionsMap::const_iterator esIter =
-          ompTargetStreamRegionsMap.begin( );
-        esIter != ompTargetStreamRegionsMap.end( ); ++esIter )
+          ompTargetStreamRegionsMap.begin();
+        esIter != ompTargetStreamRegionsMap.end(); ++esIter )
   {
-    if ( esIter->first != node->getStreamId( ) )
+    if ( esIter->first != node->getStreamId() )
     {
       /* search the current stack of parallel region ids of this *stream */
       std::map< uint64_t, GraphNode* >::const_iterator keyNodeIter =

@@ -128,7 +128,7 @@ EventStreamGroup::getAllStreams( EventStreamList& streams,
 }
 
 const EventStreamGroup::EventStreamList&
-EventStreamGroup::getDeviceStreams( ) const
+EventStreamGroup::getDeviceStreams(  ) const
 {
   return deviceStreams;
 }
@@ -139,6 +139,26 @@ EventStreamGroup::getHostStreams( ) const
   return hostStreams;
 }
 
+/**
+ * Get list of event streams for a given device ID.
+ * 
+ * @param deviceId
+ * @param newDeviceStreams
+ */
+void
+EventStreamGroup::getDeviceStreams( int deviceId, 
+                      EventStreamGroup::EventStreamList& newDeviceStreams) const
+{
+  for( EventStreamList::const_iterator it = deviceStreams.begin(); 
+       it != deviceStreams.end(); ++it )
+  {
+    if( (*it)->getDeviceId() == deviceId )
+    {
+      newDeviceStreams.insert( newDeviceStreams.end(), *it );
+    }
+  }
+}
+
 void
 EventStreamGroup::getAllDeviceStreams( 
                      EventStreamGroup::EventStreamList& newDeviceStreams ) const
@@ -146,10 +166,10 @@ EventStreamGroup::getAllDeviceStreams(
   newDeviceStreams.clear( );
   if ( nullStream )
   {
-    newDeviceStreams.insert( newDeviceStreams.end( ), nullStream );
+    newDeviceStreams.insert( newDeviceStreams.end(), nullStream );
   }
-  newDeviceStreams.insert( newDeviceStreams.end( ),
-                           deviceStreams.begin( ), deviceStreams.end( ) );
+  newDeviceStreams.insert( newDeviceStreams.end(),
+                           deviceStreams.begin(), deviceStreams.end( ) );
 }
 
 EventStream*

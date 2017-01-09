@@ -121,7 +121,7 @@ namespace casita
    OMP_IMPLICIT_TASK  = ( 1 << 4 ),
    OMP_MISC           = ( 1 << 5 ),
    OMP_WAITSTATE      = ( 1 << 6 ),
-   OMP_TARGET_OFFLOAD = ( 1 << 7 ),
+   OMP_TARGET         = ( 1 << 7 ),
    OMP_TARGET_FLUSH   = ( 1 << 8 )
  };
 
@@ -197,7 +197,7 @@ namespace casita
    { OMP_SYNC, "omp_sync" },
    { OMP_FORKJOIN, "omp_forkjoin" },
    { OMP_MISC, "omp_compute" },
-   { OMP_TARGET_OFFLOAD, "omp_target_offload" },
+   { OMP_TARGET, "omp_target" },
    { OMP_TARGET_FLUSH, "omp_target_flush" }
  };
 
@@ -520,9 +520,9 @@ namespace casita
      }
 
      bool
-     isOMPTargetOffload( ) const
+     isOMPTarget( ) const
      {
-       return isOMP( ) && ( nodeType & OMP_TARGET_OFFLOAD );
+       return isOMP( ) && ( nodeType & OMP_TARGET );
      }
 
      bool
@@ -601,8 +601,8 @@ namespace casita
      static bool
      compareLess( const Node* n1, const Node* n2 )
      {    
-       uint64_t time1 = n1->getTime( );
-       uint64_t time2 = n2->getTime( );
+       uint64_t time1 = n1->getTime();
+       uint64_t time2 = n2->getTime();
 
        // the trivial and most frequent case: nodes have different time stamps
        if ( time1 != time2 )
@@ -614,8 +614,8 @@ namespace casita
          int type1 = n1->getType( );
          int type2 = n2->getType( );
 
-         RecordType recordType1 = n1->getRecordType( );
-         RecordType recordType2 = n2->getRecordType( );
+         RecordType recordType1 = n1->getRecordType();
+         RecordType recordType2 = n2->getRecordType();
 
          // decide on atomic property of a node (first node in the list is atomic)
          if ( recordType1 == RECORD_ATOMIC && recordType2 != RECORD_ATOMIC )
@@ -628,8 +628,8 @@ namespace casita
            return false;
          }
 
-         Paradigm paradigm1 = n1->getParadigm( );
-         Paradigm paradigm2 = n2->getParadigm( );
+         Paradigm paradigm1 = n1->getParadigm();
+         Paradigm paradigm2 = n2->getParadigm();
 
          // decide on the paradigm according to the defined enum type 
          // \todo fix me
@@ -642,7 +642,7 @@ namespace casita
          // Example: compare MPI_Recv.leave.1560.1600813.1021.0 & 
          //                  MPI_Recv.enter.1559.1600813.1021.166
          // At node creation (first insertion) the function ID is 0.
-         if ( n1->getStreamId( ) == n2->getStreamId( ) )
+         if ( n1->getStreamId() == n2->getStreamId() )
          {
            // as we sequentially read events per stream, this should work for 
            // correct OTF2 traces (use OTF2 sequence of events)
@@ -922,7 +922,7 @@ namespace casita
      {
        if ( this->link )
        {
-          std::cerr << this->getUniqueName() << "already has a link ";
+          std::cerr << this->getUniqueName() << " already has a link ";
           std::cerr << this->link->getUniqueName() << ". Trying to replace with ";
            
           if( link )

@@ -76,6 +76,14 @@ namespace casita
       return true;
     }
 
+    /**
+     * Walk the device stream backwards and create a list of wait nodes and 
+     * wait state time
+     * 
+     * @param userData stream walk info (walk list and waiting time)
+     * @param node current walk node
+     * @return 
+     */
     static bool
     deviceStreamWalkCallback( void* userData, GraphNode* node )
     {
@@ -83,9 +91,16 @@ namespace casita
 
       listAndWaitTime->list.push_back(node);
       listAndWaitTime->waitStateTime += node->getCounter(WAITING_TIME, NULL);
-
-      if ( listAndWaitTime->list.size() > 0 )
+      
+      if( node->getCaller() == NULL && 
+          node->getCounter( OMP_FIRST_OFFLOAD_EVT, NULL ) == 1 )
       {
+        return false;
+      }
+
+      /*if ( listAndWaitTime->list.size() > 0 ) //always true as we pushed the node before
+      {
+        // if node time is less than
         if ( node->getTime() < listAndWaitTime->list.back()->getTime() &&
              node->getCaller() == NULL )
         {
@@ -93,10 +108,11 @@ namespace casita
         }
       }
 
-      if ( node->isProcess() || (node->isEnter() && node->isOMPTargetOffload()) )
+      // if node is start/intermediate node OR node is target enter
+      if ( node->isProcess() || ( node->isEnter() && node->isOMPTarget() ) )
       {
         return false;
-      }
+      }*/
 
       return true;
     }

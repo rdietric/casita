@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2016,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -25,6 +25,7 @@
 
 // OMPT attributes
 #define SCOREP_OMPT_PARALLEL_ID "OMPT_PARALLEL_REGION_ID"
+#define SCOREP_OMPT_DEVICE_ID   "OMPT_DEVICE_ID"
 
 // OpenMP target attributes
 #define SCOREP_OMP_TARGET_LOCATIONREF "OMP_TARGET_LOCATION_REF"
@@ -105,9 +106,15 @@ namespace casita
       }
 
       uint32_t
-      getSize( )
+      getSize()
       {
         return OTF2_AttributeList_GetNumberOfElements( list );
+      }
+      
+      bool
+      testAttribute( uint32_t attrID )
+      {
+        return OTF2_AttributeList_TestAttributeByID( list, attrID );
       }
 
     private:
