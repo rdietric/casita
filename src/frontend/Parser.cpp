@@ -32,10 +32,6 @@
 
 namespace casita
 {
-#if defined(BOOST_AVAILABLE)
-  namespace po = boost::program_options;
-#endif
-
   Parser::Parser( ) { }
 
   Parser::Parser( Parser& ) { }
@@ -82,93 +78,6 @@ namespace casita
     return Parser::getInstance( ).options.verbose;
   }
 
-#if defined(BOOST_AVAILABLE)
-
-  bool
-  Parser::init_with_boost( int argc, char** argv ) throw( std::runtime_error)
-  {
-    // default values
-    bool noSummary = false;
-
-    setDefaultValues( );
-
-    try
-    {
-      /* add help message as options description */
-      std::stringstream desc_stream;
-      desc_stream << "Usage: casita <otf-file> [options]" << std::endl;
-      po::options_description desc( desc_stream.str( ) );
-
-      /* add standard options */
-      desc.add_options( )
-        ("help,h", "print help message")
-
-        ("input,i", po::value< std::string >(&options.filename),
-         "input OTF2 trace file")
-        ("output,o", po::value< std::string >(&options.outOtfFile),
-         "output OTF2 trace file")
-        ("no-summary", po::value< bool >(&noSummary)->zero_tokens( ),
-         "do not aggregate statistics to summary")
-        ("path,p", po::value< bool >(&options.printCriticalPath)->zero_tokens( ),
-         "print critical paths")
-        ("verbose,v", po::value< int >(&options.verbose),
-         "verbosity level")
-        ("no-errors", po::value< bool >(&options.noErrors)->zero_tokens( ),
-         "ignore non-fatal analysis errors")
-        ("ignore-nb-mpi", po::value< bool >(&options.ignoreAsyncMpi)->zero_tokens( ),
-         "Treat non-blocking MPI functions as CPU functions.")
-        ("secure-mpi-cpa", po::value< bool >(&options.criticalPathSecureMPI)->zero_tokens( ),
-         "Perform MPI critical-path analysis with slave feedback to ensure that a master has been found. "
-         "(Avoids a potential deadlock situation, when no master has been found.)")
-        ("interval-analysis,c", po::value< uint32_t >(&options.analysisInterval)->implicit_value( 64 ),
-         "Run analysis in intervals (between global collectives) to reduce memory footprint. "
-         "The optional value sets the number of pending graph nodes before an analysis run is started.")
-        ;
-
-      po::positional_options_description pos_options_descr;
-      pos_options_descr.add( "input", 1 );
-
-      /* parse command line options and config file and store values in vm */
-      po::variables_map vm;
-      po::store( po::command_line_parser( argc, argv ).options(
-                                                                desc ).positional( pos_options_descr ).run( ), vm );
-
-      po::notify( vm );
-
-      // print help message and quit simulation
-      if( vm.count( "help" ) )
-      {
-        std::cout << desc << "\n";
-        return false;
-      }
-
-      if( vm.count( "output" ) )
-      {
-        options.createOTF = true;
-      }
-
-      if( vm.count( "input" ) != 1 )
-      {
-        std::cerr << "Please specify exactly one input OTF2 file." << std::endl;
-        std::cerr << desc << "\n";
-        return false;
-      }
-
-      if( noSummary )
-      {
-        options.mergeActivities = false;
-      }
-
-    }
-    catch( boost::program_options::error& e )
-    {
-      std::cerr << e.what( ) << std::endl;
-      return false;
-    }
-    return true;
-  }
-#endif
-
   void
   Parser::printHelp( )
   {
@@ -181,6 +90,7 @@ namespace casita
     std::cout << "  -s [--summary]          create summary CSV file" << std::endl;
     std::cout << "      --top=INTEGER       print top optimization candidates" << std::endl;
     std::cout << "  -p [--path]             print critical paths" << std::endl;
+    std::cout << "     [--cpa-loop-check]   detect circular loops in process-local critical path (slower)" << std::endl;
     std::cout << "     [--no-errors]        ignore non-fatal errors" << std::endl;
     std::cout << "     [--ignore-impi]      treat non-blocking MPI functions as CPU functions" << std::endl;
     std::cout << "     [--ignore-cuda]      treat CUDA functions as CPU functions" << std::endl;
@@ -300,7 +210,7 @@ namespace casita
       }
 
 
-      // path
+      // print path
       else if( opt.compare( std::string( "-p" ) ) == 0 )
       {
         options.printCriticalPath = true;
@@ -310,6 +220,12 @@ namespace casita
       else if( opt.find( "--path=" ) != std::string::npos )
       {
         options.printCriticalPath = true;
+      }
+      
+      // detect and avoid circular loops in process-local CPA
+      else if( opt.find( "--cpa-loop-check" ) != std::string::npos )
+      {
+        options.cpaLoopCheck = true;
       }
 
       // no error
@@ -495,6 +411,7 @@ namespace casita
     options.outOtfFile = "casita.otf2";
     options.replaceCASITAoutput = false;
     options.printCriticalPath = false;
+    options.cpaLoopCheck = false;
     options.verbose = 0;
     options.topX = 20;
     options.ignoreAsyncMpi = false;

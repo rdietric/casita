@@ -38,6 +38,7 @@ namespace casita
       typedef map< uint64_t, BarrierCountStack > StreamParallelBarrierMap;
       
       typedef vector< GraphNode* > GraphNodeVec;
+      typedef map< uint64_t, GraphNodeVec > IdNodeVecMap;
       typedef vector< GraphNodeVec > VecNodeVec;
       typedef map< GraphNode*, VecNodeVec > BarrierNodesMap;
       
@@ -152,12 +153,16 @@ namespace casita
       //<! key: parallel enter node, value: vector of barriers with vector of corresponding barrier nodes
       BarrierNodesMap ompBarrierNodesMap;
       
+      // this is due to measurement artefacts
+      //<! vector of open nodes where parallel region was not opened
+      IdNodeVecMap ompOpenWorkerNodesMap;
+      
       ///////////////////////
       
       //// OMPT target related ////
       
-      //<! target enter node of the current target region (assumes blocking target region)
-      GraphNode* currentTargetEnter;
+      //<! key: parallel region ID, value: parallel enter node
+      IdNodeMap ompDeviceParallelIdNodeMap;
       
       /////////////////////////////
       

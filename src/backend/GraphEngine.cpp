@@ -278,6 +278,10 @@ Edge*
 GraphEngine::newEdge( GraphNode* source, GraphNode* target, 
                       int properties, Paradigm* edgeType )
 {
+  if( target->getId() == 500 ){
+    UTILS_MSG( true, "bla");
+  }
+  
   Paradigm paradigm = PARADIGM_ALL;
   if ( edgeType )
   {

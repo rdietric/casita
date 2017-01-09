@@ -32,6 +32,13 @@ namespace casita
 
       private:
         
+      /**
+       * Handle OpenMP target offloading.
+       * 
+       * @param ompAnalysis
+       * @param node
+       * @return 
+       */
       bool
       apply( AnalysisParadigmOMP* ompAnalysis, GraphNode* node )
       {
@@ -40,7 +47,7 @@ namespace casita
         // remember enter node
         if( node->isEnter() )
         {
-          EventStream* nodeStream  = analysis->getStream( node->getStreamId() );
+          EventStream* nodeStream = analysis->getStream( node->getStreamId() );
           
           // set target enter node on the node's host stream
           if( node->isOMPTarget() )
@@ -50,8 +57,9 @@ namespace casita
           // if it is a device enter node
           else if ( nodeStream->getStreamType() == EventStream::ES_DEVICE )
           {
-            // if this is the first event in the target region on the node's stream
-            if( ompAnalysis->isFirstTargetOffloadEvent( node->getStreamId() ) )
+            // if this is the first offload event of a target region
+            if( ompAnalysis->isFirstTargetOffloadEvent( node->getStreamId() ) && 
+                node->getCaller() == NULL ) // if the node has a caller it cannot be the first event
             {
               ompAnalysis->setTargetOffloadFirstEvent( node );
               
@@ -77,6 +85,7 @@ namespace casita
         // start the analysis on the leave node
         else if( node->isLeave() )
         {
+          // on target leave nodes
           if( node->isOMPTarget() )
           {
             GraphNode* targetEnter = node->getGraphPair().first;
@@ -89,27 +98,71 @@ namespace casita
             EventStreamGroup::EventStreamList deviceStreams;
             analysis->getDeviceStreams( deviceId , deviceStreams );
 
+            GraphNode* firstTargetOffloadNode = NULL;
+            GraphNode* lastTargetOffloadNode = NULL;
             // get last node on the device before target leave
             for ( EventStreamGroup::EventStreamList::const_iterator pIter =
                   deviceStreams.begin( );
                 pIter != deviceStreams.end( ); ++pIter )
             {
               EventStream* deviceStream = *pIter;
-
+              
+              // find stream local last offload node
               GraphNode* lastOffloadNode = 
                 GraphNode::findLastNodeBefore( node->getTime(), deviceStream->getNodes() );
               
               //UTILS_MSG( true, "Last offload node: %s < %lf", 
-              //           analysis->getNodeInfo( lastOffloadNode ).c_str(),
-              //           analysis->getRealTime( node->getTime() ) );
+              //            analysis->getNodeInfo( lastOffloadNode ).c_str(),
+              //            analysis->getRealTime( node->getTime() ) );
               
               analysis->newEdge( lastOffloadNode->getGraphPair().second, node, EDGE_NONE );
               
-              // find last leave of closing target region?
+              // set the last offload node for the current target region (over streams)
+              // use only leave nodes
+              if( lastTargetOffloadNode == NULL || 
+                  Node::compareLess( lastTargetOffloadNode, lastOffloadNode->getGraphPair().second ) )
+              {
+                lastTargetOffloadNode = lastOffloadNode->getGraphPair().second;
+              }
+              
+              // get the first offload node of each stream and mark it for walkback abort condition
+              GraphNode* firstOffloadNode = 
+                ompAnalysis->consumTargetOffloadFirstEvent( deviceStream->getId() );
+              firstOffloadNode->setCounter( OMP_FIRST_OFFLOAD_EVT, 1 );
+              
+              // get first target region global offload node
+              if( firstTargetOffloadNode == NULL || 
+                  Node::compareLess( firstOffloadNode, firstTargetOffloadNode ) )
+              {
+                firstTargetOffloadNode = firstOffloadNode;
+              }
             }
             
             // reset target enter node for next target region
-            ompAnalysis->consumeOmpTargetBegin( node->getStreamId() );          
+            ompAnalysis->consumeOmpTargetBegin( node->getStreamId() );
+            
+            uint64_t waiting_time = node->getTime();
+            if( lastTargetOffloadNode->getTime() < node->getTime() )
+            {
+              waiting_time = lastTargetOffloadNode->getTime();
+            }
+            
+            if( targetEnter->getTime() < firstTargetOffloadNode->getTime() )
+            {
+              waiting_time -= firstTargetOffloadNode->getTime();
+            }
+            else
+            {
+              waiting_time -= targetEnter->getTime();
+            }
+            
+            node->setCounter( WAITING_TIME, waiting_time );
+            
+            // distribute blame on the device
+            distributeBlame( analysis,
+                             lastTargetOffloadNode,
+                             waiting_time, // total blame
+                             deviceStreamWalkCallback );
           }
           /* if it is a device enter node
           else if ( nodeStream->getStreamType( ) == EventStream::ES_DEVICE )

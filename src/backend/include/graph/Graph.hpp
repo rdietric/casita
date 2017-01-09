@@ -65,6 +65,12 @@ namespace casita
 
      EdgeList
      getInEdges( GraphNode* node, Paradigm paradigm ) const;
+     
+     void
+     printInEdges( GraphNode* node ) const;
+     
+     void
+     printCircle( GraphNode* node, GraphNode::GraphNodeList& nodeList ) const;
 
      const EdgeList&
      getOutEdges( GraphNode* node ) const;
@@ -97,7 +103,6 @@ namespace casita
      static void
      sortedInsert( GraphNode* n, std::list< GraphNode* >& nodes,
                    DistanceMap& distanceMap );
-
  };
 
 }

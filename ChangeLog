@@ -11,6 +11,7 @@ OpenMP
   traces (Score-P branch TRY_TUD_mic_offloading)
 - use OTF2 location definitions to detect whether the trace contains OpenMP 
   events
+- added option to detect circular loops in process-local critical path analysis
 
 CUDA
 - improved handling of CUDA events and CUDA kernels over interval boundaries

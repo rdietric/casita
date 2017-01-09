@@ -15,6 +15,7 @@
 #include <list>
 #include <set>
 #include <map>
+#include <algorithm> // binary search
 
 #include "Node.hpp"
 
@@ -167,7 +168,7 @@ namespace casita
      
      // TODO: This function might not be correct implemented.
     static std::vector< GraphNode* >::const_reverse_iterator
-    findNode( GraphNode* node, const std::vector< GraphNode* >& nodes )
+    findNode( const GraphNode* node, const std::vector< GraphNode* >& nodes )
     {
       // the vector is empty
       if ( nodes.size( ) == 0 )
@@ -370,6 +371,25 @@ namespace casita
 
       // return iterator to first element, if node could not be found
       return nodes.front();
+    }
+    
+    /**
+     * Binary search for a GraphNode in a list of GraphNodes based on the node ID.
+     * 
+     * @param nodeId
+     * @param nodes
+     * @return 
+     */
+    static bool
+    search( const GraphNode* node, const std::list< GraphNode* >& nodes )
+    {
+      // the list is empty
+      if ( nodes.size( ) == 0 )
+      {
+        return false;
+      }
+      
+      return std::binary_search( nodes.begin(), nodes.end(), node, Node::compareLess );
     }
     
     /**
