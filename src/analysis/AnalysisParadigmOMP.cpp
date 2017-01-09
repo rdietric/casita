@@ -423,7 +423,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
 
       if ( node->isOMPSync( ) )
       {
-        node->setCounter( OMP_REGION_ID, key_value );
+        node->setCounter( OMPT_REGION_ID, key_value );
       }
     }
   }

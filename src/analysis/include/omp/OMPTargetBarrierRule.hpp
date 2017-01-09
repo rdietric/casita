@@ -53,7 +53,7 @@ namespace casita
         {
           // enter
           bool     valid = false;
-          uint64_t matchingId           = node->getCounter( OMP_REGION_ID, &valid );
+          uint64_t matchingId           = node->getCounter( OMPT_REGION_ID, &valid );
           if ( !valid )
           {
             ErrorUtils::getInstance( ).throwError(
@@ -74,7 +74,7 @@ namespace casita
           
           bool valid = false;
           
-          uint64_t matchingId    = enterEvent->getCounter( OMP_REGION_ID, &valid );
+          uint64_t matchingId    = enterEvent->getCounter( OMPT_REGION_ID, &valid );
           if ( !valid )
           {
             ErrorUtils::getInstance( ).throwError(

@@ -479,7 +479,7 @@ OTF2ParallelTraceWriter::writeDefProcess( uint64_t id, uint64_t parentId,
 void
 OTF2ParallelTraceWriter::writeAnalysisMetricDefinitions()
 {
-  for ( size_t i = 0; i < NUM_DEFAULT_METRICS; ++i )
+  for ( size_t i = 0; i < NUM_OUTPUT_METRICS; ++i )
   {
     MetricType metric = (MetricType) i;
     const MetricEntry* entry = cTable->getMetric( metric );
