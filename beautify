@@ -22,5 +22,5 @@ fi
 EXTENSIONS="*.cpp *.hpp"
 
 for EXT in $EXTENSIONS; do
-    find . -name $EXT -exec echo -e "beautifying {}" \; -exec uncrustify -c doc/casita_uncrustify.cfg --replace --no-backup -q '{}' \;
+    find . -name $EXT -exec echo -e "beautifying {}" \; -exec uncrustify -c casita_uncrustify.cfg --replace --no-backup -q '{}' \;
 done
