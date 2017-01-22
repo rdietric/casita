@@ -124,18 +124,16 @@ CallbackHandler::handleProcessMPIMapping( OTF2TraceReader* reader,
                                           uint32_t         mpiRank )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
-  handler->getAnalysis( ).getMPIAnalysis( ).setMPIRank( streamId, mpiRank );
+  handler->getAnalysis().getMPIAnalysis().setMPIRank( streamId, mpiRank );
 }
 
 void
 CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
-                                   uint32_t          stream,
                                    uint64_t          streamId,
                                    uint64_t          parentId, //location group
                                    const char*       name,
                                    OTF2KeyValueList* list,
-                                   bool              isGPU,
-                                   bool              isGPUNull )
+                                   bool              isGPU )
 {
   CallbackHandler* handler  =
     (CallbackHandler*)( reader->getUserData() );
@@ -143,11 +141,12 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
 
   EventStream::EventStreamType streamType = EventStream::ES_HOST;
 
-  if ( isGPUNull )
+  /*if ( isGPUNull )
   {
     streamType = EventStream::ES_DEVICE_NULL;
   }
-  else if ( isGPU )
+  else */
+  if ( isGPU )
   {
       streamType = EventStream::ES_DEVICE;
   }
@@ -190,8 +189,7 @@ void
 CallbackHandler::handleDefAttribute( OTF2TraceReader* reader,
                                      uint64_t         streamId,
                                      uint32_t         attributeId, 
-                                     const char*      name,
-                                     const char*      description )
+                                     const char*      name )
 {
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
   AnalysisEngine&  analysis = handler->getAnalysis();

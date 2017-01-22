@@ -54,12 +54,12 @@ namespace casita
       apply( AnalysisParadigmCUDA* analysis, GraphNode* syncLeave )
       {
 
-        if ( !syncLeave->isCUDAEventSync( ) || !syncLeave->isLeave( ) )
+        if ( !syncLeave->isCUDAEventSync() || !syncLeave->isLeave() )
         {
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon();
 
         // use the CUDA event ID to get cuEventRecord leave node
         EventNode* eventRecordLeave = analysis->getEventRecordLeave(
@@ -84,7 +84,7 @@ namespace casita
         
         if( refProcess == NULL )
         {
-          UTILS_MSG( true, "[%"PRIu32"] EventSyncRule: Referenced stream (%"PRIu64
+          UTILS_WARNING( "[%"PRIu32"] EventSyncRule: Referenced stream (%"PRIu64
                            ") %s (%f) on stream %s  not found!",
                      commonAnalysis->getMPIRank(),
                      eventRecordLeave->getReferencedStreamId(),
@@ -107,20 +107,32 @@ namespace casita
           deviceProcs.push_back( refProcess );
         }
         
-        //GraphNode* eventRecordEnter = eventRecordLeave->getGraphPair().first;
-        uint64_t eventRecordEnterTime = 
-                (eventRecordLeave->getGraphPair().first)->getTime();
+        GraphNode* eventRecordEnter = eventRecordLeave->getGraphPair().first;
+        if( !eventRecordEnter )
+        {
+          UTILS_WARNING( "[%"PRIu32"] No event record enter event for %s found", 
+                         commonAnalysis->getMPIRank(),
+                         commonAnalysis->getNodeInfo( eventRecordLeave ).c_str() );
+          return false;
+        }
+        
+        uint64_t eventRecordEnterTime = eventRecordEnter->getTime();
 
         bool ruleResult = false;
+        GraphNode* syncEnter = syncLeave->getGraphPair().first;
         
+        // iterate over device streams (typically only one)
         for ( EventStreamGroup::EventStreamList::const_iterator iter =
                 deviceProcs.begin(); iter != deviceProcs.end(); ++iter )
         {
-          uint64_t strmId = ( *iter )->getId( );
           // get last kernel launch leave node of the given device stream 
           // that started before event record enter time
+          uint64_t strmId = ( *iter )->getId();
           GraphNode* kernelLaunchLeave = analysis->getLastKernelLaunchLeave(
                   eventRecordEnterTime, strmId );
+          
+          // if the stream has no kernel launch leave, the kernel has already 
+          // been synchronized, hence continue with next stream
           if ( !kernelLaunchLeave )
           {
             continue;
@@ -171,17 +183,16 @@ namespace casita
             throw RTException(
                     "Event sync %s (%f) returned but kernel from %s (%f) on "
                     "stream [%u, %s] did not finish yet",
-                    syncLeave->getUniqueName( ).c_str( ),
-                    commonAnalysis->getRealTime( syncLeave->getTime( ) ),
-                    kernelLaunchEnter->getUniqueName( ).c_str( ),
+                    syncLeave->getUniqueName().c_str(),
+                    commonAnalysis->getRealTime( syncLeave->getTime() ),
+                    kernelLaunchEnter->getUniqueName().c_str(),
                     commonAnalysis->getRealTime( 
-                      kernelLaunchEnter->getTime( ) ),
-                    kernelLaunchEnter->getReferencedStreamId( ),
+                      kernelLaunchEnter->getTime() ),
+                    kernelLaunchEnter->getReferencedStreamId(),
                     commonAnalysis->getStream( 
-                      kernelLaunchEnter->getReferencedStreamId( ) )->getName( ) 
-                    );
+                      kernelLaunchEnter->getReferencedStreamId() )->getName() );
           }
-          else if ( kernelLeave->getTime( ) > syncLeave->getTime( ) )
+          else if ( kernelLeave->getTime() > syncLeave->getTime() )
           {
             UTILS_MSG( true, "[%"PRIu32"] EventSyncRule on %s (%f) failed!", 
                        commonAnalysis->getMPIRank(),
@@ -189,40 +200,61 @@ namespace casita
                        commonAnalysis->getRealTime( syncLeave->getTime() ) );
             // if the kernelLeave has been deleted in intermediate flush the 
             // following message creates a segmentation fault
-            UTILS_MSG( true, "Host-Device time displacement: %s > %s (%llu s)",
-                      kernelLeave->getUniqueName().c_str(), 
-                      syncLeave->getUniqueName().c_str(),
-                      commonAnalysis->getRealTime(
-                        kernelLeave->getTime() - syncLeave->getTime() ));
+            UTILS_MSG( true, "Host-Device time displacement: kernel %s > evtSync %s"
+                       ", kernel launch leave: %s",
+                       commonAnalysis->getNodeInfo( kernelLeave ).c_str(), 
+                       commonAnalysis->getNodeInfo( syncLeave ).c_str(),
+                       commonAnalysis->getNodeInfo( kernelLaunchLeave ).c_str() );
           }
 
           /* ignore delta ticks for now until we have a better heuristic */
           /* uint64_t syncDeltaTicks = commonAnalysis->getDeltaTicks( ); */
 
-          GraphNode* syncEnter = syncLeave->getPartner();
-        
-          // sync enter has to be before kernel leave
-          if ( syncEnter->getTime( ) < kernelLeave->getTime( ) )
+          // if sync enter is before kernel leave it is a blocking wait state
+          if ( syncEnter && ( syncEnter->getTime() < kernelLeave->getTime() ) )
           {
-            commonAnalysis->getEdge( syncEnter, syncLeave )->makeBlocking( );
+            Edge* syncEdge = commonAnalysis->getEdge( syncEnter, syncLeave );
+            if( syncEdge )
+            {
+              syncEdge->makeBlocking();
+            }
 
             // set counters
-            uint64_t value = syncLeave->getTime( ) -
-                     std::max( syncEnter->getTime( ), kernelEnter->getTime( ) );
+            uint64_t value = syncLeave->getTime() -
+              std::max( syncEnter->getTime(), kernelEnter->getTime() );
             syncLeave->incCounter( WAITING_TIME, value );
             kernelLeave->incCounter( BLAME, value );
           }
 
+          // add edge between kernel leave and syncLeave
           commonAnalysis->newEdge( kernelLeave, syncLeave, 
                                    EDGE_CAUSES_WAITSTATE );
           ruleResult = true;
           
           // consume a pending kernel
-          //commonAnalysis->getStream( kernelEnter->getStreamId() )->consumePendingKernel( );
+          //commonAnalysis->getStream( kernelEnter->getStreamId() )->consumePendingKernel();
           
-          // clear all pending kernels before that kernel
-          commonAnalysis->getStream( kernelLeave->getStreamId() )
-                                         ->consumePendingKernels( kernelLeave );
+          // clear all pending kernels before this kernel (including this kernel)
+          EventStream *kernelLeaveStream = 
+            commonAnalysis->getStream( kernelLeave->getStreamId() );
+          if( kernelLeaveStream )
+          {
+            kernelLeaveStream->consumePendingKernels( kernelLeave );
+          }
+          else
+          {
+            UTILS_WARNING( "Cannot consume pending kernels. Stream with ID %"
+                           PRIu64" not found!", kernelLeave->getStreamId() );
+          }
+        }
+        
+        // if the rule could no be applied successfully, assign this sync with
+        // waiting time and blame, as it was probably not necessary
+        if( ruleResult == false )
+        {
+            uint64_t value = syncLeave->getTime() - syncEnter->getTime();
+            syncLeave->incCounter( WAITING_TIME, value );
+            syncLeave->incCounter( BLAME, value );
         }
         
         // clear list of device processes

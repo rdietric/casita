@@ -11,10 +11,12 @@ OpenMP
   traces (Score-P branch TRY_TUD_mic_offloading)
 - use OTF2 location definitions to detect whether the trace contains OpenMP 
   events
-- added option to detect circular loops in process-local critical path analysis
 
 CUDA
 - improved handling of CUDA events and CUDA kernels over interval boundaries
+- fixed handling of late CUDA synchronization
+- corrected removal of kernel launch nodes at interval boundaries
+- fused BlameKernelRule, BlameSyncRule, and LateSyncRule
 - avoid CUDA analysis if input trace does not meet the requirements 
   (CUDA stream references)
 
@@ -25,6 +27,7 @@ OpenCL
 MISC
 - activity impact rating is now based on the new metric "Blame on CP"
 - removed unused code
+- added option to detect circular loops in process-local critical path analysis
 
 
 ---------------------------------- CASITA 1.6 ----------------------------------

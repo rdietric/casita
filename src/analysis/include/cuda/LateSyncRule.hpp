@@ -63,17 +63,24 @@ namespace casita
         {
           EventStream* deviceProcess = *pIter;
 
+          // check for the stream we are looking for
           GraphNode* syncEnter = syncLeave->getGraphPair().first;
           if ( !syncEnter->referencesStream( deviceProcess->getId() ) )
           {
             continue;
           }
+          
+          // found the stream we are looking for
 
-          // test that there is a pending kernel leave
+          // test that there is a pending kernel leave, otherwise stop here
           GraphNode* kernelLeave = deviceProcess->getFirstPendingKernel();
-
+          if( !kernelLeave )
+          {
+            break;
+          }
+          
           // if kernel ends before synchronization starts
-          if ( kernelLeave && kernelLeave->getTime() <= syncEnter->getTime() )
+          if ( kernelLeave->getTime() <= syncEnter->getTime() )
           {
             GraphNode* lastLeaveNode = commonAnalysis->getLastLeaveNode(
               syncLeave->getTime(), deviceProcess->getId() );
@@ -93,8 +100,7 @@ namespace casita
                 functionDesc.recordType = RECORD_ENTER; 
               
                 waitEnter = commonAnalysis->addNewGraphNode(
-                  std::max( lastLeaveNode->getTime( ),
-                            syncEnter->getTime( ) ),
+                  std::max( lastLeaveNode->getTime(), syncEnter->getTime() ),
                   deviceProcess, NAME_WAITSTATE,
                   &functionDesc );
               }
@@ -121,7 +127,7 @@ namespace casita
               functionDesc.recordType = RECORD_LEAVE; 
               
               waitLeave = commonAnalysis->addNewGraphNode(
-                syncLeave->getTime( ),
+                syncLeave->getTime(),
                 deviceProcess, NAME_WAITSTATE,
                 &functionDesc );
             }
@@ -134,23 +140,16 @@ namespace casita
               
             commonAnalysis->newEdge( syncLeave, waitLeave );
 
-            //\todo: is that possible?
-            /*if ( syncEnter->isCUDAKernel( ) )
-            {
-              commonAnalysis->newEdge( kernelLeave, syncEnter );
-              UTILS_MSG( true, "syncEnter is CUDA kernel!" );
-            }*/
-
             // set counters
             syncLeave->incCounter( BLAME,
-                                     syncLeave->getTime( ) -
-                                     syncEnter->getTime( ) );
+                                     syncLeave->getTime() -
+                                     syncEnter->getTime() );
             //waitLeave->getPartner
             waitLeave->setCounter( WAITING_TIME,
-                                   syncLeave->getTime( ) -
-                                   syncEnter->getTime( ) );
+                                   syncLeave->getTime() -
+                                   syncEnter->getTime() );
 
-            deviceProcess->clearPendingKernels( );            
+            deviceProcess->clearPendingKernels();            
             ruleResult = true;
           }
         }

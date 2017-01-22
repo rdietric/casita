@@ -37,11 +37,10 @@ namespace casita
   typedef bool ( *HandleLeave )( OTF2TraceReader* reader, uint64_t time,
                                  uint32_t functionId, uint64_t processId,
                                  OTF2KeyValueList* list );
-  typedef void ( *HandleDefProcess )( OTF2TraceReader* reader, uint32_t stream,
+  typedef void ( *HandleDefProcess )( OTF2TraceReader* reader, 
                                       uint64_t processId, uint64_t parentId,
                                       const char* name,
-                                      OTF2KeyValueList* list, bool isGPU,
-                                      bool isGPUNull );
+                                      OTF2KeyValueList* list, bool isGPU );
   typedef void ( *HandleProcessMPIMapping )( OTF2TraceReader* reader,
                                              uint64_t      processId,
                                              uint32_t      mpiRank );
@@ -49,8 +48,7 @@ namespace casita
                                        uint32_t functionId, const char* name,
                                        uint32_t functionGroupId );
   typedef void ( *HandleDefAttribute )( OTF2TraceReader* reader, uint64_t streamId,
-                                        uint32_t key, const char* name,
-                                        const char* description );
+                                        uint32_t key, const char* name );
   typedef void ( *HandleMPIComm )( OTF2TraceReader* reader, MPIType mpiType,
                                    uint64_t processId, uint64_t partnerId,
                                    uint32_t root, uint32_t tag );
@@ -188,8 +186,8 @@ namespace casita
       std::string
       getFunctionName( uint32_t id );
 
-      std::string
-      getProcessName( uint64_t id );
+      /*std::string
+      getProcessName( uint64_t id );*/
 
       IdNameTokenMap&
       getProcessNameTokenMap( );

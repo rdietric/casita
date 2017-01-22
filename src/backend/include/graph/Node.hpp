@@ -254,27 +254,6 @@ namespace casita
      {
        return paradigm & PARADIGM_OMP;
      }
-
-     bool
-     isCUDASync( ) const
-     {
-
-       return isCUDA( ) && ( nodeType & CUDA_SYNC );
-     }
-
-     bool
-     isCUDACollSync( ) const
-     {
-
-       return isCUDA( ) && ( nodeType & CUDA_COLLSYNC );
-     }
-
-     bool
-     isCUDAEventSync( ) const
-     {
-
-       return isCUDA( ) && ( nodeType & CUDA_EV_SYNC );
-     }
      
      bool
      isOpenCLQueueSync( ) const
@@ -329,6 +308,27 @@ namespace casita
      {
 
        return isCUDA( ) && ( nodeType & CUDA_KERNEL_LAUNCH );
+     }
+     
+     bool
+     isCUDASync( ) const
+     {
+
+       return isCUDA( ) && ( nodeType & CUDA_SYNC );
+     }
+
+     bool
+     isCUDACollSync( ) const
+     {
+
+       return isCUDA( ) && ( nodeType & CUDA_COLLSYNC );
+     }
+
+     bool
+     isCUDAEventSync( ) const
+     {
+
+       return isCUDA( ) && ( nodeType & CUDA_EV_SYNC );
      }
 
      bool

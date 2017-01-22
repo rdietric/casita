@@ -107,8 +107,17 @@ namespace casita
       GraphNode*
       getLastKernelLaunchLeave( uint64_t timestamp, uint64_t deviceStreamId ) const;
       
+      void
+      removeKernelLaunch( GraphNode* kernel );
+      
+      void
+      clearKernelLaunches( uint64_t streamId );
+      
       void 
       printDebugInformation( uint64_t eventId );
+      
+      void
+      printKernelLaunchMap();
 
     private:
       //!< maps event ID to last (cuEventRecord) leave node for this event
@@ -127,7 +136,8 @@ namespace casita
       NullStreamWaitList nullStreamWaits;
       
       //!< list of kernel launch enter and leave nodes for every (device) stream; 
-      // <stream, list of nodes>
+      // kernel launch enter nodes are consumed at kernel enter
+      // <device stream, list of kernel launch nodes>
       IdNodeListMap      pendingKernelLaunchMap;
   };
 

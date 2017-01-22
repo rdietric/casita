@@ -101,6 +101,10 @@ GraphEngine::newEventStream( uint64_t                     id,
       {
         deviceId = atoi( name.c_str()+19 );
       }
+      else if( strstr( name.c_str(), "MIC [" ) ) // deprecated (libmpti)
+      {
+        deviceId = atoi( name.c_str()+5 );
+      }
       
       p->setDeviceId( deviceId );
     }
@@ -278,10 +282,6 @@ Edge*
 GraphEngine::newEdge( GraphNode* source, GraphNode* target, 
                       int properties, Paradigm* edgeType )
 {
-  if( target->getId() == 500 ){
-    UTILS_MSG( true, "bla");
-  }
-  
   Paradigm paradigm = PARADIGM_ALL;
   if ( edgeType )
   {

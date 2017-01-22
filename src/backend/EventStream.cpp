@@ -470,15 +470,15 @@ EventStream::addPendingKernel( GraphNode* kernelLeave )
 }
 
 /**
- * Retrieve the first pending kernel leave in the vector.
+ * Retrieve the last pending kernel leave in the vector.
  * 
  * @return first pending kernel (leave) in the vector
  */
 GraphNode*
-EventStream::getFirstPendingKernel( )
+EventStream::getLastPendingKernel()
 {
-  SortedGraphNodeList::reverse_iterator iter = pendingKernels.rbegin( );
-  if ( iter != pendingKernels.rend( ) )
+  SortedGraphNodeList::reverse_iterator iter = pendingKernels.rbegin();
+  if ( iter != pendingKernels.rend() )
   {
     return *iter;
   }
@@ -487,18 +487,18 @@ EventStream::getFirstPendingKernel( )
 }
 
 /**
- * Remove the first pending kernel from the list and mark it as synchronized.
+ * Remove the last pending kernel from the list.
  * 
  * @return the kernel leave node that has been removed
  */
 GraphNode*
-EventStream::consumeFirstPendingKernel( )
+EventStream::consumeLastPendingKernel()
 {
-  SortedGraphNodeList::reverse_iterator iter = pendingKernels.rbegin( );
-  if ( iter != pendingKernels.rend( ) )
+  SortedGraphNodeList::reverse_iterator iter = pendingKernels.rbegin();
+  if ( iter != pendingKernels.rend() )
   {
     GraphNode* result = *iter;
-    pendingKernels.pop_back( );
+    pendingKernels.pop_back();
     return result;
   }
 
@@ -513,6 +513,12 @@ EventStream::consumeFirstPendingKernel( )
 void
 EventStream::consumePendingKernels( GraphNode* kernelLeave )
 {
+  if( !kernelLeave )
+  {
+    UTILS_WARNING( "Cannot consume pending kernels as input node is invalid!" );
+    return;
+  }
+  
   // do nothing, if there are no pending kernels
   if( pendingKernels.empty() )
     return;
@@ -521,7 +527,7 @@ EventStream::consumePendingKernels( GraphNode* kernelLeave )
   GraphNode*  lastKernel = pendingKernels.back();
   if( lastKernel == kernelLeave )
   {
-    clearPendingKernels( );
+    clearPendingKernels();
   }
 
   // erase a range of kernels

@@ -98,7 +98,7 @@ namespace casita
        //&& strcmp( node->getName(), "MPI_Allreduce") == 0
        )
     {
-      UTILS_MSG( true, "[%u] %s, totalBlame: %llu sec (%lf)",
+      UTILS_MSG( true, "[%u] Debug walklist from %s, totalBlame: %llu sec (%lf)",
                 analysis->getMPIRank(), analysis->getNodeInfo(node).c_str(),
                 totalBlame, analysis->getRealTime( totalBlame ) );
     

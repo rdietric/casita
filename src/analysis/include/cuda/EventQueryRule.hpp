@@ -123,18 +123,18 @@ namespace casita
               break;
             }
 
-            GraphNode::GraphNodePair& prevQuery = prev->getGraphPair( );
+            GraphNode::GraphNodePair& prevQuery = prev->getGraphPair();
 
-            if ( kernelEnter->getTime( ) <= prevQuery.first->getTime( ) )
+            if ( kernelEnter->getTime() <= prevQuery.first->getTime() )
             {
               commonAnalysis->getEdge(
-                prevQuery.first, prevQuery.second )->makeBlocking( );
+                prevQuery.first, prevQuery.second )->makeBlocking();
 
               // set counters
-              prevQuery.second->incCounter( WAITING_TIME,
-                prevQuery.second->getTime( ) - prevQuery.first->getTime( ) );
-              kernelLeave->incCounter( BLAME,
-                prevQuery.second->getTime( ) - prevQuery.first->getTime( ) );
+              uint64_t waitingTime = 
+                prevQuery.second->getTime() - prevQuery.first->getTime();
+              prevQuery.second->incCounter( WAITING_TIME, waitingTime );
+              kernelLeave->incCounter( BLAME, waitingTime );
 
               // add a blocking dependency, so it cannot be used for critical path analysis
               commonAnalysis->newEdge( kernelLeave,
@@ -152,10 +152,18 @@ namespace casita
           // consume all pending kernels before this kernel
           commonAnalysis->getStream( kernelLeave->getStreamId() )
                                          ->consumePendingKernels( kernelLeave );
-          return true;
         }
-
-        return false;
+        else 
+        // if no kernel launch leave was found (e.g. associated kernel already synchronized)
+        {
+          // blame this "useless" event query
+          uint64_t waitingTime = 
+            queryLeave->getTime() - queryLeave->getGraphPair().first->getTime();
+          queryLeave->incCounter( WAITING_TIME, waitingTime );
+          queryLeave->incCounter( BLAME, waitingTime );
+        }
+        
+        return true;
       }
   };
  }

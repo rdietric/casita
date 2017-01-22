@@ -18,9 +18,10 @@
 #include "cuda/AnalysisParadigmCUDA.hpp"
 #include "AnalysisEngine.hpp"
 
-#include "cuda/BlameKernelRule.hpp"
-#include "cuda/BlameSyncRule.hpp"
-#include "cuda/LateSyncRule.hpp"
+//#include "cuda/BlameKernelRule.hpp"
+//#include "cuda/BlameSyncRule.hpp"
+//#include "cuda/LateSyncRule.hpp"
+#include "cuda/SyncRule.hpp"
 #include "cuda/KernelExecutionRule.hpp"
 #include "cuda/EventLaunchRule.hpp"
 #include "cuda/EventSyncRule.hpp"
@@ -35,11 +36,12 @@ AnalysisParadigmCUDA::AnalysisParadigmCUDA( AnalysisEngine* analysisEngine ) :
   IAnalysisParadigm( analysisEngine )
 {
   addRule( new KernelExecutionRule( 9 ) );
-  //\todo: check priority for the following three rules triggered on cudaSync
+  
   // they all clear the list of pending kernels when finished
-  addRule( new BlameKernelRule( 2 ) ); // triggered on cudaSync
+  //addRule( new BlameKernelRule( 1 ) ); // triggered on cudaSync
   //addRule( new BlameSyncRule( 1 ) );   // triggered on cudaSync
-  addRule( new LateSyncRule( 1 ) );    // triggered on cudaSync
+  //addRule( new LateSyncRule( 2 ) );    // triggered on cudaSync
+  addRule( new SyncRule( 1 ) ); // triggered on cudaSync
   addRule( new EventLaunchRule( 1 ) );
   addRule( new EventSyncRule( 1 ) );
   addRule( new EventQueryRule( 1 ) );
@@ -292,24 +294,19 @@ AnalysisParadigmCUDA::getEventRecordLeave( uint64_t eventId ) const
 }
 
 void
-AnalysisParadigmCUDA::printDebugInformation( uint64_t eventId )
+AnalysisParadigmCUDA::printKernelLaunchMap()
 {
-  UTILS_MSG( true, "Passed event id: %llu", eventId );
-  
-  UTILS_MSG( true, "Number of stored event IDs with corresponding last event record leave node: %llu",
-             eventLaunchMap.size() );
-  
-  uint64_t pendingKernelCount = 0;
+  uint64_t pendingKernelLaunchCount = 0;
   for ( IdNodeListMap::const_iterator mapIter =
-          pendingKernelLaunchMap.begin( );
-        mapIter != pendingKernelLaunchMap.end( ); ++mapIter )
+          pendingKernelLaunchMap.begin();
+        mapIter != pendingKernelLaunchMap.end(); ++mapIter )
   {
-    pendingKernelCount += mapIter->second.size();
+    pendingKernelLaunchCount += mapIter->second.size();
     
     if( mapIter->second.size() )
     {
-      UTILS_MSG( true, "%llu pending kernel launches on stream %llu",
-                 mapIter->second.size(), mapIter->first );
+      UTILS_MSG( true, "[%"PRIu32"] %llu pending kernel launches for device stream %"PRIu64,
+                 commonAnalysis->getMPIRank(), mapIter->second.size(), mapIter->first );
       
       EventStream* evtStream = this->commonAnalysis->getStream( mapIter->first );
       if( evtStream )
@@ -320,19 +317,38 @@ AnalysisParadigmCUDA::printDebugInformation( uint64_t eventId )
       {
         UTILS_MSG( true, "  ... with missing stream object" );
       }
-                 
+      
+      for( GraphNode::GraphNodeList::const_iterator itList = mapIter->second.begin();
+           itList != mapIter->second.end(); ++itList )
+      {
+        UTILS_WARNING( "[%"PRIu32"] Open kernel launch %s",
+                       commonAnalysis->getMPIRank(),
+                       commonAnalysis->getNodeInfo( *itList ).c_str() );
+      }
+      
     }
   }
-  UTILS_MSG( true, "%llu pending kernel launches on %llu different device streams",
-             pendingKernelCount, pendingKernelLaunchMap.size() );
+  UTILS_MSG( true, "[%"PRIu32"] %"PRIu64" pending kernel launches on %llu different device streams",
+             commonAnalysis->getMPIRank(),pendingKernelLaunchCount, pendingKernelLaunchMap.size() );
+}
+
+void
+AnalysisParadigmCUDA::printDebugInformation( uint64_t eventId )
+{
+  UTILS_MSG( true, "Passed event id: %llu", eventId );
   
-  EventNode* eventRecordLeave = eventLaunchMap[eventId];
+  UTILS_MSG( true, "Number of stored event IDs with corresponding last event record leave node: %llu",
+             eventLaunchMap.size() );
+  
+    EventNode* eventRecordLeave = eventLaunchMap[eventId];
   
   uint64_t streamId = eventRecordLeave->getStreamId( );
   
   UTILS_MSG( true, "Host stream: %llu (%s)",
              streamId,
              this->commonAnalysis->getStream( streamId )->getName() );
+  
+  printKernelLaunchMap();
 }
 
 void
@@ -364,8 +380,14 @@ void
 AnalysisParadigmCUDA::addPendingKernelLaunch( GraphNode* launch )
 {
   // append at tail (FIFO)
-  pendingKernelLaunchMap[launch->getReferencedStreamId( )].push_back(
-    launch );
+  if( launch )
+  {
+    pendingKernelLaunchMap[launch->getGraphPair().first->getReferencedStreamId()].push_back( launch );
+  }
+  else
+  {
+    UTILS_WARNING( "Try to add NULL as kernel launch!" );
+  }
 }
 
 /**
@@ -399,16 +421,16 @@ AnalysisParadigmCUDA::consumeFirstPendingKernelLaunchEnter( uint64_t kernelStrea
   // 
   // listIter->second (launch kernel node list) contains enter and leave records
   // set iterator to first element which should be a launch enter node
-  GraphNode::GraphNodeList::iterator launchIter = mapIter->second.begin( );
+  GraphNode::GraphNodeList::iterator launchIter = mapIter->second.begin();
   
   // skip leading leave nodes, as only enter nodes are erased
-  while ( ( launchIter != mapIter->second.end( ) ) &&
-          ( ( *launchIter )->isLeave( ) ) )
+  while ( ( launchIter != mapIter->second.end() ) &&
+          ( ( *launchIter )->isLeave() ) )
   {
     launchIter++;
   }
   
-  if ( launchIter == mapIter->second.end( ) )
+  if ( launchIter == mapIter->second.end() )
   {
     return NULL;
   }
@@ -436,31 +458,35 @@ AnalysisParadigmCUDA::getLastKernelLaunchLeave( uint64_t timestamp,
 {
   GraphNode* lastLaunchLeave = NULL;
 
+  // iterate over all streams with pending kernels
   for ( IdNodeListMap::const_iterator listIter =
-          pendingKernelLaunchMap.begin( );
-        listIter != pendingKernelLaunchMap.end( ); ++listIter )
+          pendingKernelLaunchMap.begin();
+        listIter != pendingKernelLaunchMap.end(); ++listIter )
   {
+    // revers-iterate over kernel launch nodes
     for ( GraphNode::GraphNodeList::const_reverse_iterator launchIter =
-            listIter->second.rbegin( );
-          launchIter != listIter->second.rend( ); ++launchIter )
+            listIter->second.rbegin();
+          launchIter != listIter->second.rend(); ++launchIter )
     {
       GraphNode* gLaunchLeave = *launchIter;
 
-      if ( gLaunchLeave->isEnter( ) )
+      // ignore enter nodes
+      if ( gLaunchLeave->isEnter() )
       {
         continue;
       }
 
+      // get the references device stream using the kernel launch enter node
       uint64_t refDeviceProcessId =
-        gLaunchLeave->getGraphPair( ).first->getReferencedStreamId( );
+        gLaunchLeave->getGraphPair().first->getReferencedStreamId();
 
       // found the last kernel launch (leave) on this stream, break
       if ( ( refDeviceProcessId == deviceStreamId ) &&
-           ( gLaunchLeave->getTime( ) <= timestamp ) )
+           ( gLaunchLeave->getTime() <= timestamp ) )
       {
         // if this is the latest kernel launch leave so far, remember it
         if ( !lastLaunchLeave ||
-             ( gLaunchLeave->getTime( ) > lastLaunchLeave->getTime( ) ) )
+             ( gLaunchLeave->getTime() > lastLaunchLeave->getTime() ) )
         {
           lastLaunchLeave = gLaunchLeave;
         }
@@ -472,14 +498,70 @@ AnalysisParadigmCUDA::getLastKernelLaunchLeave( uint64_t timestamp,
   return lastLaunchLeave;
 }
 
+/**
+ * Remove a kernel launch from the map (key is stream id) of kernel launch vectors.
+ * 
+ * @param kernel kernel enter node
+ */
+void
+AnalysisParadigmCUDA::removeKernelLaunch( GraphNode* kernel )
+{
+  GraphNode* kernelLaunchEnter = ( GraphNode* )kernel->getLink();
+  
+  if( !kernelLaunchEnter )
+  {
+    return;
+  }
+  
+  uint64_t streamId = kernel->getStreamId();
+
+  if( pendingKernelLaunchMap.count( streamId ) > 0 )
+  {  
+    if( pendingKernelLaunchMap[ streamId ].size() > 0 )
+    {
+      GraphNode* kernelLaunchLeave = kernelLaunchEnter->getGraphPair().second;
+      pendingKernelLaunchMap[ streamId ].remove( kernelLaunchLeave );
+
+      UTILS_WARNING( "[%"PRIu32"] Removed %s referencing %"PRIu64" from kernel "
+                     "launch map (new list size %llu)", 
+                     commonAnalysis->getMPIRank(),
+                     commonAnalysis->getNodeInfo( kernelLaunchLeave ).c_str(),
+                     streamId,
+                     pendingKernelLaunchMap[ streamId ].size() );
+    }
+  }
+}
+
+/**
+ * Clear the list of pending CUDA kernel launches for a give stream ID.
+ * 
+ * @param streamId
+ */
+void
+AnalysisParadigmCUDA::clearKernelLaunches( uint64_t streamId )
+{
+  if( pendingKernelLaunchMap.count( streamId ) > 0 )
+  {  
+    if( pendingKernelLaunchMap[ streamId ].size() > 0 )
+    {
+      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+        "[%"PRIu32"] Clear list of %llu pending kernel launches for stream %"PRIu64, 
+        commonAnalysis->getMPIRank(), 
+        (unsigned long long)pendingKernelLaunchMap[ streamId ].size(), streamId );
+      
+      pendingKernelLaunchMap[ streamId ].clear();
+    }
+  }
+}
+
 void
 AnalysisParadigmCUDA::addStreamWaitEvent( uint64_t   deviceProcId,
                                           EventNode* streamWaitLeave )
 {
   EventStream* nullStream = commonAnalysis->getNullStream();
-  if ( nullStream && nullStream->getId( ) == deviceProcId )
+  if ( nullStream && nullStream->getId() == deviceProcId )
   {
-    StreamWaitTagged* swTagged = new StreamWaitTagged( );
+    StreamWaitTagged* swTagged = new StreamWaitTagged();
     swTagged->node = streamWaitLeave;
     nullStreamWaits.push_front( swTagged );
   }
@@ -489,10 +571,10 @@ AnalysisParadigmCUDA::addStreamWaitEvent( uint64_t   deviceProcId,
     // it is replaced by this new streamWaitLeave.
     EventNode::EventNodeList& eventNodeList =
       streamWaitMap[deviceProcId];
-    for ( EventNode::EventNodeList::iterator iter = eventNodeList.begin( );
-          iter != eventNodeList.end( ); ++iter )
+    for ( EventNode::EventNodeList::iterator iter = eventNodeList.begin();
+          iter != eventNodeList.end(); ++iter )
     {
-      if ( ( *iter )->getEventId( ) == streamWaitLeave->getEventId( ) )
+      if ( ( *iter )->getEventId() == streamWaitLeave->getEventId() )
       {
         eventNodeList.erase( iter );
         break;

@@ -32,6 +32,8 @@ namespace casita
        * This rule uses the pending kernel list and needs access to kernel
        * enter and leave nodes.
        * 
+       * \todo: handle default stream, needs attribute
+       * 
        * Blames late synchronization operations.
        * 
        * @param priority
@@ -45,7 +47,7 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmCUDA* analysis, GraphNode* syncLeave )
+      apply( AnalysisParadigmCUDA* cudaAnalysis, GraphNode* syncLeave )
       {
         // applied at sync
         if ( !syncLeave->isCUDASync() || !syncLeave->isLeave() )
@@ -53,78 +55,128 @@ namespace casita
           return false;
         }
         
-        AnalysisEngine* commonAnalysis = analysis->getCommon();
+        AnalysisEngine* analysis = cudaAnalysis->getCommon();
 
         GraphNode* syncEnter = syncLeave->getGraphPair().first;
         
-        // get referenced device stream
-        uint64_t refStreamId = syncEnter->getReferencedStreamId();
-        if( refStreamId == 0 )
+        // find all referenced (device) streams of this synchronization
+        EventStreamGroup::EventStreamList deviceStreams;
+        
+        // add all device streams for collective CUDA synchronization, e.g. cudaDeviceSynchronize
+        if( syncLeave->isCUDACollSync() )
         {
-          return false;
+          analysis->getAllDeviceStreams( deviceStreams );
         }
-        EventStream* deviceStream = commonAnalysis->getStream( refStreamId );
-
-        // test that there is a pending kernel (leave)
-        bool isLastKernel = true;
-        while ( true )
+        else
         {
-          // check if we have a pending kernel, break otherwise
-          GraphNode* kernelLeave = deviceStream->getLastPendingKernel();
-          if ( !kernelLeave )
+          // get referenced device stream
+          uint64_t refStreamId = syncEnter->getReferencedStreamId();
+          if( refStreamId == 0 )
           {
-            break;
+            UTILS_MSG( true, "Sync %s does not reference a device stream!", 
+                         analysis->getNodeInfo(syncLeave).c_str() );
+            return false;
           }
-
-          // Early sync: sync start time < kernel end time
-          if ( syncEnter->getTime() < kernelLeave->getTime() )
+          
+          deviceStreams.push_back( analysis->getStream( refStreamId ) );
+        }
+        
+        // if no stream has a pending kernel for early synchronization, 
+        // it is a late synchronization that can be blamed for being useless
+        bool isLateSync = true; 
+        
+        // iterate over streams and try to find an early synchronization
+        for ( EventStreamGroup::EventStreamList::const_iterator pIter =
+                deviceStreams.begin();
+              pIter != deviceStreams.end(); ++pIter )
+        {
+          EventStream* deviceStream = *pIter;
+        
+          // test that there is a pending kernel (leave)
+          bool isLastKernel = true;
+          while ( true )
           {
-            // add an edge between the last pending kernel and the sync operation
-            if ( isLastKernel )
+            // check if there is a pending kernel left, start from the latest pending kernel
+            GraphNode* kernelLeave = deviceStream->getLastPendingKernel();
+            if ( !kernelLeave )
             {
-              commonAnalysis->newEdge( kernelLeave, syncLeave,
-                                       EDGE_CAUSES_WAITSTATE );
-              isLastKernel = false;
+              break;
             }
 
-            // make edge between sync enter and leave blocking (early sync)
-            Edge* syncEdge = commonAnalysis->getEdge( syncEnter, syncLeave );
-            if( syncEdge )
+            // Early sync: sync start time < kernel end time
+            if ( syncEnter->getTime() < kernelLeave->getTime() )
             {
-              syncEdge->makeBlocking();
+              //UTILS_MSG( true, "Found early sync %s", 
+              //           analysis->getNodeInfo(syncLeave).c_str() );
+              // add an edge between the last pending kernel and the sync operation
+              if ( isLastKernel )
+              {
+                analysis->newEdge( kernelLeave, syncLeave,
+                                         EDGE_CAUSES_WAITSTATE );
+                isLastKernel = false;
+              }
+
+              // make edge between sync enter and leave blocking (early sync)
+              Edge* syncEdge = analysis->getEdge( syncEnter, syncLeave );
+              if( syncEdge )
+              {
+                syncEdge->makeBlocking();
+              }
+
+              GraphNode* kernelEnter = kernelLeave->getGraphPair().first;
+
+              // set counters
+              uint64_t waitingTime = std::min( syncLeave->getTime(),
+                                               kernelLeave->getTime() ) -
+                                     std::max( syncEnter->getTime(),
+                                               kernelEnter->getTime() );
+
+              syncLeave->incCounter( WAITING_TIME, waitingTime );
+              kernelLeave->incCounter( BLAME, waitingTime );
+
+              // set link to sync leave node (mark kernel as synchronized)
+              kernelLeave->setLink( syncLeave );
+
+              isLateSync = false;
             }
-
-            GraphNode* kernelEnter = kernelLeave->getGraphPair().first;
+            else
+            {
+              // we can stop here, as all earlier kernels will not pass the 
+              // early sync condition
+              break;
+            }
             
-            // set counters
-            uint64_t waitingTime = std::min( syncLeave->getTime(),
-                                             kernelLeave->getTime() ) -
-                                   std::max( syncEnter->getTime(),
-                                             kernelEnter->getTime() );
-            
-            syncLeave->incCounter( WAITING_TIME, waitingTime );
-            kernelLeave->incCounter( BLAME, waitingTime );
-
-            // set link to sync leave node (mark kernel as synchronized)
-            kernelLeave->setLink( syncLeave );
-            
+            // consume the last pending kernel to reverse iterate over the list
+            // of pending kernels
             deviceStream->consumeLastPendingKernel();
           }
-          else // late sync: all pending kernels are synchronized
+        }
+        
+        // if this is a late (useless) synchronization
+        if( isLateSync )
+        {
+          //UTILS_MSG( true, "[%"PRIu32"] Found late synchronized kernel at %s",
+          //                 analysis->getMPIRank(),
+          //                analysis->getNodeInfo(syncLeave).c_str() );
+              
+          for ( EventStreamGroup::EventStreamList::const_iterator pIter =
+                deviceStreams.begin();
+              pIter != deviceStreams.end(); ++pIter )
           {
+            EventStream* deviceStream = *pIter;
             // set link to sync leave node (mark kernel as synchronized)
             deviceStream->setPendingKernelsSyncLink( syncLeave );
             deviceStream->clearPendingKernels();
-
-            // set counters
-            uint64_t waitingTime = syncLeave->getTime() - syncEnter->getTime();
-              
-            syncLeave->incCounter( BLAME, waitingTime );
-            syncLeave->setCounter( WAITING_TIME, waitingTime );
-
-            break;
           }
+
+          // set counters
+          uint64_t waitingTime = syncLeave->getTime() - syncEnter->getTime();
+
+          syncLeave->incCounter( BLAME, waitingTime );
+          syncLeave->setCounter( WAITING_TIME, waitingTime );
         }
+        
+        deviceStreams.clear();
 
         return true;
       }

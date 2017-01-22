@@ -44,14 +44,14 @@ namespace casita
       apply( AnalysisParadigmCUDA* analysis, GraphNode* syncLeave )
       {
         // applied at sync
-        if ( !syncLeave->isCUDASync( ) || !syncLeave->isLeave( ) )
+        if ( !syncLeave->isCUDASync() || !syncLeave->isLeave() )
         {
           return false;
         }
         
-        AnalysisEngine* commonAnalysis = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon();
 
-        GraphNode* syncEnter = syncLeave->getGraphPair( ).first;
+        GraphNode* syncEnter = syncLeave->getGraphPair().first;
 
         bool ruleResult = false;
         
@@ -59,8 +59,8 @@ namespace casita
         EventStreamGroup::EventStreamList deviceStreams;
         commonAnalysis->getAllDeviceStreams( deviceStreams );
         for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-                deviceStreams.begin( );
-              pIter != deviceStreams.end( ); ++pIter )
+                deviceStreams.begin();
+              pIter != deviceStreams.end(); ++pIter )
         {
           EventStream* deviceStream = *pIter;
 
@@ -74,7 +74,7 @@ namespace casita
           bool isFirstKernel = true;
           while ( true )
           {
-            GraphNode* kernelLeave = deviceStream->getFirstPendingKernel();
+            GraphNode* kernelLeave = deviceStream->getLastPendingKernel();
             if ( !kernelLeave )
             {
               break;

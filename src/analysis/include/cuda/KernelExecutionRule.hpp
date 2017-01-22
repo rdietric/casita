@@ -74,7 +74,7 @@ namespace casita
         kernelEnter->setLink( launchEnterEvent );
         
         // add pending kernel
-        commonAnalysis->getStream(kernelStrmId)->addPendingKernel(kernelLeave);
+        commonAnalysis->getStream( kernelStrmId )->addPendingKernel( kernelLeave );
         
         // add dependency
         commonAnalysis->newEdge( launchEnterEvent, kernelEnter );

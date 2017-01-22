@@ -392,18 +392,20 @@ AnalysisEngine::createIntermediateBegin( )
   cuda::AnalysisParadigmCUDA* cudaAnalysis = 
     (cuda::AnalysisParadigmCUDA*)this->getAnalysisParadigm( PARADIGM_CUDA );
   
+  //cudaAnalysis->printKernelLaunchMap();
+  
   for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin( );
         iter != streams.end( ); ++iter )
   {
     bool isMpiStream = false;
     EventStream* p   = *iter;
     
-    EventStream::SortedGraphNodeList& nodes = p->getNodes( );
+    EventStream::SortedGraphNodeList& nodes = p->getNodes();
     
     //GraphNode* startNode = nodes.front( );
     
     // \todo check for > 1
-    if ( nodes.size( ) > 0 )
+    if ( nodes.size() > 0 )
     {
       //do not remove the last MPI collective leave node
       if( nodes.back()->isMPI() )
@@ -412,20 +414,40 @@ AnalysisEngine::createIntermediateBegin( )
         isMpiStream = true;
       }
       
-      EventStream::SortedGraphNodeList::const_iterator it = nodes.begin( );
+      EventStream::SortedGraphNodeList::const_iterator it = nodes.begin();
+      
+      bool havePendingKernels = true; // used to avoid individual CUDA kernel node checks
       
       // keep the first node (stream begin node) for MPI processes
       if( p->isHostMasterStream() )
       {
         ++it;
       }
-      // do not delete the last node of a device stream, if it is an enter node
-      else if( p->isDeviceStream() && nodes.back()->isEnter() )
+      else if( p->isDeviceStream() )
       {
-        UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-                   "[%"PRIu64"] Do not delete incomplete kernel %s",
-                   p->getId(), getNodeInfo( nodes.back() ).c_str() );
-        nodes.pop_back();
+        // do not delete the last node of a device stream, if it is an enter node
+        if( nodes.back()->isEnter() )
+        {
+          UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+                     "[%"PRIu64"] Do not delete incomplete kernel %s",
+                     p->getId(), getNodeInfo( nodes.back() ).c_str() );
+          nodes.pop_back();
+        }
+        
+        // check for pending kernels
+        if( p->getLastPendingKernel() )
+        {
+          UTILS_MSG(true, "[%"PRIu64"] There are pending kernels!");
+        }
+        else
+        {
+          // we do not have pending kernels, 
+          // hence kernels and kernel launches can be removed
+          havePendingKernels = false;
+          
+          // clear pending kernel launches for this stream
+          cudaAnalysis->clearKernelLaunches( p->getId() );
+        }
       }
       
       // delete all remaining nodes
@@ -434,31 +456,46 @@ AnalysisEngine::createIntermediateBegin( )
         // do not remove CUDA nodes that might be required later
         if( (*it)->isCUDA() )
         {
-          // incomplete (only enter exists) and unsynchronized kernels are not deleted
-          if( (*it)->isCUDAKernel() )
+          if( havePendingKernels )
           {
-            // do not delete kernels that have not yet been synchronized
-            if( cudaAnalysis->isKernelPending( *it ) )
+            // incomplete (only enter exists) and unsynchronized kernels are not deleted
+            if( (*it)->isCUDAKernel() )
             {
+              // do not delete kernels that have not yet been synchronized
+              if( cudaAnalysis->isKernelPending( *it ) )
+              {
+                continue;
+              }
+              else
+              {
+                // delete kernel launch leave nodes in kernel launch map
+                if( (*it)->isEnter() )
+                {
+                  cudaAnalysis->removeKernelLaunch( *it );
+                }
+                // kernel launch enter nodes are consumed from kernel launch map at kernel enter
+              }
+            }
+            else          
+            // if the CUDA kernel launch enter node is not linked with the 
+            // associated kernel, the kernel has not started
+            if( (*it)->isCUDAKernelLaunch() /*&& (*it)->isEnter() && (*it)->getLink() == NULL*/ )
+            {
+              //UTILS_MSG(true, "[%"PRIu64"] Do not delete %s", p->getId(), 
+              //                getNodeInfo( *it ).c_str() );
               continue;
             }
           }
-          else          
-          // if the CUDA kernel launch enter node is not linked with the 
-          // associated kernel, the kernel has not started
-          if( (*it)->isCUDAKernelLaunch() /*&& (*it)->isEnter() && (*it)->getLink() == NULL*/ )
-          {
-            //UTILS_MSG(true, "[%"PRIu64"] Do not delete %s", p->getId(), 
-            //                getNodeInfo( *it ).c_str() );
-            continue;
-          }
-          else
+          
+          //else
           // if CUDA event record node has not yet been synchronized
           if( (*it)->isCUDAEventLaunch() && (*it)->isLeave() && (*it)->getData() == NULL )
           {
             continue;
           }
           
+          // do not delete CUDA synchronization nodes
+          // \todo: why not?
           if( (*it)->isCUDASync() )
           {
             continue;
@@ -522,13 +559,13 @@ AnalysisEngine::createIntermediateBegin( )
 }
 
 void
-AnalysisEngine::reset( )
+AnalysisEngine::reset()
 {
   //GraphEngine::reset( );
-  for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin( );
-        iter != analysisParadigms.end( ); ++iter )
+  for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
+        iter != analysisParadigms.end(); ++iter )
   {
-    iter->second->reset( );
+    iter->second->reset();
   }
 }
 

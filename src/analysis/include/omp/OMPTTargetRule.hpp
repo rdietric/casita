@@ -88,6 +88,8 @@ namespace casita
           // on target leave nodes
           if( node->isOMPTarget() )
           {
+            //\todo: this does not work for deprecated libmpti traces
+            // for libmpti use all device streams
             GraphNode* targetEnter = node->getGraphPair().first;
             int deviceId = -1;
             if( targetEnter->getData() )
@@ -102,8 +104,7 @@ namespace casita
             GraphNode* lastTargetOffloadNode = NULL;
             // get last node on the device before target leave
             for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-                  deviceStreams.begin( );
-                pIter != deviceStreams.end( ); ++pIter )
+                  deviceStreams.begin(); pIter != deviceStreams.end(); ++pIter )
             {
               EventStream* deviceStream = *pIter;
               
@@ -138,31 +139,40 @@ namespace casita
               }
             }
             
+            deviceStreams.clear();
+            
             // reset target enter node for next target region
             ompAnalysis->consumeOmpTargetBegin( node->getStreamId() );
             
-            uint64_t waiting_time = node->getTime();
-            if( lastTargetOffloadNode->getTime() < node->getTime() )
+            if( lastTargetOffloadNode && firstTargetOffloadNode )
             {
-              waiting_time = lastTargetOffloadNode->getTime();
-            }
-            
-            if( targetEnter->getTime() < firstTargetOffloadNode->getTime() )
-            {
-              waiting_time -= firstTargetOffloadNode->getTime();
+              uint64_t waiting_time = node->getTime();
+              if( lastTargetOffloadNode->getTime() < node->getTime() )
+              {
+                waiting_time = lastTargetOffloadNode->getTime();
+              }
+
+              if( targetEnter->getTime() < firstTargetOffloadNode->getTime() )
+              {
+                waiting_time -= firstTargetOffloadNode->getTime();
+              }
+              else
+              {
+                waiting_time -= targetEnter->getTime();
+              }
+
+              node->setCounter( WAITING_TIME, waiting_time );
+
+              // distribute blame on the device
+              distributeBlame( analysis,
+                               lastTargetOffloadNode,
+                               waiting_time, // total blame
+                               deviceStreamWalkCallback );
             }
             else
             {
-              waiting_time -= targetEnter->getTime();
+              UTILS_WARNING( "No device streams?" );
             }
-            
-            node->setCounter( WAITING_TIME, waiting_time );
-            
-            // distribute blame on the device
-            distributeBlame( analysis,
-                             lastTargetOffloadNode,
-                             waiting_time, // total blame
-                             deviceStreamWalkCallback );
           }
           /* if it is a device enter node
           else if ( nodeStream->getStreamType( ) == EventStream::ES_DEVICE )

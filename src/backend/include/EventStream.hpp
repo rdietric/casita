@@ -46,7 +46,10 @@ namespace casita
      // keep numbers to the power of two, as required by stream type identification
      enum EventStreamType
      {
-       ES_HOST = 1, ES_HOST_MASTER = 2, ES_DEVICE = 4, ES_DEVICE_NULL = 8
+       ES_HOST        = ( 1 << 0 ), 
+       ES_HOST_MASTER = ( 1 << 1 ), 
+       ES_DEVICE      = ( 1 << 2 ), 
+       ES_DEVICE_NULL = ( 1 << 3 )
      };
 
      // Types for blocking MPI communication
@@ -220,10 +223,10 @@ namespace casita
      addPendingKernel( GraphNode* kernelLeave );
 
      GraphNode*
-     getFirstPendingKernel( );
+     getLastPendingKernel( );
 
      GraphNode*
-     consumeFirstPendingKernel( );
+     consumeLastPendingKernel( );
      
      /**
       * Consume all pending kernels before the given node.

@@ -522,40 +522,52 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(
                                           OTF2_LocationGroupRef locationGroup )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
-  int phase           = tr->getProcessingPhase( );
+  int phase           = tr->getProcessingPhase();
 
   if ( phase == 1 )
   {
-    tr->getProcessFamilyMap( )[self] = locationGroup;
+    tr->getProcessFamilyMap()[self] = locationGroup;
+  }
+  
+  // ignore metric or unknown locations
+  if( locationType == OTF2_LOCATION_TYPE_METRIC || 
+      locationType == OTF2_LOCATION_TYPE_UNKNOWN )
+  {
+    if ( tr->isChildOf( self, tr->getMPIProcessId() ) )
+    {
+      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+                 "Ignore metric/unknown location %s", 
+                 tr->getStringRef( name ).c_str() );
+    }
+    
+    return OTF2_CALLBACK_SUCCESS;
   }
 
   if ( phase == 2 )
   {
-
     if ( tr->handleProcessMPIMapping )
     {
       tr->handleProcessMPIMapping( tr, self, locationGroup );
     }
 
     // skip all processes but the mapping MPI master process and its children
-    if ( tr->getMPISize( ) > 1 )
+    if ( tr->getMPISize() > 1 )
     {
-      if ( self != tr->getMPIProcessId( ) &&
-           ( !tr->isChildOf( self, tr->getMPIProcessId( ) ) ) )
+      if ( self != tr->getMPIProcessId() &&
+           ( !tr->isChildOf( self, tr->getMPIProcessId() ) ) )
       {
         return OTF2_CALLBACK_SUCCESS;
       }
     }
 
     // Locations are processes
-    tr->getProcessNameTokenMap( )[self] = name;
+    tr->getProcessNameTokenMap()[self] = name;
 
     if ( tr->handleDefProcess )
     {
-      tr->handleDefProcess( tr, 0, self, locationGroup, tr->getStringRef(
-                              name ).c_str( ),
-                            NULL, locationType ==
-                            OTF2_LOCATION_TYPE_GPU ? true : false, false );
+      tr->handleDefProcess( tr, self, locationGroup, 
+                            tr->getStringRef( name ).c_str(), NULL, 
+                            locationType == OTF2_LOCATION_TYPE_GPU ? true : false );
     }
 
   }
@@ -758,8 +770,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Attribute( void*             userD
 
   if ( tr->handleDefAttribute )
   {
-    tr->handleDefAttribute( tr, 0, self, s.c_str(), tr->getKeyName(
-                             description ).c_str() );
+    tr->handleDefAttribute( tr, 0, self, s.c_str() );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -1137,6 +1148,7 @@ OTF2TraceReader::getKeyName( uint32_t id )
   {
     UTILS_MSG( true, "Could not translate OTF2 string reference %u to string "
                      "object!", id );
+    
     return "(unknown)";
   }
 }
@@ -1161,11 +1173,11 @@ OTF2TraceReader::getProcGoupMap( )
   return processGroupMap;
 }
 
-std::string
+/*std::string
 OTF2TraceReader::getProcessName( uint64_t id )
 {
   return getKeyName( id );
-}
+}*/
 
 std::vector< uint32_t >
 OTF2TraceReader::getKeys( const std::string keyName )

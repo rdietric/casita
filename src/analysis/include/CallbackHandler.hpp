@@ -45,9 +45,9 @@ namespace casita
                               uint64_t streamId, uint32_t mpiRank );
 
      static void
-     handleDefProcess( io::OTF2TraceReader* reader, uint32_t stream,
-                       uint64_t streamId, uint64_t parentId, const char* name,
-                       io::OTF2KeyValueList* list, bool isCUDA, bool isCUDANull );
+     handleDefProcess( io::OTF2TraceReader* reader, uint64_t streamId, 
+                       uint64_t parentId, const char* name,
+                       io::OTF2KeyValueList* list, bool isGPU );
 
      static void
      handleDefFunction( io::OTF2TraceReader* reader,
@@ -60,8 +60,7 @@ namespace casita
      handleDefAttribute( io::OTF2TraceReader* reader,
                          uint64_t          streamId,
                          uint32_t          key, 
-                         const char*       name,
-                         const char*       description );
+                         const char*       name );
 
      static void
      handleEnter( io::OTF2TraceReader* reader, uint64_t time, uint32_t functionId,
