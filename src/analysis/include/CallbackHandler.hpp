@@ -132,7 +132,7 @@ namespace casita
                            Paradigm paradigm );
 
      static uint32_t
-     readKeyVal( io::OTF2TraceReader* reader, const char* keyName,
+     readAttributeUint32( io::OTF2TraceReader* reader, const char* keyName,
                  io::OTF2KeyValueList* list );
      
      /**

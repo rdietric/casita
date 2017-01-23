@@ -89,15 +89,24 @@ CallbackHandler::printNode( GraphNode* node, EventStream* stream )
 }
 
 uint32_t
-CallbackHandler::readKeyVal( OTF2TraceReader*  reader,
-                             const char*       keyName,
-                             OTF2KeyValueList* list )
+CallbackHandler::readAttributeUint32( OTF2TraceReader*  reader,
+                                      const char*       keyName,
+                                      OTF2KeyValueList* list )
 {
   uint32_t keyVal = 0;
   int32_t  key    = reader->getFirstKey( keyName );
-  if ( key > -1 && list )
+  
+  if ( key > -1 && list && list->getSize() > 0 && 
+       list->testAttribute( (uint32_t)key ) )
   {
     list->getUInt32( (uint32_t)key, &keyVal );
+  }
+  else
+  {
+    CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
+    AnalysisEngine&  analysis = handler->getAnalysis( );
+    UTILS_WARNING( "[%"PRIu32"] No value for key %s found", 
+                   analysis.getMPIRank(), keyName );
   }
 
   return keyVal;
@@ -314,8 +323,8 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
                               uint64_t          streamId,
                               OTF2KeyValueList* list )
 {
-  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
-  AnalysisEngine&  analysis = handler->getAnalysis( );
+  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
+  AnalysisEngine&  analysis = handler->getAnalysis();
 
   EventStream* stream = analysis.getStream( streamId );
   if ( !stream )
@@ -324,9 +333,9 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   }
   
   // save the time stamp of the last leave event
-  if( stream->getPeriod( ).second < time )
+  if( stream->getPeriod().second < time )
   {
-    stream->getPeriod( ).second = time;
+    stream->getPeriod().second = time;
   }
 
   std::string funcStr = reader->getFunctionName( functionId );
@@ -346,22 +355,26 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   GraphNode* leaveNode = NULL;
   if ( Node::isCUDAEventType( functionType.paradigm, functionType.functionType ) )
   {
-    uint64_t eventId  = readKeyValUInt64( reader, SCOREP_CUDA_EVENTREF, list );
+    uint64_t eventId = readKeyValUInt64( reader, SCOREP_CUDA_EVENTREF, list );
     
     if ( eventId == 0 )
     {
       UTILS_MSG( true, "No eventId for event found" );
       return false;
     }
-    
-    // get the function result (only evaluated for cuEventQuery)
-    uint32_t cuResult = readKeyVal( reader, SCOREP_CUDA_CURESULT, list );
-    EventNode::FunctionResultType fResult = EventNode::FR_UNKNOWN;
-    if ( cuResult == CUDA_SUCCESS )
-    {
-      fResult = EventNode::FR_SUCCESS;
-    }
 
+    EventNode::FunctionResultType fResult = EventNode::FR_UNKNOWN;
+    
+    // get the function result cuEventQuery
+    if( functionType.functionType & CUDA_EV_QUERY )
+    {
+      uint32_t cuResult = readAttributeUint32( reader, SCOREP_CUDA_CURESULT, list );
+      if ( cuResult == CUDA_SUCCESS )
+      {
+        fResult = EventNode::FR_SUCCESS;
+      }
+    }
+    
     leaveNode = handler->getAnalysis().addNewEventNode( time,
                                                         eventId,
                                                         fResult,
