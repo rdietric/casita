@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -662,8 +662,7 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
       mpiAnalysis.getMPISize(),
       origFilename.c_str(),
       writeToFile,
-      &( this->getCtrTable() ),
-      ignoreAsyncMpi );
+      &( this->getCtrTable() ) );
 
     if ( !writeToFile )
     {
@@ -681,14 +680,12 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
   if( writeToFile )
   {
     writer->writeAnalysisMetricDefinitions();
-    writer->setupAttributeList();
   }
 
   MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
   for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-          allStreams.begin( );
-        pIter != allStreams.end( ); ++pIter )
+          allStreams.begin(); pIter != allStreams.end(); ++pIter )
   {
     EventStream* p = *pIter;
 
@@ -696,12 +693,11 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
     {
       continue;
     }
-
-    writer->writeDefProcess( p->getId( ), p->getParentId( ), p->getName( ),
-                             OTF2ParallelTraceWriter::streamTypeToGroup( p->getStreamType( ) ) );
     
-    writer->setupEventReader( ( *pIter )->getId( ) );
+    writer->setupEventReader( p->getId() );
   }
+  
+  writer->writeMetricStreams();
   
   // clear list that has been created in this function
   allStreams.clear();
@@ -726,7 +722,7 @@ AnalysisEngine::writeOTF2EventStreams( )
   getStreams( allStreams );
 
   // sort streams by ID with host streams first
-  std::sort( allStreams.begin( ), allStreams.end( ), EventStream::streamSort );
+  std::sort( allStreams.begin(), allStreams.end(), EventStream::streamSort );
   
   // first stream should be the MPI rank
   //uint64_t masterPeriodEnd = allStreams.front().getPeriod().second;
@@ -738,18 +734,18 @@ AnalysisEngine::writeOTF2EventStreams( )
   
   // write all process local streams
   for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-          allStreams.begin( ); pIter != allStreams.end( ); ++pIter )
+          allStreams.begin(); pIter != allStreams.end(); ++pIter )
   {
     EventStream* stream = *pIter;
 
     // skip remote streams and streams without new nodes
-    if ( stream->isRemoteStream( ) || stream->hasNewNodes( ) == false )
+    if ( stream->isRemoteStream() || stream->hasNewNodes() == false )
     {
       continue;
     }
 
     uint64_t events_read_per_stream = 0;
-    events_available |= writer->writeStream( stream, &( this->getGraph( ) ), 
+    events_available |= writer->writeStream( stream, &( this->getGraph() ), 
                                              &events_read_per_stream );
     
     events_read += events_read_per_stream;

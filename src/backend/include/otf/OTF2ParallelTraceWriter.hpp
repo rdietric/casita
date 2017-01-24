@@ -32,8 +32,6 @@ namespace casita
       PG_HOST        = 1, PG_DEVICE, PG_DEVICE_NULL
     };
 
-  typedef std::map< uint32_t, uint32_t > CtrInstanceMap;
-
   typedef struct
   {
     uint64_t         time;
@@ -74,6 +72,9 @@ namespace casita
         double   fractionBlame;
         uint64_t lastEnterTime;
       } ActivityGroup;
+      
+      // key: OTF2 region reference, value: activity group
+      typedef std::map< uint32_t, ActivityGroup > ActivityGroupMap;
 
       // sort activities by blame on critical path 
       // (if equal CP time, then blame, then function ID)
@@ -106,33 +107,23 @@ namespace casita
           }
         }
       } ActivityGroupCompare;
-    
-      // key: OTF2 region reference, value: activity group
-      typedef std::map< uint32_t, ActivityGroup > ActivityGroupMap;
-      
-      bool writeToFile;
 
       OTF2ParallelTraceWriter( uint32_t        mpiRank,
                                uint32_t        mpiSize,
                                const char*     originalFilename,
                                bool            writeToFile,
-                               AnalysisMetric* metrics,
-                               bool            ignoreAsyncMpi );
+                               AnalysisMetric* metrics );
       virtual
-      ~OTF2ParallelTraceWriter( );
+      ~OTF2ParallelTraceWriter();
 
       void
       open( const std::string otfFilename, uint32_t maxFiles );
 
       void
-      close( );
+      close();
       
       void
-      reset( );
-
-      void
-      writeDefProcess( uint64_t id, uint64_t parentId,
-                       const char* name, ProcessGroup pg );
+      reset();
       
       /**
        * Write definitions for self-defined (analysis) metrics to output trace file.
@@ -141,21 +132,21 @@ namespace casita
       writeAnalysisMetricDefinitions( void );
       
       void
-      setupAttributeList( void );
-      
-      void
       setupEventReader( uint64_t streamId );
       
       bool
       writeStream( EventStream* stream,
                    Graph*       graph,
                    uint64_t*    events_read );
+      
+      void
+      writeMetricStreams();
 
       std::string
       getRegionName( const OTF2_RegionRef regionRef ) const;
       
       ActivityGroupMap*
-      getActivityGroupMap( )
+      getActivityGroupMap()
       {
         return &activityGroupMap;
       }
@@ -173,10 +164,14 @@ namespace casita
             return PG_HOST;
         }
       }
+      
+      bool writeToFile;
 
     private:
       
       uint32_t mpiRank, mpiSize;
+      
+      MPI_Comm commGroup;
       
       // maps OTF2 region references to activity groups to collect a global profile
       ActivityGroupMap activityGroupMap;
@@ -184,54 +179,45 @@ namespace casita
       //!< pointer to the table of available counters
       AnalysisMetric* cTable; 
       
-      bool ignoreAsyncMpi;
-      int  verbose;
-      
       uint64_t timerResolution;
-      
-      // 
       uint64_t timerOffset;
       
       double
       getRealTime(  uint64_t time );
       
       //!< counter to assign IDs to string definitions
-      uint64_t      counterForStringDefinitions;
-      
-      //!< counter to assign IDs to attribute types
-      uint64_t      counterForAttributeId;
+      uint64_t counterForStringDefinitions;
       
       //!< regionReference for internal Fork/Join
-      uint32_t      ompForkJoinRef;
+      uint32_t ompForkJoinRef;
 
-      std::string   outputFilename, originalFilename, pathToFile;
+      std::string outputFilename, originalFilename, pathToFile;
 
       //!< maps each process to corresponding evtWriter
       std::map< uint64_t, OTF2_EvtWriter* > evt_writerMap;
       
+      // OTF2 handles
+      OTF2_Archive*         archive;
       OTF2_GlobalDefWriter* global_def_writer;
-      OTF2_Archive* archive;
-      OTF2_Reader*  reader;
-      OTF2_AttributeList* attributes;
+      OTF2_Reader*          reader;
+      //OTF2_AttributeList*   attributes;
 
-      MPI_Comm commGroup;
-
+      //!< maps OTF2 IDs to strings (global definitions)
       std::map< uint32_t, const char* > idStringMap;
 
       //!< < metric ID, metric value >
       typedef std::map< MetricType, uint64_t > CounterMap;
-      
-      //!< < event location, stack of counter values >
-      typedef std::map< uint64_t, std::stack< CounterMap* > > CounterStackMap;
-      
+      typedef std::map< uint64_t, CounterMap > CounterMapMap;
+
       //!< < event location, stack of region references >
       typedef std::map< uint64_t, std::stack< OTF2_RegionRef > > ActivityStackMap;
       typedef std::map< uint64_t, uint64_t > TimeMap;
       typedef std::list< Edge* > OpenEdgesList;
+      typedef std::map < uint64_t, OpenEdgesList > OpenEdgesMap;
       typedef std::map< uint64_t, bool > BooleanMap;
 
       void
-      copyGlobalDefinitions( );
+      copyGlobalDefinitions();
 
       void
       updateActivityGroupMap( OTF2Event event, CounterMap& counters );
@@ -240,29 +226,37 @@ namespace casita
       computeCPUEventBlame( OTF2Event event );
       
       void
-      writeEventsWithAttributes( OTF2Event event, CounterMap& counters );
+      writeEventsWithAttributes( OTF2Event event, OTF2_AttributeList* attributes, 
+                                 CounterMap& counters );
       
       void
-      writeEventsWithCounters( OTF2Event event, CounterMap& counters, bool writeEvents );
+      writeEventsWithCounters( OTF2Event event, OTF2_AttributeList* attributes, 
+                               CounterMap& counters, bool writeEvents );
 
       void
-      processNextEvent( OTF2Event event, const std::string eventName );
+      processNextEvent( OTF2Event event, OTF2_AttributeList* attributes );
       
       void
-      clearOpenEdges( );
-
-      EventStream::SortedGraphNodeList* processNodes;
-      EventStream::SortedGraphNodeList::iterator currentNodeIter;
-      EventStream* currentStream;
+      clearOpenEdges();
+      
+      typedef std::map < uint64_t, EventStream::SortedGraphNodeList::iterator > NodeListIterMap;
+      typedef std::map < uint64_t, EventStream* > IdStreamMap;
+      
+      NodeListIterMap currentNodeIterMap;
+      IdStreamMap currentStreamMap;
 
       bool   isFirstProcess;
       Graph* graph;
       
       //!< save last counter values to avoid writing of unused counter records
-      CounterMap lastCounterValues;
+      CounterMapMap lastMetricValues;
       
+#if defined(BLAME_COUNTER_FALSE)
+      //!< < event location, stack of counter values >
+      typedef std::map< uint64_t, std::stack< CounterMap* > > CounterStackMap;
       //!< activity value stack map < event.location, stack of CounterMaps >
       CounterStackMap leaveCounterStack;
+#endif
 
       //!< Keep track of activity stack per process.
       ActivityStackMap activityStack;
@@ -276,15 +270,33 @@ namespace casita
        * Blame was assigned to these edges during analysis, now it is
        * distributed to CPU nodes between internal nodes.
        */
-      OpenEdgesList openEdges;
+      //OpenEdgesList openEdges;
+      OpenEdgesMap openEdgesMap;
+      
+      // per location information
+      /*typedef struct
+      {
+        EventStream::SortedGraphNodeList::iterator currentNodeIter;
+        EventStream* currentStream;
+        CounterMap lastMetricValues;
+        std::stack< OTF2_RegionRef > activityStack;
+        uint64_t lastEventTime;
+        OpenEdgesList openEdges;
+      }StreamStatus;
+      
+      std::map < uint64_t, StreamStatus > streamStatusMap;*/
       
       /* Keep track if process is currently on critical path
        * -> necessary to write counter values correctly */
-      BooleanMap    processOnCriticalPath;
+      BooleanMap processOnCriticalPath;
 
       /** Tells if a stream is a device stream.
        * (necessary to find out if an event is mapped by an internal node. */
       std::map< uint64_t, bool > deviceStreamMap;
+      
+      std::vector< uint64_t > metricStreamVector;
+      
+      //!< maps OTF2 region IDs to OTF2 string reference (key: OTF2 region ID)
       std::map< uint32_t, OTF2_StringRef > regionNameIdList;
 
       /* Definition callbacks */
@@ -302,6 +314,27 @@ namespace casita
                                               OTF2_StringRef    name,
                                               OTF2_StringRef    description,
                                               OTF2_Type         type );
+      
+      static OTF2_CallbackCode
+      OTF2_GlobalDefReaderCallback_MetricMember( void*                userData,
+                                                 OTF2_MetricMemberRef self,
+                                                 OTF2_StringRef       name,
+                                                 OTF2_StringRef       description,
+                                                 OTF2_MetricType      metricType,
+                                                 OTF2_MetricMode      metricMode,
+                                                 OTF2_Type            valueType,
+                                                 OTF2_Base            base,
+                                                 int64_t              exponent,
+                                                 OTF2_StringRef       unit );
+      
+      static OTF2_CallbackCode
+      OTF2_GlobalDefReaderCallback_MetricClass(
+                                  void*                       userData,
+                                  OTF2_MetricRef              self,
+                                  uint8_t                     numberOfMetrics,
+                                  const OTF2_MetricMemberRef* metricMembers,
+                                  OTF2_MetricOccurrence       metricOccurrence,
+                                  OTF2_RecorderKind           recorderKind );
 
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_ClockProperties( void*    userData,
@@ -411,6 +444,28 @@ namespace casita
                                            OTF2_RmaWinRef self,
                                            OTF2_StringRef name,
                                            OTF2_CommRef   comm );
+      
+      static OTF2_CallbackCode
+      OTF2_DefReaderCallback_MetricMember( 
+                                           void*                userData,
+                                           OTF2_MetricMemberRef self,
+                                           OTF2_StringRef       name,
+                                           OTF2_StringRef       description,
+                                           OTF2_MetricType      metricType,
+                                           OTF2_MetricMode      metricMode,
+                                           OTF2_Type            valueType,
+                                           OTF2_Base            base,
+                                           int64_t              exponent,
+                                           OTF2_StringRef       unit );
+      
+      static OTF2_CallbackCode
+      OTF2_DefReaderCallback_MetricClass( 
+                                          void*                       userData,
+                                          OTF2_MetricRef              self,
+                                          uint8_t                     numberOfMetrics,
+                                          const OTF2_MetricMemberRef* metricMembers,
+                                          OTF2_MetricOccurrence       metricOccurrence,
+                                          OTF2_RecorderKind           recorderKind );
 
       /* callbacks for comm/enter/leave/fork/join events */
       static OTF2_CallbackCode
@@ -594,6 +649,17 @@ namespace casita
                          void*               userData,
                          OTF2_AttributeList* attributes,
                          OTF2_RegionRef      region );
+      
+      static OTF2_CallbackCode
+      otf2CallbackMetric( 
+                            OTF2_LocationRef        location,
+                            OTF2_TimeStamp          time,
+                            void*                   userData,
+                            OTF2_AttributeList*     attributeList,
+                            OTF2_MetricRef          metric,
+                            uint8_t                 numberOfMetrics,
+                            const OTF2_Type*        typeIDs,
+                            const OTF2_MetricValue* metricValues );
 
       /* tell OTF2 what to do after bufferFlush */
       OTF2_FlushCallbacks      flush_callbacks;

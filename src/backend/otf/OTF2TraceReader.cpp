@@ -217,8 +217,6 @@ OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
                                                   &otf2CallbackEnter );
   OTF2_GlobalEvtReaderCallbacks_SetLeaveCallback( event_callbacks,
                                                   &otf2CallbackLeave );
-  OTF2_GlobalEvtReaderCallbacks_SetMetricCallback( event_callbacks,
-                                                   &otf2CallbackMetric );
   
   OTF2_GlobalEvtReaderCallbacks_SetMpiCollectiveEndCallback(
     event_callbacks,&otf2Callback_MpiCollectiveEnd );
