@@ -121,19 +121,18 @@ namespace casita
 
      std::map< uint64_t, OTF2_Barrier_Event > lastBarrierEvent;
 
-     /* OTF misc */
-     void
-     applyStreamRefsEnter( io::OTF2TraceReader* reader, GraphNode* node,
-                           io::OTF2KeyValueList* list, Paradigm paradigm );
-
-     void
-     applyStreamRefsLeave( io::OTF2TraceReader* reader, GraphNode* node,
-                           GraphNode* oldNode, io::OTF2KeyValueList* list,
-                           Paradigm paradigm );
-
+     /**
+      * Get an uint32_t type attribute (or key-value) from the given key value list.
+      * 
+      * @param reader the trace reader
+      * @param keyName the name of the attribute
+      * @param list the attribute list
+      * 
+      * @return the uint32_t type attribute
+      */
      static uint32_t
      readAttributeUint32( io::OTF2TraceReader* reader, const char* keyName,
-                 io::OTF2KeyValueList* list );
+                          io::OTF2KeyValueList* list );
      
      /**
       * Get an uint64_t type attribute (or key-value) from the given key value list.
@@ -145,7 +144,7 @@ namespace casita
       * @return the uint64_t type attribute
       */
      static uint64_t
-     readKeyValUInt64( io::OTF2TraceReader* reader, const char* keyName,
+     readAttributeUint64( io::OTF2TraceReader* reader, const char* keyName,
                        io::OTF2KeyValueList* list );
 
  };

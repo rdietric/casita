@@ -259,7 +259,7 @@ namespace casita
                          void*               userData,
                          OTF2_AttributeList* attributes,
                          OTF2_RegionRef      region );
-
+      
       static OTF2_CallbackCode
       otf2Callback_MpiCollectiveEnd( OTF2_LocationRef    locationID,
                                      OTF2_TimeStamp      time,

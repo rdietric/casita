@@ -36,46 +36,46 @@ Runner::Runner( int mpiRank, int mpiSize ) :
   mpiRank( mpiRank ),
   mpiSize( mpiSize ),
   analysis( mpiRank, mpiSize ),
-  options( Parser::getInstance( ).getProgramOptions( ) ),
+  options( Parser::getInstance().getProgramOptions() ),
   callbacks( analysis ),
   globalLengthCP( 0 )
 {
   if ( options.noErrors )
   {
-    ErrorUtils::getInstance( ).setNoExceptions( );
+    ErrorUtils::getInstance().setNoExceptions();
   }
 
   if ( options.verbose )
   {
     UTILS_MSG( mpiRank == 0 && options.verbose >= VERBOSE_BASIC,
                "Enabled verbose output for error utils\n" );
-    ErrorUtils::getInstance( ).setVerbose( );
+    ErrorUtils::getInstance().setVerbose();
   }
   
   if ( options.mergeActivities ) 
   {
     // critical path start stream and first critical node time
-    criticalPathStart.first = std::numeric_limits< uint64_t >::max( );
-    criticalPathStart.second = std::numeric_limits< uint64_t >::max( );
+    criticalPathStart.first = std::numeric_limits< uint64_t >::max();
+    criticalPathStart.second = std::numeric_limits< uint64_t >::max();
     
     // critical path end stream and last critical node time
-    criticalPathEnd.first = std::numeric_limits< uint64_t >::max( );
+    criticalPathEnd.first = std::numeric_limits< uint64_t >::max();
     criticalPathEnd.second = 0;
   }
 }
 
-Runner::~Runner( )
+Runner::~Runner()
 {
 }
 
 ProgramOptions&
-Runner::getOptions( )
+Runner::getOptions()
 {
   return options;
 }
 
 AnalysisEngine&
-Runner::getAnalysis( )
+Runner::getAnalysis()
 {
   return analysis;
 }
@@ -85,9 +85,9 @@ Runner::startAnalysisRun( )
 {
   OTF2TraceReader* traceReader = NULL;
 
-  UTILS_MSG( mpiRank == 0, "Reading %s", options.filename.c_str( ) );
+  UTILS_MSG( mpiRank == 0, "Reading %s", options.filename.c_str() );
 
-  if ( strstr( options.filename.c_str( ), ".otf2" ) != NULL )
+  if ( strstr( options.filename.c_str(), ".otf2" ) != NULL )
   {
     traceReader = new OTF2TraceReader( &callbacks, mpiRank, mpiSize );
   }
@@ -117,7 +117,7 @@ Runner::startAnalysisRun( )
              "[0] Reading definitions ... " );
   
   // read the OTF2 definitions and initialize some maps and variables of the trace reader
-  if( false == traceReader->readDefinitions( ) )
+  if( false == traceReader->readDefinitions() )
   {
     throw RTException( "Error while reading definitions!" );
   }
@@ -145,13 +145,13 @@ Runner::startAnalysisRun( )
   }
   
   // TODO:
-  analysis.getMPIAnalysis( ).createMPICommunicatorsFromMap( );
+  analysis.getMPIAnalysis( ).createMPICommunicatorsFromMap();
   
   // TODO: 
-  analysis.setWaitStateFunctionId( analysis.getNewFunctionId( ) );
+  analysis.setWaitStateFunctionId( analysis.getNewFunctionId() );
 
   // set the timer resolution in the analysis engine
-  uint64_t timerResolution = traceReader->getTimerResolution( );
+  uint64_t timerResolution = traceReader->getTimerResolution();
   analysis.setTimerResolution( timerResolution );
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
              "[0] Timer resolution = %llu",
@@ -175,7 +175,7 @@ Runner::startAnalysisRun( )
              analysis.getMPIAnalysis().globalCollectiveCounter );
 
   // close the trace reader
-  traceReader->close( );
+  traceReader->close();
   delete traceReader;
 }
 
@@ -349,7 +349,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     
     time_tmp = clock();
     
-    // write OTF2 definitions for this MPI rank (only once)
+    // write OTF2 definitions for this MPI rank (only once), not thread safe!
     if( !otf2_def_written )
     {
       // write the OTF2 output trace definitions and setup the OTF2 input reader
@@ -448,10 +448,10 @@ Runner::processTrace( OTF2TraceReader* traceReader )
 }
 
 void
-Runner::mergeActivityGroups( )
+Runner::mergeActivityGroups()
 {
   OTF2ParallelTraceWriter::ActivityGroupMap* activityGroupMap =
-    analysis.getActivityGroupMap( );
+    analysis.getActivityGroupMap();
   
   assert( activityGroupMap );
 

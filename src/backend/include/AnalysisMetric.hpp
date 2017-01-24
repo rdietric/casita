@@ -166,28 +166,34 @@ namespace casita
       }
 
       uint32_t
-      getNewCounterId( )
+      getNewCounterId()
       {
         // starting with 0 (Ids in OTF2 need to start with 0)
         return maxCtrId++;
       }
      
       uint32_t
-      getNewAttributeId( )
+      getNewAttributeId()
       {
         return maxAttrId++;
       }
 
       const MetricIdSet&
-      getAllCounterIds( ) const
+      getAllCounterIds() const
       {
         return ctrIDs;
       }
 
       const MetricIdSet&
-      getAllMetricIds( ) const
+      getAllMetricIds() const
       {
         return metricIds;
+      }
+      
+      void
+      addMetricMemberId( uint32_t ctrId )
+      {
+        maxCtrId = std::max( maxCtrId, ctrId );
       }
      
       void

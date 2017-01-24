@@ -187,8 +187,8 @@ void
 OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
 {
   // processNameTokenMap is initialized during traceReader->readDefinitions( );
-  for ( IdNameTokenMap::const_iterator iter = processNameTokenMap.begin( );
-        iter != processNameTokenMap.end( ); ++iter )
+  for ( IdNameTokenMap::const_iterator iter = processNameTokenMap.begin();
+        iter != processNameTokenMap.end(); ++iter )
   {
     OTF2_Reader_SelectLocation( reader, iter->first );
   }
@@ -196,8 +196,8 @@ OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
   OTF2_Reader_OpenEvtFiles( reader );
   OTF2_Reader_OpenDefFiles( reader );
 
-  for ( IdNameTokenMap::const_iterator iter = processNameTokenMap.begin( );
-        iter != processNameTokenMap.end( ); ++iter )
+  for ( IdNameTokenMap::const_iterator iter = processNameTokenMap.begin();
+        iter != processNameTokenMap.end(); ++iter )
   {
     OTF2_DefReader* def_reader = OTF2_Reader_GetDefReader( reader, iter->first );
     uint64_t def_reads         = 0;
@@ -212,11 +212,14 @@ OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
     OTF2_Reader_GetGlobalEvtReader( reader );
 
   OTF2_GlobalEvtReaderCallbacks* event_callbacks =
-    OTF2_GlobalEvtReaderCallbacks_New( );
+    OTF2_GlobalEvtReaderCallbacks_New();
   OTF2_GlobalEvtReaderCallbacks_SetEnterCallback( event_callbacks,
                                                   &otf2CallbackEnter );
   OTF2_GlobalEvtReaderCallbacks_SetLeaveCallback( event_callbacks,
                                                   &otf2CallbackLeave );
+  OTF2_GlobalEvtReaderCallbacks_SetMetricCallback( event_callbacks,
+                                                   &otf2CallbackMetric );
+  
   OTF2_GlobalEvtReaderCallbacks_SetMpiCollectiveEndCallback(
     event_callbacks,&otf2Callback_MpiCollectiveEnd );
   OTF2_GlobalEvtReaderCallbacks_SetMpiRecvCallback( event_callbacks,
@@ -259,7 +262,7 @@ OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
 bool
 OTF2TraceReader::readEvents( uint64_t *events_read )
 {
-  OTF2_GlobalEvtReader* global_evt_reader        =
+  OTF2_GlobalEvtReader* global_evt_reader =
     OTF2_Reader_GetGlobalEvtReader( reader );
   
   //uint64_t events_read = 0;
@@ -376,13 +379,13 @@ OTF2TraceReader::readEventsForProcess( uint64_t id, bool ignoreAsyncMPI )
  * @return true, if successful
  */
 bool
-OTF2TraceReader::readDefinitions( )
+OTF2TraceReader::readDefinitions()
 {
   OTF2_GlobalDefReader* global_def_reader = 
     OTF2_Reader_GetGlobalDefReader( reader );
 
   OTF2_GlobalDefReaderCallbacks* global_def_callbacks =
-    OTF2_GlobalDefReaderCallbacks_New( );
+    OTF2_GlobalDefReaderCallbacks_New();
 
   processingPhase = 1;
 
@@ -455,11 +458,9 @@ OTF2TraceReader::readDefinitions( )
 
   /* Phase 2 -> read string definitions and Groups */
   OTF2_GlobalDefReaderCallbacks_SetLocationCallback(
-    global_def_callbacks,
-    &
-    OTF2_GlobalDefReaderCallback_Location );
+    global_def_callbacks, &OTF2_GlobalDefReaderCallback_Location );
 
-  /* register callbacks */
+  // register callbacks
   OTF2_Reader_RegisterGlobalDefCallbacks( reader,
                                           global_def_reader,
                                           global_def_callbacks,
@@ -529,14 +530,14 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(
     tr->getProcessFamilyMap()[self] = locationGroup;
   }
   
-  // ignore metric or unknown locations
+  // ignore unknown locations
   if( locationType == OTF2_LOCATION_TYPE_METRIC || 
       locationType == OTF2_LOCATION_TYPE_UNKNOWN )
   {
     if ( tr->isChildOf( self, tr->getMPIProcessId() ) )
     {
       UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-                 "Ignore metric/unknown location %s", 
+                 "Ignore unknown location %s", 
                  tr->getStringRef( name ).c_str() );
     }
     

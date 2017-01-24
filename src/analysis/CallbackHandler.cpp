@@ -113,9 +113,9 @@ CallbackHandler::readAttributeUint32( OTF2TraceReader*  reader,
 }
 
 uint64_t
-CallbackHandler::readKeyValUInt64( OTF2TraceReader* reader,
-                                   const char*       keyName,
-                                   OTF2KeyValueList* list )
+CallbackHandler::readAttributeUint64( OTF2TraceReader* reader,
+                                      const char*       keyName,
+                                      OTF2KeyValueList* list )
 {
   uint64_t keyVal = 0;
   int32_t  key    = reader->getFirstKey( keyName );
@@ -355,7 +355,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   GraphNode* leaveNode = NULL;
   if ( Node::isCUDAEventType( functionType.paradigm, functionType.functionType ) )
   {
-    uint64_t eventId = readKeyValUInt64( reader, SCOREP_CUDA_EVENTREF, list );
+    uint64_t eventId = readAttributeUint64( reader, SCOREP_CUDA_EVENTREF, list );
     
     if ( eventId == 0 )
     {
