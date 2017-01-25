@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -214,22 +214,14 @@ namespace casita
       //!< maps OTF2 IDs to strings (global definitions)
       std::map< uint32_t, const char* > idStringMap;
 
-      //!< < metric ID, metric value >
-      typedef std::map< MetricType, uint64_t > CounterMap;
-      typedef std::map< uint64_t, CounterMap > CounterMapMap;
-
-      //!< < event location, stack of region references >
-      typedef std::map< uint64_t, std::stack< OTF2_RegionRef > > ActivityStackMap;
-      typedef std::map< uint64_t, uint64_t > TimeMap;
-      typedef std::list< Edge* > OpenEdgesList;
-      typedef std::map < uint64_t, OpenEdgesList > OpenEdgesMap;
-      typedef std::map< uint64_t, bool > BooleanMap;
-
       void
       copyGlobalDefinitions();
       
       void
       registerEventCallbacks();
+      
+      //!< < metric ID, metric value >
+      typedef std::map< MetricType, uint64_t > CounterMap;
 
       void
       updateActivityGroupMap( OTF2Event event, CounterMap& counters );
@@ -250,65 +242,47 @@ namespace casita
       
       void
       clearOpenEdges();
-      
-      typedef std::map < uint64_t, EventStream::SortedGraphNodeList::iterator > NodeListIterMap;
-      typedef std::map < uint64_t, EventStream* > IdStreamMap;
-      
-      NodeListIterMap currentNodeIterMap;
-      IdStreamMap currentStreamMap;
 
+      // needed to get out edges for blame distribution
       Graph* graph;
       
-      //!< save last counter values to avoid writing of unused counter records
-      CounterMapMap lastMetricValues;
-      
-#if defined(BLAME_COUNTER_FALSE)
-      //!< < event location, stack of counter values >
-      typedef std::map< uint64_t, std::stack< CounterMap* > > CounterStackMap;
-      //!< activity value stack map < event.location, stack of CounterMaps >
-      CounterStackMap leaveCounterStack;
-#endif
+      typedef std::list< Edge* > OpenEdgesList;
 
-      //!< Keep track of activity stack per process.
-      ActivityStackMap activityStack;
-      
-      //!< Store last event time per process (necessary to calculate metric values correctly)
-      TimeMap lastEventTime;
-      
-      /* Keep track of edges that exist between past and future nodes.
-       * Necessary to distribute correct blame to CPU nodes.
-       * When processing internal nodes, all out-edges are opened.
-       * Blame was assigned to these edges during analysis, now it is
-       * distributed to CPU nodes between internal nodes.
-       */
-      //OpenEdgesList openEdges;
-      OpenEdgesMap openEdgesMap;
-      
       // per location information
-      /*typedef struct
+      typedef struct
       {
         EventStream::SortedGraphNodeList::iterator currentNodeIter;
+        
         EventStream* currentStream;
+        
+        //!< save last counter values to avoid writing of unused counter records
         CounterMap lastMetricValues;
+        
+        //!< Keep track if process is currently on critical path.
+        //!< This is necessary to write counter values correctly.
+        bool onCriticalPath;
+        
+        //!< Keep track of activity stack
         std::stack< OTF2_RegionRef > activityStack;
+        
+        //!< Store last event time (necessary to calculate metric values correctly)
         uint64_t lastEventTime;
+        
+        /* Keep track of edges that exist between past and future nodes.
+         * Necessary to distribute correct blame to CPU nodes.
+         * When processing internal nodes, all out-edges are opened.
+         * Blame was assigned to these edges during analysis, now it is
+         * distributed to CPU nodes between internal nodes. */
         OpenEdgesList openEdges;
       }StreamStatus;
       
-      std::map < uint64_t, StreamStatus > streamStatusMap;*/
+      typedef std::map < uint64_t, StreamStatus > StreamStatusMap;
+      StreamStatusMap streamStatusMap;
       
-      /* Keep track if process is currently on critical path
-       * -> necessary to write counter values correctly */
-      BooleanMap processOnCriticalPath;
-
-      /** Tells if a stream is a device stream.
-       * (necessary to find out if an event is mapped by an internal node. */
-      //BooleanMap deviceStreamMap;
+      
       
       typedef std::map< uint64_t, uint64_t > LocationParentMap;
       LocationParentMap locationParentMap;
-      
-      //std::vector< uint64_t > metricStreamVector;
       
       //!< maps OTF2 region IDs to OTF2 string reference (key: OTF2 region ID)
       std::map< uint32_t, OTF2_StringRef > regionNameIdList;

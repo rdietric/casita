@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -115,13 +115,13 @@ namespace casita
       ~OTF2TraceReader( );
 
       uint32_t
-      getMPIRank( );
+      getMPIRank();
 
       uint32_t
-      getMPISize( );
+      getMPISize();
 
       uint64_t
-      getMPIProcessId( );
+      getMPIProcessId();
 
       void
       setMPIStreamId( uint64_t processId );
@@ -130,13 +130,13 @@ namespace casita
       //getProcessRankMap( );
 
       TokenTokenMap64&
-      getProcessFamilyMap( );
+      getProcessFamilyMap();
 
       void
       open( const std::string otfFilename, uint32_t maxFiles );
 
       void
-      close( );
+      close();
 
       void
       setupEventReader( bool ignoreAsyncMPI );
@@ -148,28 +148,28 @@ namespace casita
       readEventsForProcess( uint64_t id, bool ignoreAsyncMPI );
 
       bool
-      readDefinitions( );
+      readDefinitions();
 
       void
-      readCommunication( );
+      readCommunication();
 
       NameTokenMap&
-      getNameKeysMap( );
+      getNameKeysMap();
 
       TokenNameMap&
-      getKeyNameMap( );
+      getKeyNameMap();
 
       TokenNameMap&
-      getDefinitionTokenStringMap( );
+      getDefinitionTokenStringMap();
 
       ProcessGroupMap&
-      getProcGoupMap( );
+      getProcGoupMap();
 
       OTF2KeyValueList&
-      getKVList( );
+      getKVList();
 
       GroupIdGroupMap&
-      getGroupMap( );
+      getGroupMap();
 
       std::string
       getStringRef( Token t );
@@ -190,10 +190,10 @@ namespace casita
       getProcessName( uint64_t id );*/
 
       IdNameTokenMap&
-      getProcessNameTokenMap( );
+      getProcessNameTokenMap();
 
       TokenTokenMap&
-      getFunctionNameTokenMap( );
+      getFunctionNameTokenMap();
 
       std::vector< uint32_t >
       getKeys( const std::string keyName );
@@ -202,25 +202,25 @@ namespace casita
       getFirstKey( const std::string keyName );
 
       uint64_t
-      getTimerResolution( );
+      getTimerResolution();
 
       void
       setTimerResolution( uint64_t ticksPerSecond );
 
       uint64_t
-      getTimerOffset( );
+      getTimerOffset();
 
       void
       setTimerOffset( uint64_t offset );
 
       uint64_t
-      getTraceLength( );
+      getTraceLength();
 
       void
       setTraceLength( uint64_t length );
 
       uint32_t
-      getOmpForkJoinRef( );
+      getOmpForkJoinRef();
 
       bool
       isChildOf( uint64_t child, uint64_t parent );
