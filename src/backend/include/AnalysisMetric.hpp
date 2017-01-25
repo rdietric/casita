@@ -110,16 +110,17 @@ namespace casita
       typedef std::set< MetricType > MetricIdSet;
 
       // Construct of class AnalysisMetric (used in GraphEngine)
-      // \todo: make singleton?
-      AnalysisMetric( ) :
-        maxCtrId( 0 ),
+      // \todo: make singleton
+      AnalysisMetric() :
+        maxMetricClassId( 0 ),
+        maxMetricMemberId( 0 ),
         maxAttrId( 0 )
       {
 
       }
 
       virtual
-      ~AnalysisMetric( )
+      ~AnalysisMetric()
       {
       }
 
@@ -166,16 +167,10 @@ namespace casita
       }
 
       uint32_t
-      getNewCounterId()
+      getNewMetricMemberId()
       {
         // starting with 0 (Ids in OTF2 need to start with 0)
-        return maxCtrId++;
-      }
-     
-      uint32_t
-      getNewAttributeId()
-      {
-        return maxAttrId++;
+        return ++maxMetricMemberId;
       }
 
       const MetricIdSet&
@@ -191,9 +186,20 @@ namespace casita
       }
       
       void
-      addMetricMemberId( uint32_t ctrId )
+      addMetricMemberId( uint32_t memberId )
       {
-        maxCtrId = std::max( maxCtrId, ctrId );
+        maxMetricMemberId = std::max( maxMetricMemberId, memberId );
+      }
+      
+      /**
+       * Metric classes and metric instances share the same ID space in OTF2.
+       * 
+       * @param ctrId
+       */
+      void
+      addMetricClassId( uint32_t classId )
+      {
+        maxMetricClassId = std::max( maxMetricClassId, classId );
       }
      
       void
@@ -226,22 +232,22 @@ namespace casita
           return maxAttrId;
         }
         else if( entry->metricMode != METRIC_MODE_UNKNOWN )
-        {          
-          maxCtrId++;
+        {
+          maxMetricClassId++;
           
-          otf2Ids[metricId] = maxCtrId;
+          otf2Ids[metricId] = maxMetricClassId;
           
           ctrIDs.insert( metricId );
           metricIds.insert( metricId );
           
-          return maxCtrId;
+          return maxMetricClassId;
         }
         else
         {
           return std::numeric_limits< uint32_t >::max();
         }
       }
-      
+      /*
       void
       addStringRef( MetricType metricId, uint32_t stringRef )
       {
@@ -260,15 +266,16 @@ namespace casita
           return std::numeric_limits< uint32_t >::max();
         }
       }
-
+      */
    private:
      //! < key: metric type, value: OTF2 attribute or metric ID/ref
      typedef std::map< MetricType, uint32_t > MetricTypeIdMap;
       
-     uint32_t        maxCtrId;
+     uint32_t        maxMetricClassId;
+     uint32_t        maxMetricMemberId;
      uint32_t        maxAttrId;
      MetricTypeIdMap otf2Ids;
-     MetricTypeIdMap metric2StringRefMap;
+     //MetricTypeIdMap metric2StringRefMap;
      MetricIdSet     ctrIDs;
      MetricIdSet     metricIds;
  };

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -215,6 +215,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   uint64_t interval_node_id   = 0;
   uint32_t analysis_intervals = 0;
   uint64_t total_events_read  = 0;
+  uint64_t events_to_read     = 0; // number of events for the trace writer to read
   
   clock_t time_events_read   = 0;
   clock_t time_events_write  = 0;
@@ -231,7 +232,9 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     
     uint64_t events_read = 0;
     events_available = traceReader->readEvents( &events_read );
+
     total_events_read += events_read;
+    events_to_read += events_read;
     
     time_events_read += clock() - time_tmp;
     
@@ -270,6 +273,9 @@ Runner::processTrace( OTF2TraceReader* traceReader )
       // increase counter of analysis intervals
       ++analysis_intervals;
     }
+    
+    UTILS_MSG(options.verbose >= VERBOSE_BASIC  && mpiRank == 0,
+               " %"PRIu64" events read", events_to_read );
 
     // perform analysis for these events
     
@@ -334,7 +340,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     // and determine the total length of the critical path
     if( !events_available )
     {
-      findCriticalPathEnd( );
+      findCriticalPathEnd();
       // this function ends in an MPI_Allgather
     }
     
@@ -355,27 +361,24 @@ Runner::processTrace( OTF2TraceReader* traceReader )
       // write the OTF2 output trace definitions and setup the OTF2 input reader
       analysis.writeOTF2Definitions( options.outOtfFile,
                                      options.filename,
-                                     options.createTraceFile, // let the trace writer know if it should write an OTF output
-                                     options.ignoreAsyncMpi );
+                                     options.createTraceFile );
       
       UTILS_MSG( mpiRank == 0, "[0] Writing result to %s", 
                  Parser::getInstance().getPathToFile().c_str( ) );
 
       otf2_def_written = true;
     }
-    
-    if( options.createTraceFile )
-    {
-      MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
-    }
 
     // writes the OTF2 event streams and computes blame for CPU functions
-    if( analysis.writeOTF2EventStreams() == false && events_available )
+    if( analysis.writeOTF2EventStreams( events_to_read ) != events_to_read )
     {
       UTILS_MSG( true, "[%d] Reader and writer are not synchronous! Aborting ...", 
                        mpiRank );
       events_available = false;
     }
+    
+    // reset events to read as they have been read by the trace writer
+    events_to_read = 0;
     
     time_events_write += clock() - time_tmp;
     

@@ -528,7 +528,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(
     tr->getProcessFamilyMap()[self] = locationGroup;
   }
   
-  // ignore unknown locations
+  /* ignore unknown locations
   if( locationType == OTF2_LOCATION_TYPE_METRIC || 
       locationType == OTF2_LOCATION_TYPE_UNKNOWN )
   {
@@ -540,7 +540,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(
     }
     
     return OTF2_CALLBACK_SUCCESS;
-  }
+  }*/
 
   if ( phase == 2 )
   {
@@ -644,9 +644,9 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
   if ( ( groupType == OTF2_GROUP_TYPE_COMM_LOCATIONS ) &&
        ( paradigm == OTF2_PARADIGM_MPI ) )
   {
-    uint32_t mpiRank = tr->getMPIRank( );
+    uint32_t mpiRank = tr->getMPIRank();
 
-    if ( numberOfMembers <= tr->getMPIRank( ) )
+    if ( numberOfMembers <= tr->getMPIRank() )
     {
       throw RTException(
           "Process group MPI_COMM_WORLD has no process for this MPI rank (%u)",
@@ -1218,7 +1218,7 @@ bool
 OTF2TraceReader::isChildOf( uint64_t child, uint64_t parent )
 {
   TokenTokenMap64::const_iterator iter = processFamilyMap.find( child );
-  if ( iter == processFamilyMap.end( ) )
+  if ( iter == processFamilyMap.end() )
   {
     throw RTException( "Requesting parent of unknown child process" );
   }

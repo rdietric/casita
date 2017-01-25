@@ -638,25 +638,15 @@ streamSort( EventStream* p1, EventStream* p2 )
  * @param filename
  * @param origFilename
  * @param writeToFile
- * @param ignoreAsyncMpi
  */
 void
 AnalysisEngine::writeOTF2Definitions( std::string filename,
                                       std::string origFilename,
-                                      bool        writeToFile,
-                                      bool        ignoreAsyncMpi )
+                                      bool        writeToFile )
 {
-  EventStreamGroup::EventStreamList allStreams;
-  
-  //\todo why not getLocalStreams( allStreams ) ?
-  getStreams( allStreams );
-
-  std::sort( allStreams.begin( ), allStreams.end( ), EventStream::streamSort );
-
   writer = NULL;
-  if ( strstr( origFilename.c_str( ), ".otf2" ) != NULL )
+  if ( strstr( origFilename.c_str(), ".otf2" ) != NULL )
   {
-    // \todo: only the first time
     writer = new OTF2ParallelTraceWriter(
       mpiAnalysis.getMPIRank(),
       mpiAnalysis.getMPISize(),
@@ -683,90 +673,38 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
   }
 
   MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
-
-  for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-          allStreams.begin(); pIter != allStreams.end(); ++pIter )
-  {
-    EventStream* p = *pIter;
-
-    if ( p->isRemoteStream() )
-    {
-      continue;
-    }
-    
-    writer->setupEventReader( p->getId() );
-  }
   
-  writer->writeMetricStreams();
-  
-  // clear list that has been created in this function
-  allStreams.clear();
+  writer->setupGlobalEvtReader();
 }
 
 /**
  * Write process events to OTF2 output.
  * 
- * @return true, if events are available, otherwise false
+ * @return number of events read by event writer
  */
-bool
-AnalysisEngine::writeOTF2EventStreams( )
+uint64_t 
+AnalysisEngine::writeOTF2EventStreams( uint64_t eventsToRead )
 {
-  assert(writer);
+  assert( writer );
   
   // reset "per interval" values in the trace writer
   writer->reset();
-  
-  bool events_available = false;
-  // \todo: make this a private class member!
-  EventStreamGroup::EventStreamList allStreams;
-  getStreams( allStreams );
-
-  // sort streams by ID with host streams first
-  std::sort( allStreams.begin(), allStreams.end(), EventStream::streamSort );
-  
-  // first stream should be the MPI rank
-  //uint64_t masterPeriodEnd = allStreams.front().getPeriod().second;
 
   // \todo: needed?
   MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
   
-  uint64_t events_read = 0;
-  
   // write all process local streams
-  for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-          allStreams.begin(); pIter != allStreams.end(); ++pIter )
-  {
-    EventStream* stream = *pIter;
-
-    // skip remote streams and streams without new nodes
-    if ( stream->isRemoteStream() || stream->hasNewNodes() == false )
-    {
-      continue;
-    }
-
-    uint64_t events_read_per_stream = 0;
-    events_available |= writer->writeStream( stream, &( this->getGraph() ), 
-                                             &events_read_per_stream );
-    
-    events_read += events_read_per_stream;
-  }
+  // \todo: make this a private class member!
+  EventStreamGroup::EventStreamList allStreams;
   
-  if( getMPIRank() == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC ){
-    UTILS_MSG( events_available, 
-               "[0] Writer interrupted by callback: Read %lu events", 
-               events_read );
-    
-    UTILS_MSG( !events_available, 
-               "[0] Writer: Read %lu events", 
-               events_read );
-  }
+  getLocalStreams( allStreams );
+  uint64_t events_read = 
+    writer->writeLocations( allStreams, &( this->getGraph() ), eventsToRead );
   
   // clear list that has been created in this function
   allStreams.clear();
   
-  // \todo: delete the graph
-  
-  return events_available;
+  return events_read;
 }
 
 /**

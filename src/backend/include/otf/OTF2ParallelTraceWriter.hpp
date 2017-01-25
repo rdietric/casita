@@ -20,7 +20,7 @@
 #include <string>
 #include "AnalysisMetric.hpp"
 #include "OTF2TraceReader.hpp"
-#include "EventStream.hpp"
+#include "EventStreamGroup.hpp"
 #include "graph/Graph.hpp"
 
 namespace casita
@@ -29,7 +29,7 @@ namespace casita
  {
     enum ProcessGroup
     {
-      PG_HOST        = 1, PG_DEVICE, PG_DEVICE_NULL
+      PG_HOST = 1, PG_DEVICE, PG_DEVICE_NULL
     };
 
   typedef struct
@@ -130,6 +130,14 @@ namespace casita
        */
       void
       writeAnalysisMetricDefinitions( void );
+
+      void
+      setupGlobalEvtReader();
+      
+      uint64_t
+      writeLocations( EventStreamGroup::EventStreamList& streams,
+                      Graph*       graph,
+                      uint64_t     eventsToRead );
       
       void
       setupEventReader( uint64_t streamId );
@@ -183,7 +191,7 @@ namespace casita
       uint64_t timerOffset;
       
       double
-      getRealTime(  uint64_t time );
+      getRealTime( uint64_t time );
       
       //!< counter to assign IDs to string definitions
       uint64_t counterForStringDefinitions;
@@ -197,9 +205,10 @@ namespace casita
       std::map< uint64_t, OTF2_EvtWriter* > evt_writerMap;
       
       // OTF2 handles
-      OTF2_Archive*         archive;
-      OTF2_GlobalDefWriter* global_def_writer;
-      OTF2_Reader*          reader;
+      OTF2_Archive*         otf2Archive;
+      OTF2_GlobalDefWriter* otf2GlobalDefWriter;
+      OTF2_Reader*          otf2Reader;
+      OTF2_GlobalEvtReader* otf2GlobalEventReader;
       //OTF2_AttributeList*   attributes;
 
       //!< maps OTF2 IDs to strings (global definitions)
@@ -218,6 +227,9 @@ namespace casita
 
       void
       copyGlobalDefinitions();
+      
+      void
+      registerEventCallbacks();
 
       void
       updateActivityGroupMap( OTF2Event event, CounterMap& counters );
@@ -230,8 +242,8 @@ namespace casita
                                  CounterMap& counters );
       
       void
-      writeEventsWithCounters( OTF2Event event, OTF2_AttributeList* attributes, 
-                               CounterMap& counters, bool writeEvents );
+      writeEventsWithCounters( OTF2Event event, CounterMap& counters, 
+                               bool writeEvents );
 
       void
       processNextEvent( OTF2Event event, OTF2_AttributeList* attributes );
@@ -245,7 +257,6 @@ namespace casita
       NodeListIterMap currentNodeIterMap;
       IdStreamMap currentStreamMap;
 
-      bool   isFirstProcess;
       Graph* graph;
       
       //!< save last counter values to avoid writing of unused counter records
@@ -292,9 +303,12 @@ namespace casita
 
       /** Tells if a stream is a device stream.
        * (necessary to find out if an event is mapped by an internal node. */
-      std::map< uint64_t, bool > deviceStreamMap;
+      //BooleanMap deviceStreamMap;
       
-      std::vector< uint64_t > metricStreamVector;
+      typedef std::map< uint64_t, uint64_t > LocationParentMap;
+      LocationParentMap locationParentMap;
+      
+      //std::vector< uint64_t > metricStreamVector;
       
       //!< maps OTF2 region IDs to OTF2 string reference (key: OTF2 region ID)
       std::map< uint32_t, OTF2_StringRef > regionNameIdList;
@@ -316,7 +330,7 @@ namespace casita
                                               OTF2_Type         type );
       
       static OTF2_CallbackCode
-      OTF2_GlobalDefReaderCallback_MetricMember( void*                userData,
+      otf2GlobalDefReaderCallback_MetricMember(  void*                userData,
                                                  OTF2_MetricMemberRef self,
                                                  OTF2_StringRef       name,
                                                  OTF2_StringRef       description,
@@ -328,13 +342,21 @@ namespace casita
                                                  OTF2_StringRef       unit );
       
       static OTF2_CallbackCode
-      OTF2_GlobalDefReaderCallback_MetricClass(
+      otf2GlobalDefReaderCallback_MetricClass(
                                   void*                       userData,
                                   OTF2_MetricRef              self,
                                   uint8_t                     numberOfMetrics,
                                   const OTF2_MetricMemberRef* metricMembers,
                                   OTF2_MetricOccurrence       metricOccurrence,
                                   OTF2_RecorderKind           recorderKind );
+      
+      static OTF2_CallbackCode
+      otf2GlobalDefReaderCallback_MetricInstance(  void*            userData,
+                                                   OTF2_MetricRef   self,
+                                                   OTF2_MetricRef   metricClass,
+                                                   OTF2_LocationRef recorder,
+                                                   OTF2_MetricScope metricScope,
+                                                   uint64_t         scope );
 
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_ClockProperties( void*    userData,
@@ -471,7 +493,6 @@ namespace casita
       static OTF2_CallbackCode
       otf2CallbackComm_MpiCollectiveEnd( OTF2_LocationRef    locationID,
                                          OTF2_TimeStamp      time,
-                                         uint64_t            eventPosition,
                                          void*               userData,
                                          OTF2_AttributeList* attributeList,
                                          OTF2_CollectiveOp   collectiveOp,
@@ -483,14 +504,12 @@ namespace casita
       static OTF2_CallbackCode
       otf2CallbackComm_MpiCollectiveBegin( OTF2_LocationRef    location,
                                            OTF2_TimeStamp      time,
-                                           uint64_t            eventPosition,
                                            void*               userData,
                                            OTF2_AttributeList* attributeList );
 
       static OTF2_CallbackCode
       otf2CallbackComm_RmaWinCreate( OTF2_LocationRef    location,
                                      OTF2_TimeStamp      time,
-                                     uint64_t            eventPosition,
                                      void*               userData,
                                      OTF2_AttributeList* attributeList,
                                      OTF2_RmaWinRef      win );
@@ -498,7 +517,6 @@ namespace casita
       static OTF2_CallbackCode
       otf2CallbackComm_RmaWinDestroy( OTF2_LocationRef    location,
                                       OTF2_TimeStamp      time,
-                                      uint64_t            eventPosition,
                                       void*               userData,
                                       OTF2_AttributeList* attributeList,
                                       OTF2_RmaWinRef      win );
@@ -506,7 +524,6 @@ namespace casita
       static OTF2_CallbackCode
       otf2CallbackComm_RmaPut( OTF2_LocationRef    location,
                                OTF2_TimeStamp      time,
-                               uint64_t            eventPosition,
                                void*               userData,
                                OTF2_AttributeList* attributeList,
                                OTF2_RmaWinRef      win,
@@ -517,7 +534,6 @@ namespace casita
       static OTF2_CallbackCode
       otf2CallbackComm_RmaOpCompleteBlocking( OTF2_LocationRef    location,
                                               OTF2_TimeStamp      time,
-                                              uint64_t            eventPosition,
                                               void*               userData,
                                               OTF2_AttributeList* attributeList,
                                               OTF2_RmaWinRef      win,
@@ -526,7 +542,6 @@ namespace casita
       static OTF2_CallbackCode
       otf2CallbackComm_RmaGet( OTF2_LocationRef    location,
                                OTF2_TimeStamp      time,
-                               uint64_t            eventPosition,
                                void*               userData,
                                OTF2_AttributeList* attributeList,
                                OTF2_RmaWinRef      win,
@@ -537,7 +552,6 @@ namespace casita
       static OTF2_CallbackCode
       otf2CallbackComm_ThreadTeamBegin( OTF2_LocationRef    locationID,
                                         OTF2_TimeStamp      time,
-                                        uint64_t            eventPosition,
                                         void*               userData,
                                         OTF2_AttributeList* attributeList,
                                         OTF2_CommRef        threadTeam );
@@ -545,7 +559,6 @@ namespace casita
       static OTF2_CallbackCode
       otf2CallbackComm_ThreadTeamEnd( OTF2_LocationRef    locationID,
                                       OTF2_TimeStamp      time,
-                                      uint64_t            eventPosition,
                                       void*               userData,
                                       OTF2_AttributeList* attributeList,
                                       OTF2_CommRef        threadTeam );
@@ -553,7 +566,6 @@ namespace casita
       static OTF2_CallbackCode
       otf2Callback_MpiRecv( OTF2_LocationRef    locationID,
                             OTF2_TimeStamp      time,
-                            uint64_t            eventPosition,
                             void*               userData,
                             OTF2_AttributeList* attributeList,
                             uint32_t            sender,
@@ -564,7 +576,6 @@ namespace casita
       static OTF2_CallbackCode
       otf2Callback_MpiSend( OTF2_LocationRef    locationID,
                             OTF2_TimeStamp      time,
-                            uint64_t            eventPosition,
                             void*               userData,
                             OTF2_AttributeList* attributeList,
                             uint32_t            receiver,
@@ -575,15 +586,13 @@ namespace casita
       static OTF2_CallbackCode
       otf2Callback_MpiIrecvRequest( OTF2_LocationRef    location,
                                     OTF2_TimeStamp      time,
-                                    uint64_t            eventPosition,
                                     void*               userData,
                                     OTF2_AttributeList* attributeList,
                                     uint64_t            requestID );
       
       static OTF2_CallbackCode
-      otf2Callback_MpiIrecv( OTF2_LocationRef    locationID,
+      otf2Callback_MpiIrecv( OTF2_LocationRef   locationID,
                             OTF2_TimeStamp      time,
-                            uint64_t            eventPosition,
                             void*               userData,
                             OTF2_AttributeList* attributeList,
                             uint32_t            sender,
@@ -595,9 +604,8 @@ namespace casita
       
       
       static OTF2_CallbackCode
-      otf2Callback_MpiIsend( OTF2_LocationRef    locationID,
+      otf2Callback_MpiIsend( OTF2_LocationRef   locationID,
                             OTF2_TimeStamp      time,
-                            uint64_t            eventPosition,
                             void*               userData,
                             OTF2_AttributeList* attributeList,
                             uint32_t            receiver,
@@ -609,35 +617,28 @@ namespace casita
       static OTF2_CallbackCode
       otf2Callback_MpiIsendComplete( OTF2_LocationRef    location,
                                      OTF2_TimeStamp      time,
-                                     uint64_t            eventPosition,
                                      void*               userData,
                                      OTF2_AttributeList* attributeList,
                                      uint64_t            requestID );
 
       static OTF2_CallbackCode
-      OTF2_EvtReaderCallback_ThreadFork( OTF2_LocationRef locationID,
-                                         OTF2_TimeStamp   time,
-                                         uint64_t         eventPosition,
-                                         void*            userData,
-                                         OTF2_AttributeList*
-                                         attributeList,
-                                         OTF2_Paradigm    paradigm,
-                                         uint32_t
-                                         numberOfRequestedThreads );
+      otf2EvtCallbackThreadFork(  OTF2_LocationRef locationID,
+                                  OTF2_TimeStamp   time,
+                                  void*            userData,
+                                  OTF2_AttributeList* attributeList,
+                                  OTF2_Paradigm    paradigm,
+                                  uint32_t         numberOfRequestedThreads );
 
       static OTF2_CallbackCode
-      OTF2_EvtReaderCallback_ThreadJoin( OTF2_LocationRef locationID,
-                                         OTF2_TimeStamp   time,
-                                         uint64_t         eventPosition,
-                                         void*            userData,
-                                         OTF2_AttributeList*
-                                         attributeList,
-                                         OTF2_Paradigm    paradigm );
+      otf2EvtCallbackThreadJoin( OTF2_LocationRef locationID,
+                                 OTF2_TimeStamp   time,
+                                 void*            userData,
+                                 OTF2_AttributeList* attributeList,
+                                 OTF2_Paradigm    paradigm );
 
       static OTF2_CallbackCode
       otf2CallbackEnter( OTF2_LocationRef    location,
                          OTF2_TimeStamp      time,
-                         uint64_t            eventPosition,
                          void*               userData,
                          OTF2_AttributeList* attributes,
                          OTF2_RegionRef      region );
@@ -645,7 +646,6 @@ namespace casita
       static OTF2_CallbackCode
       otf2CallbackLeave( OTF2_LocationRef    location,
                          OTF2_TimeStamp      time,
-                         uint64_t            eventPosition,
                          void*               userData,
                          OTF2_AttributeList* attributes,
                          OTF2_RegionRef      region );

@@ -139,14 +139,13 @@ namespace casita
      void
      writeOTF2Definitions( std::string filename,
                            std::string origFilename,
-                           bool        writeToFile,
-                           bool        ignoreAsyncMpi );
+                           bool        writeToFile );
 
-     bool
-     writeOTF2EventStreams( );
+     uint64_t
+     writeOTF2EventStreams( uint64_t eventsToRead  );
 
      io::OTF2ParallelTraceWriter::ActivityGroupMap*
-     getActivityGroupMap( );
+     getActivityGroupMap();
 
      double
      getRealTime( uint64_t t );

@@ -32,7 +32,6 @@
 #include "graph/EventNode.hpp"
 #include "AnalysisMetric.hpp"
 #include "common.hpp"
-#include "EventStream.hpp"
 #include "FunctionTable.hpp"
 #include "otf/OTF2TraceReader.hpp"
 #include "otf/OTF2ParallelTraceWriter.hpp"
@@ -144,8 +143,10 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t        mpiRank,
     mpiSize( mpiSize ),
     cTable( metrics ),
     ompForkJoinRef( 0 ),
-    global_def_writer( NULL ),
-    isFirstProcess( true ),
+    otf2Archive( NULL ),
+    otf2GlobalDefWriter( NULL ),
+    otf2Reader( NULL ),
+    otf2GlobalEventReader( NULL ),
     graph( NULL )
 {
   outputFilename.assign( "" );
@@ -174,28 +175,27 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
     MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
     // open new otf2 file
-    archive = OTF2_Archive_Open( pathToFile.c_str( ),
+    otf2Archive = OTF2_Archive_Open( pathToFile.c_str( ),
                                  outputFilename.c_str( ),
                                  OTF2_FILEMODE_WRITE, 1024 * 1024, 4 * 1024 *
                                  1024, OTF2_SUBSTRATE_POSIX,
                                  OTF2_COMPRESSION_NONE );
 
-    OTF2_Archive_SetFlushCallbacks( archive, &flush_callbacks, NULL );
+    OTF2_Archive_SetFlushCallbacks( otf2Archive, &flush_callbacks, NULL );
 
     // set collective callbacks to write trace in parallel
-    OTF2_MPI_Archive_SetCollectiveCallbacks( archive, commGroup, MPI_COMM_NULL );
+    OTF2_MPI_Archive_SetCollectiveCallbacks( otf2Archive, commGroup, MPI_COMM_NULL );
   }
-
 
   timerOffset     = 0;
   timerResolution = 0;
   counterForStringDefinitions = 0;
 
-  reader = OTF2_Reader_Open( originalFilename.c_str() );
+  otf2Reader = OTF2_Reader_Open( originalFilename.c_str() );
 
-  OTF2_MPI_Reader_SetCollectiveCallbacks( reader, commGroup );
+  OTF2_MPI_Reader_SetCollectiveCallbacks( otf2Reader, commGroup );
 
-  if ( !reader )
+  if ( !otf2Reader )
   {
     throw RTException( "Failed to open OTF2 trace file %s",
                        originalFilename.c_str() );
@@ -206,39 +206,41 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
 
   MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
-  // open event files for each location
+  /* open event files for each location
   if ( writeToFile )
   {
-    OTF2_Archive_OpenEvtFiles( archive );
-  }
-
-  MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
+    OTF2_Archive_OpenEvtFiles( otf2Archive );
+  }*/
 }
 
 void
 OTF2ParallelTraceWriter::close( )
 {
-  /* close all opened event writer */
+  OTF2_Reader_CloseGlobalEvtReader( otf2Reader, otf2GlobalEventReader );
+  
+  
   if ( writeToFile )
   {
+    // close all opened event writer
     for ( std::map< uint64_t, OTF2_EvtWriter* >::iterator iter =
-            evt_writerMap.begin( );
+            evt_writerMap.begin();
           iter != evt_writerMap.end( ); iter++ )
     {
-      OTF2_Archive_CloseEvtWriter( archive, iter->second );
+      OTF2_Archive_CloseEvtWriter( otf2Archive, iter->second );
     }
+    /*
     if ( mpiRank == 0 )
     {
-      OTF2_Archive_CloseDefFiles( archive );
+      OTF2_Archive_CloseDefFiles( otf2Archive );
     }
-
-    OTF2_Archive_CloseEvtFiles( archive );
-
-    /* close global writer */
-    OTF2_CHECK( OTF2_Archive_Close( archive ) );
-
-    OTF2_Reader_Close( reader );
+    */
   }
+  
+  OTF2_Reader_CloseEvtFiles( otf2Reader );
+  
+  OTF2_Reader_Close( otf2Reader );
+
+  OTF2_CHECK( OTF2_Archive_Close( otf2Archive ) );
 }
 
 void
@@ -255,8 +257,6 @@ OTF2ParallelTraceWriter::reset()
   
   //\todo: should be empty ... check that
   //activityStack.clear();
-  
-  //clearOpenEdges();
 }
 
 /**
@@ -268,24 +268,31 @@ OTF2ParallelTraceWriter::reset()
 void
 OTF2ParallelTraceWriter::clearOpenEdges()
 {
-  for( OpenEdgesMap::const_iterator mapIt = openEdgesMap.begin();
-       mapIt != openEdgesMap.end(); ++mapIt )
+  if( openEdgesMap.size() )
   {
-    OpenEdgesList openEdges = mapIt->second;
-    if( openEdges.size() )
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+               "[%"PRIu32"] Clear open edges for %llu streams ...", 
+               (unsigned long long) openEdgesMap.size(), mpiRank );
+    
+    for( OpenEdgesMap::iterator mapIt = openEdgesMap.begin();
+         mapIt != openEdgesMap.end(); ++mapIt )
     {
-      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-                 "[%" PRIu64 "] Clear open edge(s)", mapIt->first );
-      for ( OpenEdgesList::const_iterator edgeIter = openEdges.begin();
-          edgeIter != openEdges.end(); ++edgeIter)
+      OpenEdgesList& openEdges = mapIt->second;
+      if( openEdges.size() )
       {
-        UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-                   "  %s", (*edgeIter)->getName().c_str() );
+        UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_SOME, 
+                   "  [%" PRIu64 "] Clear open edge(s)", mapIt->first );
+        for ( OpenEdgesList::const_iterator edgeIter = openEdges.begin();
+            edgeIter != openEdges.end(); ++edgeIter)
+        {
+          UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_ALL, 
+                     "    %s", (*edgeIter)->getName().c_str() );
+        }
+        openEdges.clear();
       }
-      openEdges.clear();
     }
+    openEdgesMap.clear();
   }
-  openEdgesMap.clear();
 }
 
 /**
@@ -310,12 +317,11 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions( )
 {
   if ( mpiRank == 0 && writeToFile )
   {
-    global_def_writer = OTF2_Archive_GetGlobalDefWriter( archive );
+    otf2GlobalDefWriter = OTF2_Archive_GetGlobalDefWriter( otf2Archive );
   }
 
   OTF2_GlobalDefReader* global_def_reader =
-    OTF2_Reader_GetGlobalDefReader(
-      reader );
+    OTF2_Reader_GetGlobalDefReader( otf2Reader );
 
   OTF2_GlobalDefReaderCallbacks* global_def_callbacks =
     OTF2_GlobalDefReaderCallbacks_New();
@@ -339,14 +345,17 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions( )
       global_def_callbacks, &OTF2_GlobalDefReaderCallback_Attribute );
     
     OTF2_GlobalDefReaderCallbacks_SetMetricMemberCallback(
-        global_def_callbacks, &OTF2_GlobalDefReaderCallback_MetricMember );
+        global_def_callbacks, &otf2GlobalDefReaderCallback_MetricMember );
+    
+    OTF2_GlobalDefReaderCallbacks_SetMetricClassCallback(
+        global_def_callbacks, &otf2GlobalDefReaderCallback_MetricClass );
+    
+    OTF2_GlobalDefReaderCallbacks_SetMetricInstanceCallback(
+        global_def_callbacks, &otf2GlobalDefReaderCallback_MetricInstance );
     
     // just a write through by the root process
     if ( mpiRank == 0 )
     {
-      OTF2_GlobalDefReaderCallbacks_SetMetricClassCallback(
-          global_def_callbacks, &OTF2_GlobalDefReaderCallback_MetricClass );
-
       OTF2_GlobalDefReaderCallbacks_SetLocationGroupCallback(
           global_def_callbacks, &OTF2_GlobalDefReaderCallback_LocationGroup );
 
@@ -371,27 +380,28 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions( )
   }
 
   // register callbacks
-  OTF2_Reader_RegisterGlobalDefCallbacks( reader,
+  OTF2_Reader_RegisterGlobalDefCallbacks( otf2Reader,
                                           global_def_reader,
                                           global_def_callbacks,
                                           this );
 
   OTF2_GlobalDefReaderCallbacks_Delete( global_def_callbacks );
 
+  // read definitions
   uint64_t definitions_read = 0;
-  /* read definitions */
-  OTF2_Reader_ReadAllGlobalDefinitions( reader,
+  OTF2_Reader_ReadAllGlobalDefinitions( otf2Reader,
                                         global_def_reader,
                                         &definitions_read );
 
   UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-             "[0] Read and wrote %"PRIu64" definitions", definitions_read );
+             "[0] Trace writer: Read/wrote %"PRIu64" definitions", 
+             definitions_read );
 
   // add fork/join "region" to support internal OMP-fork/join model
   // ( OMP-fork/join is a node in CASITA internally )
-  uint32_t stringSize              = idStringMap.size( );
+  uint32_t stringSize              = idStringMap.size();
   idStringMap[stringSize]          = OTF2_OMP_FORKJOIN_INTERNAL;
-  ompForkJoinRef                   = regionNameIdList.size( );
+  ompForkJoinRef                   = regionNameIdList.size();
   regionNameIdList[ompForkJoinRef] = stringSize;
 
 }
@@ -416,12 +426,12 @@ OTF2ParallelTraceWriter::writeAnalysisMetricDefinitions()
         //UTILS_MSG(true, "Write definition: %s", entry->name );
         
         // write string definition for metric and/or attribute name
-        OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( global_def_writer,
+        OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( otf2GlobalDefWriter,
                                                       counterForStringDefinitions,
                                                       entry->name ) );
         
         // write string definition for metric and/or attribute description
-        OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( global_def_writer,
+        OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( otf2GlobalDefWriter,
                                                       counterForStringDefinitions+1,
                                                       entry->description ) );
         
@@ -430,7 +440,7 @@ OTF2ParallelTraceWriter::writeAnalysisMetricDefinitions()
           uint32_t newAttrId = cTable->newOtf2Id( metric );
 
           OTF2_CHECK( 
-            OTF2_GlobalDefWriter_WriteAttribute( global_def_writer, newAttrId, 
+            OTF2_GlobalDefWriter_WriteAttribute( otf2GlobalDefWriter, newAttrId, 
                                                  counterForStringDefinitions,
                                                  counterForStringDefinitions+1,
                                                  OTF2_TYPE_UINT64 ) );
@@ -440,8 +450,8 @@ OTF2ParallelTraceWriter::writeAnalysisMetricDefinitions()
         }
         else if( entry->metricMode != METRIC_MODE_UNKNOWN )
         {
-          //\todo: this is still wrong as we ignore all metric definitions in the input trace
-          uint32_t newCtrMetricId = cTable->newOtf2Id( metric );
+          uint32_t newMetricMemberId = cTable->getNewMetricMemberId();
+          uint32_t newMetricClassId = cTable->newOtf2Id( metric );
           
           // set default OTF2_MetricMode to unknown, which is invalid
           OTF2_MetricMode otf2MetricMode = METRIC_MODE_UNKNOWN;
@@ -461,7 +471,7 @@ OTF2ParallelTraceWriter::writeAnalysisMetricDefinitions()
           }
 
           OTF2_CHECK( 
-            OTF2_GlobalDefWriter_WriteMetricMember( global_def_writer, newCtrMetricId,
+            OTF2_GlobalDefWriter_WriteMetricMember( otf2GlobalDefWriter, newMetricMemberId,
                                                     counterForStringDefinitions,
                                                     counterForStringDefinitions+1,
                                                     OTF2_METRIC_TYPE_USER,
@@ -470,8 +480,8 @@ OTF2ParallelTraceWriter::writeAnalysisMetricDefinitions()
                                                     OTF2_BASE_DECIMAL, 0, 0 ) );
 
           OTF2_CHECK( 
-            OTF2_GlobalDefWriter_WriteMetricClass( global_def_writer, newCtrMetricId, 1,
-                                                   &newCtrMetricId,
+            OTF2_GlobalDefWriter_WriteMetricClass( otf2GlobalDefWriter, newMetricClassId, 1,
+                                                   &newMetricMemberId,
                                                    OTF2_METRIC_ASYNCHRONOUS,
                                                    OTF2_RECORDER_KIND_ABSTRACT ) );
           
@@ -491,255 +501,245 @@ OTF2ParallelTraceWriter::writeAnalysisMetricDefinitions()
   }
 }
 
-/*void
-OTF2ParallelTraceWriter::setupAttributeList( void )
-{
-  attributes = OTF2_AttributeList_New();
-}*/
-
 /**
- * Read all events from original trace for this process and combine them with the
- * events and counter values from analysis.
- * Register event callback.
- *
- * @param processId  Id of the event stream to be analyzed
+ * Read all events from original trace in chronological order over all local 
+ * processes. Therefore, select all local locations and register event callbacks.
+ * 
+ * This function should be called only once!
  */
 void
-OTF2ParallelTraceWriter::setupEventReader( uint64_t processId )
+OTF2ParallelTraceWriter::setupGlobalEvtReader()
 {
   UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_ANNOY, 
-             "[%"PRIu32"] Start writing for process %"PRIu64, mpiRank, processId );
+             "[%"PRIu32"] Setup global event reader", mpiRank );
   
-  if ( writeToFile )
+  
+  for( LocationParentMap::const_iterator it = locationParentMap.begin();
+       it != locationParentMap.end(); ++it )
   {
-    OTF2_EvtWriter* evt_writer = OTF2_Archive_GetEvtWriter(
-      archive,
-      OTF2_UNDEFINED_LOCATION );
-    OTF2_CHECK( OTF2_EvtWriter_SetLocationID( evt_writer, processId ) );
-    evt_writerMap[processId] = evt_writer;
+    if ( writeToFile )
+    {
+      OTF2_EvtWriter* evt_writer = OTF2_Archive_GetEvtWriter(
+        otf2Archive, it->first /*OTF2_UNDEFINED_LOCATION*/ );
+
+      //OTF2_CHECK( OTF2_EvtWriter_SetLocationID( evt_writer, processId ) );
+      evt_writerMap[ it->first ] = evt_writer;
+    }
+    
+    // Tell writer to read this location
+    OTF2_Reader_SelectLocation( otf2Reader, it->first );
   }
 
-  /* Tell writer to read from this event stream */
-  OTF2_Reader_SelectLocation( reader, processId );
-
-  if ( isFirstProcess )
+  // open selected location files
+  bool successful_open_def_files = 
+    OTF2_Reader_OpenDefFiles( otf2Reader ) == OTF2_SUCCESS;
+  OTF2_Reader_OpenEvtFiles( otf2Reader );
+  
+  for( LocationParentMap::const_iterator it = locationParentMap.begin();
+       it != locationParentMap.end(); ++it )
   {
-    // \todo: only once!
-    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC &&  mpiRank == 0, 
-               "[0] Write OTF2 trace file with CASITA counters.");
-    OTF2_Reader_OpenEvtFiles( reader );
-    OTF2_Reader_OpenDefFiles( reader );
-    isFirstProcess = false;
+    if ( successful_open_def_files )
+    {
+      // read location definitions to set mapping tables and time offsets
+      OTF2_DefReader* def_reader = OTF2_Reader_GetDefReader( otf2Reader, it->first );
+      if ( def_reader )
+      {
+        uint64_t def_reads = 0;
+        OTF2_Reader_ReadAllLocalDefinitions( otf2Reader, def_reader, &def_reads );
+        OTF2_Reader_CloseDefReader( otf2Reader, def_reader );
+      }
+    }
+    
+    // select event reader
+    OTF2_Reader_GetEvtReader( otf2Reader, it->first );
   }
-
-  // \todo: only once!
-  OTF2_DefReader* def_reader = OTF2_Reader_GetDefReader( reader, processId );
   
-    OTF2_DefReaderCallbacks* def_callbacks = OTF2_DefReaderCallbacks_New();
-    OTF2_DefReaderCallbacks_SetMetricMemberCallback(
-        def_callbacks, &OTF2_DefReaderCallback_MetricMember );
-    OTF2_DefReaderCallbacks_SetMetricClassCallback(
-        def_callbacks, &OTF2_DefReaderCallback_MetricClass );
-    // register callbacks
-    OTF2_Reader_RegisterDefCallbacks( reader, def_reader, def_callbacks, this );
-    OTF2_DefReaderCallbacks_Delete( def_callbacks );
+  if ( successful_open_def_files )
+  {
+    OTF2_Reader_CloseDefFiles( otf2Reader );
+  }
   
-  uint64_t def_reads         = 0;
-  OTF2_Reader_ReadAllLocalDefinitions( reader, def_reader, &def_reads );
-  OTF2_Reader_CloseDefReader( reader, def_reader );
-
-  OTF2_EvtReader* evt_reader = OTF2_Reader_GetEvtReader( reader, processId );
-
-  OTF2_EvtReaderCallbacks* event_callbacks = OTF2_EvtReaderCallbacks_New( );
-  OTF2_EvtReaderCallbacks_SetEnterCallback( event_callbacks, &otf2CallbackEnter );
-  OTF2_EvtReaderCallbacks_SetLeaveCallback( event_callbacks, &otf2CallbackLeave );
-  //\todo: write counters from input trace
-  //OTF2_EvtReaderCallbacks_SetMetricCallback( event_callbacks, 
-  //                                           &otf2Callback_Metric );
-  OTF2_EvtReaderCallbacks_SetThreadForkCallback(
-    event_callbacks, &OTF2_EvtReaderCallback_ThreadFork );
-  OTF2_EvtReaderCallbacks_SetThreadJoinCallback(
-    event_callbacks, &OTF2_EvtReaderCallback_ThreadJoin );
-  OTF2_EvtReaderCallbacks_SetMpiCollectiveBeginCallback(
-    event_callbacks, &otf2CallbackComm_MpiCollectiveBegin );
-  OTF2_EvtReaderCallbacks_SetMpiCollectiveEndCallback(
-    event_callbacks, &otf2CallbackComm_MpiCollectiveEnd );
-  OTF2_EvtReaderCallbacks_SetMpiRecvCallback( event_callbacks, 
-                                              &otf2Callback_MpiRecv );
-  OTF2_EvtReaderCallbacks_SetMpiSendCallback( event_callbacks, 
-                                              &otf2Callback_MpiSend );
-  OTF2_EvtReaderCallbacks_SetMpiIrecvRequestCallback( event_callbacks, 
-                                                      &otf2Callback_MpiIrecvRequest );
-  OTF2_EvtReaderCallbacks_SetMpiIrecvCallback( event_callbacks, 
-                                               &otf2Callback_MpiIrecv );
-  OTF2_EvtReaderCallbacks_SetMpiIsendCallback( event_callbacks, 
-                                               &otf2Callback_MpiIsend );
-  OTF2_EvtReaderCallbacks_SetMpiIsendCompleteCallback( event_callbacks, 
-                                               &otf2Callback_MpiIsendComplete );
-  OTF2_EvtReaderCallbacks_SetRmaOpCompleteBlockingCallback(
-    event_callbacks, &otf2CallbackComm_RmaOpCompleteBlocking );
-  OTF2_EvtReaderCallbacks_SetRmaWinCreateCallback(
-    event_callbacks, &otf2CallbackComm_RmaWinCreate );
-  OTF2_EvtReaderCallbacks_SetRmaWinDestroyCallback(
-    event_callbacks, &otf2CallbackComm_RmaWinDestroy );
-  OTF2_EvtReaderCallbacks_SetRmaGetCallback( event_callbacks, 
-                                             &otf2CallbackComm_RmaGet );
-  OTF2_EvtReaderCallbacks_SetRmaPutCallback( event_callbacks, 
-                                             &otf2CallbackComm_RmaPut );
-  OTF2_EvtReaderCallbacks_SetThreadTeamBeginCallback(
-    event_callbacks, &otf2CallbackComm_ThreadTeamBegin );
-  OTF2_EvtReaderCallbacks_SetThreadTeamEndCallback(
-    event_callbacks, &otf2CallbackComm_ThreadTeamEnd );
-
-  OTF2_Reader_RegisterEvtCallbacks( reader, evt_reader, event_callbacks, this );
-  OTF2_EvtReaderCallbacks_Delete( event_callbacks );
+  registerEventCallbacks();
+  
+  otf2GlobalEventReader = OTF2_Reader_GetGlobalEvtReader( otf2Reader );
 }
 
-
-/**
- * Read all events from original trace for this stream and combine them with the
- * events and counter values from analysis.
- * This is done stream by stream.
- *
- * @param stream    event stream to process
- * @param graph     Pointer to internal built graph
- * @param isHost    
- * 
- * @return true, if more events are available for reading. otherwise false
- */
-bool
-OTF2ParallelTraceWriter::writeStream( EventStream* stream,
-                                      Graph*       graph,
-                                      uint64_t*    events_read )
+void
+OTF2ParallelTraceWriter::registerEventCallbacks()
 {
-  // if the period is still default, there is nothing to write
-  if( stream->getPeriod().second == 0 )
-    return true;
+  // the global event reader contains all previously opened local event readers
+  OTF2_GlobalEvtReader* evt_reader = OTF2_Reader_GetGlobalEvtReader( otf2Reader );
   
-  UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_SOME, 
-             "[%"PRIu32"] Write stream %s", mpiRank, stream->getName() );
+  OTF2_GlobalEvtReaderCallbacks* event_callbacks = 
+    OTF2_GlobalEvtReaderCallbacks_New();
+  OTF2_GlobalEvtReaderCallbacks_SetEnterCallback( event_callbacks, 
+                                                  &otf2CallbackEnter );
+  OTF2_GlobalEvtReaderCallbacks_SetLeaveCallback( event_callbacks, 
+                                                  &otf2CallbackLeave );
   
-  //\todo: this prohibits parallelization
-  currentStreamMap[stream->getId()] = stream;
-  EventStream::SortedGraphNodeList* processNodes = &(stream->getNodes());
-  assert( processNodes );
+  OTF2_GlobalEvtReaderCallbacks_SetThreadForkCallback(
+    event_callbacks, &otf2EvtCallbackThreadFork );
+  OTF2_GlobalEvtReaderCallbacks_SetThreadJoinCallback(
+    event_callbacks, &otf2EvtCallbackThreadJoin );
   
-  EventStream::SortedGraphNodeList::iterator currentNodeIter = 
-    processNodes->begin();
-  
-  // check the first nodes on host processes. They might be some artificial 
-  // atomic nodes (e.g. global source node or interval start node)
-  if ( stream->isHostMasterStream() )
+  // the following callback events are just written back to the output trace
+  if( writeToFile )
   {
-    // the following node is for MPI streams the atomic node of the MPI
-    // collective (previously the leave node), which we do not want to write
-    // but some special handling, e.g. for the CP is needed
-    while( (*currentNodeIter)->isAtomic() )
+    OTF2_GlobalEvtReaderCallbacks_SetMetricCallback( event_callbacks, 
+                                                     &otf2CallbackMetric );
+    
+    OTF2_GlobalEvtReaderCallbacks_SetMpiCollectiveBeginCallback(
+      event_callbacks, &otf2CallbackComm_MpiCollectiveBegin );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiCollectiveEndCallback(
+      event_callbacks, &otf2CallbackComm_MpiCollectiveEnd );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiRecvCallback( event_callbacks, 
+                                                &otf2Callback_MpiRecv );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiSendCallback( event_callbacks, 
+                                                &otf2Callback_MpiSend );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiIrecvRequestCallback( 
+      event_callbacks, &otf2Callback_MpiIrecvRequest );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiIrecvCallback( event_callbacks, 
+                                                 &otf2Callback_MpiIrecv );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiIsendCallback( event_callbacks, 
+                                                 &otf2Callback_MpiIsend );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiIsendCompleteCallback( 
+      event_callbacks, &otf2Callback_MpiIsendComplete );
+
+    OTF2_GlobalEvtReaderCallbacks_SetRmaOpCompleteBlockingCallback(
+      event_callbacks, &otf2CallbackComm_RmaOpCompleteBlocking );
+    OTF2_GlobalEvtReaderCallbacks_SetRmaWinCreateCallback(
+      event_callbacks, &otf2CallbackComm_RmaWinCreate );
+    OTF2_GlobalEvtReaderCallbacks_SetRmaWinDestroyCallback(
+      event_callbacks, &otf2CallbackComm_RmaWinDestroy );
+    OTF2_GlobalEvtReaderCallbacks_SetRmaGetCallback( event_callbacks, 
+                                               &otf2CallbackComm_RmaGet );
+    OTF2_GlobalEvtReaderCallbacks_SetRmaPutCallback( event_callbacks, 
+                                               &otf2CallbackComm_RmaPut );
+    OTF2_GlobalEvtReaderCallbacks_SetThreadTeamBeginCallback(
+      event_callbacks, &otf2CallbackComm_ThreadTeamBegin );
+    OTF2_GlobalEvtReaderCallbacks_SetThreadTeamEndCallback(
+      event_callbacks, &otf2CallbackComm_ThreadTeamEnd );
+  }
+
+  OTF2_Reader_RegisterGlobalEvtCallbacks( otf2Reader, evt_reader, event_callbacks, this );
+  OTF2_GlobalEvtReaderCallbacks_Delete( event_callbacks );
+}
+
+uint64_t
+OTF2ParallelTraceWriter::writeLocations( EventStreamGroup::EventStreamList& streams,
+                                         Graph* graph, uint64_t eventsToRead)
+{
+  UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_SOME, 
+             "[%"PRIu32"] Write streams ...", mpiRank );
+  
+  // iterate over all streams that have been analyzed
+  for( EventStreamGroup::EventStreamList::const_iterator itStream = streams.begin();
+       itStream != streams.end(); ++itStream )
+  {
+    EventStream* stream = *itStream;
+    uint64_t streamId = stream->getId();
+    
+    currentStreamMap[ streamId ] = stream;
+    EventStream::SortedGraphNodeList* processNodes = &( stream->getNodes() );
+    assert( processNodes );
+
+    EventStream::SortedGraphNodeList::iterator currentNodeIter = 
+      processNodes->begin();
+
+    // check the first nodes on host processes. They might be some artificial 
+    // atomic nodes (e.g. global source node or interval start node)
+    if ( stream->isHostMasterStream() )
     {
-      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_ALL, 
-                 "[%"PRIu32"] TraceWriter: Skip atomic event: %s", 
-                 mpiRank, (*currentNodeIter)->getUniqueName().c_str() );
-     
-      // first part of the condition should be wrong for the global source node
-      if( ( (*currentNodeIter)->getCounter( CRITICAL_PATH, NULL ) == 1 ) &&
-          ( currentNodeIter + 1 != processNodes->end( ) ) && 
-          ( *( currentNodeIter + 1 ) )->getCounter( CRITICAL_PATH, NULL ) == 0 )
+      // the following node is for MPI streams the atomic node of the MPI
+      // collective (previously the leave node), which we do not want to write
+      // but some special handling, e.g. for the CP is needed
+      while( (*currentNodeIter)->isAtomic() )
       {
-        OTF2_Type        type  = OTF2_TYPE_UINT64;
-        OTF2_MetricValue value;
-        OTF2_EvtWriter*  evt_writer = evt_writerMap[ stream->getId() ];
+        UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_ALL, 
+                   "[%"PRIu32"] TraceWriter: Skip atomic event: %s", 
+                   mpiRank, (*currentNodeIter)->getUniqueName().c_str() );
 
-        value.unsigned_int = 0;
-        lastMetricValues[ stream->getId() ][ CRITICAL_PATH ] = 0;
+        // first part of the condition should be wrong for the global source node
+        if( ( (*currentNodeIter)->getCounter( CRITICAL_PATH, NULL ) == 1 ) &&
+            ( currentNodeIter + 1 != processNodes->end( ) ) && 
+            ( *( currentNodeIter + 1 ) )->getCounter( CRITICAL_PATH, NULL ) == 0 )
+        {
+          OTF2_Type        type  = OTF2_TYPE_UINT64;
+          OTF2_MetricValue value;
+          OTF2_EvtWriter*  evt_writer = evt_writerMap[ streamId ];
 
-        OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, lastEventTime[stream->getId()],
-                                           cTable->getMetricId( CRITICAL_PATH ), 
-                                           1, &type, &value ) );
+          value.unsigned_int = 0;
+          lastMetricValues[ streamId ][ CRITICAL_PATH ] = 0;
+
+          // we need the metric instance/class ID
+          OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, lastEventTime[ streamId ],
+                                             cTable->getMetricId( CRITICAL_PATH ), 
+                                             1, &type, &value ) );
+        }
+
+        ++currentNodeIter;
       }
-      
-      ++currentNodeIter;
+    }
+
+    // set the current node iterator for this stream
+    currentNodeIterMap[ streamId ] = currentNodeIter;
+
+    // store a pointer to the graph as class member
+    this->graph = graph;
+
+    // reset last counter values before processing the current stream
+    const AnalysisMetric::MetricIdSet& ctrIdSet = cTable->getAllCounterIds();
+    for( AnalysisMetric::MetricIdSet::const_iterator ctrIdIter = ctrIdSet.begin();
+         ctrIdIter != ctrIdSet.end(); ++ctrIdIter )
+    {
+      lastMetricValues[ streamId ][ *ctrIdIter ] = 0;
+    }
+
+    // set the initial critical path value for this stream
+    if( stream->isFirstCritical() )
+    {
+      processOnCriticalPath[ streamId ] = true;
+      //UTILS_MSG( true, "Process [%llu] has initial CP", stream->getId());
+
+      // after the first interval analysis there is no first critical any more
+      stream->isFirstCritical() = false;
+    }
+    else
+    {
+      processOnCriticalPath[ streamId ] = false;
     }
   }
   
-  currentNodeIterMap[ stream->getId() ] = currentNodeIter;
-
-  // store a pointer to the graph as class member
-  this->graph = graph;
-  
-  // reset last counter values before processing the current stream
-  const AnalysisMetric::MetricIdSet& ctrIdSet = cTable->getAllCounterIds();
-  for( AnalysisMetric::MetricIdSet::const_iterator ctrIdIter = ctrIdSet.begin();
-       ctrIdIter != ctrIdSet.end(); ++ctrIdIter )
-  {
-    lastMetricValues[ stream->getId() ][ *ctrIdIter ] = 0;
-  }
-  
-  // set the initial critical path value for this stream
-  if( stream->isFirstCritical() )
-  {
-    processOnCriticalPath[stream->getId()] = true;
-    //UTILS_MSG( true, "Process [%llu] has initial CP", stream->getId());
-    
-    // after the first interval analysis there is no first critical any more
-    stream->isFirstCritical() = false;
-  }
-  else
-  {
-    processOnCriticalPath[stream->getId()] = false;
-  }
-  
-  OTF2_EvtReader* evt_reader = OTF2_Reader_GetEvtReader( reader, stream->getId() );
-  
-  // we only know the number of global events to read, 
-  // therefore check for a global collective again
+  assert( otf2GlobalEventReader );
+  //OTF2_GlobalEvtReader* otf2GlobalEventReader = OTF2_Reader_GetGlobalEvtReader( otf2Reader );
 
   // returns 0 if successful, >0 otherwise
-  OTF2_ErrorCode otf2_error = 
-             OTF2_Reader_ReadAllLocalEvents( reader, evt_reader, events_read );
+  uint64_t events_read = 0;
+  OTF2_ErrorCode otf2_error = OTF2_Reader_ReadGlobalEvents( 
+    otf2Reader, otf2GlobalEventReader, eventsToRead, &events_read );
   
   clearOpenEdges();
+  
+  UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+                 "[0] Writer: Read %"PRIu64" / %"PRIu64" events", 
+                 events_read, eventsToRead );
   
   if ( OTF2_SUCCESS != otf2_error )
   {
     if( OTF2_ERROR_INTERRUPTED_BY_CALLBACK == otf2_error )
     {
+      UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+                 "[0] Writer interrupted by callback: Read %lu events", 
+                 events_read );
       return true;
     }
     else
-      throw RTException( "Failed to read OTF2 events %llu", *events_read );
-  }
-  
-  OTF2_Reader_CloseEvtReader( reader, evt_reader );
-  
-  return false;
-}
-
-void
-OTF2ParallelTraceWriter::writeMetricStreams()
-{
-  // get metric only locations
-  for( std::vector< uint64_t >::const_iterator it = metricStreamVector.begin();
-       it != metricStreamVector.end(); ++it )
-  {
-    UTILS_WARNING( "Read from location %llu", *it );
-    
-    setupEventReader( *it );
-
-    OTF2_EvtReader* evt_reader = OTF2_Reader_GetEvtReader( reader, *it );
-
-    uint64_t events_read = 0;
-
-    // returns 0 if successful, >0 otherwise
-    OTF2_ErrorCode otf2_error = 
-      OTF2_Reader_ReadAllLocalEvents( reader, evt_reader, &events_read );
-    
-    if ( OTF2_SUCCESS != otf2_error )
     {
-      UTILS_WARNING( "Could not read events from metric location" );
+      throw RTException( "Failed to read OTF2 events %llu", events_read );
     }
-
-    OTF2_Reader_CloseEvtReader( reader, evt_reader );
   }
+  
+  return events_read;
 }
 
 /**
@@ -857,7 +857,7 @@ OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
   if( openEdgesMap.count( event.location > 0 ) )
   {
     // time between current and last event on this location
-    uint64_t timeDiff  = event.time - lastEventTime[event.location];
+    uint64_t timeDiff = event.time - lastEventTime[ event.location ];
 
     // remove timer offset from event time
     uint64_t eventTime = event.time - timerOffset;
@@ -865,14 +865,11 @@ OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
     //UTILS_MSG( openEdges.size(), "[%u] Compute blame for %s from %llu open edges", 
     //           mpiRank, getRegionName( event.regionRef ).c_str(), openEdges.size() );
     
-    OpenEdgesList openEdges = openEdgesMap[event.location];
+    OpenEdgesList& openEdges = openEdgesMap[ event.location ];
     for ( OpenEdgesList::iterator edgeIter = openEdges.begin();
           edgeIter != openEdges.end(); )
     {
-      OpenEdgesList::iterator currentIter = edgeIter;
-      OpenEdgesList::iterator nextIter    = ++edgeIter;
-
-      Edge* edge = *currentIter;
+      Edge* edge = *edgeIter;
 
       //std::cerr << getRegionName(event.regionRef) << " between nodes " << edge->getStartNode()->getUniqueName()
       //          << " -> " << edge->getEndNode()->getUniqueName() << std::endl;
@@ -885,14 +882,14 @@ OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
         // blame = blame(edge) * time(cpu_region)/time(edge)
         totalBlame += (double)( edge->getCPUBlame() ) * (double)timeDiff 
                     / (double)( edge->getDuration() );
+      
+        ++edgeIter;
       }
       else
       {
         // erase edge if event time is past its end node
-        openEdges.erase( currentIter );
+        edgeIter = openEdges.erase( edgeIter );
       }
-
-      edgeIter = nextIter;
     }
   }
   
@@ -972,7 +969,6 @@ OTF2ParallelTraceWriter::writeEventsWithAttributes( OTF2Event event,
  */
 void
 OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event, 
-                                                  OTF2_AttributeList* attributes,
                                                   CounterMap& counters,
                                                   bool writeEvents )
 {
@@ -1000,7 +996,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
   if( counters.size() == 0  && processOnCriticalPath[event.location] == true )
   {
     // if we are at a leave event, which is the last on the stack, write '0'
-    if( event.type == RECORD_LEAVE && activityStack[event.location].size( ) == 1
+    if( event.type == RECORD_LEAVE && activityStack[event.location].size() == 1
         && lastMetricValues[ event.location ][ CRITICAL_PATH ] != 0 )
     {
       OTF2_Type        type  = OTF2_TYPE_UINT64;
@@ -1032,7 +1028,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
   }
 
   // if counters are available
-  for ( CounterMap::const_iterator iter = counters.begin( );
+  for ( CounterMap::const_iterator iter = counters.begin();
         iter != counters.end( ); ++iter )
   {
     const MetricType metricType = iter->first;
@@ -1140,7 +1136,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
     // The following is currently only for the blame counter
     
     // reset counter if this enter is the first event on the activity stack
-    if ( event.type == RECORD_ENTER && activityStack[event.location].size( ) == 0 )
+    if ( event.type == RECORD_ENTER && activityStack[event.location].size() == 0 )
     {
       value.unsigned_int = 0;
       OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
@@ -1156,7 +1152,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
     }
 
     // reset counter if this leave is the last event on the activity stack
-    if ( event.type == RECORD_LEAVE && activityStack[event.location].size( ) == 1 &&
+    if ( event.type == RECORD_LEAVE && activityStack[event.location].size() == 1 &&
          value.unsigned_int != 0 )
     {
       value.unsigned_int = 0;
@@ -1177,7 +1173,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
  * Process the next event read from original trace file.
  *
  * @param event
- * @param eventName
+ * @param attributeList
  * 
  * @return a pointer to the GraphNode object of the given event
  */
@@ -1186,13 +1182,14 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
                                            OTF2_AttributeList* attributeList )
 {  
   const std::string eventName = getRegionName( event.regionRef );
+  EventStream* currentStream = currentStreamMap[ event.location ];
   
   // test if this is an internal node or a CPU event
   FunctionDescriptor eventDesc;
   // set event type to determine if an internal node is available
   eventDesc.recordType = event.type; 
   const bool mapsInternalNode = FunctionTable::getAPIFunctionType(
-    eventName.c_str(), &eventDesc, deviceStreamMap[ event.location ], false );  
+    eventName.c_str(), &eventDesc, currentStream->isDeviceStream(), false );  
 
   //UTILS_MSG( mpiRank == 0, "Event name: '%s' (%d), maps internal: %d", 
   //           eventName.c_str( ), event.type, (int)mapsInternalNode );
@@ -1200,7 +1197,6 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   // non-internal counter values for this event
   CounterMap tmpCounters;
   
-  EventStream* currentStream = currentStreamMap[ event.location ];
   EventStream::SortedGraphNodeList::iterator endNodeIter = 
     currentStream->getNodes().end();
   EventStream::SortedGraphNodeList::iterator currentNodeIter = 
@@ -1229,9 +1225,9 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
 
       UTILS_ASSERT( currentNode->getFunctionId() == event.regionRef,
                     //&& currentNode->getRecordType() == event.type,
-                    " [%u] RegionRef doesn't fit for event %s:%d:%" PRIu64 ":%lf"
+                    " [%u] RegionRef doesn't fit for event %"PRIu64":%s:%d:%" PRIu64 ":%lf"
                     " and internal node %s:%lf, %u != %" PRIu64, mpiRank, 
-                    eventName.c_str(), event.type, event.time, getRealTime(event.time),
+                    event.location, eventName.c_str(), event.type, event.time, getRealTime(event.time),
                     currentNode->getUniqueName().c_str(),
                     (double)currentNode->getTime() / (double)timerResolution,
                     event.regionRef, currentNode->getFunctionId() );
@@ -1411,10 +1407,10 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       
       //\todo: validate the following if, which affects only the OTF2 output
       if( blame )
-        tmpCounters[BLAME] = blame;
+        tmpCounters[ BLAME ] = blame;
 
       // non-paradigm events cannot be wait states
-      tmpCounters[WAITING_TIME] = 0;
+      tmpCounters[ WAITING_TIME ] = 0;
     }
   }
   
@@ -1423,7 +1419,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   // write event with counters
   if ( writeToFile )
   {
-    writeEventsWithCounters( event, attributeList, tmpCounters, false );
+    writeEventsWithCounters( event, tmpCounters, false );
     writeEventsWithAttributes( event, attributeList, tmpCounters );    
   }
 
@@ -1449,11 +1445,11 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
     }
     case RECORD_LEAVE:
     {
-      activityStack[event.location].pop( );
+      activityStack[ event.location ].pop();
 
 #if defined(BLAME_COUNTER_FALSE)
-      delete leaveCounterStack[event.location].top( );
-      leaveCounterStack[event.location].pop( );
+      delete leaveCounterStack[event.location].top();
+      leaveCounterStack[event.location].pop();
 #endif //BLAME_COUNTER
       
       break;
@@ -1484,8 +1480,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_ClockProperties( void* use
 
   if ( tw->mpiRank == 0 && tw->writeToFile )
   {
-    OTF2_CHECK( OTF2_GlobalDefWriter_WriteClockProperties( tw->
-                                                           global_def_writer,
+    OTF2_CHECK( OTF2_GlobalDefWriter_WriteClockProperties( tw->otf2GlobalDefWriter,
                                                            timerResolution,
                                                            globalOffset,
                                                            traceLength ) );
@@ -1508,7 +1503,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_LocationGroup( void* userD
 
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  OTF2_CHECK( OTF2_GlobalDefWriter_WriteLocationGroup( tw->global_def_writer,
+  OTF2_CHECK( OTF2_GlobalDefWriter_WriteLocationGroup( tw->otf2GlobalDefWriter,
                                                        self, name,
                                                        locationGroupType,
                                                        systemTreeParent ) );
@@ -1527,28 +1522,17 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Location(
 {
 
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
-
-  if ( locationType == OTF2_LOCATION_TYPE_METRIC )
-  { 
-    // ignore remote locations , \todo: this is not safe
-    if( locationGroup == tw->mpiRank )
-    {
-      //UTILS_WARNING( "Found metric location %llu of group %llu", self, locationGroup );
-      tw->metricStreamVector.push_back( self );
-    }
-  }
-  else if ( locationType == OTF2_LOCATION_TYPE_GPU )
+  
+  // \todo: this seems to work referring to OTF2_LocationType description
+  if( tw->mpiRank == locationGroup )
   {
-    tw->deviceStreamMap[self] = true;
+    // store all locations with their parent
+    tw->locationParentMap[ self ] = locationGroup;
   }
-  else
-  {
-    tw->deviceStreamMap[self] = false;
-  }
-
+  
   if ( tw->mpiRank == 0 && tw->writeToFile )
   {
-    OTF2_CHECK( OTF2_GlobalDefWriter_WriteLocation( tw->global_def_writer, self,
+    OTF2_CHECK( OTF2_GlobalDefWriter_WriteLocation( tw->otf2GlobalDefWriter, self,
                                                     name, locationType,
                                                     numberOfEvents,
                                                     locationGroup ) );
@@ -1576,7 +1560,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Group( void*         userD
 
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  OTF2_CHECK( OTF2_GlobalDefWriter_WriteGroup( tw->global_def_writer, self,
+  OTF2_CHECK( OTF2_GlobalDefWriter_WriteGroup( tw->otf2GlobalDefWriter, self,
                                                name,
                                                groupType, paradigm, groupFlags,
                                                numberOfMembers, members ) );
@@ -1593,7 +1577,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Comm( void*          userD
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  OTF2_CHECK( OTF2_GlobalDefWriter_WriteComm( tw->global_def_writer, self, name,
+  OTF2_CHECK( OTF2_GlobalDefWriter_WriteComm( tw->otf2GlobalDefWriter, self, name,
                                               group, parent ) );
 
   return OTF2_CALLBACK_SUCCESS;
@@ -1614,7 +1598,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_String( void* userData,
   if ( tw->mpiRank == 0 && tw->writeToFile )
   {
 
-    OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( tw->global_def_writer, self,
+    OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( tw->otf2GlobalDefWriter, self,
                                                   string ) );
   }
 
@@ -1634,7 +1618,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_SystemTreeNode( void* user
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  OTF2_CHECK( OTF2_GlobalDefWriter_WriteSystemTreeNode( tw->global_def_writer,
+  OTF2_CHECK( OTF2_GlobalDefWriter_WriteSystemTreeNode( tw->otf2GlobalDefWriter,
                                                         self, name, className,
                                                         parent ) );
 
@@ -1651,7 +1635,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_SystemTreeNodeProperty(
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  OTF2_CHECK( OTF2_GlobalDefWriter_WriteSystemTreeNodeProperty( tw->global_def_writer,
+  OTF2_CHECK( OTF2_GlobalDefWriter_WriteSystemTreeNodeProperty( tw->otf2GlobalDefWriter,
                                                                 systemTreeNode,
                                                                 name, type,
                                                                 value ) );
@@ -1668,7 +1652,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_SystemTreeNodeDomain( void
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  OTF2_CHECK( OTF2_GlobalDefWriter_WriteSystemTreeNodeDomain( tw->global_def_writer,
+  OTF2_CHECK( OTF2_GlobalDefWriter_WriteSystemTreeNodeDomain( tw->otf2GlobalDefWriter,
                                                               systemTreeNode,
                                                               systemTreeDomain ) );
 
@@ -1695,7 +1679,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Region(
 
   if ( tw->mpiRank == 0 && tw->writeToFile )
   {
-    OTF2_CHECK( OTF2_GlobalDefWriter_WriteRegion( tw->global_def_writer, self,
+    OTF2_CHECK( OTF2_GlobalDefWriter_WriteRegion( tw->otf2GlobalDefWriter, self,
                                                   name,
                                                   cannonicalName, description,
                                                   regionRole, paradigm,
@@ -1727,7 +1711,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Attribute(
          strcmp(tw->idStringMap[ name ], SCOREP_OMP_TARGET_REGION_ID ) != 0 &&
          strcmp(tw->idStringMap[ name ], SCOREP_OMP_TARGET_PARENT_REGION_ID ) != 0*/ )
     {
-      OTF2_CHECK( OTF2_GlobalDefWriter_WriteAttribute( tw->global_def_writer, self,
+      OTF2_CHECK( OTF2_GlobalDefWriter_WriteAttribute( tw->otf2GlobalDefWriter, self,
                                                      name, description, type ) );
     }
   }
@@ -1739,7 +1723,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Attribute(
 }
 
 OTF2_CallbackCode
-OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_MetricMember( 
+OTF2ParallelTraceWriter::otf2GlobalDefReaderCallback_MetricMember( 
                                                  void*                userData,
                                                  OTF2_MetricMemberRef self,
                                                  OTF2_StringRef       name,
@@ -1755,7 +1739,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_MetricMember(
   
   if( tw->mpiRank == 0 )
   {
-    OTF2_CHECK( OTF2_GlobalDefWriter_WriteMetricMember( tw->global_def_writer, 
+    OTF2_CHECK( OTF2_GlobalDefWriter_WriteMetricMember( tw->otf2GlobalDefWriter, 
                                                         self, name, description,
                                                         metricType, metricMode,
                                                         valueType, base, exponent,
@@ -1765,14 +1749,14 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_MetricMember(
   //UTILS_WARNING( "[%u] Found metric member %s with definition ID %u", 
   //               tw->mpiRank, tw->idStringMap[name], self );
   
-  // increment metric member ID to append CASITA counter definitions
+  // increment metric member ID to append CASITA metric member definitions
   tw->cTable->addMetricMemberId( self );
   
   return OTF2_CALLBACK_SUCCESS;
 }
 
 OTF2_CallbackCode
-OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_MetricClass(
+OTF2ParallelTraceWriter::otf2GlobalDefReaderCallback_MetricClass(
                                   void*                       userData,
                                   OTF2_MetricRef              self,
                                   uint8_t                     numberOfMetrics,
@@ -1782,11 +1766,41 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_MetricClass(
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
   
-  OTF2_CHECK( OTF2_GlobalDefWriter_WriteMetricClass( tw->global_def_writer, 
-                                                      self, numberOfMetrics,
-                                                      metricMembers,
-                                                      metricOccurrence,
-                                                      recorderKind ) );
+  if( tw->mpiRank == 0 )
+  {
+    OTF2_CHECK( OTF2_GlobalDefWriter_WriteMetricClass(  tw->otf2GlobalDefWriter, 
+                                                        self, numberOfMetrics,
+                                                        metricMembers,
+                                                        metricOccurrence,
+                                                        recorderKind ) );
+  }
+  
+  // increment metric class ID to append CASITA counter definitions
+  tw->cTable->addMetricClassId( self );
+  
+  return OTF2_CALLBACK_SUCCESS;
+}
+
+OTF2_CallbackCode
+OTF2ParallelTraceWriter::otf2GlobalDefReaderCallback_MetricInstance(
+                                                   void*            userData,
+                                                   OTF2_MetricRef   self,
+                                                   OTF2_MetricRef   metricClass,
+                                                   OTF2_LocationRef recorder,
+                                                   OTF2_MetricScope metricScope,
+                                                   uint64_t         scope )
+{
+  OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
+  
+  if( tw->mpiRank == 0 )
+  {
+    OTF2_CHECK( OTF2_GlobalDefWriter_WriteMetricInstance( tw->otf2GlobalDefWriter, 
+                  self, metricClass, recorder, metricScope, scope ) );
+  }
+  
+  // increment metric class ID to append CASITA counter definitions
+  // metric class and metric instances share the same ID space in OTF2
+  tw->cTable->addMetricClassId( self );
   
   return OTF2_CALLBACK_SUCCESS;
 }
@@ -1800,43 +1814,9 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_RmaWin(
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  OTF2_CHECK( OTF2_GlobalDefWriter_WriteRmaWin( tw->global_def_writer, self,
+  OTF2_CHECK( OTF2_GlobalDefWriter_WriteRmaWin( tw->otf2GlobalDefWriter, self,
                                                 name, comm ) );
 
-  return OTF2_CALLBACK_SUCCESS;
-}
-
-/***** local definition reader */
-
-OTF2_CallbackCode
-OTF2ParallelTraceWriter::OTF2_DefReaderCallback_MetricMember( 
-                                           void*                userData,
-                                           OTF2_MetricMemberRef self,
-                                           OTF2_StringRef       name,
-                                           OTF2_StringRef       description,
-                                           OTF2_MetricType      metricType,
-                                           OTF2_MetricMode      metricMode,
-                                           OTF2_Type            valueType,
-                                           OTF2_Base            base,
-                                           int64_t              exponent,
-                                           OTF2_StringRef       unit )
-{
-  UTILS_WARNING("Read local definition for metric member %u", self );
-  
-  return OTF2_CALLBACK_SUCCESS;
-}
-
-OTF2_CallbackCode
-OTF2ParallelTraceWriter::OTF2_DefReaderCallback_MetricClass( 
-                                          void*                       userData,
-                                          OTF2_MetricRef              self,
-                                          uint8_t                     numberOfMetrics,
-                                          const OTF2_MetricMemberRef* metricMembers,
-                                          OTF2_MetricOccurrence       metricOccurrence,
-                                          OTF2_RecorderKind           recorderKind )
-{
-  UTILS_WARNING("Read local definition for metric class %u", self );
-  
   return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -1851,7 +1831,6 @@ OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackComm_MpiCollectiveEnd( 
                                               OTF2_LocationRef    locationID,
                                               OTF2_TimeStamp      time,
-                                              uint64_t            eventPosition,
                                               void*               userData,
                                               OTF2_AttributeList* attributeList,
                                               OTF2_CollectiveOp   collectiveOp,
@@ -1877,8 +1856,6 @@ OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackComm_MpiCollectiveBegin( OTF2_LocationRef locationID,
                                                               OTF2_TimeStamp
                                                               time,
-                                                              uint64_t
-                                                              eventPosition,
                                                               void*            userData,
                                                               OTF2_AttributeList
                                                               *                attributeList )
@@ -1898,7 +1875,6 @@ OTF2ParallelTraceWriter::otf2CallbackComm_MpiCollectiveBegin( OTF2_LocationRef l
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackComm_RmaWinCreate( OTF2_LocationRef location,
                                                         OTF2_TimeStamp   time,
-                                                        uint64_t         eventPosition,
                                                         void*            userData,
                                                         OTF2_AttributeList*
                                                         attributeList,
@@ -1918,7 +1894,6 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaWinCreate( OTF2_LocationRef locatio
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackComm_RmaWinDestroy( OTF2_LocationRef location,
                                                          OTF2_TimeStamp   time,
-                                                         uint64_t         eventPosition,
                                                          void*            userData,
                                                          OTF2_AttributeList*
                                                          attributeList,
@@ -1938,7 +1913,6 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaWinDestroy( OTF2_LocationRef locati
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackComm_RmaPut( OTF2_LocationRef location,
                                                   OTF2_TimeStamp   time,
-                                                  uint64_t         eventPosition,
                                                   void*            userData,
                                                   OTF2_AttributeList*
                                                   attributeList,
@@ -1963,7 +1937,6 @@ OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackComm_RmaOpCompleteBlocking( 
                                            OTF2_LocationRef    location,
                                            OTF2_TimeStamp      time,
-                                           uint64_t            eventPosition,
                                            void*               userData,
                                            OTF2_AttributeList* attributeList,
                                            OTF2_RmaWinRef      win,
@@ -1984,7 +1957,6 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaOpCompleteBlocking(
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackComm_RmaGet( OTF2_LocationRef location,
                                                   OTF2_TimeStamp   time,
-                                                  uint64_t         eventPosition,
                                                   void*            userData,
                                                   OTF2_AttributeList*
                                                   attributeList,
@@ -2008,8 +1980,6 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaGet( OTF2_LocationRef location,
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackComm_ThreadTeamBegin( OTF2_LocationRef locationID,
                                                            OTF2_TimeStamp   time,
-                                                           uint64_t
-                                                           eventPosition,
                                                            void*            userData,
                                                            OTF2_AttributeList*
                                                            attributeList,
@@ -2032,7 +2002,6 @@ OTF2ParallelTraceWriter::otf2CallbackComm_ThreadTeamBegin( OTF2_LocationRef loca
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackComm_ThreadTeamEnd( OTF2_LocationRef locationID,
                                                          OTF2_TimeStamp   time,
-                                                         uint64_t         eventPosition,
                                                          void*            userData,
                                                          OTF2_AttributeList*
                                                          attributeList,
@@ -2054,9 +2023,8 @@ OTF2ParallelTraceWriter::otf2CallbackComm_ThreadTeamEnd( OTF2_LocationRef locati
 /**
  * Callback for an enter region record.
  * 
- * @param location
+ * @param location OTF2 location reference (internally used as stream ID)
  * @param time
- * @param eventPosition
  * @param userData
  * @param attributes
  * @param region
@@ -2065,32 +2033,29 @@ OTF2ParallelTraceWriter::otf2CallbackComm_ThreadTeamEnd( OTF2_LocationRef locati
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackEnter( OTF2_LocationRef    location,
                                             OTF2_TimeStamp      time,
-                                            uint64_t            eventPosition,
                                             void*               userData,
                                             OTF2_AttributeList* attributes,
                                             OTF2_RegionRef      region )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  /* Define event to write next node in list */
+  // define event to write next node in list
   OTF2Event event;
   event.location  = location;
   event.regionRef = region;
   event.time      = time;
   event.type      = RECORD_ENTER;
 
-  //if( tw->currentStream->getPeriod().second >= time - tw->timerOffset )
-  if( tw->currentStreamMap[location]->getLastEventTime() >= time - tw->timerOffset )
+  //if( tw->currentStreamMap[location]->getLastEventTime() >= time - tw->timerOffset )
   {
     tw->processNextEvent( event, attributes );
   }
-  
-  if ( tw->mpiSize > 1 && Parser::getInstance().getProgramOptions().analysisInterval &&
-       time - tw->timerOffset == /*tw->currentStream->getPeriod().second*/
-                                   tw->currentStreamMap[location]->getLastEventTime() )
+
+  /*if ( tw->mpiSize > 1 && Parser::getInstance().getProgramOptions().analysisInterval &&
+       time - tw->timerOffset == tw->currentStreamMap[location]->getLastEventTime() )
   {
     return OTF2_CALLBACK_INTERRUPT;
-  }
+  }*/
 
   return OTF2_CALLBACK_SUCCESS;
 
@@ -2099,44 +2064,38 @@ OTF2ParallelTraceWriter::otf2CallbackEnter( OTF2_LocationRef    location,
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackLeave( OTF2_LocationRef    location, // streamID
                                             OTF2_TimeStamp      time,
-                                            uint64_t            eventPosition,
                                             void*               userData,
                                             OTF2_AttributeList* attributes,
                                             OTF2_RegionRef      region )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  /* Define event to write next node in list */
+  // Define event to write next node in list
   OTF2Event event;
   event.location  = location;
   event.regionRef = region;
   event.time      = time;
   event.type      = RECORD_LEAVE;
-
-  //std::cerr << "TW: Handle leave: " << tw->getRegionName( region ) << std::endl;
   
-  //if( tw->currentStream->getPeriod().second >= time - tw->timerOffset )
-  if( tw->currentStreamMap[location]->getLastEventTime() >= time - tw->timerOffset )
+  //if( tw->currentStreamMap[location]->getLastEventTime() >= time - tw->timerOffset )
   {
     tw->processNextEvent( event, attributes );
   }
   
   // interrupt reading, if we processed the last read leave event
-  if ( tw->mpiSize > 1 && Parser::getInstance().getProgramOptions().analysisInterval &&
-       time - tw->timerOffset == /*tw->currentStream->getPeriod().second*/
-                                   tw->currentStreamMap[location]->getLastEventTime() )
+  /*if ( tw->mpiSize > 1 && Parser::getInstance().getProgramOptions().analysisInterval &&
+       time - tw->timerOffset == tw->currentStreamMap[location]->getLastEventTime() )
   {
     return OTF2_CALLBACK_INTERRUPT;
-  }
+  }*/
 
   return OTF2_CALLBACK_SUCCESS;
 }
 
 OTF2_CallbackCode
-OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadFork( 
+OTF2ParallelTraceWriter::otf2EvtCallbackThreadFork( 
                                   OTF2_LocationRef    locationID,
                                   OTF2_TimeStamp      time,
-                                  uint64_t            eventPosition,
                                   void*               userData,
                                   OTF2_AttributeList* attributeList,
                                   OTF2_Paradigm       paradigm,
@@ -2171,18 +2130,11 @@ OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadFork(
 }
 
 OTF2_CallbackCode
-OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadJoin( OTF2_LocationRef locationID,
-                                                            OTF2_TimeStamp
-                                                            time,
-                                                            uint64_t
-                                                            eventPosition,
-                                                            void*
-                                                            userData,
-                                                            OTF2_AttributeList
-                                                            *
-                                                            attributeList,
-                                                            OTF2_Paradigm
-                                                            paradigm )
+OTF2ParallelTraceWriter::otf2EvtCallbackThreadJoin( OTF2_LocationRef    locationID,
+                                                    OTF2_TimeStamp      time,
+                                                    void*               userData,
+                                                    OTF2_AttributeList* attributeList,
+                                                    OTF2_Paradigm       paradigm )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
@@ -2208,6 +2160,9 @@ OTF2ParallelTraceWriter::OTF2_EvtReaderCallback_ThreadJoin( OTF2_LocationRef loc
   return OTF2_CALLBACK_SUCCESS;
 }
 
+/**
+ * This callback reads and writes a metric instance.
+ */
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2CallbackMetric( 
                                      OTF2_LocationRef        location,
@@ -2220,10 +2175,6 @@ OTF2ParallelTraceWriter::otf2CallbackMetric(
                                      const OTF2_MetricValue* metricValues )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
-  
-  UTILS_WARNING( "[%u] Write back %d metric(s) with ID %"PRIu32", type %d, value %llu to %llu", 
-                 tw->mpiRank, numberOfMetrics, metric, typeIDs[0], metricValues[0].unsigned_int,
-                 location );
 
   OTF2_CHECK( OTF2_EvtWriter_Metric( tw->evt_writerMap[location],
                 attributeList, time, metric, numberOfMetrics, typeIDs, 
@@ -2235,7 +2186,6 @@ OTF2ParallelTraceWriter::otf2CallbackMetric(
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2Callback_MpiRecv( OTF2_LocationRef locationID,
                                                OTF2_TimeStamp   time,
-                                               uint64_t         eventPosition,
                                                void*            userData,
                                                OTF2_AttributeList*
                                                attributeList,
@@ -2246,12 +2196,9 @@ OTF2ParallelTraceWriter::otf2Callback_MpiRecv( OTF2_LocationRef locationID,
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  if ( tw->writeToFile )
-  {
-    OTF2_CHECK( OTF2_EvtWriter_MpiRecv( tw->evt_writerMap[locationID],
-                                        attributeList, time, sender,
-                                        communicator, msgTag, msgLength ) );
-  }
+  OTF2_CHECK( OTF2_EvtWriter_MpiRecv( tw->evt_writerMap[locationID],
+                                      attributeList, time, sender,
+                                      communicator, msgTag, msgLength ) );
 
   return OTF2_CALLBACK_SUCCESS;
 }
@@ -2259,10 +2206,8 @@ OTF2ParallelTraceWriter::otf2Callback_MpiRecv( OTF2_LocationRef locationID,
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2Callback_MpiSend( OTF2_LocationRef locationID,
                                                OTF2_TimeStamp   time,
-                                               uint64_t         eventPosition,
                                                void*            userData,
-                                               OTF2_AttributeList*
-                                               attributeList,
+                                               OTF2_AttributeList* attributeList,
                                                uint32_t         receiver,
                                                OTF2_CommRef     communicator,
                                                uint32_t         msgTag,
@@ -2270,12 +2215,9 @@ OTF2ParallelTraceWriter::otf2Callback_MpiSend( OTF2_LocationRef locationID,
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  if ( tw->writeToFile )
-  {
-    OTF2_CHECK( OTF2_EvtWriter_MpiSend( tw->evt_writerMap[locationID],
-                                        attributeList, time, receiver,
-                                        communicator, msgTag, msgLength ) );
-  }
+  OTF2_CHECK( OTF2_EvtWriter_MpiSend( tw->evt_writerMap[locationID],
+                                      attributeList, time, receiver,
+                                      communicator, msgTag, msgLength ) );
 
   return OTF2_CALLBACK_SUCCESS;
 }
@@ -2284,20 +2226,14 @@ OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2Callback_MpiIrecvRequest( 
                                               OTF2_LocationRef    locationID,
                                               OTF2_TimeStamp      time,
-                                              uint64_t            eventPosition,
                                               void*               userData,
                                               OTF2_AttributeList* attributeList,
                                               uint64_t            requestID )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  if ( tw->writeToFile )
-  {
-    OTF2_CHECK( OTF2_EvtWriter_MpiIrecvRequest( tw->evt_writerMap[locationID],
-                                                attributeList,
-                                                time,
-                                                requestID ) );
-  }
+  OTF2_CHECK( OTF2_EvtWriter_MpiIrecvRequest( tw->evt_writerMap[locationID],
+                                              attributeList, time, requestID ) );
   
   return OTF2_CALLBACK_SUCCESS;
 }
@@ -2305,10 +2241,8 @@ OTF2ParallelTraceWriter::otf2Callback_MpiIrecvRequest(
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2Callback_MpiIrecv( OTF2_LocationRef locationID,
                                                 OTF2_TimeStamp   time,
-                                                uint64_t         eventPosition,
                                                 void*            userData,
-                                                OTF2_AttributeList*
-                                                attributeList,
+                                                OTF2_AttributeList* attributeList,
                                                 uint32_t         sender,
                                                 OTF2_CommRef     communicator,
                                                 uint32_t         msgTag,
@@ -2317,24 +2251,19 @@ OTF2ParallelTraceWriter::otf2Callback_MpiIrecv( OTF2_LocationRef locationID,
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  if ( tw->writeToFile )
-  {
-    OTF2_CHECK( OTF2_EvtWriter_MpiIrecv( tw->evt_writerMap[locationID],
-                                        attributeList, time, sender,
-                                        communicator, msgTag, msgLength,
-                                        requestID ) );
-  }
-
+  OTF2_CHECK( OTF2_EvtWriter_MpiIrecv( tw->evt_writerMap[locationID],
+                                      attributeList, time, sender,
+                                      communicator, msgTag, msgLength,
+                                      requestID ) );
+    
   return OTF2_CALLBACK_SUCCESS;
 }
 
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2Callback_MpiIsend( OTF2_LocationRef locationID,
                                                 OTF2_TimeStamp   time,
-                                                uint64_t         eventPosition,
                                                 void*            userData,
-                                                OTF2_AttributeList*
-                                                attributeList,
+                                                OTF2_AttributeList* attributeList,
                                                 uint32_t         receiver,
                                                 OTF2_CommRef     communicator,
                                                 uint32_t         msgTag,
@@ -2343,13 +2272,10 @@ OTF2ParallelTraceWriter::otf2Callback_MpiIsend( OTF2_LocationRef locationID,
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  if ( tw->writeToFile )
-  {
-    OTF2_CHECK( OTF2_EvtWriter_MpiIsend( tw->evt_writerMap[locationID],
-                                        attributeList, time, receiver,
-                                        communicator, msgTag, msgLength,
-                                        requestID ) );
-  }
+  OTF2_CHECK( OTF2_EvtWriter_MpiIsend( tw->evt_writerMap[locationID],
+                                      attributeList, time, receiver,
+                                      communicator, msgTag, msgLength,
+                                      requestID ) );
 
   return OTF2_CALLBACK_SUCCESS;
 }
@@ -2358,19 +2284,14 @@ OTF2_CallbackCode
 OTF2ParallelTraceWriter::otf2Callback_MpiIsendComplete( 
                                                 OTF2_LocationRef locationID,
                                                 OTF2_TimeStamp   time,
-                                                uint64_t         eventPosition,
                                                 void*            userData,
-                                                OTF2_AttributeList*
-                                                attributeList,
+                                                OTF2_AttributeList* attributeList,
                                                 uint64_t         requestID )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  if ( tw->writeToFile )
-  {
-    OTF2_CHECK( OTF2_EvtWriter_MpiIsendComplete( tw->evt_writerMap[locationID],
-                                                 attributeList, time, requestID ) );
-  }
+  OTF2_CHECK( OTF2_EvtWriter_MpiIsendComplete( tw->evt_writerMap[locationID],
+                                               attributeList, time, requestID ) );
 
   return OTF2_CALLBACK_SUCCESS;
 }
