@@ -43,19 +43,19 @@ namespace casita
      AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize );
 
      virtual
-     ~AnalysisEngine( );
+     ~AnalysisEngine();
 
      uint32_t
-     getMPIRank( );
+     getMPIRank();
 
      uint32_t
-     getMPISize( );
+     getMPISize();
 
      MPIAnalysis&
-     getMPIAnalysis( );
+     getMPIAnalysis();
      
      void
-     checkPendingMPIRequests( );
+     checkPendingMPIRequests();
      
      bool 
      haveParadigm( Paradigm paradigm );
@@ -73,7 +73,7 @@ namespace casita
      addFunction( uint32_t funcId, const char* name );
 
      uint32_t
-     getNewFunctionId( );
+     getNewFunctionId();
 
      void
      setWaitStateFunctionId( uint32_t id );

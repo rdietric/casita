@@ -59,8 +59,7 @@ EventStream*
 GraphEngine::newEventStream( uint64_t                     id,
                              uint64_t                     parentId,
                              const std::string            name,
-                             EventStream::EventStreamType streamType,
-                             bool                         remoteStream )
+                             EventStream::EventStreamType streamType )
 {
   //\todo: check whether that is always true
   if( id == parentId )
@@ -71,8 +70,7 @@ GraphEngine::newEventStream( uint64_t                     id,
   EventStream* p = new EventStream( id,
                                     parentId,
                                     name,
-                                    streamType,
-                                    remoteStream );
+                                    streamType );
   streamsMap[id] = p;
 
   if ( p->isHostStream() )
@@ -121,7 +119,7 @@ GraphEngine::newEventStream( uint64_t                     id,
 }
 
 Graph&
-GraphEngine::getGraph( )
+GraphEngine::getGraph()
 {
   return graph;
 }
@@ -136,7 +134,7 @@ EventStream*
 GraphEngine::getStream( uint64_t id ) const
 {
   EventStreamMap::const_iterator iter = streamsMap.find( id );
-  if ( iter != streamsMap.end( ) )
+  if ( iter != streamsMap.end() )
   {
     return iter->second;
   }
@@ -146,41 +144,22 @@ GraphEngine::getStream( uint64_t id ) const
   }
 }
 
-void
-GraphEngine::getStreams( EventStreamGroup::EventStreamList& streams ) const
+const EventStreamGroup::EventStreamList&
+GraphEngine::getStreams() const
 {
-  streamGroup.getAllStreams( streams );
-}
-
-void
-GraphEngine::getLocalStreams( EventStreamGroup::EventStreamList& streams )
-const
-{
-  streamGroup.getAllStreams( streams );
-  for ( EventStreamGroup::EventStreamList::iterator iter = streams.begin( );
-        iter != streams.end( ); )
-  {
-    if ( ( *iter )->isRemoteStream( ) )
-    {
-      iter = streams.erase( iter );
-    }
-    else
-    {
-      ++iter;
-    }
-  }
+  return streamGroup.getAllStreams();
 }
 
 const EventStreamGroup::EventStreamList&
-GraphEngine::getHostStreams( ) const
+GraphEngine::getHostStreams() const
 {
-  return streamGroup.getHostStreams( );
+  return streamGroup.getHostStreams();
 }
 
 const EventStreamGroup::EventStreamList&
-GraphEngine::getDeviceStreams( ) const
+GraphEngine::getDeviceStreams() const
 {
-  return streamGroup.getDeviceStreams( );
+  return streamGroup.getDeviceStreams();
 }
 
 void
@@ -450,23 +429,19 @@ GraphEngine::getLastGraphNode( Paradigm paradigm ) const
 void
 GraphEngine::getAllNodes( EventStream::SortedGraphNodeList& allNodes ) const
 {
-  EventStreamGroup::EventStreamList streams;
-  getStreams( streams );
+  const EventStreamGroup::EventStreamList streams = getStreams();
 
-  for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin( );
-        iter != streams.end( ); ++iter )
+  for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin();
+        iter != streams.end(); ++iter )
   {
     EventStream* p = *iter;
-    if ( p->getNodes( ).size( ) > 0 )
+    if ( p->getNodes().size() > 0 )
     {
-      allNodes.insert( allNodes.end( ), p->getNodes( ).begin( ),
-                       p->getNodes( ).end( ) );
+      allNodes.insert( allNodes.end(), p->getNodes().begin(), p->getNodes().end() );
     }
   }
-  
-  streams.clear( );
 
-  std::sort( allNodes.begin( ), allNodes.end( ), Node::compareLess );
+  std::sort( allNodes.begin(), allNodes.end(), Node::compareLess );
 }
 
 AnalysisMetric&
@@ -538,8 +513,7 @@ GraphEngine::reset( )
 void
 GraphEngine::resetCounters( )
 {
-  EventStreamGroup::EventStreamList streams;
-  getLocalStreams( streams );
+  const EventStreamGroup::EventStreamList streams = getStreams();
 
   for ( EventStreamGroup::EventStreamList::const_iterator pIter = streams.begin( );
         pIter != streams.end( ); ++pIter )
@@ -551,8 +525,6 @@ GraphEngine::resetCounters( )
       ( *nIter )->removeCounters( );
     }
   }
-  
-  streams.clear();
 }
 
 uint64_t
@@ -612,8 +584,7 @@ GraphEngine::sanityCheckEdge( Edge* edge, uint32_t mpiRank )
 void
 GraphEngine::runSanityCheck( uint32_t mpiRank )
 {
-  EventStreamGroup::EventStreamList streams;
-  getStreams( streams );
+  const EventStreamGroup::EventStreamList streams = getStreams();
 
   for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin( );
         iter != streams.end( ); ++iter )
@@ -646,8 +617,6 @@ GraphEngine::runSanityCheck( uint32_t mpiRank )
       }
     }
   }
-  
-  streams.clear();
 }
 
 /**

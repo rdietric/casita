@@ -28,21 +28,19 @@ using namespace casita;
 EventStream::EventStream( uint64_t          id,
                           uint64_t          parentId,
                           const std::string name,
-                          EventStreamType   eventStreamType,
-                          bool              remoteStream ) :
+                          EventStreamType   eventStreamType ) :
   id( id ),
   parentId( parentId ),
   name( name ),
   streamType( eventStreamType ),
-  remoteStream( remoteStream ),
   nodesAdded( false ),
   deviceId ( -1 ),
   hasFirstCriticalNode( false ),
   hasLastEvent( false ),
   lastNode( NULL ),
   lastEventTime( 0 ),
-  pendingMPIRequestId( std::numeric_limits< uint64_t >::max( ) ),
-  mpiIsendPartner( std::numeric_limits< uint64_t >::max( ) )
+  pendingMPIRequestId( std::numeric_limits< uint64_t >::max() ),
+  mpiIsendPartner( std::numeric_limits< uint64_t >::max() )
 {
   for ( size_t i = 0; i < NODE_PARADIGM_COUNT; ++i )
   {
@@ -51,11 +49,11 @@ EventStream::EventStream( uint64_t          id,
   }
   
   // set the initial values for first enter and last leave
-  streamPeriod.first = std::numeric_limits< uint64_t >::max( );
+  streamPeriod.first = std::numeric_limits< uint64_t >::max();
   streamPeriod.second = 0;
 }
 
-EventStream::~EventStream( )
+EventStream::~EventStream()
 {
   for ( SortedGraphNodeList::iterator iter = nodes.begin( );
         iter != nodes.end( ); ++iter )
@@ -110,12 +108,6 @@ bool
 EventStream::isDeviceNullStream() const
 {
   return streamType & ES_DEVICE_NULL;
-}
-
-bool
-EventStream::isRemoteStream() const
-{
-  return remoteStream;
 }
 
 void

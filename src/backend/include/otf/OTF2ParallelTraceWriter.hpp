@@ -135,9 +135,8 @@ namespace casita
       setupGlobalEvtReader();
       
       uint64_t
-      writeLocations( EventStreamGroup::EventStreamList& streams,
-                      Graph*       graph,
-                      uint64_t     eventsToRead );
+      writeLocations( const EventStreamGroup::EventStreamList& streams,
+                      Graph* graph, const uint64_t eventsToRead );
       
       void
       setupEventReader( uint64_t streamId );

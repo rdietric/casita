@@ -140,9 +140,9 @@ AnalysisEngine::getFunctionName( uint32_t id )
 {
   std::map< uint32_t, std::string >::const_iterator iter =
     functionMap.find( id );
-  if ( iter != functionMap.end( ) )
+  if ( iter != functionMap.end() )
   {
-    return iter->second.c_str( );
+    return iter->second.c_str();
   }
   else
   {
@@ -154,7 +154,7 @@ bool
 AnalysisEngine::applyRules( GraphNode* node, Paradigm paradigm, bool verbose )
 {
   AnalysisParadigmsMap::const_iterator iter = analysisParadigms.find( paradigm );
-  if ( iter == analysisParadigms.end( ) )
+  if ( iter == analysisParadigms.end() )
   {
     return false;
   }
@@ -170,7 +170,7 @@ AnalysisEngine::addAnalysisParadigm( IAnalysisParadigm* paradigm )
   assert( paradigm );
   if ( paradigm )
   {
-    analysisParadigms[paradigm->getParadigm( )] = paradigm;
+    analysisParadigms[ paradigm->getParadigm() ] = paradigm;
   }
 }
 
@@ -178,7 +178,7 @@ IAnalysisParadigm*
 AnalysisEngine::getAnalysisParadigm( Paradigm paradigm )
 {
   AnalysisParadigmsMap::iterator iter = analysisParadigms.find( paradigm );
-  if ( iter == analysisParadigms.end( ) )
+  if ( iter == analysisParadigms.end() )
   {
     return NULL;
   }
@@ -191,8 +191,8 @@ AnalysisEngine::getAnalysisParadigm( Paradigm paradigm )
 void
 AnalysisEngine::handlePostEnter( GraphNode* node )
 {
-  for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin( );
-        iter != analysisParadigms.end( ); ++iter )
+  for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
+        iter != analysisParadigms.end(); ++iter )
   {
     iter->second->handlePostEnter( node );
   }
@@ -201,8 +201,8 @@ AnalysisEngine::handlePostEnter( GraphNode* node )
 void
 AnalysisEngine::handlePostLeave( GraphNode* node )
 {
-  for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin( );
-        iter != analysisParadigms.end( ); ++iter )
+  for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
+        iter != analysisParadigms.end(); ++iter )
   {
     iter->second->handlePostLeave( node );
   }
@@ -213,8 +213,8 @@ AnalysisEngine::handleKeyValuesEnter( OTF2TraceReader*     reader,
                                       GraphNode*        node,
                                       OTF2KeyValueList* list )
 {
-  for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin( );
-        iter != analysisParadigms.end( ); ++iter )
+  for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
+        iter != analysisParadigms.end(); ++iter )
   {
     iter->second->handleKeyValuesEnter( reader, node, list );
   }
@@ -226,8 +226,8 @@ AnalysisEngine::handleKeyValuesLeave( OTF2TraceReader*     reader,
                                       GraphNode*        oldNode,
                                       OTF2KeyValueList* list )
 {
-  for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin( );
-        iter != analysisParadigms.end( ); ++iter )
+  for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
+        iter != analysisParadigms.end(); ++iter )
   {
     iter->second->handleKeyValuesLeave( reader, node, oldNode, list );
   }
@@ -249,8 +249,8 @@ AnalysisEngine::processDeferredNodes( Paradigm paradigm )
              "[%u] Processing %lu deferred nodes", 
              getMPIRank(), deferredNodes.size() );
   
-  for ( EventStream::SortedGraphNodeList::const_iterator nIter = deferredNodes.begin( );
-        nIter != deferredNodes.end( ); ++nIter )
+  for ( EventStream::SortedGraphNodeList::const_iterator nIter = 
+          deferredNodes.begin(); nIter != deferredNodes.end(); ++nIter )
   {
     applyRules( *nIter, paradigm, false );
   }
@@ -260,9 +260,9 @@ AnalysisEngine::processDeferredNodes( Paradigm paradigm )
 }
 
 EventStream*
-AnalysisEngine::getNullStream( ) const
+AnalysisEngine::getNullStream() const
 {
-  return streamGroup.getNullStream( );
+  return streamGroup.getNullStream();
 }
 
 void
@@ -270,12 +270,11 @@ AnalysisEngine::getLastLeaveEvent( EventStream **stream, uint64_t *timestamp )
 {
   uint64_t lastLeave = 0;
   
-  EventStreamGroup::EventStreamList localStreams;
-  getLocalStreams( localStreams );
+  const EventStreamGroup::EventStreamList allStreams = getStreams();
   
   for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-          localStreams.begin( );
-        pIter != localStreams.end( ); ++pIter )
+          allStreams.begin();
+        pIter != allStreams.end(); ++pIter )
   {
     EventStream* p = *pIter;
     
@@ -288,8 +287,6 @@ AnalysisEngine::getLastLeaveEvent( EventStream **stream, uint64_t *timestamp )
   }
   
   *timestamp = lastLeave;
-  
-  localStreams.clear();
 }
 
 /** Find last leave node on given stream before the given timestamp.
@@ -310,7 +307,7 @@ AnalysisEngine::getLastLeaveNode( uint64_t timestamp, uint64_t streamId ) const
   }
 
   //\todo: Why do we not use our find function and pass a node as input
-  EventStream::SortedGraphNodeList& nodes = stream->getNodes( );
+  EventStream::SortedGraphNodeList& nodes = stream->getNodes();
   for ( EventStream::SortedGraphNodeList::const_reverse_iterator rIter =
           nodes.rbegin( );
         rIter != nodes.rend( ); ++rIter )
@@ -318,12 +315,12 @@ AnalysisEngine::getLastLeaveNode( uint64_t timestamp, uint64_t streamId ) const
     GraphNode* node = *rIter;
     
     // ignore nodes that are not a leave or MPI
-    if ( !node->isLeave( ) || node->isMPI( ) )
+    if ( !node->isLeave() || node->isMPI() )
     {
       continue;
     }
 
-    if ( node->getTime( ) <= timestamp )
+    if ( node->getTime() <= timestamp )
     {
       return node;
     }
@@ -343,7 +340,7 @@ AnalysisEngine::newGraphNode( uint64_t          time,
   GraphNode* node = GraphEngine::newGraphNode( time, streamId, name,
                                                paradigm, recordType, nodeType );
 
-  if ( node->isWaitstate( ) )
+  if ( node->isWaitstate() )
   {
     node->setFunctionId( waitStateFuncId );
   }
@@ -362,7 +359,7 @@ AnalysisEngine::addNewGraphNode( uint64_t            time,
                                                   funcDesc->recordType,
                                                   funcDesc->functionType );
 
-  if ( node->isWaitstate( ) )
+  if ( node->isWaitstate() )
   {
     node->setFunctionId( waitStateFuncId );
   }
@@ -371,7 +368,7 @@ AnalysisEngine::addNewGraphNode( uint64_t            time,
 }
 
 void 
-AnalysisEngine::createIntermediateBegin( )
+AnalysisEngine::createIntermediateBegin()
 {
   // clean all lists in the graph and delete edges, 
   // node objects are deleted via the streams
@@ -383,26 +380,20 @@ AnalysisEngine::createIntermediateBegin( )
   // reset several structures in other analysis paradigms
   this->reset();
 
-  EventStreamGroup::EventStreamList streams;
-  getStreams( streams );
-  
-  // sort streams by ID with host streams first
-  // std::sort( streams.begin( ), streams.end( ), EventStream::streamSort );
+  const EventStreamGroup::EventStreamList streams = getStreams();
   
   cuda::AnalysisParadigmCUDA* cudaAnalysis = 
     (cuda::AnalysisParadigmCUDA*)this->getAnalysisParadigm( PARADIGM_CUDA );
   
   //cudaAnalysis->printKernelLaunchMap();
   
-  for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin( );
-        iter != streams.end( ); ++iter )
+  for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin();
+        iter != streams.end(); ++iter )
   {
     bool isMpiStream = false;
     EventStream* p   = *iter;
     
     EventStream::SortedGraphNodeList& nodes = p->getNodes();
-    
-    //GraphNode* startNode = nodes.front( );
     
     // \todo check for > 1
     if ( nodes.size() > 0 )
@@ -410,13 +401,14 @@ AnalysisEngine::createIntermediateBegin( )
       //do not remove the last MPI collective leave node
       if( nodes.back()->isMPI() )
       {
-        nodes.pop_back( );
+        nodes.pop_back();
         isMpiStream = true;
       }
       
       EventStream::SortedGraphNodeList::const_iterator it = nodes.begin();
       
-      bool havePendingKernels = true; // used to avoid individual CUDA kernel node checks
+      // used to avoid individual CUDA kernel node checks
+      bool havePendingKernels = true; 
       
       // keep the first node (stream begin node) for MPI processes
       if( p->isHostMasterStream() )
@@ -437,7 +429,7 @@ AnalysisEngine::createIntermediateBegin( )
         // check for pending kernels
         if( p->getLastPendingKernel() )
         {
-          UTILS_MSG(true, "[%"PRIu64"] There are pending kernels!");
+          UTILS_MSG( true, "[%"PRIu64"] There are pending kernels!" );
         }
         else
         {
@@ -555,7 +547,6 @@ AnalysisEngine::createIntermediateBegin( )
                  "[%"PRIu64"] Cleared nodes list", p->getId() );
     }
   }
-  streams.clear();
 }
 
 void
@@ -695,14 +686,10 @@ AnalysisEngine::writeOTF2EventStreams( uint64_t eventsToRead )
   
   // write all process local streams
   // \todo: make this a private class member!
-  EventStreamGroup::EventStreamList allStreams;
+  const EventStreamGroup::EventStreamList allStreams = getStreams();
   
-  getLocalStreams( allStreams );
   uint64_t events_read = 
     writer->writeLocations( allStreams, &( this->getGraph() ), eventsToRead );
-  
-  // clear list that has been created in this function
-  allStreams.clear();
   
   return events_read;
 }

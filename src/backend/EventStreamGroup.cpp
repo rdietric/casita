@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,2016
+ * Copyright (c) 2013 - 2014, 2016 - 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -19,8 +19,7 @@
 
 using namespace casita;
 
-EventStreamGroup::EventStreamGroup( ) :
-  startTime( 0 ),
+EventStreamGroup::EventStreamGroup() :
   nullStream( NULL )
 {
 
@@ -31,13 +30,12 @@ EventStreamGroup::EventStreamGroup( uint64_t               start,
                                     const EventStreamList& deviceStreams,
                                     EventStream*           nullStream )
 {
-  this->startTime  = start;
-  this->hostStreams.assign( hostStreams.begin( ), hostStreams.end( ) );
-  this->deviceStreams.assign( deviceStreams.begin( ), deviceStreams.end( ) );
+  this->hostStreams.assign( hostStreams.begin(), hostStreams.end() );
+  this->deviceStreams.assign( deviceStreams.begin(), deviceStreams.end() );
   this->nullStream = nullStream;
 }
 
-EventStreamGroup::~EventStreamGroup( )
+EventStreamGroup::~EventStreamGroup()
 {
 
 }
@@ -46,12 +44,14 @@ void
 EventStreamGroup::addHostStream( EventStream* p )
 {
   hostStreams.push_back( p );
+  allStreams.push_back( p );
 }
 
 void
 EventStreamGroup::addDeviceStream( EventStream* p )
 {
   deviceStreams.push_back( p );
+  allStreams.push_back( p );
 }
 
 EventStreamGroup::EventStreamList::iterator
@@ -72,6 +72,14 @@ void
 EventStreamGroup::setNullStream( EventStream* p )
 {
   nullStream = p;
+  
+  allStreams.push_back( nullStream );
+}
+
+const EventStreamGroup::EventStreamList&
+EventStreamGroup::getAllStreams() const
+{
+  return allStreams;
 }
 
 void
@@ -98,18 +106,18 @@ EventStreamGroup::getAllStreams( EventStreamList& streams,
                                  Paradigm         paradigm ) const
 {
   // clear stream list
-  streams.clear( );
+  streams.clear();
   
   // add all streams
-  streams.assign( hostStreams.begin( ), hostStreams.end( ) );
+  streams.assign( hostStreams.begin(), hostStreams.end() );
   if ( nullStream )
   {
-    streams.insert( streams.end( ), nullStream );
+    streams.insert( streams.end(), nullStream );
   }
-  streams.insert( streams.end( ), deviceStreams.begin( ), deviceStreams.end( ) );
+  streams.insert( streams.end(), deviceStreams.begin(), deviceStreams.end() );
 
   // iterate over streams
-  for ( EventStreamList::iterator iter = streams.begin( ); iter != streams.end( ); )
+  for ( EventStreamList::iterator iter = streams.begin(); iter != streams.end(); )
   {
     EventStream* p = *iter;
     GraphNode*   lastGNode = p->getLastNode( paradigm );
@@ -128,13 +136,13 @@ EventStreamGroup::getAllStreams( EventStreamList& streams,
 }
 
 const EventStreamGroup::EventStreamList&
-EventStreamGroup::getDeviceStreams(  ) const
+EventStreamGroup::getDeviceStreams() const
 {
   return deviceStreams;
 }
 
 const EventStreamGroup::EventStreamList&
-EventStreamGroup::getHostStreams( ) const
+EventStreamGroup::getHostStreams() const
 {
   return hostStreams;
 }
@@ -163,25 +171,27 @@ void
 EventStreamGroup::getAllDeviceStreams( 
                      EventStreamGroup::EventStreamList& newDeviceStreams ) const
 {
-  newDeviceStreams.clear( );
+  newDeviceStreams.clear();
   if ( nullStream )
   {
     newDeviceStreams.insert( newDeviceStreams.end(), nullStream );
   }
   newDeviceStreams.insert( newDeviceStreams.end(),
-                           deviceStreams.begin(), deviceStreams.end( ) );
+                           deviceStreams.begin(), deviceStreams.end() );
 }
 
 EventStream*
-EventStreamGroup::getNullStream( ) const
+EventStreamGroup::getNullStream() const
 {
   return nullStream;
 }
 
 size_t
-EventStreamGroup::getNumStreams( ) const
+EventStreamGroup::getNumStreams() const
 {
-  size_t numProcs = hostStreams.size( ) + deviceStreams.size( );
+  //size_t numProcs = hostStreams.size() + deviceStreams.size();
+  size_t numProcs = allStreams.size();
+  
   if ( nullStream )
   {
     numProcs++;
@@ -191,19 +201,13 @@ EventStreamGroup::getNumStreams( ) const
 }
 
 size_t
-EventStreamGroup::getNumHostStreams( ) const
+EventStreamGroup::getNumHostStreams() const
 {
-  return hostStreams.size( );
+  return hostStreams.size();
 }
 
 size_t
-EventStreamGroup::getNumDeviceStreams( ) const
+EventStreamGroup::getNumDeviceStreams() const
 {
-  return deviceStreams.size( );
-}
-
-uint64_t
-EventStreamGroup::getStartTime( ) const
-{
-  return startTime;
+  return deviceStreams.size();
 }

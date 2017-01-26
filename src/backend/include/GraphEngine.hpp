@@ -63,33 +63,34 @@ namespace casita
      getGraph( Paradigm paradigm );
 
      AnalysisMetric&
-     getCtrTable( );
+     getCtrTable();
 
      virtual void
-     reset( );
+     reset();
 
      void
-     resetCounters( );
+     resetCounters();
 
-     /* streams */
      EventStream*
      getStream( uint64_t id ) const;
-
-     void
-     getStreams( EventStreamGroup::EventStreamList& streams ) const;
-
-     void
-     getLocalStreams( EventStreamGroup::EventStreamList& streams ) const;
+     
+     /**
+      * Get a constant reference to a vector of all execution streams.
+      * 
+      * @return constant reference to a vector of all streams.
+      */
+     const EventStreamGroup::EventStreamList&
+     getStreams() const;
 
      void
      getStreams( EventStreamGroup::EventStreamList& streams,
                  Paradigm                           paradigm ) const;
 
      const EventStreamGroup::EventStreamList&
-     getHostStreams( ) const;
+     getHostStreams() const;
 
      const EventStreamGroup::EventStreamList&
-     getDeviceStreams( ) const;
+     getDeviceStreams() const;
      
      void
      getDeviceStreams( int deviceId, 
@@ -103,8 +104,7 @@ namespace casita
      newEventStream( uint64_t                     id,
                      uint64_t                     parentId,
                      const std::string            name,
-                     EventStream::EventStreamType streamType,
-                     bool                         remoteStream = false );
+                     EventStream::EventStreamType streamType );
 
      Edge*
      newEdge( GraphNode* n1, GraphNode* n2, 

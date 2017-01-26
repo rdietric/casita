@@ -41,7 +41,6 @@ namespace casita
  class EventStream
  {
    public:
-
      
      // keep numbers to the power of two, as required by stream type identification
      enum EventStreamType
@@ -79,9 +78,8 @@ namespace casita
        GraphNode*  leaveNode;   /**< pointer to associated MPI_I[send|recv] node */
      } MPIIcommRecord;
      
-     /**< Map of OTF2 request IDs (key) and the corresponding record data */
+     //!< Map of OTF2 request IDs (key) and the corresponding record data
      typedef std::map< uint64_t, MPIIcommRecord > MPIIcommRecordMap;
-     //typedef std::map< uint64_t, MPIIcommRecord * > MPIIcommRecordMap;
 
      typedef std::vector< GraphNode* > SortedGraphNodeList;
 
@@ -98,19 +96,19 @@ namespace casita
    public:
 
      EventStream( uint64_t id, uint64_t parentId, const std::string name,
-                  EventStreamType eventStreamType, bool remoteStream = false );
+                  EventStreamType eventStreamType );
 
      virtual
-     ~EventStream( );
+     ~EventStream();
 
      uint64_t
-     getId( ) const;
+     getId() const;
 
      uint64_t
-     getParentId( ) const;
+     getParentId() const;
 
      const char*
-     getName( ) const;
+     getName() const;
      
      void
      setDeviceId( int deviceId );
@@ -119,22 +117,19 @@ namespace casita
      getDeviceId( void ) const;
 
      EventStream::EventStreamType
-     getStreamType( ) const;
+     getStreamType() const;
 
      bool
-     isHostStream( ) const;
+     isHostStream() const;
      
      bool
-     isHostMasterStream( ) const;
+     isHostMasterStream() const;
 
      bool
-     isDeviceStream( ) const;
+     isDeviceStream() const;
 
      bool
-     isDeviceNullStream( ) const;
-
-     bool
-     isRemoteStream( ) const;
+     isDeviceNullStream() const;
      
      /**
       * Compare function:
@@ -160,7 +155,7 @@ namespace casita
       * @return a pair the first enter and last leave time stamp
       */
      std::pair< uint64_t, uint64_t >&
-     getPeriod( );
+     getPeriod();
      
      /**
       * Does this stream contains the global first critical node?
@@ -444,7 +439,6 @@ namespace casita
      uint64_t            parentId;
      const std::string   name;
      EventStreamType     streamType;
-     bool                remoteStream;
      bool                nodesAdded; //!< has the stream new nodes?
      
      //!< device ID parsed from stream name, -1 if unknown

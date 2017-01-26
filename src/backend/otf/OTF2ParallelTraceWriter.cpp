@@ -9,11 +9,11 @@
  * directory for details.
  *
  * What this file does:
- * - read original OTF2 file and immediately write it out again, combined with counter values for blame and CP
- * - open/close an OTF2 archive for file handling
- * - copy definitions from original OTF2 file
+ * - read original OTF2 file and immediately write it out again, 
+ * - add counter values and attributes for blame, CP, etc. to the trace
+ * - copy definitions from original OTF2 file with MPI rank 0
  * - compute counter values for CPU events
- * - update statistics for summary for critical blame
+ * - update statistics the statistics for the final rating
  *
  */
 
@@ -68,60 +68,6 @@ postFlush( void* userData, OTF2_FileType fileType,
   return 0;
 }
 
-/** Necessary for OTF2 to work in MPI-Mode 
-static inline size_t
-otf2_mpi_type_to_size( OTF2_Type type )
-{
-  switch ( type )
-  {
-    case OTF2_TYPE_UINT8:
-    case OTF2_TYPE_INT8:
-      return 1;
-    case OTF2_TYPE_UINT16:
-    case OTF2_TYPE_INT16:
-      return 2;
-    case OTF2_TYPE_UINT32:
-    case OTF2_TYPE_INT32:
-    case OTF2_TYPE_FLOAT:
-      return 4;
-    case OTF2_TYPE_UINT64:
-    case OTF2_TYPE_INT64:
-    case OTF2_TYPE_DOUBLE:
-      return 8;
-    default:
-      return 0;
-  }
-}*/
-
-/** Necessary for OTF2 to work in MPI-Mode 
-static inline MPI_Datatype
-otf2_to_mpi_type( OTF2_Type type )
-{
-  switch ( type )
-  {
-    case OTF2_TYPE_UINT8:
-    case OTF2_TYPE_INT8:
-      return MPI_CHAR;
-    case OTF2_TYPE_UINT16:
-    case OTF2_TYPE_INT16:
-      return MPI_SHORT;
-    case OTF2_TYPE_UINT32:
-      return MPI_UINT32_T;
-    case OTF2_TYPE_INT32:
-      return MPI_INT32_T;
-    case OTF2_TYPE_FLOAT:
-      return MPI_FLOAT;
-    case OTF2_TYPE_UINT64:
-      return MPI_UINT64_T;
-    case OTF2_TYPE_INT64:
-      return MPI_INT64_T;
-    case OTF2_TYPE_DOUBLE:
-      return MPI_DOUBLE;
-    default:
-      return 0;
-  }
-}*/
-
 /**
  *
  *
@@ -130,7 +76,6 @@ otf2_to_mpi_type( OTF2_Type type )
  * @param originalFilename      Name of original trace file
  * @param writeToFile           Write to new OTF2 file or just analysis
  * @param metrics               Analysis metrics to be written
- * @param ignoreAsyncMpi        Ignore all asynchronous MPI communication in analysis
  */
 OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t        mpiRank,
                                                   uint32_t        mpiSize,
@@ -175,11 +120,11 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
     MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
     // open new otf2 file
-    otf2Archive = OTF2_Archive_Open( pathToFile.c_str( ),
-                                 outputFilename.c_str( ),
-                                 OTF2_FILEMODE_WRITE, 1024 * 1024, 4 * 1024 *
-                                 1024, OTF2_SUBSTRATE_POSIX,
-                                 OTF2_COMPRESSION_NONE );
+    otf2Archive = OTF2_Archive_Open( pathToFile.c_str(), outputFilename.c_str(),
+                                     OTF2_FILEMODE_WRITE, 
+                                     1024 * 1024, 4 * 1024 * 1024, 
+                                     OTF2_SUBSTRATE_POSIX,
+                                     OTF2_COMPRESSION_NONE );
 
     OTF2_Archive_SetFlushCallbacks( otf2Archive, &flush_callbacks, NULL );
 
@@ -214,26 +159,19 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
 }
 
 void
-OTF2ParallelTraceWriter::close( )
+OTF2ParallelTraceWriter::close()
 {
   OTF2_Reader_CloseGlobalEvtReader( otf2Reader, otf2GlobalEventReader );
-  
-  
+
   if ( writeToFile )
   {
     // close all opened event writer
     for ( std::map< uint64_t, OTF2_EvtWriter* >::iterator iter =
             evt_writerMap.begin();
-          iter != evt_writerMap.end( ); iter++ )
+          iter != evt_writerMap.end(); iter++ )
     {
       OTF2_Archive_CloseEvtWriter( otf2Archive, iter->second );
     }
-    /*
-    if ( mpiRank == 0 )
-    {
-      OTF2_Archive_CloseDefFiles( otf2Archive );
-    }
-    */
   }
   
   OTF2_Reader_CloseEvtFiles( otf2Reader );
@@ -246,17 +184,14 @@ OTF2ParallelTraceWriter::close( )
 void
 OTF2ParallelTraceWriter::reset()
 {
-  //\todo: check
-  //idStringMap.clear();
-  
   graph = NULL;
   
   // static metric information, and OTF2 definitions IDs
   // should no change between analysis intervals
-  //cTable = NULL; 
+  // keep cTable 
   
-  //\todo: should be empty ... check that
-  //activityStack.clear();
+  // do not clear the activity stack, as activities might be active (not closed)
+  // over interval boundaries
 }
 
 /**
@@ -621,8 +556,8 @@ OTF2ParallelTraceWriter::registerEventCallbacks()
 }
 
 uint64_t
-OTF2ParallelTraceWriter::writeLocations( EventStreamGroup::EventStreamList& streams,
-                                         Graph* graph, uint64_t eventsToRead)
+OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList& streams,
+                                         Graph* graph, const uint64_t eventsToRead)
 {
   UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_SOME, 
              "[%"PRIu32"] Write streams ...", mpiRank );
@@ -1425,13 +1360,11 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
  * immediately after reading.
  */
 OTF2_CallbackCode
-OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_ClockProperties( void* userData,
-                                                                       uint64_t
-                                                                       timerResolution,
-                                                                       uint64_t
-                                                                       globalOffset,
-                                                                       uint64_t
-                                                                       traceLength )
+OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_ClockProperties( 
+                                                      void*    userData,
+                                                      uint64_t timerResolution,
+                                                      uint64_t globalOffset,
+                                                      uint64_t traceLength )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
