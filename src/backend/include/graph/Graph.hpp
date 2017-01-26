@@ -67,6 +67,9 @@ namespace casita
      getInEdges( GraphNode* node, Paradigm paradigm ) const;
      
      void
+     printPath( const GraphNode::GraphNodeList& path ) const;
+     
+     void
      printInEdges( GraphNode* node ) const;
      
      void

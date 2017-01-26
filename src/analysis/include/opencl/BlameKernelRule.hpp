@@ -66,7 +66,7 @@ namespace casita
           bool isFirstKernel = true;
           while ( true )
           {
-            GraphNode* kernelLeave = deviceStream->getLastPendingKernel( );
+            GraphNode* kernelLeave = deviceStream->getLastPendingKernel();
             if ( !kernelLeave )
             {
               //ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: No pending kernel found" );
@@ -76,21 +76,20 @@ namespace casita
             
             //ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: Pending kernel found" );
 
-            GraphNode::GraphNodePair& kernel = kernelLeave->getGraphPair( );
+            GraphNode::GraphNodePair& kernel = kernelLeave->getGraphPair();
 
             // if sync start time < kernel end time
             //\todo: What if other kernels are concurrently executed during the sync?
             
             // synchronization starts before the kernel ends
-            if ( syncEnter->getTime( ) < kernel.second->getTime( ) )
+            if ( syncEnter->getTime( ) < kernel.second->getTime() )
             {
               if ( isFirstKernel )
               {
-                commonAnalysis->newEdge( kernel.second, syncLeave,
-                                         EDGE_CAUSES_WAITSTATE );
+                commonAnalysis->newEdge( kernel.second, syncLeave );
               }
 
-              commonAnalysis->getEdge( syncEnter, syncLeave )->makeBlocking( );
+              commonAnalysis->getEdge( syncEnter, syncLeave )->makeBlocking();
 
               // the synchronization operation is a wait state
               syncLeave->incCounter( WAITING_TIME,

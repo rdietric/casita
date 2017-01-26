@@ -94,8 +94,7 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
         if( lastBarrier )
         {
           Edge *edge = commonAnalysis->newEdge( 
-            latestBarrierEnter, ( GraphNode * )parallelEnter->getData(),
-            EDGE_CAUSES_WAITSTATE );
+            latestBarrierEnter, ( GraphNode * )parallelEnter->getData() );
 
           // in case this edge was a reverse edge, unblock it
           edge->unblock();
@@ -115,8 +114,7 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
             {
               // create inter stream edge
               Edge *edge = commonAnalysis->newEdge( 
-                latestBarrierEnter, ( GraphNode * )parallelEnter->getData(),
-                EDGE_CAUSES_WAITSTATE );
+                latestBarrierEnter, ( GraphNode * )parallelEnter->getData() );
               
               // in case this edge was a reverse edge, unblock it
               edge->unblock();

@@ -44,13 +44,15 @@ using namespace casita::io;
 #define OTF2_CHECK( cmd ) \
   { \
    int _status = cmd; \
-   if ( _status ) { throw RTException( "OTF2 command '%s' returned error %d", #cmd, _status );} \
+   if ( _status ) \
+   { throw RTException( "OTF2 command '%s' returned error %d", #cmd, _status );} \
   }
 
 #define MPI_CHECK( cmd ) \
   { \
     int mpi_result = cmd; \
-    if ( mpi_result != MPI_SUCCESS ) { throw RTException( "MPI error %d in call %s", mpi_result, #cmd );} \
+    if ( mpi_result != MPI_SUCCESS ) \
+    { throw RTException( "MPI error %d in call %s", mpi_result, #cmd );} \
   }
 
 /** Callbacks for OTF2 */
@@ -562,6 +564,9 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
   UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_SOME, 
              "[%"PRIu32"] Write streams ...", mpiRank );
   
+  // check whether this is the first call of this function (set initial onCP value)
+  static bool firstCall = true;
+  
   // iterate over all streams that have been analyzed
   for( EventStreamGroup::EventStreamList::const_iterator itStream = streams.begin();
        itStream != streams.end(); ++itStream )
@@ -602,7 +607,6 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
           OTF2_EvtWriter*  evt_writer = evt_writerMap[ streamId ];
 
           value.unsigned_int = 0;
-          //streamState.lastMetricValues[ CRITICAL_PATH ] = 0;
 
           // we need the metric instance/class ID
           OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, 
@@ -630,6 +634,7 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
     }
 
     // set the initial critical path value for this stream
+    // (only in the first call of this function)
     if( stream->isFirstCritical() )
     {
       streamState.onCriticalPath = true;
@@ -640,9 +645,11 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
     }
     else
     {
-      streamState.onCriticalPath = false;
+      if( firstCall ) // if this is the first call of this function
+      {
+        streamState.onCriticalPath = false;
+      }
     }
-    
     
     if( streamState.openEdges.size() > 0 )
     {
@@ -656,6 +663,8 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
     
     // hint: the activity stack is preserved!
   }
+  
+  firstCall = false;
   
   assert( otf2GlobalEventReader );
 
@@ -675,13 +684,13 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
       UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
                  "[0] Writer interrupted by callback: Read %lu events", 
                  events_read );
-      return true;
+      return events_read;
     }
     else
     {
       throw RTException( "Failed to read OTF2 events %llu", events_read );
     }
-  }
+  }  
   
   return events_read;
 }
@@ -944,8 +953,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
 
   // if the stream is on the critical path, but no more graph nodes available
   // and therefore the counter table is empty (can happen on host processes)
-  if( counters.size() == 0 && 
-      streamState.onCriticalPath == true )
+  if( counters.size() == 0 && streamState.onCriticalPath == true )
   {
     // if we are at a leave event, which is the last on the stack, write '0'
     if( event.type == RECORD_LEAVE && 

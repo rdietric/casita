@@ -25,8 +25,7 @@ namespace casita
  enum EdgeProperties
  {
    EDGE_NONE             = 0,
-   EDGE_IS_BLOCKING      = ( 1 << 0 ), // edge is a wait state
-   EDGE_CAUSES_WAITSTATE = ( 1 << 1 )  //
+   EDGE_IS_BLOCKING      = ( 1 << 0 ) // edge is a wait state
  };
 
  class Edge
@@ -40,7 +39,7 @@ namespace casita
        properties( EDGE_NONE )
      {
        pair = std::make_pair( start, end );
-       if ( isReverseEdge( ) )
+       if ( isReverseEdge() )
        {
          properties |= EDGE_IS_BLOCKING;
          duration    = 0;
@@ -51,7 +50,7 @@ namespace casita
 
        this->properties   = properties;
        this->edgeDuration = duration;
-       this->edgeWeight   = computeWeight( duration, isBlocking( ) );
+       this->edgeWeight   = computeWeight( duration, isBlocking() );
        this->edgeParadigm = edgeParadigm;
      }
 
@@ -126,9 +125,9 @@ namespace casita
          name << " is blocking";
        }
        
-       if( causesWaitState() )
+       if( isReverseEdge() )
        {
-         name << ", causes wait state";
+         name << " is reverse edge";
        }
 
        name << "]";
@@ -153,12 +152,6 @@ namespace casita
      unblock()
      {
        properties &= !EDGE_IS_BLOCKING;
-     }
-
-     bool
-     causesWaitState() const
-     {
-       return properties & EDGE_CAUSES_WAITSTATE;
      }
 
      GraphNode*

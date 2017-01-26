@@ -273,9 +273,6 @@ Runner::processTrace( OTF2TraceReader* traceReader )
       // increase counter of analysis intervals
       ++analysis_intervals;
     }
-    
-    UTILS_MSG(options.verbose >= VERBOSE_BASIC  && mpiRank == 0,
-               " %"PRIu64" events read", events_to_read );
 
     // perform analysis for these events
     

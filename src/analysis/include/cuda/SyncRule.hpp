@@ -106,13 +106,15 @@ namespace casita
             // Early sync: sync start time < kernel end time
             if ( syncEnter->getTime() < kernelLeave->getTime() )
             {
-              //UTILS_MSG( true, "Found early sync %s", 
-              //           analysis->getNodeInfo(syncLeave).c_str() );
+              /*UTILS_MSG( syncLeave->getStreamId() == 0 && syncLeave->getId() == 11348, 
+                         "Found early sync %s on kernel %s", 
+                         analysis->getNodeInfo(syncLeave).c_str(),
+                         analysis->getNodeInfo(kernelLeave).c_str() );*/
+              
               // add an edge between the last pending kernel and the sync operation
               if ( isLastKernel )
               {
-                analysis->newEdge( kernelLeave, syncLeave,
-                                         EDGE_CAUSES_WAITSTATE );
+                analysis->newEdge( kernelLeave, syncLeave );
                 isLastKernel = false;
               }
 

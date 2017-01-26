@@ -550,6 +550,16 @@ Graph::getLongestPath( GraphNode* startNode, GraphNode* endNode,
 }
 
 void
+Graph::printPath( const GraphNode::GraphNodeList& path ) const
+{
+  for ( GraphNode::GraphNodeList::const_iterator cpNode = path.begin( );
+        cpNode != path.end( ); ++cpNode )
+  {
+    UTILS_MSG( true, "  %s", (*cpNode)->getUniqueName().c_str() );
+  }
+}
+
+void
 Graph::printInEdges( GraphNode* node ) const
 {
   UTILS_MSG( true, "    In-edges for %s:", node->getUniqueName().c_str() );
@@ -593,7 +603,7 @@ void
 Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
                         GraphNode::GraphNodeList& path ) const
 {
-  const uint64_t INFINITE = std::numeric_limits< uint64_t >::max( );
+  const uint64_t INFINITE = std::numeric_limits< uint64_t >::max();
 
   // assume that the node list nodes is sorted by time
 
@@ -614,17 +624,18 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
       // iterate over the in edges of the node (ignore blocking)
       const Graph::EdgeList& inEdges = getInEdges( currentNode );
       for ( Graph::EdgeList::const_iterator eIter = inEdges.begin();
-            eIter != inEdges.end( ); ++eIter )
+            eIter != inEdges.end(); ++eIter )
       {
         Edge* edge = *eIter;
         uint64_t curWeight = edge->getWeight();
         /*
-        UTILS_MSG( currentNode->getId() == 122, 
-                   "%s has potential path to %s (weight: %llu)", 
+        UTILS_MSG( currentNode->getStreamId() == 0 && currentNode->getId() == 11348, 
+          //&& currentNode->getId() < 11424 && strcmp( currentNode->getName(), "cuStreamSynchronize" ) == 0, 
+                   "%s has potential path to %s (weight: %llu, reverse: %d, blocking: %d)", 
                    currentNode->getUniqueName().c_str(),
-                   edge->getStartNode()->getUniqueName().c_str(), curWeight );
-        */
-        
+                   edge->getStartNode()->getUniqueName().c_str(), curWeight, 
+                   edge->isReverseEdge(), edge->isBlocking() );
+        */       
         // if edge is not blocking AND weight is more than current but not infinite
         // (weight is complementary to duration)
         // revert edges have to be inter process to avoid endless loops

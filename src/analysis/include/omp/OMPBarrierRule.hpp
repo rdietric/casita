@@ -109,8 +109,7 @@ namespace casita
 
               // create edge from latest barrier enter to other leaves
               // (non-blocking edge from blocking barrier leave node)
-              commonAnalysis->newEdge( latestEnterNode, barrier.second,
-                                       EDGE_CAUSES_WAITSTATE );
+              commonAnalysis->newEdge( latestEnterNode, barrier.second );
 
               blame += latestEnterNode->getTime() - barrier.first->getTime();
             }

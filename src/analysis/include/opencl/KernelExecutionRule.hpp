@@ -99,8 +99,7 @@ namespace casita
               kernelLeave->incCounter( BLAME, value );
             }
 
-            commonAnalysis->newEdge( kernelLeave, syncEvtLeave, 
-                                     EDGE_CAUSES_WAITSTATE );
+            commonAnalysis->newEdge( kernelLeave, syncEvtLeave );
             
             //commonAnalysis->getStream( kernelStrmId )->consumePendingKernel( );
             // clear all pending kernels before that kernel

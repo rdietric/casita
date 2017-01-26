@@ -202,8 +202,7 @@ namespace casita
 
             // add dependency
             commonAnalysis->newEdge( syncKernelLeave,
-                                     waitingKernelEnter,
-                                     EDGE_CAUSES_WAITSTATE );
+                                     waitingKernelEnter );
 
             // insert wait state only if launch of next (waiting) kernel is 
             // before the blocking kernel finishes

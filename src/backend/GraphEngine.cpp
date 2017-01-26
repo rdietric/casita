@@ -268,14 +268,14 @@ GraphEngine::newEdge( GraphNode* source, GraphNode* target,
   }
   else
   {
-    if ( source->getParadigm( ) == target->getParadigm( ) )
+    if ( source->getParadigm() == target->getParadigm() )
     {
-      paradigm = source->getParadigm( );
+      paradigm = source->getParadigm();
     }
   }
 
   Edge* newEdge = new Edge( source, target,
-                            target->getTime( ) - source->getTime( ), 
+                            target->getTime() - source->getTime(), 
                             properties, paradigm );
   //std::cerr << "[" << n1->getStreamId() << "] Add Edge " << n1->getUniqueName() 
   //          << " to " << n2->getUniqueName() << std::endl;

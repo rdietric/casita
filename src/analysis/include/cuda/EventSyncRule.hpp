@@ -227,8 +227,7 @@ namespace casita
           }
 
           // add edge between kernel leave and syncLeave
-          commonAnalysis->newEdge( kernelLeave, syncLeave, 
-                                   EDGE_CAUSES_WAITSTATE );
+          commonAnalysis->newEdge( kernelLeave, syncLeave );
           ruleResult = true;
           
           // consume a pending kernel

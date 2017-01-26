@@ -145,7 +145,7 @@ AnalysisParadigmCUDA::reset()
 }
 
 Paradigm
-AnalysisParadigmCUDA::getParadigm( )
+AnalysisParadigmCUDA::getParadigm()
 {
   return PARADIGM_CUDA;
 }
@@ -153,7 +153,7 @@ AnalysisParadigmCUDA::getParadigm( )
 void
 AnalysisParadigmCUDA::handlePostEnter( GraphNode* node )
 {
-  if ( node->isCUDAKernelLaunch( ) )
+  if ( node->isCUDAKernelLaunch() )
   {
     /* std::cout << "[" << commonAnalysis->getMPIRank() << "] add ENTER launch: " << node->getUniqueName() << std::endl;
      **/
@@ -164,7 +164,7 @@ AnalysisParadigmCUDA::handlePostEnter( GraphNode* node )
 void
 AnalysisParadigmCUDA::handlePostLeave( GraphNode* node )
 {
-  if ( node->isCUDAKernelLaunch( ) )
+  if ( node->isCUDAKernelLaunch() )
   {
     /* std::cout << "[" << commonAnalysis->getMPIRank() << "] add LEAVE launch: " << node->getUniqueName() << std::endl;
      **/
