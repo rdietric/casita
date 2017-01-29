@@ -32,7 +32,7 @@
 using namespace casita;
 using namespace casita::io;
 
-GraphEngine::GraphEngine( ) :
+GraphEngine::GraphEngine() :
   ticksPerSecond( 1000 )
 {
   globalSourceNode = newGraphNode( 0, 0, "START", PARADIGM_ALL, RECORD_ATOMIC,
@@ -44,12 +44,12 @@ GraphEngine::GraphEngine( ) :
  * Destructor of GraphEngine is currently called at the end of the program.
  * Therefore, do not clean up anything.
  */
-GraphEngine::~GraphEngine( )
+GraphEngine::~GraphEngine()
 {
   /*UTILS_MSG( true, "Destructor of GraphEngine called" );
   
   for ( EventStreamMap::iterator iter = streamsMap.begin();
-        iter != streamsMap.end( ); ++iter )
+        iter != streamsMap.end(); ++iter )
   {
     delete iter->second;
   }*/
@@ -300,10 +300,10 @@ GraphEngine::getEdge( GraphNode* source, GraphNode* target )
 {
   // iterate over outgoing edges of source node
   const Graph::EdgeList& edgeList = getOutEdges( source );
-  for ( Graph::EdgeList::const_iterator iter = edgeList.begin( );
-        iter != edgeList.end( ); ++iter )
+  for ( Graph::EdgeList::const_iterator iter = edgeList.begin();
+        iter != edgeList.end(); ++iter )
   {
-    if ( ( *iter )->getEndNode( ) == target )
+    if ( ( *iter )->getEndNode() == target )
     {
       return *iter;
     }
@@ -320,7 +320,7 @@ GraphEngine::removeEdge( Edge* e )
 }
 
 GraphNode*
-GraphEngine::getSourceNode( ) const
+GraphEngine::getSourceNode() const
 {
   return globalSourceNode;
 }
@@ -371,7 +371,7 @@ GraphEngine::getFirstTimedGraphNode( Paradigm paradigm ) const
       }
       else
       {
-        if ( firstStreamGNode->getTime( ) < firstNode->getTime( ) )
+        if ( firstStreamGNode->getTime() < firstNode->getTime() )
         {
           firstNode = firstStreamGNode;
         }
@@ -395,14 +395,13 @@ GraphNode*
 GraphEngine::getLastGraphNode( Paradigm paradigm ) const
 {
   GraphNode* lastNode = NULL;
-  EventStreamGroup::EventStreamList streams;
-  streamGroup.getAllStreams( streams ); 
+  const EventStreamGroup::EventStreamList streams = streamGroup.getAllStreams();
 
-  for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin( );
-        iter != streams.end( ); ++iter )
+  for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin();
+        iter != streams.end(); ++iter )
   {
     EventStream* p = *iter;
-    GraphNode*   lastStreamGNode = p->getLastNode( paradigm );
+    GraphNode* lastStreamGNode = p->getLastNode( paradigm );
 
     if ( lastStreamGNode )
     {
@@ -412,7 +411,6 @@ GraphEngine::getLastGraphNode( Paradigm paradigm ) const
       }
       else
       {
-        //if ( lastStreamGNode->getTime() > lastNode->getTime() )
         if ( Node::compareLess( lastNode, lastStreamGNode ) )
         {
           lastNode = lastStreamGNode;
@@ -420,8 +418,6 @@ GraphEngine::getLastGraphNode( Paradigm paradigm ) const
       }
     }
   }
-  
-  streams.clear();
 
   return lastNode;
 }
@@ -445,13 +441,13 @@ GraphEngine::getAllNodes( EventStream::SortedGraphNodeList& allNodes ) const
 }
 
 AnalysisMetric&
-GraphEngine::getCtrTable( )
+GraphEngine::getCtrTable()
 {
   return ctrTable;
 }
 
 void
-GraphEngine::reset( )
+GraphEngine::reset()
 {
   /*
   // debug output
@@ -468,27 +464,27 @@ GraphEngine::reset( )
     }
   }
 
-  resetCounters( );
+  resetCounters();
 
   const EventStreamGroup::EventStreamList& hostStreams =
-    streamGroup.getHostStreams( );
+    streamGroup.getHostStreams();
   for ( EventStreamGroup::EventStreamList::const_iterator iter =
-          hostStreams.begin( );
-        iter != hostStreams.end( ); )
+          hostStreams.begin();
+        iter != hostStreams.end(); )
   {
     EventStream* p = *iter;
 
-    if ( p->isRemoteStream( ) )
+    if ( p->isRemoteStream() )
     {
-      EventStream::SortedGraphNodeList& nodes = p->getNodes( );
+      EventStream::SortedGraphNodeList& nodes = p->getNodes();
       for ( EventStream::SortedGraphNodeList::const_iterator nIter =
-              nodes.begin( );
-            nIter != nodes.end( ); ++nIter )
+              nodes.begin();
+            nIter != nodes.end(); ++nIter )
       {
         GraphNode* node = (GraphNode*)( *nIter );
         const Graph::EdgeList& edges = graph.getInEdges( node );
-        for ( Graph::EdgeList::const_iterator eIter = edges.begin( );
-              eIter != edges.end( ); )
+        for ( Graph::EdgeList::const_iterator eIter = edges.begin();
+              eIter != edges.end(); )
         {
           Graph::EdgeList::const_iterator next = eIter;
           ++next;
@@ -511,24 +507,24 @@ GraphEngine::reset( )
 }
 
 void
-GraphEngine::resetCounters( )
+GraphEngine::resetCounters()
 {
   const EventStreamGroup::EventStreamList streams = getStreams();
 
-  for ( EventStreamGroup::EventStreamList::const_iterator pIter = streams.begin( );
-        pIter != streams.end( ); ++pIter )
+  for ( EventStreamGroup::EventStreamList::const_iterator pIter = streams.begin();
+        pIter != streams.end(); ++pIter )
   {
-    EventStream::SortedGraphNodeList nodes = ( *pIter )->getNodes( );
-    for ( EventStream::SortedGraphNodeList::const_iterator nIter = nodes.begin( );
-          nIter != nodes.end( ); ++nIter )
+    EventStream::SortedGraphNodeList nodes = ( *pIter )->getNodes();
+    for ( EventStream::SortedGraphNodeList::const_iterator nIter = nodes.begin();
+          nIter != nodes.end(); ++nIter )
     {
-      ( *nIter )->removeCounters( );
+      ( *nIter )->removeCounters();
     }
   }
 }
 
 uint64_t
-GraphEngine::getTimerResolution( )
+GraphEngine::getTimerResolution()
 {
   return ticksPerSecond;
 }
@@ -540,16 +536,16 @@ GraphEngine::setTimerResolution( uint64_t ticksPerSecond )
 }
 
 uint64_t
-GraphEngine::getDeltaTicks( )
+GraphEngine::getDeltaTicks()
 {
-  return getTimerResolution( ) * SYNC_DELTA / ( 1000 * 1000 );
+  return getTimerResolution() * SYNC_DELTA / ( 1000 * 1000 );
 }
 
 void
 GraphEngine::sanityCheckEdge( Edge* edge, uint32_t mpiRank )
 {
   uint64_t expectedTime;
-  if ( edge->isReverseEdge( ) )
+  if ( edge->isReverseEdge() )
   {
     expectedTime = 0;
   }
@@ -559,24 +555,24 @@ GraphEngine::sanityCheckEdge( Edge* edge, uint32_t mpiRank )
       edge->getEndNode()->getTime() - edge->getStartNode()->getTime();
   }
 
-  if ( edge->getDuration( ) != expectedTime )
+  if ( edge->getDuration() != expectedTime )
   {
     throw RTException(
             "[%u] Sanity check failed: edge %s has wrong duration (expected %lu, found %lu)",
             mpiRank,
-            edge->getName( ).c_str( ),
+            edge->getName().c_str(),
             expectedTime,
-            edge->getDuration( ) );
+            edge->getDuration() );
   }
 
-  if ( !edge->isBlocking( ) && edge->getStartNode( )->isWaitstate( ) &&
-       edge->getStartNode( )->isEnter( ) &&
-       edge->getEndNode( )->isWaitstate( ) &&
-       edge->getEndNode( )->isLeave( ) )
+  if ( !edge->isBlocking() && edge->getStartNode()->isWaitstate() &&
+       edge->getStartNode()->isEnter() &&
+       edge->getEndNode()->isWaitstate() &&
+       edge->getEndNode()->isLeave() )
   {
     throw RTException(
             "[%u] Sanity check failed: edge %s is not blocking but should be",
-            mpiRank, edge->getName( ).c_str( ) );
+            mpiRank, edge->getName().c_str() );
   }
 
 }
@@ -586,12 +582,12 @@ GraphEngine::runSanityCheck( uint32_t mpiRank )
 {
   const EventStreamGroup::EventStreamList streams = getStreams();
 
-  for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin( );
-        iter != streams.end( ); ++iter )
+  for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin();
+        iter != streams.end(); ++iter )
   {
-    EventStream::SortedGraphNodeList& nodes = ( *iter )->getNodes( );
-    for ( EventStream::SortedGraphNodeList::const_iterator nIter = nodes.begin( );
-          nIter != nodes.end( ); ++nIter )
+    EventStream::SortedGraphNodeList& nodes = ( *iter )->getNodes();
+    for ( EventStream::SortedGraphNodeList::const_iterator nIter = nodes.begin();
+          nIter != nodes.end(); ++nIter )
     {
       GraphNode* node = (GraphNode*)( *nIter );
 
@@ -599,8 +595,8 @@ GraphEngine::runSanityCheck( uint32_t mpiRank )
       {
 
         Graph::EdgeList inEdges = getInEdges( node );
-        for ( Graph::EdgeList::const_iterator eIter = inEdges.begin( );
-              eIter != inEdges.end( ); ++eIter )
+        for ( Graph::EdgeList::const_iterator eIter = inEdges.begin();
+              eIter != inEdges.end(); ++eIter )
         {
           sanityCheckEdge( *eIter, mpiRank );
         }
@@ -609,8 +605,8 @@ GraphEngine::runSanityCheck( uint32_t mpiRank )
       if ( hasOutEdges( node ) )
       {
         Graph::EdgeList outEdges = getOutEdges( node );
-        for ( Graph::EdgeList::const_iterator eIter = outEdges.begin( );
-              eIter != outEdges.end( ); ++eIter )
+        for ( Graph::EdgeList::const_iterator eIter = outEdges.begin();
+              eIter != outEdges.end(); ++eIter )
         {
           sanityCheckEdge( *eIter, mpiRank );
         }
@@ -664,7 +660,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   if( !stream->getLastNode() || Node::compareLess(stream->getLastNode(), node) )
   {
     //std::cerr << "last node: ";
-    //std::cerr << stream->getLastNode( )->getUniqueName() << std::endl;
+    //std::cerr << stream->getLastNode()->getUniqueName() << std::endl;
     // if the last node in the list is "less" than the current, 
     // push it at the end of the vector
     stream->addGraphNode( node, &predNodeMap );
@@ -752,8 +748,8 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   bool directSuccLinked = false;
   if ( directPredecessor )
   {
-    Paradigm nodeParadigm = node->getParadigm( );
-    Paradigm predParadigm = directPredecessor->getParadigm( );
+    Paradigm nodeParadigm = node->getParadigm();
+    Paradigm predParadigm = directPredecessor->getParadigm();
 
     for ( size_t p_index = 0; p_index < NODE_PARADIGM_COUNT; ++p_index )
     {
@@ -766,7 +762,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
       GraphNode::ParadigmNodeMap::const_iterator predPnmIter = predNodeMap.find(
         paradigm );
-      if ( predPnmIter != predNodeMap.end( ) )
+      if ( predPnmIter != predNodeMap.end() )
       {
         GraphNode* pred     = predPnmIter->second;
         int        edgeProp = EDGE_NONE;
@@ -786,7 +782,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
         UTILS_ASSERT( !( cpuData.numberOfEvents && ( cpuData.startTime > cpuData.endTime ) ),
                       "Violation of time order for CPU events at '%s' (%",
-                      temp->getName( ).c_str( ) );
+                      temp->getName().c_str() );
 
         temp->addCPUData( cpuData.numberOfEvents,
                           //cpuData.startTime, cpuData.endTime,
@@ -802,17 +798,17 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
         {
           GraphNode::ParadigmNodeMap::const_iterator nextPnmIter =
             nextNodeMap.find( paradigm );
-          if ( nextPnmIter != nextNodeMap.end( ) )
+          if ( nextPnmIter != nextNodeMap.end() )
           {
             GraphNode* succ    = nextPnmIter->second;
             Edge*      oldEdge = getEdge( pred, succ );
             if ( !oldEdge )
             {
               throw RTException( "No edge between %s (p %u) and %s (p %u)",
-                                 pred->getUniqueName( ).c_str( ),
-                                 pred->getStreamId( ),
-                                 succ->getUniqueName( ).c_str( ),
-                                 succ->getStreamId( ) );
+                                 pred->getUniqueName().c_str(),
+                                 pred->getStreamId(),
+                                 succ->getUniqueName().c_str(),
+                                 succ->getStreamId() );
             }
             removeEdge( oldEdge );
             /* link to direct successor */
@@ -834,9 +830,9 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
     {
       int edgeProp = EDGE_NONE;
 
-      if ( directPredecessor->isEnter( ) && node->isLeave( ) )
+      if ( directPredecessor->isEnter() && node->isLeave() )
       {
-        if ( directPredecessor->isWaitstate( ) && node->isWaitstate( ) )
+        if ( directPredecessor->isWaitstate() && node->isWaitstate() )
         {
           edgeProp |= EDGE_IS_BLOCKING;
         }
@@ -848,7 +844,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
       UTILS_ASSERT( !( cpuData.numberOfEvents && ( cpuData.startTime > cpuData.endTime ) ),
                     "Violation of time order for CPU events at '%s'",
-                    temp->getName( ).c_str( ) );
+                    temp->getName().c_str() );
 
       temp->addCPUData( cpuData.numberOfEvents,
                         //cpuData.startTime, cpuData.endTime,
@@ -857,7 +853,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
     if ( directSuccessor )
     {
-      Paradigm succParadigm = directSuccessor->getParadigm( );
+      Paradigm succParadigm = directSuccessor->getParadigm();
 
       if ( !directSuccLinked )
       {
@@ -888,7 +884,7 @@ GraphEngine::addNewGraphNode( uint64_t       time,
                               RecordType     recordType,
                               int            nodeType )
 {
-  GraphNode* node = newGraphNode( time, stream->getId( ), name,
+  GraphNode* node = newGraphNode( time, stream->getId(), name,
                                   paradigm, recordType, nodeType );
   addNewGraphNodeInternal( node, stream );
 
@@ -903,7 +899,7 @@ GraphEngine::addNewEventNode( uint64_t                      time,
                               const char*                   name,
                               FunctionDescriptor*           desc )
 {
-  EventNode* node = newEventNode( time, stream->getId( ), eventId,
+  EventNode* node = newEventNode( time, stream->getId(), eventId,
                                   fResult, name, desc->paradigm, desc->recordType, 
                                   desc->functionType );
   addNewGraphNodeInternal( node, stream );
@@ -913,17 +909,17 @@ GraphEngine::addNewEventNode( uint64_t                      time,
 GraphNode*
 GraphEngine::topGraphNodeStack( uint64_t streamId )
 {
-  if ( pendingGraphNodeStackMap[streamId].empty( ) )
+  if ( pendingGraphNodeStackMap[streamId].empty() )
   {
     return NULL;
   }
-  return pendingGraphNodeStackMap[streamId].top( );
+  return pendingGraphNodeStackMap[streamId].top();
 }
 
 void
 GraphEngine::popGraphNodeStack( uint64_t streamId )
 {
-  pendingGraphNodeStackMap[streamId].pop( );
+  pendingGraphNodeStackMap[streamId].pop();
 }
 
 void

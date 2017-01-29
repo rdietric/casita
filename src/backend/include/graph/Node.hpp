@@ -896,7 +896,7 @@ namespace casita
          return false;
        }
 
-       if ( isCUDACollSync( ) || ( referencedStream == streamId ) )
+       if ( isCUDACollSync() || ( referencedStream == streamId ) )
        {
          return true;
        }
@@ -905,14 +905,14 @@ namespace casita
      }
 
      uint64_t
-     getReferencedStreamId( ) const
+     getReferencedStreamId() const
      {
 
        return referencedStream;
      }
 
      virtual bool
-     isEventNode( ) const
+     isEventNode() const
      {
        return false;
      }
@@ -950,7 +950,7 @@ namespace casita
      void
      incCounter( MetricType metric, uint64_t value )
      {
-       if ( counters.find( metric ) != counters.end( ) )
+       if ( counters.find( metric ) != counters.end() )
        {
          counters[metric] += value;
        }
@@ -961,11 +961,11 @@ namespace casita
      }
 
      uint64_t
-     getCounter( MetricType metric, bool* valid ) const
+     getCounter( MetricType metric, bool* valid = NULL ) const
      {
        std::map< MetricType, uint64_t >::const_iterator iter =
          counters.find( metric );
-       if ( iter == counters.end( ) )
+       if ( iter == counters.end() )
        {
          if ( valid )
          {

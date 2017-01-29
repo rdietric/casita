@@ -39,32 +39,28 @@ namespace casita
      Runner( int mpiRank, int mpiSize );
      
      virtual
-     ~Runner( );
+     ~Runner();
      
      void
-     startAnalysisRun( );
+     startAnalysisRun();
      
      void
-     writeTrace( );
+     writeTrace();
 
      void
      runAnalysis( Paradigm paradigm, EventStream::SortedGraphNodeList& allNodes );
 
-     void
-     computeCriticalPath( );
-     
-
      ProgramOptions&
-     getOptions( );
+     getOptions();
 
      AnalysisEngine&
-     getAnalysis( );
+     getAnalysis();
 
      void
-     printAllActivities( );
+     printAllActivities();
 
      void
-     mergeActivityGroups( );
+     mergeActivityGroups();
 
    private:
      int      mpiRank;
@@ -90,23 +86,25 @@ namespace casita
 
      /* critical path */
      void
+     computeCriticalPath( bool firstInterval, bool lastInterval );
+     
+     void
      getCriticalPathIntern( GraphNode*                        start,
                             GraphNode*                        end,
-                            EventStream::SortedGraphNodeList& cpNodes,
-                            Graph&                            subGraph );
+                            EventStream::SortedGraphNodeList& cpNodes );
      
      void
      getCriticalLocalNodes( MPIAnalysis::CriticalSectionsList& sections,
                             EventStream::SortedGraphNodeList& localNodes );
      
-     void
-     findGlobalLengthCP( );
+     /*void
+     findGlobalLengthCP();*/
      
      void
-     findCriticalPathStart( );
+     findCriticalPathStart();
      
      void
-     findCriticalPathEnd( );
+     findCriticalPathEnd();
 
      int
      findLastMpiNode( GraphNode** node );
@@ -114,9 +112,6 @@ namespace casita
      void
      detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsList,
                                EventStream::SortedGraphNodeList& localNodes);
-     
-     void
-     detectCriticalPathMPIReversReplay( MPIAnalysis::CriticalSectionsList& sectionsList );
 
  };
 

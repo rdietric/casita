@@ -66,7 +66,6 @@ namespace casita
 
      typedef struct
      {
-       uint64_t streamID;
        GraphNode* startNode;
        GraphNode* endNode;
      } CriticalPathSection;

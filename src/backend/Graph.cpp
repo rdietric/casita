@@ -26,7 +26,7 @@
 
 using namespace casita;
 
-Graph::Graph( )
+Graph::Graph()
 {
   isSubGraph = false;
 }
@@ -36,7 +36,7 @@ Graph::Graph( bool subGraph )
   isSubGraph = subGraph;
 }
 
-Graph::~Graph( )
+Graph::~Graph()
 {
   //if ( isSubGraph )
   //  std::cerr << "subgraph destructor does not delete edges, but the vectors" << std::endl;
@@ -54,13 +54,13 @@ Graph::cleanup( bool deleteEdges )
   //std::cerr << "Cleanup graph -- delete edges: " << deleteEdges << std::endl;
   
   // iterate over the out-edge lists of all node entries
-  for ( NodeEdges::iterator iter = outEdges.begin( );
-        iter != outEdges.end( ); ++iter )
+  for ( NodeEdges::iterator iter = outEdges.begin();
+        iter != outEdges.end(); ++iter )
   {
     if( deleteEdges ){
       // delete the edges for this node (which are in the list)
-      for ( EdgeList::const_iterator eIter = iter->second.begin( );
-            eIter != iter->second.end( ); ++eIter )
+      for ( EdgeList::const_iterator eIter = iter->second.begin();
+            eIter != iter->second.end(); ++eIter )
       {
         if(*eIter)
         {
@@ -76,17 +76,17 @@ Graph::cleanup( bool deleteEdges )
   }
   
   // iterate over the in-edge lists of all node entries
-  for ( NodeEdges::iterator iter = inEdges.begin( );
-        iter != inEdges.end( ); ++iter )
+  for ( NodeEdges::iterator iter = inEdges.begin();
+        iter != inEdges.end(); ++iter )
   {
     // clear the edge list itself
     iter->second.clear();
   }
   
   // clear all node vectors
-  outEdges.clear( );
-  inEdges.clear( );
-  nodes.clear( );
+  outEdges.clear();
+  inEdges.clear();
+  nodes.clear();
 }
 
 void
@@ -107,20 +107,20 @@ Graph::addEdge( Edge* edge )
   //std::cerr << "Added Edge " << edge->getStartNode()->getUniqueName() << " to "
   //          << edge->getEndNode()->getUniqueName() << std::endl;
   // push this edge as in-edge to the target/end node
-  inEdges[edge->getEndNode( )].push_back( edge );
-  outEdges[edge->getStartNode( )].push_back( edge );
+  inEdges[edge->getEndNode()].push_back( edge );
+  outEdges[edge->getStartNode()].push_back( edge );
 
 /*  
-  if(edge->getEndNode( )->getId() == 9)
+  if(edge->getEndNode()->getId() == 9)
   {
-    std::cerr  << "[" << edge->getEndNode( )->getStreamId() << "]" << edge->getEndNode( )->getUniqueName() << " has inEdges? ";
-    std::cerr << hasInEdges( edge->getEndNode( ) ) << std::endl;
+    std::cerr  << "[" << edge->getEndNode()->getStreamId() << "]" << edge->getEndNode()->getUniqueName() << " has inEdges? ";
+    std::cerr << hasInEdges( edge->getEndNode() ) << std::endl;
   }
   
-  if( edge->getStartNode( )->getId() == 9 )
+  if( edge->getStartNode()->getId() == 9 )
   {
-    std::cerr  << "[" << edge->getStartNode( )->getStreamId() << "]" << edge->getStartNode( )->getUniqueName() << " has inEdges? ";
-    std::cerr << hasInEdges( edge->getStartNode( ) ) << std::endl;
+    std::cerr  << "[" << edge->getStartNode()->getStreamId() << "]" << edge->getStartNode()->getUniqueName() << " has inEdges? ";
+    std::cerr << hasInEdges( edge->getStartNode() ) << std::endl;
   }*/
 }
 
@@ -132,8 +132,8 @@ Graph::addEdge( Edge* edge )
 void
 Graph::removeEdge( Edge* edge )
 {
-  GraphNode* startNode = edge->getStartNode( );
-  GraphNode* endNode   = edge->getEndNode( );
+  GraphNode* startNode = edge->getStartNode();
+  GraphNode* endNode   = edge->getEndNode();
   
   //std::cerr << "Remove edge: " << edge->getStartNode()->getUniqueName() << " to "
   //          << edge->getEndNode()->getUniqueName() << std::endl;
@@ -141,19 +141,19 @@ Graph::removeEdge( Edge* edge )
   EdgeList& out_edges = outEdges[startNode];
   EdgeList& in_edges  = inEdges[endNode];
 
-  for ( EdgeList::iterator iter = out_edges.begin( );
-        iter != out_edges.end( ); ++iter )
+  for ( EdgeList::iterator iter = out_edges.begin();
+        iter != out_edges.end(); ++iter )
   {
-    if ( ( *iter )->getEndNode( ) == endNode )
+    if ( ( *iter )->getEndNode() == endNode )
     {
       out_edges.erase( iter );
       break;
     }
   }
-  for ( EdgeList::iterator iter = in_edges.begin( );
-        iter != in_edges.end( ); ++iter )
+  for ( EdgeList::iterator iter = in_edges.begin();
+        iter != in_edges.end(); ++iter )
   {
-    if ( ( *iter )->getStartNode( ) == startNode )
+    if ( ( *iter )->getStartNode() == startNode )
     {
       in_edges.erase( iter );
       break;
@@ -164,25 +164,25 @@ Graph::removeEdge( Edge* edge )
 bool
 Graph::hasInEdges( GraphNode* node ) const
 {
-  return inEdges.find( node ) != inEdges.end( );
+  return inEdges.find( node ) != inEdges.end();
 }
 
 bool
 Graph::hasOutEdges( GraphNode* node ) const
 {
-  return outEdges.find( node ) != outEdges.end( );
+  return outEdges.find( node ) != outEdges.end();
 }
 
 const Graph::EdgeList&
 Graph::getInEdges( GraphNode* node ) const
 {
   NodeEdges::const_iterator iter = inEdges.find( node );
-  if ( iter != inEdges.end( ) )
+  if ( iter != inEdges.end() )
   {
     return iter->second;
   }
   throw RTException( "Node %s not found in in-edge list",
-                     node->getUniqueName( ).c_str( ) );
+                     node->getUniqueName().c_str() );
 }
 
 Graph::EdgeList
@@ -190,12 +190,12 @@ Graph::getInEdges( GraphNode* node, Paradigm paradigm ) const
 {
   EdgeList edges;
   NodeEdges::const_iterator iter = inEdges.find( node );
-  if ( iter != inEdges.end( ) )
+  if ( iter != inEdges.end() )
   {
-    for ( EdgeList::const_iterator eIter = iter->second.begin( );
-          eIter != iter->second.end( ); ++eIter )
+    for ( EdgeList::const_iterator eIter = iter->second.begin();
+          eIter != iter->second.end(); ++eIter )
     {
-      if ( ( *eIter )->getStartNode( )->hasParadigm( paradigm ) )
+      if ( ( *eIter )->getStartNode()->hasParadigm( paradigm ) )
       {
         edges.push_back( *eIter );
       }
@@ -214,12 +214,12 @@ const Graph::EdgeList&
 Graph::getOutEdges( GraphNode* node ) const
 {
   NodeEdges::const_iterator iter = outEdges.find( node );
-  if ( iter != outEdges.end( ) )
+  if ( iter != outEdges.end() )
   {
     return iter->second;
   }
   throw RTException( "Node %s not found in out-edge list",
-                     node->getUniqueName( ).c_str( ) );
+                     node->getUniqueName().c_str() );
 }
 
 Graph::EdgeList
@@ -227,12 +227,12 @@ Graph::getOutEdges( GraphNode* node, Paradigm paradigm ) const
 {
   EdgeList edges;
   NodeEdges::const_iterator iter = outEdges.find( node );
-  if ( iter != outEdges.end( ) )
+  if ( iter != outEdges.end() )
   {
-    for ( EdgeList::const_iterator eIter = iter->second.begin( );
-          eIter != iter->second.end( ); ++eIter )
+    for ( EdgeList::const_iterator eIter = iter->second.begin();
+          eIter != iter->second.end(); ++eIter )
     {
-      if ( ( *eIter )->getEndNode( )->hasParadigm( paradigm ) )
+      if ( ( *eIter )->getEndNode()->hasParadigm( paradigm ) )
       {
         edges.push_back( *eIter );
       }
@@ -243,7 +243,7 @@ Graph::getOutEdges( GraphNode* node, Paradigm paradigm ) const
 }
 
 const Graph::NodeList&
-Graph::getNodes( ) const
+Graph::getNodes() const
 {
   return nodes;
 }
@@ -261,8 +261,8 @@ Graph::getSubGraph( Paradigm paradigm )
   // make sure to deallocate the graph
   Graph* subGraph = new Graph( true );
 
-  for ( NodeList::const_iterator iter = nodes.begin( );
-        iter != nodes.end( ); ++iter )
+  for ( NodeList::const_iterator iter = nodes.begin();
+        iter != nodes.end(); ++iter )
   {
     GraphNode* node = *iter;
 
@@ -277,8 +277,8 @@ Graph::getSubGraph( Paradigm paradigm )
     if ( hasOutEdges( node ) )
     {
       EdgeList edges = getOutEdges( node, paradigm );
-      for ( EdgeList::const_iterator eIter = edges.begin( );
-            eIter != edges.end( ); ++eIter )
+      for ( EdgeList::const_iterator eIter = edges.begin();
+            eIter != edges.end(); ++eIter )
       {
         Edge* edge = *eIter;
 
@@ -309,7 +309,7 @@ Graph::compareDistancesLess( GraphNode* n1, GraphNode* n2,
   }
   else
   {
-    return n1->getId( ) < n2->getId( );
+    return n1->getId() < n2->getId();
   }
 }
 
@@ -327,14 +327,14 @@ Graph::sortedInsert( GraphNode* node, std::list< GraphNode* >& nodeList,
 {
   uint64_t nodeDistance = distanceMap[node];
 
-  std::list< GraphNode* >::iterator iter = nodeList.begin( );
-  while ( iter != nodeList.end( ) )
+  std::list< GraphNode* >::iterator iter = nodeList.begin();
+  while ( iter != nodeList.end() )
   {
     std::list< GraphNode* >::iterator current = iter;
     ++iter;
 
     // if this is the last node OR distance of next node is greater than of current node
-    if ( iter == nodeList.end( ) || distanceMap[*iter] >= nodeDistance )
+    if ( iter == nodeList.end() || distanceMap[*iter] >= nodeDistance )
     {
       // insert before the current iterator
       nodeList.insert( current, node );
@@ -359,7 +359,7 @@ void
 Graph::getLongestPath( GraphNode* startNode, GraphNode* endNode,
                        GraphNode::GraphNodeList& path ) const
 {
-  const uint64_t INFINITE  = std::numeric_limits< uint64_t >::max( );
+  const uint64_t INFINITE  = UINT64_MAX;
   
   std::map< GraphNode*, GraphNode* > predecessorMap;
   
@@ -367,14 +367,14 @@ Graph::getLongestPath( GraphNode* startNode, GraphNode* endNode,
   std::map< GraphNode*, uint64_t > nodeDistanceMap; 
   std::list< GraphNode* > pendingNodes;
 
-  const uint64_t endTime = endNode->getTime( );
+  const uint64_t endTime = endNode->getTime();
   
   //bool test = false;
 
   // iterate over the nodes of the graph and initialize predecessor relations,
   // distances and pending nodes
-  for ( Graph::NodeList::const_iterator iter = nodes.begin( );
-        iter != nodes.end( ); ++iter )
+  for ( Graph::NodeList::const_iterator iter = nodes.begin();
+        iter != nodes.end(); ++iter )
   {
     GraphNode* node = *iter;
     
@@ -415,9 +415,9 @@ Graph::getLongestPath( GraphNode* startNode, GraphNode* endNode,
   
   // iterate over the nodes in the interval in chronologic order
   // until the list is empty
-  while ( !pendingNodes.empty( ) )
+  while ( !pendingNodes.empty() )
   {
-    GraphNode* currentNode         = pendingNodes.front( );
+    GraphNode* currentNode         = pendingNodes.front();
     uint64_t   currentNodeDistance = nodeDistanceMap[currentNode];
     /*
     UTILS_MSG( currentNode->getStreamId() == 0 && currentNode->getId() >= 277 &&
@@ -431,7 +431,7 @@ Graph::getLongestPath( GraphNode* startNode, GraphNode* endNode,
     }
 
     // remove the current node from the pending nodes and distance entry
-    pendingNodes.pop_front( );
+    pendingNodes.pop_front();
     nodeDistanceMap.erase( currentNode );
 
     // if the current node has out edges
@@ -440,8 +440,8 @@ Graph::getLongestPath( GraphNode* startNode, GraphNode* endNode,
       const Graph::EdgeList& outEdges = getOutEdges( currentNode );
 
       // iterate over the out edges
-      for ( Graph::EdgeList::const_iterator iter = outEdges.begin( );
-            iter != outEdges.end( ); ++iter )
+      for ( Graph::EdgeList::const_iterator iter = outEdges.begin();
+            iter != outEdges.end(); ++iter )
       {
         Edge* edge = *iter;
 
@@ -455,7 +455,7 @@ Graph::getLongestPath( GraphNode* startNode, GraphNode* endNode,
              && ( !edge->isBlocking() ) && ( !edge->isReverseEdge() ) ) 
         {
           // compute the distance to the successor
-          uint64_t alt_distance = currentNodeDistance + edge->getWeight( );
+          uint64_t alt_distance = currentNodeDistance + edge->getWeight();
           
           // if the distance to the successor node is less than the already 
           // stored successor's distance (distances are initialized with infinite)
@@ -486,13 +486,13 @@ Graph::getLongestPath( GraphNode* startNode, GraphNode* endNode,
     if ( hasInEdges( currentNode ) )
     {
       const Graph::EdgeList& inEdges = getInEdges( currentNode );
-      for ( Graph::EdgeList::const_iterator eIter = inEdges.begin( );
-            eIter != inEdges.end( ); ++eIter )
+      for ( Graph::EdgeList::const_iterator eIter = inEdges.begin();
+            eIter != inEdges.end(); ++eIter )
       {
         Edge* edge = *eIter;
-        if ( !( edge->isBlocking( ) ) && !( edge->isReverseEdge( ) ) )
+        if ( !( edge->isBlocking() ) && !( edge->isReverseEdge() ) )
         {
-          GraphNode* inNode = edge->getStartNode( );
+          GraphNode* inNode = edge->getStartNode();
 
           // if the targetNode is on a critical path, add it to the possible target nodes
           GraphNode* pred   = predecessorMap[inNode];
@@ -506,12 +506,12 @@ Graph::getLongestPath( GraphNode* startNode, GraphNode* endNode,
     }
 
     // choose among the ingoing nodes the one which is closest as next current node
-    if ( possibleInNodes.size( ) > 0 )
+    if ( possibleInNodes.size() > 0 )
     {
       GraphNode* closestNode = NULL;
       for ( GraphNode::GraphNodeList::const_iterator pInIter =
-              possibleInNodes.begin( );
-            pInIter != possibleInNodes.end( ); ++pInIter )
+              possibleInNodes.begin();
+            pInIter != possibleInNodes.end(); ++pInIter )
       {
         if ( !closestNode )
         {
@@ -539,12 +539,12 @@ Graph::getLongestPath( GraphNode* startNode, GraphNode* endNode,
   /*if(test)
   {
     UTILS_MSG( true, "Print critical path:" );
-    for ( GraphNode::GraphNodeList::const_iterator cpNode = path.begin( );
-        cpNode != path.end( ); ++cpNode )
+    for ( GraphNode::GraphNodeList::const_iterator cpNode = path.begin();
+        cpNode != path.end(); ++cpNode )
     {
       GraphNode* node = *cpNode;
 
-      UTILS_MSG( true, "%s", node->getUniqueName( ).c_str( ) );
+      UTILS_MSG( true, "%s", node->getUniqueName().c_str() );
     }
   }*/
 }
@@ -552,8 +552,8 @@ Graph::getLongestPath( GraphNode* startNode, GraphNode* endNode,
 void
 Graph::printPath( const GraphNode::GraphNodeList& path ) const
 {
-  for ( GraphNode::GraphNodeList::const_iterator cpNode = path.begin( );
-        cpNode != path.end( ); ++cpNode )
+  for ( GraphNode::GraphNodeList::const_iterator cpNode = path.begin();
+        cpNode != path.end(); ++cpNode )
   {
     UTILS_MSG( true, "  %s", (*cpNode)->getUniqueName().c_str() );
   }
@@ -565,7 +565,7 @@ Graph::printInEdges( GraphNode* node ) const
   UTILS_MSG( true, "    In-edges for %s:", node->getUniqueName().c_str() );
   const Graph::EdgeList& inEdges = getInEdges( node );
   for ( Graph::EdgeList::const_iterator eIter = inEdges.begin();
-        eIter != inEdges.end( ); ++eIter )
+        eIter != inEdges.end(); ++eIter )
   {
     Edge* edge = *eIter;
     UTILS_MSG( true, "     %s", edge->getName().c_str() );
@@ -592,8 +592,6 @@ Graph::printCircle( GraphNode* node, GraphNode::GraphNodeList& nodeList ) const
 
 /**
  * Detect the longest/critical path between the given start and stop node.
- * \todo: get start and end iterator (check findNode() in EventStream())
- * \todo: check for reverse edges and potential infinite loops due to circular inEdges
  * 
  * @param startNode start node
  * @param endNode end node
@@ -603,7 +601,7 @@ void
 Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
                         GraphNode::GraphNodeList& path ) const
 {
-  const uint64_t INFINITE = std::numeric_limits< uint64_t >::max();
+  const uint64_t INFINITE = UINT64_MAX;
 
   // assume that the node list nodes is sorted by time
 

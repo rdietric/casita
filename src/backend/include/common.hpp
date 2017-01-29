@@ -22,6 +22,11 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
+#if !defined(UINT64_MAX)
+#include <limits>
+#define UINT64_MAX std::numeric_limits< uint64_t >::max()
+#endif
+
 #define VERBOSE_NONE  0
 #define VERBOSE_TIME  1
 #define VERBOSE_BASIC 2

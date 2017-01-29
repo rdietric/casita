@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014, 2016,
+ * Copyright (c) 2013 - 2014, 2016 - 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -11,10 +11,6 @@
  */
 
 #pragma once
-
-#if defined( BOOST_AVAILABLE ) 
-#include <boost/program_options/options_description.hpp>
-#endif
 
 
 #include <string>
@@ -50,7 +46,7 @@ namespace casita
  {
    public:
      static Parser&
-     getInstance( );
+     getInstance();
      
      static int getVerboseLevel();
 

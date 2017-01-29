@@ -244,14 +244,14 @@ EventStream::addGraphNode( GraphNode*                  node,
   // set changed flag
   nodesAdded = true;
   
-  GraphNode* lastLocalNode = getLastNode( );
+  GraphNode* lastLocalNode = getLastNode();
   
   GraphNode* oldNode[NODE_PARADIGM_COUNT];
   for ( size_t i = 0; i < NODE_PARADIGM_COUNT; ++i )
   {
     oldNode[i] = NULL;
   }
-  Paradigm   nodeParadigm = node->getParadigm( );
+  Paradigm   nodeParadigm = node->getParadigm();
 
   for ( size_t o = 1; o < NODE_PARADIGM_INVALID; o *= 2 )
   {
@@ -272,8 +272,8 @@ EventStream::addGraphNode( GraphNode*                  node,
       {
         throw RTException(
                 "Can't add graph node (%s) before last graph node (%s)",
-                node->getUniqueName( ).c_str( ),
-                oldNode[paradigm_index]->getUniqueName( ).c_str( ) );
+                node->getUniqueName().c_str(),
+                oldNode[paradigm_index]->getUniqueName().c_str() );
       }
 
       if ( graphData[paradigm_index].firstNode == NULL )

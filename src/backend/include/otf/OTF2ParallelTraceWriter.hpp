@@ -252,7 +252,7 @@ namespace casita
       {
         EventStream::SortedGraphNodeList::iterator currentNodeIter;
         
-        EventStream* currentStream;
+        EventStream* stream;
         
         //!< save last counter values to avoid writing of unused counter records
         CounterMap lastMetricValues;

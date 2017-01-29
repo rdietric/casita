@@ -575,7 +575,7 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
     uint64_t streamId = stream->getId();
     
     // when called the first time for this stream ID, the map entry is generated
-    streamStatusMap[ streamId ].currentStream = stream;
+    streamStatusMap[ streamId ].stream = stream;
     StreamStatus& streamState = streamStatusMap[ streamId ];
     
     EventStream::SortedGraphNodeList* processNodes = &( stream->getNodes() );
@@ -594,10 +594,11 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
       while( (*currentNodeIter)->isAtomic() )
       {
         UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_ALL, 
-                   "[%"PRIu32"] TraceWriter: Skip atomic event: %s", 
+                   "[%"PRIu32"] TraceWriter: Skip atomic node: %s", 
                    mpiRank, (*currentNodeIter)->getUniqueName().c_str() );
 
         // first part of the condition should be wrong for the global source node
+        // if current node is on the CP, but the following is not
         if( ( (*currentNodeIter)->getCounter( CRITICAL_PATH, NULL ) == 1 ) &&
             ( currentNodeIter + 1 != processNodes->end() ) && 
             ( *( currentNodeIter + 1 ) )->getCounter( CRITICAL_PATH, NULL ) == 0 )
@@ -613,6 +614,10 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
                                              streamState.lastEventTime,
                                              cTable->getMetricId( CRITICAL_PATH ), 
                                              1, &type, &value ) );
+          streamState.onCriticalPath = false;
+
+          //UTILS_MSG( true, "[%"PRIu32"] Write CP =0 (node %s)", 
+          //           mpiRank, (*currentNodeIter)->getUniqueName().c_str() );
         }
 
         ++currentNodeIter;
@@ -625,38 +630,43 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
     // store a pointer to the graph as class member
     this->graph = graph;
 
-    // reset last counter values before processing the current stream
+    /* reset last counter values before processing the current stream
     const AnalysisMetric::MetricIdSet& ctrIdSet = cTable->getAllCounterIds();
     for( AnalysisMetric::MetricIdSet::const_iterator ctrIdIter = ctrIdSet.begin();
          ctrIdIter != ctrIdSet.end(); ++ctrIdIter )
     {
       streamState.lastMetricValues[ *ctrIdIter ] = 0;
-    }
-
-    // set the initial critical path value for this stream
-    // (only in the first call of this function)
-    if( stream->isFirstCritical() )
+    }*/
+    
+    // set the initial critical path value if this is the first call of this function
+    if( firstCall ) 
     {
-      streamState.onCriticalPath = true;
-      //UTILS_MSG( true, "Process [%llu] has initial CP", stream->getId());
-
-      // after the first interval analysis there is no first critical any more
-      stream->isFirstCritical() = false;
-    }
-    else
-    {
-      if( firstCall ) // if this is the first call of this function
+      // set the initial critical path value for this stream
+      // (only in the first call of this function)
+      if( stream->isFirstCritical() )
       {
+        streamState.onCriticalPath = true;
+        //UTILS_MSG( true, "Process [%llu] has initial CP", stream->getId());
+
+        // after the first interval analysis there is no first critical any more
+        stream->isFirstCritical() = false;
+      }
+      else
+      {
+        //UTILS_WARNING( "[%"PRIu64"] Set CP=0", streamState.stream->getId() );
         streamState.onCriticalPath = false;
       }
     }
+    
+    //UTILS_WARNING( "%llu:%s on CP %d", streamId, stream->getName(), 
+    //                 streamState.onCriticalPath );
     
     if( streamState.openEdges.size() > 0 )
     {
       // clear list of open edges
       UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_SOME, 
                  " [%"PRIu64"] Clear open edge(s).", 
-                 streamState.currentStream->getId() );
+                 streamState.stream->getId() );
       
       streamState.openEdges.clear();
     }
@@ -727,7 +737,8 @@ OTF2ParallelTraceWriter::getRegionName( const OTF2_RegionRef regionRef ) const
  * @param counters      counter values for that event
  */
 void
-OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& counters )
+OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, 
+                                                 CounterMap& counters )
 {
   // add function to list if not present yet
   if ( activityGroupMap.find( event.regionRef ) == activityGroupMap.end() )
@@ -748,10 +759,13 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& co
     activityGroupMap[event.regionRef].numInstances++;
   }
 
+  UTILS_ASSERT( streamStatusMap.count( event.location ) > 0, 
+                "Could not find stream status!" );
+  
   bool onCP = false;
   
-  // if there are counters (nodes) available
-  if( counters.size() != 0 )
+  // if there are counters (nodes) available, use this for the critical path
+  if( counters.size() > 0 )
   {
     onCP = counters[ CRITICAL_PATH ];
   }
@@ -762,8 +776,7 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, CounterMap& co
   
   // add duration, CP time and blame to current function on stack
   //if ( activityIter != activityStack.end() && activityIter->second.size() > 0 )
-  if( streamStatusMap.count( event.location ) > 0 && 
-      streamStatusMap[ event.location ].activityStack.size())
+  if( streamStatusMap[ event.location ].activityStack.size() > 0 )
   {
     uint32_t currentActivity = 
       streamStatusMap[ event.location ].activityStack.top();
@@ -972,8 +985,8 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
       return;
     }
     
-    if( event.type == RECORD_ENTER && 
-        streamState.activityStack.size() == 0 )
+    if( event.type == RECORD_ENTER && /*streamState.activityStack.size() == 0*/ 
+        streamState.lastMetricValues[ CRITICAL_PATH ] == 0 )
     {
       OTF2_Type        type  = OTF2_TYPE_UINT64;
       OTF2_MetricValue value;
@@ -1091,7 +1104,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   UTILS_ASSERT( streamStatusMap.count( event.location ) > 0, 
                 "Could not find stream status!" );
   StreamStatus& streamState = streamStatusMap[ event.location ];
-  EventStream* currentStream = streamState.currentStream;
+  EventStream* currentStream = streamState.stream;
   
   // test if this is an internal node or a CPU event
   FunctionDescriptor eventDesc;
@@ -1185,9 +1198,9 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       }
 
       // copy node counter values to temporary counter map
-      const AnalysisMetric::MetricIdSet& metricIdSet = cTable->getAllMetricIds( );
-      for ( AnalysisMetric::MetricIdSet::const_iterator metricIter = metricIdSet.begin( );
-            metricIter != metricIdSet.end( ); ++metricIter )
+      const AnalysisMetric::MetricIdSet& metricIdSet = cTable->getAllMetricIds();
+      for ( AnalysisMetric::MetricIdSet::const_iterator metricIter = metricIdSet.begin();
+            metricIter != metricIdSet.end(); ++metricIter )
       {
         const MetricType metricType = *metricIter;
         const MetricEntry* metric = cTable->getMetric( metricType );
@@ -1205,7 +1218,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
             
             // if next node is NOT on the CP
             if( currentNodeIter + 1 != endNodeIter &&  
-                (*( currentNodeIter + 1 ) )->getCounter( CRITICAL_PATH, NULL ) == 0 )
+                (*( currentNodeIter + 1 ) )->getCounter( CRITICAL_PATH ) == 0 )
             {
               streamState.onCriticalPath = false;
             }
@@ -1214,20 +1227,30 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
             if( currentNode->isLeave() )
             {
               // if node is leave AND enter has zero as CP counter
-              if( currentNode->getPartner()->getCounter(CRITICAL_PATH, NULL ) == 0 )
+              if( currentNode->getGraphPair().first->getCounter(CRITICAL_PATH ) == 0 )
               {
                 // zero the counter, as the activity is not on the CP
                 tmpCounters[ CRITICAL_PATH ] = 0;
 
                 // Does NOT work for visualization (OTF2)!
-                // visualization uses processOnCriticalPath[event.location]
+                // visualization uses streamState.onCriticalPath
               }
 
-              // if we are at an MPI_Finalize leave and the current stream does 
-              // not contain the globally last event
-              if( currentNode->isMPIFinalize() && !currentStream->hasLastGlobalEvent() )
+              // if we are at an MPI_Finalize leave
+              if( currentNode->isMPIFinalize() )
               {
-                streamState.onCriticalPath = false;
+                //UTILS_MSG( true, "%s", currentNode->getUniqueName().c_str() );
+                // if current stream has globally last event, set on CP to true
+                if( currentStream->hasLastGlobalEvent() )
+                {
+                  //UTILS_WARNING("%llu has last global event", currentStream->getId() );
+                  streamState.onCriticalPath = true;
+                }
+                else
+                {
+                  //UTILS_WARNING( "[%"PRIu64"] Set CP=0", streamState.currentStream->getId() );
+                  streamState.onCriticalPath = false;
+                }
               }
             }
 
@@ -1237,18 +1260,6 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
                        tmpCounters[CRITICAL_PATH], processOnCriticalPath[event.location], 
                        tmpCounters[BLAME], event.type );*/
           }
-          
-#if defined(BLAME_COUNTER_FALSE)
-          /* no special handling for CP counter */
-          if( CRITICAL_PATH != metricType )
-          {
-            // for enter, get counter value of leave node
-            if( currentNode->isEnter() )
-            {
-              tmpCounters[metricType] = currentNode->getPartner()->getCounter( metricType, NULL );
-            }
-          }
-#endif //BLAME_COUNTER
         }
       }
       
@@ -1275,7 +1286,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
             */
             
             // calculate the partial blame for this edge
-            double blame = (double)( edge->getCPUBlame( ) ) * (double)timeDiff 
+            double blame = (double)( edge->getCPUBlame() ) * (double)timeDiff 
                    / (double)( edge->getDuration() );
             
             // increase the blame counter for this event
@@ -1301,31 +1312,38 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
     // compute counters for that event, if we still have internal nodes following
     if ( currentNodeIter != endNodeIter )
     {
+       GraphNode* currentNode = *currentNodeIter;
+     
       //// Compute critical path counter ////
       // Event is on critical path if next internal node is, too
       // BUT: if next event is a leave AND the corresponding enter node is not on the CP
       // the nested regions are not on the CP
-      if( ( *currentNodeIter )->isLeave() &&
-          ( *currentNodeIter )->getPartner()->getCounter( CRITICAL_PATH, NULL ) == 0 )
+      if( currentNode->isLeave() &&
+          currentNode->getGraphPair().first->getCounter( CRITICAL_PATH ) == 0 )
       {
         tmpCounters[CRITICAL_PATH] = 0;
       }
       else
       {
-        tmpCounters[CRITICAL_PATH] = ( *currentNodeIter )->getCounter( CRITICAL_PATH, NULL );
+        tmpCounters[CRITICAL_PATH] = currentNode->getCounter( CRITICAL_PATH );
       }
       
       // compute blame counter
       uint64_t blame = computeCPUEventBlame( event );
       
-      //\todo: validate the following if, which affects only the OTF2 output
+      //\todo: validate the following, which affects only the OTF2 output
       if( blame )
+      {
         tmpCounters[ BLAME ] = blame;
+      }
 
       // non-paradigm events cannot be wait states
       tmpCounters[ WAITING_TIME ] = 0;
     }
   }
+  
+  //UTILS_MSG( tmpCounters.size() == 0, "%"PRIu64":%s (onCP: %d)", 
+  //           event.location, eventName.c_str(), streamState.onCriticalPath );
   
   streamState.currentNodeIter = currentNodeIter;
 
