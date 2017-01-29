@@ -81,7 +81,6 @@ postFlush( void* userData, OTF2_FileType fileType,
  */
 OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t        mpiRank,
                                                   uint32_t        mpiSize,
-                                                  const char*     originalFilename,
                                                   bool            writeToFile,
                                                   AnalysisMetric* metrics )
   :
@@ -98,7 +97,6 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t        mpiRank,
 {
   outputFilename.assign( "" );
   pathToFile.assign( "" );
-  this->originalFilename.assign( originalFilename );
 
   flush_callbacks.otf2_post_flush = postFlush;
   flush_callbacks.otf2_pre_flush  = preFlush;
@@ -112,7 +110,7 @@ OTF2ParallelTraceWriter::~OTF2ParallelTraceWriter()
 }
 
 void
-OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles )
+OTF2ParallelTraceWriter::open()
 {
   outputFilename = Parser::getInstance().getOutArchiveName();
   pathToFile = Parser::getInstance().getPathToFile();
@@ -137,15 +135,18 @@ OTF2ParallelTraceWriter::open( const std::string otfFilename, uint32_t maxFiles 
   timerOffset     = 0;
   timerResolution = 0;
   counterForStringDefinitions = 0;
+  
+  const char* originalFilename = 
+    Parser::getInstance().getProgramOptions().filename.c_str();
 
-  otf2Reader = OTF2_Reader_Open( originalFilename.c_str() );
+  otf2Reader = OTF2_Reader_Open( originalFilename );
 
   OTF2_MPI_Reader_SetCollectiveCallbacks( otf2Reader, commGroup );
 
   if ( !otf2Reader )
   {
     throw RTException( "Failed to open OTF2 trace file %s",
-                       originalFilename.c_str() );
+                       originalFilename );
   }
 
   // copy global definitions
@@ -245,7 +246,7 @@ OTF2ParallelTraceWriter::getRealTime( uint64_t time )
  * Write them to new one, if new OTF2 file is written.
  */
 void
-OTF2ParallelTraceWriter::copyGlobalDefinitions( )
+OTF2ParallelTraceWriter::copyGlobalDefinitions()
 {
   if ( mpiRank == 0 && writeToFile )
   {
@@ -559,7 +560,7 @@ OTF2ParallelTraceWriter::registerEventCallbacks()
 
 uint64_t
 OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList& streams,
-                                         Graph* graph, const uint64_t eventsToRead)
+                                         Graph* graph, const uint64_t eventsToRead )
 {
   UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_SOME, 
              "[%"PRIu32"] Write streams ...", mpiRank );
@@ -572,14 +573,14 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
        itStream != streams.end(); ++itStream )
   {
     EventStream* stream = *itStream;
-    uint64_t streamId = stream->getId();
+    const uint64_t streamId = stream->getId();
     
     // when called the first time for this stream ID, the map entry is generated
     streamStatusMap[ streamId ].stream = stream;
     StreamStatus& streamState = streamStatusMap[ streamId ];
     
     EventStream::SortedGraphNodeList* processNodes = &( stream->getNodes() );
-    assert( processNodes );
+    UTILS_ASSERT( processNodes, "No nodes for stream %"PRIu64" found!", streamId );
 
     EventStream::SortedGraphNodeList::iterator currentNodeIter = 
       processNodes->begin();
@@ -627,7 +628,7 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
     // set the current node iterator for this stream
     streamState.currentNodeIter = currentNodeIter;
 
-    // store a pointer to the graph as class member
+    // store a pointer to the graph as class member (global for all local streams)
     this->graph = graph;
 
     /* reset last counter values before processing the current stream
@@ -661,6 +662,7 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
     //UTILS_WARNING( "%llu:%s on CP %d", streamId, stream->getName(), 
     //                 streamState.onCriticalPath );
     
+    // this affects the blame distribution compared to the non-interval run!!!
     if( streamState.openEdges.size() > 0 )
     {
       // clear list of open edges
@@ -689,14 +691,14 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
   
   if ( OTF2_SUCCESS != otf2_error )
   {
-    if( OTF2_ERROR_INTERRUPTED_BY_CALLBACK == otf2_error )
+    /*if( OTF2_ERROR_INTERRUPTED_BY_CALLBACK == otf2_error )
     {
       UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
                  "[0] Writer interrupted by callback: Read %lu events", 
                  events_read );
       return events_read;
     }
-    else
+    else*/
     {
       throw RTException( "Failed to read OTF2 events %llu", events_read );
     }
@@ -743,20 +745,22 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event,
   // add function to list if not present yet
   if ( activityGroupMap.find( event.regionRef ) == activityGroupMap.end() )
   {
-    activityGroupMap[event.regionRef].functionId   = event.regionRef;
-    activityGroupMap[event.regionRef].numInstances = 0;
-    activityGroupMap[event.regionRef].totalBlame   = 0;
-    activityGroupMap[event.regionRef].blameOnCP    = 0;
+    activityGroupMap[ event.regionRef ].functionId        = event.regionRef;
+    activityGroupMap[ event.regionRef ].numInstances      = 0;
+    activityGroupMap[ event.regionRef ].totalBlame        = 0;
+    activityGroupMap[ event.regionRef ].blameOnCP         = 0;
+    activityGroupMap[ event.regionRef ].totalDuration     = 0;
+    activityGroupMap[ event.regionRef ].totalDurationOnCP = 0;
     
     /*UTILS_MSG( strcmp( getRegionName(event.regionRef).c_str(), "clFinish" ) == 0, 
                "[%u] Add %s to activity group map", 
-               mpiRank, getRegionName(event.regionRef).c_str());*/
+               mpiRank, getRegionName(event.regionRef).c_str() );*/
   }
 
   // for each enter event, increase the number of instances found
   if ( event.type == RECORD_ENTER )
   {
-    activityGroupMap[event.regionRef].numInstances++;
+    activityGroupMap[ event.regionRef ].numInstances++;
   }
 
   UTILS_ASSERT( streamStatusMap.count( event.location ) > 0, 
@@ -765,7 +769,7 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event,
   bool onCP = false;
   
   // if there are counters (nodes) available, use this for the critical path
-  if( counters.size() > 0 )
+  if( counters.count( CRITICAL_PATH ) > 0 )
   {
     onCP = counters[ CRITICAL_PATH ];
   }
@@ -782,15 +786,16 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event,
       streamStatusMap[ event.location ].activityStack.top();
     
     // time between the last and the current event
-    uint64_t timeDiff = event.time - streamStatusMap[ event.location ].lastEventTime;
+    uint64_t timeDiff = 
+      event.time - streamStatusMap[ event.location ].lastEventTime;
 
-    activityGroupMap[currentActivity].totalDuration += timeDiff;
-    activityGroupMap[currentActivity].totalBlame    += counters[ BLAME ];
+    activityGroupMap[ currentActivity ].totalDuration += timeDiff;
+    activityGroupMap[ currentActivity ].totalBlame    += counters[ BLAME ];
     
     if( onCP )
     {
-      activityGroupMap[currentActivity].totalDurationOnCP += timeDiff;
-      activityGroupMap[currentActivity].blameOnCP         += counters[ BLAME ];
+      activityGroupMap[ currentActivity ].totalDurationOnCP += timeDiff;
+      activityGroupMap[ currentActivity ].blameOnCP         += counters[ BLAME ];
     }
     
     /*UTILS_MSG( strcmp( getRegionName(event.regionRef).c_str(), "clFinish" ) == 0,
@@ -798,7 +803,7 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event,
                "blame: %llu, total blame: %llu", 
                mpiRank, getRegionName(event.regionRef).c_str(), event.type, 
                getRegionName(currentActivity).c_str(),
-               activityStack[event.location].size( ),
+               activityStack[event.location].size(),
                getRealTime( event.time), onCP, 
                counters[ BLAME ], activityGroupMap[currentActivity].totalBlame );*/
   }
@@ -902,7 +907,7 @@ OTF2ParallelTraceWriter::writeEventsWithAttributes( OTF2Event event,
     {
       if( attributes == NULL ){
         attributes = OTF2_AttributeList_New();
-        UTILS_WARNING("no attributes");
+        UTILS_WARNING( "Create new attribute list, as event does not provide one!" );
       }
       
       OTF2_CHECK( OTF2_AttributeList_AddUint64( attributes, 
@@ -936,29 +941,20 @@ OTF2ParallelTraceWriter::writeEventsWithAttributes( OTF2Event event,
  * @param counters corresponding metric value map
  */
 void
-OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event, 
-                                                  CounterMap& counters,
-                                                  bool writeEvents )
+OTF2ParallelTraceWriter::writeCounterMetrics( OTF2Event event, 
+                                              CounterMap& counters )
 {
-  UTILS_ASSERT( evt_writerMap.find( event.location ) != evt_writerMap.end( ),
+  UTILS_ASSERT( evt_writerMap.find( event.location ) != evt_writerMap.end(),
                 "Could not find OTF2 event writer for location" );
   
-  OTF2_EvtWriter* evt_writer = evt_writerMap[event.location];
-  
-  /*if( event.type == RECORD_ENTER && 
-        strcmp( getRegionName(event.regionRef).c_str(), "BUFFER FLUSH" ) == 0 )
-  {
-    UTILS_MSG(true, "BUFFER FLUSH enter: '%s' stack %d (time: %llu), #counters: %llu", 
-              getRegionName(event.regionRef).c_str(), activityStack[event.location].size( ),
-              event.time, counters.size() );
-  }*/
-
-  // write enter event before counters
-  if( writeEvents && event.type == RECORD_ENTER )
-  {
-    OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writer, NULL, event.time, event.regionRef ) );
-  }
-  
+  OTF2_EvtWriter* evt_writer = evt_writerMap[ event.location ];
+  /*
+  UTILS_MSG( event.type == RECORD_ENTER && 
+             strcmp( getRegionName(event.regionRef).c_str(), "BUFFER FLUSH" ) == 0, 
+             "BUFFER FLUSH enter: '%s' stack %d (time: %llu), #counters: %llu", 
+             getRegionName(event.regionRef).c_str(), 
+             activityStack[event.location].size(), event.time, counters.size() );
+  */
   UTILS_ASSERT( streamStatusMap.count( event.location ) > 0, 
                 "Could not find stream status!" );
   
@@ -973,9 +969,9 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
         streamState.activityStack.size() == 1 && 
         streamState.lastMetricValues[ CRITICAL_PATH ] != 0 )
     {
-      OTF2_Type        type  = OTF2_TYPE_UINT64;
-      OTF2_MetricValue value;
+      OTF2_Type type = OTF2_TYPE_UINT64;
       
+      OTF2_MetricValue value;
       value.unsigned_int = 0;
       streamState.lastMetricValues[ CRITICAL_PATH ] = 0;
       
@@ -988,9 +984,9 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
     if( event.type == RECORD_ENTER && /*streamState.activityStack.size() == 0*/ 
         streamState.lastMetricValues[ CRITICAL_PATH ] == 0 )
     {
-      OTF2_Type        type  = OTF2_TYPE_UINT64;
-      OTF2_MetricValue value;
+      OTF2_Type type = OTF2_TYPE_UINT64;
       
+      OTF2_MetricValue value;
       value.unsigned_int = 1;
       streamState.lastMetricValues[ CRITICAL_PATH ] = 1;
       
@@ -1004,7 +1000,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
 
   // if counters are available
   for ( CounterMap::const_iterator iter = counters.begin();
-        iter != counters.end( ); ++iter )
+        iter != counters.end(); ++iter )
   {
     const MetricType metricType = iter->first;
     
@@ -1013,17 +1009,16 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
     OTF2_Type        type = OTF2_TYPE_UINT64;
     OTF2_MetricValue value;
     
-    // ignore attributes
+    // ignore attributes (waiting time)
     if( metricMode == ATTRIBUTE )
       continue;
     
     // critical path counter, absolute next mode
     if( CRITICAL_PATH == metricType )
-    {      
+    {
       // set counter to '0' for last leave event on the stack, if last counter 
       // value is not already '0' for this location (applies to CUDA kernels)
-      if( event.type == RECORD_LEAVE &&
-          streamState.activityStack.size() == 1 &&
+      if( event.type == RECORD_LEAVE && streamState.activityStack.size() == 1 &&
           streamState.lastMetricValues[ CRITICAL_PATH ] != 0 )
       {
         value.unsigned_int = 0;
@@ -1069,8 +1064,7 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
     }
 
     // reset counter if this leave is the last event on the activity stack
-    if ( event.type == RECORD_LEAVE && 
-         streamState.activityStack.size() == 1 &&
+    if ( event.type == RECORD_LEAVE && streamState.activityStack.size() == 1 &&
          value.unsigned_int != 0 )
     {
       value.unsigned_int = 0;
@@ -1078,12 +1072,6 @@ OTF2ParallelTraceWriter::writeEventsWithCounters( OTF2Event event,
                                          cTable->getMetricId( metricType ), 
                                          1, &type, &value ) );
     }
-  }
-  
-  // write leave event after counters
-  if( writeEvents && event.type == RECORD_LEAVE )
-  {
-    OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writer, NULL, event.time, event.regionRef ) );
   }
 }
 
@@ -1114,7 +1102,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
     eventName.c_str(), &eventDesc, currentStream->isDeviceStream(), false );  
 
   //UTILS_MSG( mpiRank == 0, "Event name: '%s' (%d), maps internal: %d", 
-  //           eventName.c_str( ), event.type, (int)mapsInternalNode );
+  //           eventName.c_str(), event.type, (int)mapsInternalNode );
 
   // non-internal counter values for this event
   CounterMap tmpCounters;
@@ -1162,12 +1150,6 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
 
         UTILS_ASSERT( event.type == RECORD_ATOMIC,
                       "Event %s has unexpected type", eventName.c_str() );
-        /*
-        UTILS_ASSERT( activityStack[event.location].size( ) > 0,
-                      "[%u] No current activity for OMP ForkJoin "
-                      "(%s, %u)",
-                      mpiRank, currentNode->getUniqueName( ).c_str( ), event.regionRef);
-        */
         
         if( streamStatusMap[event.location].activityStack.size() > 0 )
         {
@@ -1230,10 +1212,8 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
               if( currentNode->getGraphPair().first->getCounter(CRITICAL_PATH ) == 0 )
               {
                 // zero the counter, as the activity is not on the CP
+                // affects events that are no internal nodes
                 tmpCounters[ CRITICAL_PATH ] = 0;
-
-                // Does NOT work for visualization (OTF2)!
-                // visualization uses streamState.onCriticalPath
               }
 
               // if we are at an MPI_Finalize leave
@@ -1341,7 +1321,19 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       tmpCounters[ WAITING_TIME ] = 0;
     }
   }
-  
+  /*
+  if( tmpCounters.count( CRITICAL_PATH ) > 0 )
+  { 
+    if( tmpCounters[ CRITICAL_PATH ] > 0 )
+    {
+      streamState.onCriticalPath = true;
+    }
+    else
+    {
+      streamState.onCriticalPath = false;
+    }
+  }
+  */
   //UTILS_MSG( tmpCounters.size() == 0, "%"PRIu64":%s (onCP: %d)", 
   //           event.location, eventName.c_str(), streamState.onCriticalPath );
   
@@ -1350,7 +1342,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   // write event with counters
   if ( writeToFile )
   {
-    writeEventsWithCounters( event, tmpCounters, false );
+    writeCounterMetrics( event, tmpCounters );
     writeEventsWithAttributes( event, attributeList, tmpCounters );    
   }
 

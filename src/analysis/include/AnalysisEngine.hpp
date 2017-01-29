@@ -137,12 +137,10 @@ namespace casita
      reset( );
      
      void
-     writeOTF2Definitions( std::string filename,
-                           std::string origFilename,
-                           bool        writeToFile );
+     writeOTF2Definitions( const bool writeToFile );
 
      uint64_t
-     writeOTF2EventStreams( uint64_t eventsToRead  );
+     writeOTF2EventStreams( const uint64_t eventsToRead  );
 
      io::OTF2ParallelTraceWriter::ActivityGroupMap*
      getActivityGroupMap();

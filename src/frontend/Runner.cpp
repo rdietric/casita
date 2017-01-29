@@ -87,10 +87,7 @@ Runner::startAnalysisRun()
 
   UTILS_MSG( mpiRank == 0, "Reading %s", options.filename.c_str() );
 
-  if ( strstr( options.filename.c_str(), ".otf2" ) != NULL )
-  {
-    traceReader = new OTF2TraceReader( &callbacks, mpiRank, mpiSize );
-  }
+  traceReader = new OTF2TraceReader( &callbacks, mpiRank, mpiSize );
 
   if ( !traceReader )
   {
@@ -276,8 +273,10 @@ Runner::processTrace( OTF2TraceReader* traceReader )
 
     // perform analysis for these events
     
-    // get a sorted list of nodes
+    // create a sorted list of nodes
     EventStream::SortedGraphNodeList allNodes;
+    
+    // add sorted nodes from all streams to the list
     analysis.getAllNodes( allNodes );
     
     // apply analysis to all nodes of a certain paradigm
@@ -342,9 +341,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     if( !otf2_def_written )
     {
       // write the OTF2 output trace definitions and setup the OTF2 input reader
-      analysis.writeOTF2Definitions( options.outOtfFile,
-                                     options.filename,
-                                     options.createTraceFile );
+      analysis.writeOTF2Definitions( options.createTraceFile );
       
       UTILS_MSG( mpiRank == 0, "[0] Writing result to %s", 
                  Parser::getInstance().getPathToFile().c_str() );
@@ -574,7 +571,7 @@ Runner::mergeActivityGroups()
                            0, MPI_COMM_WORLD ) );
 
     OTF2ParallelTraceWriter::ActivityGroup* buf =
-      new OTF2ParallelTraceWriter::ActivityGroup[numEntries];
+      new OTF2ParallelTraceWriter::ActivityGroup[ numEntries ];
 
     for ( OTF2ParallelTraceWriter::ActivityGroupMap::iterator groupIter =
             activityGroupMap->begin();
@@ -609,7 +606,7 @@ Runner::mergeActivityGroups()
  * 
  */
 void
-Runner::computeCriticalPath( bool firstInterval, bool lastInterval )
+Runner::computeCriticalPath( const bool firstInterval, const bool lastInterval )
 {
   // if this is the last analysis interval, find the end of the critical path
   // and determine the total length of the critical path
@@ -628,11 +625,13 @@ Runner::computeCriticalPath( bool firstInterval, bool lastInterval )
     MPIAnalysis::CriticalSectionsList sectionsList;
     
     // last interval AND local streams contain the globally last event
+    // (criticalPathEnd.first is set in findCriticalPathEnd()
     if( lastInterval && criticalPathEnd.first != UINT64_MAX )
     {
       GraphNode *startNode = analysis.getLastGraphNode( PARADIGM_MPI );
       GraphNode *endNode = analysis.getLastGraphNode( PARADIGM_COMPUTE_LOCAL );
 
+      // if local paradigms node is after last MPI node
       if( startNode && endNode && startNode != endNode &&
           Node::compareLess( startNode, endNode ) )
       {

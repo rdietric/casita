@@ -208,78 +208,78 @@ namespace casita
    public:
 
      bool
-     isEnter( ) const
+     isEnter() const
      {
        return recordType == RECORD_ENTER;
      }
 
      bool
-     isLeave( ) const
+     isLeave() const
      {
        return recordType == RECORD_LEAVE;
      }
 
      bool
-     isAtomic( ) const
+     isAtomic() const
      {
        return recordType == RECORD_ATOMIC;
      }
 
      bool
-     isCPU( ) const
+     isCPU() const
      {
        return paradigm & PARADIGM_CPU;
      }
 
      bool
-     isCUDA( ) const
+     isCUDA() const
      {
        return paradigm & PARADIGM_CUDA;
      }
      
      bool
-     isOpenCL( ) const
+     isOpenCL() const
      {
        return paradigm & PARADIGM_OCL;
      }
 
      bool
-     isMPI( ) const
+     isMPI() const
      {
        return paradigm & PARADIGM_MPI;
      }
 
      bool
-     isOMP( ) const
+     isOMP() const
      {
        return paradigm & PARADIGM_OMP;
      }
      
      bool
-     isOpenCLQueueSync( ) const
+     isOpenCLQueueSync() const
      {
 
-       return isOpenCL( ) && ( nodeType & OCL_SYNC_QUEUE );
+       return isOpenCL() && ( nodeType & OCL_SYNC_QUEUE );
      }
      
      bool
-     isOpenCLEventSync( ) const
+     isOpenCLEventSync() const
      {
 
-       return isOpenCL( ) && ( nodeType & OCL_SYNC_EVENT );
+       return isOpenCL() && ( nodeType & OCL_SYNC_EVENT );
      }
 
      bool
-     isWaitstate( ) const
+     isWaitstate() const
      {
-       return ( isOMP( ) && ( nodeType & OMP_WAITSTATE ) ) ||
-              ( isCUDA( ) && ( nodeType & CUDA_WAITSTATE ) ) ||
-              ( isMPI( ) && ( nodeType & MPI_WAITSTATE ) ) || 
-              ( isOpenCL( ) && ( nodeType & OCL_WAITSTATE ) );
+       return ( isOMP() && ( nodeType & OMP_WAITSTATE ) ) ||
+              ( isCUDA() && ( nodeType & CUDA_WAITSTATE ) ) ||
+              ( isMPI() && ( nodeType & MPI_WAITSTATE ) ) || 
+              ( isOpenCL() && ( nodeType & OCL_WAITSTATE ) );
      }
 
      bool
-     isPureWaitstate( ) const
+     isPureWaitstate() const
      {
 
        return isWaitstate() && ( strcmp( name.c_str(), NAME_WAITSTATE ) == 0 );
@@ -291,72 +291,72 @@ namespace casita
       * @return true, if this is an atomic process start or intermediate node
       */
      bool
-     isProcess( ) const
+     isProcess() const
      {
-       return isAtomic( ) && ( nodeType & MISC_PROCESS );
+       return isAtomic() && ( nodeType & MISC_PROCESS );
      }
 
      bool
-     isCUDAKernel( ) const
+     isCUDAKernel() const
      {
 
-       return isCUDA( ) && ( nodeType & CUDA_KERNEL );
+       return isCUDA() && ( nodeType & CUDA_KERNEL );
      }
 
      bool
-     isCUDAKernelLaunch( ) const
+     isCUDAKernelLaunch() const
      {
 
-       return isCUDA( ) && ( nodeType & CUDA_KERNEL_LAUNCH );
+       return isCUDA() && ( nodeType & CUDA_KERNEL_LAUNCH );
      }
      
      bool
-     isCUDASync( ) const
+     isCUDASync() const
      {
 
-       return isCUDA( ) && ( nodeType & CUDA_SYNC );
+       return isCUDA() && ( nodeType & CUDA_SYNC );
      }
 
      bool
-     isCUDACollSync( ) const
+     isCUDACollSync() const
      {
 
-       return isCUDA( ) && ( nodeType & CUDA_COLLSYNC );
+       return isCUDA() && ( nodeType & CUDA_COLLSYNC );
      }
 
      bool
-     isCUDAEventSync( ) const
+     isCUDAEventSync() const
      {
 
-       return isCUDA( ) && ( nodeType & CUDA_EV_SYNC );
+       return isCUDA() && ( nodeType & CUDA_EV_SYNC );
      }
 
      bool
-     isCUDAEventLaunch( ) const
+     isCUDAEventLaunch() const
      {
 
-       return isCUDA( ) && ( nodeType & CUDA_EV_LAUNCH );
+       return isCUDA() && ( nodeType & CUDA_EV_LAUNCH );
      }
 
      bool
-     isCUDAQuery( ) const
+     isCUDAQuery() const
      {
 
-       return isCUDA( ) && ( nodeType & CUDA_QUERY );
+       return isCUDA() && ( nodeType & CUDA_QUERY );
      }
 
      bool
-     isCUDAEventQuery( ) const
+     isCUDAEventQuery() const
      {
 
-       return isCUDA( ) && ( nodeType & CUDA_EV_QUERY );
+       return isCUDA() && ( nodeType & CUDA_EV_QUERY );
      }
 
      bool
-     isCUDAStreamWaitEvent( ) const
+     isCUDAStreamWaitEvent() const
      {
 
-       return isCUDA( ) && ( nodeType & CUDA_STREAMWAIT );
+       return isCUDA() && ( nodeType & CUDA_STREAMWAIT );
      }
 
      static bool
@@ -371,164 +371,164 @@ namespace casita
      }
      
      bool
-     isOpenCLKernel( ) const
+     isOpenCLKernel() const
      {
 
-       return isOpenCL( ) && ( nodeType & OCL_KERNEL );
+       return isOpenCL() && ( nodeType & OCL_KERNEL );
      }
 
      bool
-     isOpenCLKernelEnqueue( ) const
+     isOpenCLKernelEnqueue() const
      {
 
-       return isOpenCL( ) && ( nodeType & OCL_ENQUEUE_KERNEL );
+       return isOpenCL() && ( nodeType & OCL_ENQUEUE_KERNEL );
      }
 
      bool
-     isMPIRecv( ) const
+     isMPIRecv() const
      {
 
-       return isMPI( ) && ( nodeType & MPI_RECV );
+       return isMPI() && ( nodeType & MPI_RECV );
      }
 
      bool
-     isMPISend( ) const
+     isMPISend() const
      {
 
-       return isMPI( ) && ( nodeType & MPI_SEND );
+       return isMPI() && ( nodeType & MPI_SEND );
      }
 
      bool
-     isMPI_Irecv( ) const
+     isMPI_Irecv() const
      {
 
-       return isMPI( ) && ( nodeType & MPI_IRECV );
+       return isMPI() && ( nodeType & MPI_IRECV );
      }
 
      bool
-     isMPI_Isend( ) const
+     isMPI_Isend() const
      {
 
-       return isMPI( ) && ( nodeType & MPI_ISEND );
-     }
-     
-     bool
-     isMPI_Test( ) const
-     {
-
-       return isMPI( ) && ( nodeType & MPI_TEST );
+       return isMPI() && ( nodeType & MPI_ISEND );
      }
      
      bool
-     isMPI_Testall( ) const
+     isMPI_Test() const
      {
 
-       return isMPI( ) && ( nodeType & MPI_TESTALL );
+       return isMPI() && ( nodeType & MPI_TEST );
+     }
+     
+     bool
+     isMPI_Testall() const
+     {
+
+       return isMPI() && ( nodeType & MPI_TESTALL );
      }
 
      bool
-     isMPIWait( ) const
+     isMPIWait() const
      {
 
-       return isMPI( ) && ( nodeType & MPI_WAIT );
+       return isMPI() && ( nodeType & MPI_WAIT );
      }
 
      bool
-     isMPIWaitall( ) const
+     isMPIWaitall() const
      {
 
-       return isMPI( ) && ( nodeType & MPI_WAITALL );
+       return isMPI() && ( nodeType & MPI_WAITALL );
      }
 
      bool
-     isMPIInit( ) const
+     isMPIInit() const
      {
-       return isMPI( ) && ( nodeType & MPI_INIT );
+       return isMPI() && ( nodeType & MPI_INIT );
      }
 
      bool
-     isMPICollective( ) const
+     isMPICollective() const
      {
 
-       return isMPI( ) && ( nodeType & MPI_COLL );
+       return isMPI() && ( nodeType & MPI_COLL );
      }
      
      /**
       * Are all ranks involved in the operation of the node. (Is global collective?)
       */
      bool
-     isMPIallRanks( ) const
+     isMPIallRanks() const
      {
-       return isMPI( ) && ( nodeType & MPI_ALLRANKS );
+       return isMPI() && ( nodeType & MPI_ALLRANKS );
      }
 
      bool
-     isMPIOneToAll( ) const
+     isMPIOneToAll() const
      {
 
-       return isMPI( ) && ( nodeType & MPI_ONETOALL );
+       return isMPI() && ( nodeType & MPI_ONETOALL );
      }
 
      bool
-     isMPIAllToOne( ) const
+     isMPIAllToOne() const
      {
 
-       return isMPI( ) && ( nodeType & MPI_ALLTOONE );
+       return isMPI() && ( nodeType & MPI_ALLTOONE );
      }
 
      bool
-     isMPISendRecv( ) const
+     isMPISendRecv() const
      {
-       return isMPI( ) && ( nodeType & MPI_SENDRECV );
+       return isMPI() && ( nodeType & MPI_SENDRECV );
      }
 
      bool
-     isMPIFinalize( ) const
+     isMPIFinalize() const
      {
-       return isMPI( ) && ( nodeType & MPI_FINALIZE );
-     }
-     
-     bool
-     isMPIBlocking( ) const
-     {
-
-       return isMPI( ) && ( nodeType & MPI_BLOCKING );
-     }
-
-     bool
-     isOMPSync( ) const
-     {
-       return isOMP( ) && ( nodeType & OMP_SYNC );
-     }
-
-     bool
-     isOMPForkJoinRegion( ) const
-     {
-       return isOMP( ) && ( nodeType & OMP_FORKJOIN );
-     }
-
-     bool
-     isOMPParallel( ) const
-     {
-       return isOMP( ) && ( nodeType & OMP_PARALLEL );
+       return isMPI() && ( nodeType & MPI_FINALIZE );
      }
      
      bool
-     isOMPImplicitTask( ) const
+     isMPIBlocking() const
      {
-       return isOMP( ) && ( nodeType & OMP_IMPLICIT_TASK );
+
+       return isMPI() && ( nodeType & MPI_BLOCKING );
      }
 
      bool
-     isOMPTarget( ) const
+     isOMPSync() const
      {
-       return isOMP( ) && ( nodeType & OMP_TARGET );
+       return isOMP() && ( nodeType & OMP_SYNC );
      }
 
      bool
-     isOMPTargetFlush( ) const
+     isOMPForkJoinRegion() const
      {
-       return isOMP( ) && ( nodeType & OMP_TARGET_FLUSH );
+       return isOMP() && ( nodeType & OMP_FORKJOIN );
+     }
+
+     bool
+     isOMPParallel() const
+     {
+       return isOMP() && ( nodeType & OMP_PARALLEL );
+     }
+     
+     bool
+     isOMPImplicitTask() const
+     {
+       return isOMP() && ( nodeType & OMP_IMPLICIT_TASK );
+     }
+
+     bool
+     isOMPTarget() const
+     {
+       return isOMP() && ( nodeType & OMP_TARGET );
+     }
+
+     bool
+     isOMPTargetFlush() const
+     {
+       return isOMP() && ( nodeType & OMP_TARGET_FLUSH );
      }
 
      static const std::string
@@ -587,7 +587,7 @@ namespace casita
            stream << "<unknown>";
        }
 
-       return stream.str( );
+       return stream.str();
      }
 
      /**
@@ -611,8 +611,8 @@ namespace casita
        }
        else // nodes have equal time stamps
        {
-         int type1 = n1->getType( );
-         int type2 = n2->getType( );
+         int type1 = n1->getType();
+         int type2 = n2->getType();
 
          RecordType recordType1 = n1->getRecordType();
          RecordType recordType2 = n2->getRecordType();
@@ -653,11 +653,11 @@ namespace casita
                      << n2->getUniqueName() << "."<< n2->getFunctionId() << std::endl;
            
            // nodes with the same function name or ID
-           if ( ( ( n1->getFunctionId( ) > 0 ) &&
-                  ( n2->getFunctionId( ) > 0 ) &&
-                  ( n1->getFunctionId( ) == n2->getFunctionId( ) ) ) ||
-                ( ( n1->getFunctionId( ) == n2->getFunctionId( ) ) && 
-                  strcmp( n1->getName( ), n2->getName( ) ) == 0 ) )
+           if ( ( ( n1->getFunctionId() > 0 ) &&
+                  ( n2->getFunctionId() > 0 ) &&
+                  ( n1->getFunctionId() == n2->getFunctionId() ) ) ||
+                ( ( n1->getFunctionId() == n2->getFunctionId() ) && 
+                  strcmp( n1->getName(), n2->getName() ) == 0 ) )
            {*/
              /* Caution: this branch used to do the opposite
               * we changed it to this case because we need to process
@@ -734,7 +734,7 @@ namespace casita
          }
 
          // finally decide on the stream ID
-         return n1->getStreamId( ) > n2->getStreamId( );
+         return n1->getStreamId() > n2->getStreamId();
        }
      }
 
@@ -763,13 +763,13 @@ namespace casita
      }
 
      virtual
-     ~Node( )
+     ~Node()
      {
-       counters.clear( );
+       counters.clear();
      }
 
      uint64_t
-     getId( ) const
+     getId() const
      {
        return id;
      }
@@ -780,7 +780,7 @@ namespace casita
       * @return time stamp of the node
       */
      uint64_t
-     getTime( ) const
+     getTime() const
      {
        return time;
      }
@@ -791,15 +791,15 @@ namespace casita
       * @return ID of the node's EventStream
       */
      uint64_t
-     getStreamId( ) const
+     getStreamId() const
      {
        return streamId;
      }
 
      const char*
-     getName( ) const
+     getName() const
      {
-       return name.c_str( );
+       return name.c_str();
      }
 
      virtual void
@@ -809,7 +809,7 @@ namespace casita
      }
 
      virtual const std::string
-     getUniqueName( ) const
+     getUniqueName() const
      {
        std::stringstream sstream;
        sstream << streamId << ":" << name << ".";
@@ -826,11 +826,11 @@ namespace casita
 
        sstream << id << ":" << time;
 
-       return sstream.str( );
+       return sstream.str();
      }
 
      uint64_t
-     getFunctionId( ) const
+     getFunctionId() const
      {
        return functionId;
      }
@@ -842,7 +842,7 @@ namespace casita
      }
 
      RecordType
-     getRecordType( ) const
+     getRecordType() const
      {
        return recordType;
      }
@@ -859,7 +859,7 @@ namespace casita
      }
 
      Paradigm
-     getParadigm( ) const
+     getParadigm() const
      {
        return paradigm;
      }
@@ -877,7 +877,7 @@ namespace casita
      }
 
      int
-     getType( ) const
+     getType() const
      {
        return nodeType;
      }
@@ -989,9 +989,9 @@ namespace casita
      }
 
      void
-     removeCounters( )
+     removeCounters()
      {
-       counters.clear( );
+       counters.clear();
      }
 
    protected:

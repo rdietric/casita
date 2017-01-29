@@ -54,7 +54,7 @@ namespace casita
      init_with_boost( int argc, char** argv ) throw ( std::runtime_error );
 
      bool
-     init_without_boost( int mpiRank, int argc, char** argv ) throw ( std::runtime_error );
+     init( int mpiRank, int argc, char** argv ) throw ( std::runtime_error );
      
      ProgramOptions&
      getProgramOptions();

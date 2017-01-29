@@ -48,14 +48,11 @@ main( int argc, char** argv )
   UTILS_MSG( mpiRank == 0, "Using %d OpenMP threads for processing of "
                             "critical path sections", omp_get_max_threads() );
                            
-  #if defined(BOOST_AVAILABLE)  
-  if ( !Parser::getInstance( ).init_with_boost( argc, argv ) )
-  #else
-  if ( !Parser::getInstance( ).init_without_boost( mpiRank, argc, argv ) )
-  #endif
+  if ( !Parser::getInstance().init( mpiRank, argc, argv ) )
   {
-    if (mpiRank == 0){
-        Parser::getInstance().printHelp();
+    if (mpiRank == 0)
+    {
+      Parser::getInstance().printHelp();
     }  
      
     MPI_CHECK( MPI_Finalize() );
@@ -66,12 +63,12 @@ main( int argc, char** argv )
   {
     clock_t timestamp = clock();
     
-    ProgramOptions& options = Parser::getInstance( ).getProgramOptions( );
+    ProgramOptions& options = Parser::getInstance().getProgramOptions();
 
     Runner* runner = new Runner( mpiRank, mpiSize );
     
     // start the analysis run (read OTF2, generate graph, run paradigm analysis and CPA)
-    runner->startAnalysisRun( );
+    runner->startAnalysisRun();
     
     // if selected as parameter, the summary statistics are merged and printed
     if ( options.mergeActivities )
@@ -80,13 +77,13 @@ main( int argc, char** argv )
       
       clock_t ts_merge = clock() - timestamp;
 
-      runner->mergeActivityGroups( );
+      runner->mergeActivityGroups();
       
       ts_merge = clock() - ts_merge;
     
       UTILS_MSG( mpiRank == 0, " (%f sec)", ( (float) ts_merge ) / CLOCKS_PER_SEC );
 
-      runner->printAllActivities( );
+      runner->printAllActivities();
 
       MPI_Barrier( MPI_COMM_WORLD );
     }
@@ -101,6 +98,6 @@ main( int argc, char** argv )
   {
     status = 1;
   }
-  MPI_CHECK( MPI_Finalize( ) );
+  MPI_CHECK( MPI_Finalize() );
   return status;
 }

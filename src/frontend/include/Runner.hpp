@@ -86,7 +86,7 @@ namespace casita
 
      /* critical path */
      void
-     computeCriticalPath( bool firstInterval, bool lastInterval );
+     computeCriticalPath( const bool firstInterval, const bool lastInterval );
      
      void
      getCriticalPathIntern( GraphNode*                        start,

@@ -626,37 +626,19 @@ streamSort( EventStream* p1, EventStream* p2 )
 /**
  * Write OTF2 output trace definitions. Should be called only once per rank.
  * 
- * @param filename
  * @param origFilename
  * @param writeToFile
  */
 void
-AnalysisEngine::writeOTF2Definitions( std::string filename,
-                                      std::string origFilename,
-                                      bool        writeToFile )
+AnalysisEngine::writeOTF2Definitions( const bool writeToFile )
 {
-  writer = NULL;
-  if ( strstr( origFilename.c_str(), ".otf2" ) != NULL )
-  {
-    writer = new OTF2ParallelTraceWriter(
-      mpiAnalysis.getMPIRank(),
-      mpiAnalysis.getMPISize(),
-      origFilename.c_str(),
-      writeToFile,
-      &( this->getCtrTable() ) );
+  writer = new OTF2ParallelTraceWriter(
+    mpiAnalysis.getMPIRank(),
+    mpiAnalysis.getMPISize(),
+    writeToFile,
+    &( this->getCtrTable() ) );
 
-    if ( !writeToFile )
-    {
-      filename = "none.otf2";
-    }
-  }
-
-  if ( !writer )
-  {
-    throw RTException( "Could not create trace writer" );
-  }
-
-  writer->open( filename.c_str(), 100 );
+  writer->open();
   
   if( writeToFile )
   {
@@ -674,7 +656,7 @@ AnalysisEngine::writeOTF2Definitions( std::string filename,
  * @return number of events read by event writer
  */
 uint64_t 
-AnalysisEngine::writeOTF2EventStreams( uint64_t eventsToRead )
+AnalysisEngine::writeOTF2EventStreams( const uint64_t eventsToRead )
 {
   assert( writer );
   

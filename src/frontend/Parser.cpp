@@ -23,26 +23,19 @@
 #include "utils/ErrorUtils.hpp"
 #include "Parser.hpp"
 
-#if defined(BOOST_AVAILABLE)
-#include <boost/program_options.hpp>
-#include <boost/program_options/options_description.hpp>
-#include <boost/program_options/cmdline.hpp>
-#include <boost/program_options/variables_map.hpp>
-#endif
-
 namespace casita
 {
-  Parser::Parser( ) { }
+  Parser::Parser() { }
 
   Parser::Parser( Parser& ) { }
 
   bool
   Parser::endsWith( std::string const& str, std::string const& ext )
   {
-    if( str.length( ) >= ext.length( ) )
+    if( str.length() >= ext.length() )
     {
       return( 0 ==
-             str.compare( str.length( ) - ext.length( ), ext.length( ), ext ));
+             str.compare( str.length() - ext.length(), ext.length(), ext ));
     }
     else
     {
@@ -66,20 +59,20 @@ namespace casita
   }
 
   Parser&
-  Parser::getInstance( )
+  Parser::getInstance()
   {
     static Parser instance;
     return instance;
   }
 
   int
-  Parser::getVerboseLevel( )
+  Parser::getVerboseLevel()
   {
-    return Parser::getInstance( ).options.verbose;
+    return Parser::getInstance().options.verbose;
   }
 
   void
-  Parser::printHelp( )
+  Parser::printHelp()
   {
     std::cout << "Usage: casita <otf2-file> [options]\n" << std::endl;
     std::cout << "  -h [--help]             print help message" << std::endl;
@@ -104,7 +97,6 @@ namespace casita
   bool
   Parser::processArgs( int argc, char** argv )
   {
-
     std::string opt;
     for( int i = 1; i < argc; i++ )
     {
@@ -126,7 +118,7 @@ namespace casita
 
       else if( opt.find( "--input=" ) != std::string::npos )
       {
-        options.filename = opt.erase( 0, std::string( "--input=" ).length( ) );
+        options.filename = opt.erase( 0, std::string( "--input=" ).length() );
       }
 
 
@@ -142,7 +134,7 @@ namespace casita
 
       else if( opt.find( "--output=" ) != std::string::npos )
       {
-        options.outOtfFile = opt.erase( 0, std::string( "--output=" ).length( ) );
+        options.outOtfFile = opt.erase( 0, std::string( "--output=" ).length() );
         options.createTraceFile = true;
       }
       
@@ -191,7 +183,7 @@ namespace casita
         }
         else
         {
-          UTILS_WARNING( "Unrecognized option %s for --verbose", opt.c_str( ) );
+          UTILS_WARNING( "Unrecognized option %s for --verbose", opt.c_str() );
         }
       }
 
@@ -206,7 +198,7 @@ namespace casita
       // print top X activities
       else if( opt.find( "--top=" ) != std::string::npos )
       {
-        options.topX = atoi( opt.erase( 0, std::string( "--top=" ).length( ) ).c_str( ) );
+        options.topX = atoi( opt.erase( 0, std::string( "--top=" ).length() ).c_str() );
       }
 
 
@@ -258,7 +250,7 @@ namespace casita
       else if( opt.find( "--interval-analysis=" ) != std::string::npos )
       {
         options.analysisInterval = 
-          atoi( opt.erase( 0, std::string( "--interval-analysis=" ).length( ) ).c_str( ) );
+          atoi( opt.erase( 0, std::string( "--interval-analysis=" ).length() ).c_str() );
       }
 
         // if nothing matches 
@@ -269,30 +261,36 @@ namespace casita
       }
     }
 
-    if( options.filename.length( ) == 0 )
+    if( options.filename.length() == 0 )
     {
-      std::cout << "No Inputfile specified" << std::endl;
+      std::cout << "No input file specified" << std::endl;
       return false;
+    }
+    
+    if ( options.filename.find( ".otf2" ) == std::string::npos )
+    {
+      throw RTException( "No OTF2 input file specified (%s)", 
+                         options.filename.c_str() );
     }
 
     return true;
   }
 
   bool
-  Parser::init_without_boost( int mpiRank, int argc, char** argv )
+  Parser::init( int mpiRank, int argc, char** argv )
   throw( std::runtime_error)
   {
 
     bool success = false;
 
-    setDefaultValues( );
+    setDefaultValues();
 
     success = processArgs( argc, argv );
 
     // if all arguments have been parsed and an OTF2 output shall be generated
     if( success && options.createTraceFile )
     {
-      setOutputDirAndFile( );
+      setOutputDirAndFile();
       
       std::string traceEvtDir = pathToFile;
       if( !pathToFile.empty() )
@@ -305,14 +303,14 @@ namespace casita
       std::string file = traceEvtDir + std::string( ".otf2" );
       
       // if output .otf2 file or trace directory exist
-      if( access( file.c_str( ), F_OK ) == 0 ||
-          access( traceEvtDir.c_str( ), F_OK ) == 0 )
+      if( access( file.c_str(), F_OK ) == 0 ||
+          access( traceEvtDir.c_str(), F_OK ) == 0 )
       {
         if( options.replaceCASITAoutput )
         {
           std::string rmCmd = std::string( "rm -rf " ) + traceEvtDir + std::string( "*" );
           
-          UTILS_MSG( mpiRank == 0, "Output file does already exist, %s", rmCmd.c_str( ) );
+          UTILS_MSG( mpiRank == 0, "Output file does already exist, %s", rmCmd.c_str() );
 
           system( rmCmd.c_str() );
         }
@@ -326,20 +324,20 @@ namespace casita
           traceEvtDir += std::string( "_" );
 
           // search for unique number to append 
-          while( access( (traceEvtDir + num.str( ) + std::string( ".otf2" )).c_str( ), F_OK ) == 0 ||
-                 access( (traceEvtDir + num.str( )).c_str( ), F_OK ) == 0 )
+          while( access( (traceEvtDir + num.str() + std::string( ".otf2" )).c_str(), F_OK ) == 0 ||
+                 access( (traceEvtDir + num.str()).c_str(), F_OK ) == 0 )
           {
             n++;
             num.str( "" );
-            num.clear( );
+            num.clear();
             num << n;
           }
 
-          outArchiveName = outArchiveName + std::string( "_" ) + num.str( );
+          outArchiveName = outArchiveName + std::string( "_" ) + num.str();
 
           UTILS_MSG( mpiRank == 0,
                      "Output file does already exist, changed to: %s",
-                     outArchiveName.c_str( ) );
+                     outArchiveName.c_str() );
         }
       }
       else //output trace directory or file do not exist
@@ -348,7 +346,7 @@ namespace casita
         std::string mkdirCmd = std::string( "mkdir -p " ) + pathToFile;
           
         UTILS_MSG( mpiRank == 0, "Output directory %s does not exist, %s ", 
-                   traceEvtDir.c_str(), mkdirCmd.c_str( ) );
+                   traceEvtDir.c_str(), mkdirCmd.c_str() );
           
         // create the output directory
         system( mkdirCmd.c_str() );
@@ -368,7 +366,7 @@ namespace casita
    * 
    */
   void
-  Parser::setOutputDirAndFile( )
+  Parser::setOutputDirAndFile()
   {
     std::string otfFilename = options.outOtfFile;
     
@@ -394,13 +392,13 @@ namespace casita
   }
 
   ProgramOptions&
-  Parser::getProgramOptions( )
+  Parser::getProgramOptions()
   {
     return options;
   }
 
   void
-  Parser::setDefaultValues( )
+  Parser::setDefaultValues()
   {
     options.createTraceFile = false;
     options.eventsProcessed = 0;

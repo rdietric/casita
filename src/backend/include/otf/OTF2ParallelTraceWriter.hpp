@@ -70,7 +70,6 @@ namespace casita
         uint64_t blameOnCP;
         double   fractionCP;
         double   fractionBlame;
-        uint64_t lastEnterTime;
       } ActivityGroup;
       
       // key: OTF2 region reference, value: activity group
@@ -110,14 +109,13 @@ namespace casita
 
       OTF2ParallelTraceWriter( uint32_t        mpiRank,
                                uint32_t        mpiSize,
-                               const char*     originalFilename,
                                bool            writeToFile,
                                AnalysisMetric* metrics );
       virtual
       ~OTF2ParallelTraceWriter();
 
       void
-      open( const std::string otfFilename, uint32_t maxFiles );
+      open();
 
       void
       close();
@@ -198,7 +196,7 @@ namespace casita
       //!< regionReference for internal Fork/Join
       uint32_t ompForkJoinRef;
 
-      std::string outputFilename, originalFilename, pathToFile;
+      std::string outputFilename, pathToFile;
 
       //!< maps each process to corresponding evtWriter
       std::map< uint64_t, OTF2_EvtWriter* > evt_writerMap;
@@ -233,8 +231,7 @@ namespace casita
                                  CounterMap& counters );
       
       void
-      writeEventsWithCounters( OTF2Event event, CounterMap& counters, 
-                               bool writeEvents );
+      writeCounterMetrics( OTF2Event event, CounterMap& counters );
 
       void
       processNextEvent( OTF2Event event, OTF2_AttributeList* attributes );
