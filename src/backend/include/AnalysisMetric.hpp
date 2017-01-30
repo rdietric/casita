@@ -38,7 +38,8 @@ namespace casita
     OMPT_REGION_ID = 4,        // internal
     OMP_PARENT_REGION_ID = 5,  // internal
     OMP_IGNORE_BARRIER = 6,    // internal
-    OMP_FIRST_OFFLOAD_EVT = 7  // internal
+    OMP_FIRST_OFFLOAD_EVT = 7, // internal
+    SLACK_TIME = 7             // internal
   };
   
   enum MetricMode

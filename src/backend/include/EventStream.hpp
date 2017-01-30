@@ -142,11 +142,11 @@ namespace casita
        {
          return false;
        }
-        if ( p2->isDeviceStream( ) && p1->isHostStream( ) )
+        if ( p2->isDeviceStream() && p1->isHostStream() )
        {
          return true;
        }
-        return p1->getId( ) <= p2->getId( );
+        return p1->getId() <= p2->getId();
      }
      
      /**
@@ -163,7 +163,7 @@ namespace casita
       * @return true, if the critical path starts on this stream
       */
      bool&
-     isFirstCritical( );
+     isFirstCritical();
      
      /**
       * Does this stream contains the global last event (of the trace)?
@@ -171,10 +171,10 @@ namespace casita
       * @return true, if the critical path ends on this stream
       */
      bool&
-     hasLastGlobalEvent( );
+     hasLastGlobalEvent();
 
      GraphNode*
-     getLastNode( ) const;
+     getLastNode() const;
 
      GraphNode*
      getLastNode( Paradigm paradigm ) const;
@@ -209,10 +209,13 @@ namespace casita
                       GraphNode::ParadigmNodeMap& nextNodes );
 
      EventStream::SortedGraphNodeList&
-     getNodes( );
+     getNodes();
      
      void
-     clearNodes( );
+     clearNodes();
+     
+     void 
+     setFilter( bool enable );
 
      void
      addPendingKernel( GraphNode* kernelLeave );
@@ -409,13 +412,13 @@ namespace casita
       * This might improve the performance of the MPI implementation. 
       */
      void
-     testAllPendingMPIRequests( );
+     testAllPendingMPIRequests();
 
      Edge::TimeProfileMap*
-     newTimeProfile( );
+     newTimeProfile();
 
      Edge::TimeProfileMap*
-     getTimeProfile( );
+     getTimeProfile();
 
      bool
      walkBackward( GraphNode* node, StreamWalkCallback callback, void* userData );
@@ -429,10 +432,13 @@ namespace casita
       * @return true, if nodes have been added, otherwise false
       */
      bool
-     hasNewNodes( );
+     hasNewNodes();
+     
+     uint64_t
+     getPredictionOffset();
      
      void
-     reset( );
+     reset();
 
    private:
      uint64_t            id;
@@ -452,10 +458,7 @@ namespace casita
      
      //! Does this stream contain the last global event of the trace?
      bool                hasLastEvent;
-
-     //!< list of unsynchronized kernels (leave nodes only)
-     SortedGraphNodeList pendingKernels;
-
+     
      //!< pointer to the last node (paradigm independent) of the analysis interval
      GraphNode*          lastNode;
      
@@ -464,7 +467,19 @@ namespace casita
      
      //<! first and last node of the analysis interval (for each paradigm)
      GraphData           graphData[NODE_PARADIGM_COUNT];
+     
+     //!< list of nodes in this stream
      SortedGraphNodeList nodes;
+     
+     bool                isFilterOn;
+     
+     //!< time offset due to removal of regions
+     uint64_t            predictionOffset;
+
+     //!< list of unsynchronized CUDA kernels (leave nodes only)
+     SortedGraphNodeList pendingKernels;
+
+     //!< MPI nodes that have not yet been linked
      SortedGraphNodeList unlinkedMPINodes;
 
      //!< pending blocking MPI communcation records

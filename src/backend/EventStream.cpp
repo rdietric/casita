@@ -39,6 +39,8 @@ EventStream::EventStream( uint64_t          id,
   hasLastEvent( false ),
   lastNode( NULL ),
   lastEventTime( 0 ),
+  isFilterOn( false ),
+  predictionOffset ( 0 ),
   pendingMPIRequestId( std::numeric_limits< uint64_t >::max() ),
   mpiIsendPartner( std::numeric_limits< uint64_t >::max() )
 {
@@ -134,7 +136,7 @@ EventStream::getDeviceId() const
  * @return a pair the first enter and last leave time stamp
  */
 std::pair< uint64_t, uint64_t >&
-EventStream::getPeriod( )
+EventStream::getPeriod()
 {
   return streamPeriod;
 }
@@ -452,6 +454,12 @@ EventStream::clearNodes( )
   }
   
   lastNode = NULL;
+}
+
+void 
+EventStream::setFilter( bool enable )
+{
+  isFilterOn = enable;
 }
 
 void

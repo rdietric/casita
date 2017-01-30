@@ -246,6 +246,9 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
     throw RTException( "Process %lu not found.", streamId );
   }
   
+  
+  
+  // save the time stamp of the first enter event
   if( stream->getPeriod().first > time )
   {
     stream->getPeriod().first = time;
@@ -259,6 +262,15 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
 
   //const char* funcName = analysis.getFunctionName(functionId);
   std::string funcStr = reader->getFunctionName( functionId );
+  
+  if( Parser::getInstance().getProgramOptions().predictionFilter.compare( funcStr ) == 0 )
+  {
+    UTILS_MSG(true, "Enable filter for %s", funcStr.c_str() );
+    
+    // set the filter to on (ignore nested regions)
+    stream->setFilter( true );
+  }
+  
   const char* funcName = funcStr.c_str();
 
   FunctionDescriptor functionDesc;
@@ -339,6 +351,16 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   }
 
   std::string funcStr = reader->getFunctionName( functionId );
+  
+  if( Parser::getInstance().getProgramOptions().predictionFilter.compare( funcStr ) == 0 )
+  {
+    UTILS_MSG(true, "Disable filter for %s", funcStr.c_str() );
+    Parser::getPredictionFilter();
+    
+    // set the filter to on (ignore nested regions)
+    stream->setFilter( false );
+  }
+  
   const char* funcName = funcStr.c_str(); //analysis.getFunctionName( functionId );
 
   FunctionDescriptor functionType;

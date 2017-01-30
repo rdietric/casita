@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014, 2016,
+ * Copyright (c) 2013 - 2014, 2016 - 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -30,7 +30,7 @@ namespace casita
   Parser::Parser( Parser& ) { }
 
   bool
-  Parser::endsWith( std::string const& str, std::string const& ext )
+  Parser::endsWith( string const& str, string const& ext )
   {
     if( str.length() >= ext.length() )
     {
@@ -46,12 +46,11 @@ namespace casita
   template < class T >
   bool
   from_string( T& t,
-               const std::string& s )
+               const string& s )
   {
-    std::istringstream iss( s );
+    istringstream iss( s );
     if( !(iss >> t) )
     {
-      //UTILS_WARNING( "Conversion of argument %s invalid!", s.c_str() );
       return false;
     }
 
@@ -70,10 +69,16 @@ namespace casita
   {
     return Parser::getInstance().options.verbose;
   }
+  
+  vector < string >&
+  Parser::getPredictionFilter()
+  {
+    return Parser::getInstance().predictionFilter;
+  }
 
   void
   Parser::printHelp()
-  {
+  {  
     std::cout << "Usage: casita <otf2-file> [options]\n" << std::endl;
     std::cout << "  -h [--help]             print help message" << std::endl;
     std::cout << "  -i [--input=]NAME       input OTF2 file" << std::endl;
@@ -82,6 +87,7 @@ namespace casita
     std::cout << "  -v [--verbose=]INTEGER  verbosity level" << std::endl;
     std::cout << "  -s [--summary]          create summary CSV file" << std::endl;
     std::cout << "      --top=INTEGER       print top optimization candidates" << std::endl;
+    std::cout << "      --predict=List      predict performance by removing region runtime from trace" << endl;
     std::cout << "  -p [--path]             print critical paths" << std::endl;
     std::cout << "     [--cpa-loop-check]   detect circular loops in process-local critical path (slower)" << std::endl;
     std::cout << "     [--no-errors]        ignore non-fatal errors" << std::endl;
@@ -90,65 +96,64 @@ namespace casita
     std::cout << "  -c [--interval-analysis=][uint32_t]   Run analysis in intervals (between global" << std::endl
       << "                          collectives) to reduce memory footprint. The optional value sets the " << std::endl
       << "                          number of pending graph nodes before an analysis run is started." << std::endl;
-
-
   }
 
   bool
   Parser::processArgs( int argc, char** argv )
   {
-    std::string opt;
+
+    string opt;
     for( int i = 1; i < argc; i++ )
     {
-      opt = std::string( argv[i] );
+      opt = string( argv[i] );
 
       //  input file:
       if( i == 1 && opt.find_first_of( "-" ) != 0 )
       {
-        options.filename = std::string( argv[1] );
+        options.filename = string( argv[1] );
       }
 
-      else if( opt.compare( std::string( "-i" ) ) == 0 )
+      else if( opt.compare( string( "-i" ) ) == 0 )
       {
         if( ++i < argc )
         {
-          options.filename = std::string( argv[i] );
+          options.filename = string( argv[i] );
         }
       }
 
-      else if( opt.find( "--input=" ) != std::string::npos )
+      else if( opt.find( "--input=" ) != string::npos )
       {
         options.filename = opt.erase( 0, std::string( "--input=" ).length() );
       }
 
 
         //  output file
-      else if( opt.compare( std::string( "-o" ) ) == 0 )
+      else if( opt.compare( string( "-o" ) ) == 0 )
       {
         if( ++i < argc )
         {
-          options.outOtfFile = std::string( argv[i] );
+          options.outOtfFile = string( argv[i] );
           options.createTraceFile = true;
         }
       }
 
-      else if( opt.find( "--output=" ) != std::string::npos )
+      else if( opt.find( "--output=" ) != string::npos )
       {
         options.outOtfFile = opt.erase( 0, std::string( "--output=" ).length() );
         options.createTraceFile = true;
       }
       
       // replace CASITA output trace and summary file
-      else if( opt.compare( std::string( "-r" ) ) == 0 ||
-               opt.find( "--replace" ) != std::string::npos )
+      else if( opt.compare( string( "-r" ) ) == 0 ||
+               opt.find( "--replace" ) != string::npos )
       {
         options.replaceCASITAoutput = true;
       }
 
 
         // help
-      else if( opt.compare( std::string( "-h" ) ) == 0 ||
-               opt.find( "--help" ) != std::string::npos )
+      else if( opt.compare( string( "-h" ) ) == 0 ||
+               opt.find( "--help" ) != string::npos )
       {
         return false;
       }
@@ -156,8 +161,8 @@ namespace casita
         //else if( checkOption( argc, argv, &i, "-v", "--verbose" ) )
 
         // verbose
-      else if( opt.compare( std::string( "-v" ) ) == 0 ||
-               opt.compare( std::string( "--verbose" ) ) == 0 )
+      else if( opt.compare( string( "-v" ) ) == 0 ||
+               opt.compare( string( "--verbose" ) ) == 0 )
       {
         if( ++i < argc )
         {
@@ -173,9 +178,9 @@ namespace casita
         }
       }
 
-      else if( opt.find( "--verbose=" ) != std::string::npos )
+      else if( opt.find( "--verbose=" ) != string::npos )
       {
-        //options.verbose = atoi(opt.erase(0, std::string("--verbose=").length()).c_str());
+        //options.verbose = atoi(opt.erase(0, string("--verbose=").length()).c_str());
         int verbose;
         if( from_string( verbose, opt.erase( 0, 10 ) ) )
         {
@@ -188,28 +193,33 @@ namespace casita
       }
 
       //  summary
-      else if( opt.compare( std::string( "-s" ) ) == 0 ||
-               opt.find( "--summary" ) != std::string::npos )
+      else if( opt.compare( string( "-s" ) ) == 0 ||
+               opt.find( "--summary" ) != string::npos )
       {
         options.createRatingCSV = true;
       }
 
 
       // print top X activities
-      else if( opt.find( "--top=" ) != std::string::npos )
+      else if( opt.find( "--top=" ) != string::npos )
       {
-        options.topX = atoi( opt.erase( 0, std::string( "--top=" ).length() ).c_str() );
+        options.topX = atoi( opt.erase( 0, string( "--top=" ).length() ).c_str() );
+      }
+      
+      // get prediction filter
+      else if( opt.find( "--predict=" ) != string::npos )
+      {
+        options.predictionFilter = opt.erase( 0, string( "--predict=" ).length() );
       }
 
-
-      // print path
-      else if( opt.compare( std::string( "-p" ) ) == 0 )
+      // path
+      else if( opt.compare( string( "-p" ) ) == 0 )
       {
         options.printCriticalPath = true;
         i++;
       }
 
-      else if( opt.find( "--path=" ) != std::string::npos )
+      else if( opt.find( "--path=" ) != string::npos )
       {
         options.printCriticalPath = true;
       }
@@ -221,25 +231,25 @@ namespace casita
       }
 
       // no error
-      else if( opt.find( "--no-errors=" ) != std::string::npos )
+      else if( opt.find( "--no-errors=" ) != string::npos )
       {
         options.noErrors = true;
       }
 
       // ignore non blocking
-      else if( opt.find( "--ignore-impi" ) != std::string::npos )
+      else if( opt.find( "--ignore-impi" ) != string::npos )
       {
         options.ignoreAsyncMpi = true;
       }
       
       // ignore non blocking
-      else if( opt.find( "--ignore-cuda" ) != std::string::npos )
+      else if( opt.find( "--ignore-cuda" ) != string::npos )
       {
         options.ignoreCUDA = true;
       }
 
       // interval analysis TODO: complete optional?
-      else if( opt.compare( std::string( "-c" ) ) == 0 )
+      else if( opt.compare( string( "-c" ) ) == 0 )
       {
         if( ++i < argc )
         {
@@ -247,7 +257,7 @@ namespace casita
         }
       }
 
-      else if( opt.find( "--interval-analysis=" ) != std::string::npos )
+      else if( opt.find( "--interval-analysis=" ) != string::npos )
       {
         options.analysisInterval = 
           atoi( opt.erase( 0, std::string( "--interval-analysis=" ).length() ).c_str() );
@@ -256,7 +266,7 @@ namespace casita
         // if nothing matches 
       else
       {
-        std::cout << "Unrecognized option " << opt << std::endl;
+        cout << "Unrecognized option " << opt << endl;
         return false;
       }
     }
@@ -280,15 +290,19 @@ namespace casita
   Parser::init( int mpiRank, int argc, char** argv )
   throw( std::runtime_error)
   {
-
     bool success = false;
 
     setDefaultValues();
 
     success = processArgs( argc, argv );
+    
+    if( success == false )
+    {
+      return false;
+    }
 
     // if all arguments have been parsed and an OTF2 output shall be generated
-    if( success && options.createTraceFile )
+    if(options.createTraceFile )
     {
       setOutputDirAndFile();
       
@@ -358,8 +372,33 @@ namespace casita
         pathToFile = std::string( "." );
       }
     }
+      
+    if( !options.predictionFilter.empty() )
+    {
+      UTILS_MSG_NOBR( true, "Evaluate runtime impact of " );
 
-    return success;
+      size_t start = 0, end = 0;
+
+      while ((end = options.predictionFilter.find(";", start)) != std::string::npos) 
+      {
+        if (end != start) 
+        {
+          string region = options.predictionFilter.substr(start, end - start);
+          predictionFilter.push_back( region );
+          UTILS_MSG( true, "%s ", region.c_str() );
+        }
+        start = end + 1;
+      }
+
+      if (end != start) 
+      {
+        string region = options.predictionFilter.substr(start);
+        predictionFilter.push_back(region);
+        UTILS_MSG( true, "%s ", region.c_str() );
+      }
+    }
+
+    return true;
   }
 
   /*
@@ -368,12 +407,12 @@ namespace casita
   void
   Parser::setOutputDirAndFile()
   {
-    std::string otfFilename = options.outOtfFile;
+    string otfFilename = options.outOtfFile;
     
-    std::size_t charPos = otfFilename.find_last_of("/");
+    size_t charPos = otfFilename.find_last_of("/");
     
     // if only a file name is given
-    if( charPos == std::string::npos )
+    if( charPos == string::npos )
     {
       outArchiveName = otfFilename;
     }
@@ -412,6 +451,7 @@ namespace casita
     options.cpaLoopCheck = false;
     options.verbose = 0;
     options.topX = 20;
+    options.predictionFilter = "";
     options.ignoreAsyncMpi = false;
     options.ignoreCUDA = false;
     options.createRatingCSV = true;
