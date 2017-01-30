@@ -39,7 +39,8 @@ EventStream::EventStream( uint64_t          id,
   hasLastEvent( false ),
   lastNode( NULL ),
   lastEventTime( 0 ),
-  isFilterOn( false ),
+  isFiltering( false ),
+  filterStartTime( 0 ),
   predictionOffset ( 0 ),
   pendingMPIRequestId( std::numeric_limits< uint64_t >::max() ),
   mpiIsendPartner( std::numeric_limits< uint64_t >::max() )
@@ -441,10 +442,10 @@ EventStream::getNodes( )
 }
 
 void
-EventStream::clearNodes( )
+EventStream::clearNodes()
 {
   // clear the nodes list (do not delete the nodes themselves)
-  nodes.clear( );
+  nodes.clear();
   
   // set the first and last Node to NULL
   for ( size_t i = 0; i < NODE_PARADIGM_COUNT; ++i )
@@ -457,9 +458,30 @@ EventStream::clearNodes( )
 }
 
 void 
-EventStream::setFilter( bool enable )
+EventStream::setFilter( bool enable, uint64_t time )
 {
-  isFilterOn = enable;
+  isFiltering = enable;
+  
+  if( enable )
+  {
+    filterStartTime = time;
+  }
+  else
+  {
+    predictionOffset += time - filterStartTime;
+  }
+}
+
+uint64_t&
+EventStream::getPredictionOffset()
+{
+  return predictionOffset;
+}
+
+bool 
+EventStream::isFilterOn()
+{
+  return isFiltering;
 }
 
 void

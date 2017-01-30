@@ -237,16 +237,14 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
                               uint64_t          streamId,
                               OTF2KeyValueList* list )
 {
-  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
-  AnalysisEngine&  analysis = handler->getAnalysis( );
+  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
+  AnalysisEngine&  analysis = handler->getAnalysis();
 
   EventStream* stream = analysis.getStream( streamId );
   if ( !stream )
   {
     throw RTException( "Process %lu not found.", streamId );
   }
-  
-  
   
   // save the time stamp of the first enter event
   if( stream->getPeriod().first > time )
@@ -255,27 +253,43 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   }
   
   // save the time stamp of the last enter event
-  if( stream->getPeriod( ).second < time )
+  if( stream->getPeriod().second < time )
   {
-    stream->getPeriod( ).second = time;
+    stream->getPeriod().second = time;
   }
-
-  //const char* funcName = analysis.getFunctionName(functionId);
-  std::string funcStr = reader->getFunctionName( functionId );
   
-  if( Parser::getInstance().getProgramOptions().predictionFilter.compare( funcStr ) == 0 )
+  const char* funcName = analysis.getFunctionName( functionId );
+  //std::string funcStr = reader->getFunctionName( functionId );
+  //const char* funcName = funcStr.c_str(); //analysis.getFunctionName( functionId );
+  
+  if( stream->isFilterOn() )
   {
-    UTILS_MSG(true, "Enable filter for %s", funcStr.c_str() );
+    //UTILS_MSG(true, "Filtering nested region %s", funcName );
     
-    // set the filter to on (ignore nested regions)
-    stream->setFilter( true );
+    return;
   }
   
-  const char* funcName = funcStr.c_str();
+  if( analysis.isFunctionFiltered( functionId ) )
+  {
+    if( stream->isFilterOn() )
+    {
+      UTILS_WARNING( "Region %s is nested into already filtered function.", 
+                     funcName );
+      
+      return;
+    }
+    else
+    {
+      UTILS_MSG(true, "Enable filter for %s (%u)", funcName, functionId );
+    
+      // set the filter to on (ignore nested regions)
+      stream->setFilter( true, time );
+    }
+  }
 
   FunctionDescriptor functionDesc;
   functionDesc.recordType = RECORD_ENTER; // needed to determine correct function type
-  AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionDesc );
+  AnalysisEngine::getFunctionType( funcName, stream, &functionDesc );
   
   /* check for function with the OpenMP paradigm (move check to handle process definitions)
   if ( functionDesc.paradigm == PARADIGM_OMP )
@@ -350,22 +364,26 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
     stream->getPeriod().second = time;
   }
 
-  std::string funcStr = reader->getFunctionName( functionId );
+  const char* funcName = analysis.getFunctionName( functionId );
+  //std::string funcStr = reader->getFunctionName( functionId );
+  //const char* funcName = funcStr.c_str();
   
-  if( Parser::getInstance().getProgramOptions().predictionFilter.compare( funcStr ) == 0 )
+  if( analysis.isFunctionFiltered( functionId ) )
   {
-    UTILS_MSG(true, "Disable filter for %s", funcStr.c_str() );
-    Parser::getPredictionFilter();
+    UTILS_MSG(true, "Disable filter for %s", funcName );
     
     // set the filter to on (ignore nested regions)
-    stream->setFilter( false );
+    stream->setFilter( false, time );
   }
   
-  const char* funcName = funcStr.c_str(); //analysis.getFunctionName( functionId );
-
+  if( stream->isFilterOn() )
+  {
+    return false;
+  }
+  
   FunctionDescriptor functionType;
   functionType.recordType = RECORD_LEAVE; // needed to determine correct function type
-  AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType );
+  AnalysisEngine::getFunctionType( funcName, stream, &functionType );
 
   if ( functionType.paradigm == PARADIGM_CPU )
   {

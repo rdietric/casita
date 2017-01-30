@@ -82,7 +82,8 @@ postFlush( void* userData, OTF2_FileType fileType,
 OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t        mpiRank,
                                                   uint32_t        mpiSize,
                                                   bool            writeToFile,
-                                                  AnalysisMetric* metrics )
+                                                  AnalysisMetric* metrics,
+                                                  std::set< uint32_t >& filteredFunctions )
   :
     writeToFile( writeToFile ),
     mpiRank( mpiRank ),
@@ -93,6 +94,7 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t        mpiRank,
     otf2GlobalDefWriter( NULL ),
     otf2Reader( NULL ),
     otf2GlobalEventReader( NULL ),
+    filteredFunctions( filteredFunctions ),
     graph( NULL )
 {
   outputFilename.assign( "" );
@@ -110,7 +112,7 @@ OTF2ParallelTraceWriter::~OTF2ParallelTraceWriter()
 }
 
 void
-OTF2ParallelTraceWriter::open()
+OTF2ParallelTraceWriter::open( )
 {
   outputFilename = Parser::getInstance().getOutArchiveName();
   pathToFile = Parser::getInstance().getPathToFile();
@@ -642,6 +644,8 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
     // set the initial critical path value if this is the first call of this function
     if( firstCall ) 
     {
+      streamState.isFilterOn = false;
+      
       // set the initial critical path value for this stream
       // (only in the first call of this function)
       if( stream->isFirstCritical() )
@@ -729,6 +733,12 @@ OTF2ParallelTraceWriter::getRegionName( const OTF2_RegionRef regionRef ) const
                 "Could not find string reference in map" );
 
   return idStrIter->second;
+}
+
+bool
+OTF2ParallelTraceWriter::isFunctionFiltered( uint32_t funcId )
+{
+  return ( filteredFunctions.count( funcId ) > 0 );
 }
 
 /**
@@ -1939,6 +1949,7 @@ OTF2ParallelTraceWriter::otf2CallbackComm_ThreadTeamEnd( OTF2_LocationRef locati
  * @param userData
  * @param attributes
  * @param region
+ * 
  * @return 
  */
 OTF2_CallbackCode
@@ -1949,6 +1960,17 @@ OTF2ParallelTraceWriter::otf2CallbackEnter( OTF2_LocationRef    location,
                                             OTF2_RegionRef      region )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
+  
+  if( tw->streamStatusMap[location].isFilterOn )
+  {
+    return OTF2_CALLBACK_SUCCESS;
+  }
+  
+  if( tw->isFunctionFiltered( region ) )
+  {
+    tw->streamStatusMap[location].isFilterOn = true;
+    return OTF2_CALLBACK_SUCCESS;
+  }
 
   // define event to write next node in list
   OTF2Event event;
@@ -1969,7 +1991,6 @@ OTF2ParallelTraceWriter::otf2CallbackEnter( OTF2_LocationRef    location,
   }*/
 
   return OTF2_CALLBACK_SUCCESS;
-
 }
 
 OTF2_CallbackCode
@@ -1980,6 +2001,17 @@ OTF2ParallelTraceWriter::otf2CallbackLeave( OTF2_LocationRef    location, // str
                                             OTF2_RegionRef      region )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
+  
+  if( tw->isFunctionFiltered( region ) )
+  {
+    tw->streamStatusMap[location].isFilterOn = false;
+    return OTF2_CALLBACK_SUCCESS;
+  }
+  
+  if( tw->streamStatusMap[location].isFilterOn )
+  {
+    return OTF2_CALLBACK_SUCCESS;
+  }
 
   // Define event to write next node in list
   OTF2Event event;

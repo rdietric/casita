@@ -482,6 +482,9 @@ OTF2TraceReader::readDefinitions()
   ompForkJoinRef = functionNameTokenMap.size( );
   functionNameTokenMap[ompForkJoinRef] = stringSize;
   
+  this->handleDefFunction( this, 0, ompForkJoinRef, OTF2_OMP_FORKJOIN_INTERNAL, 
+                           OTF2_PARADIGM_OPENMP );
+  
   /* check OTF2 location reference, MPI rank map
   IdTokenMap& processRankMap = this->getProcessRankMap( );
   IdTokenMap::iterator iter = processRankMap.begin();

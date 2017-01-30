@@ -375,7 +375,7 @@ namespace casita
       
     if( !options.predictionFilter.empty() )
     {
-      UTILS_MSG_NOBR( true, "Evaluate runtime impact of " );
+      UTILS_MSG_NOBR( mpiRank == 0, "Evaluate runtime impact of " );
 
       size_t start = 0, end = 0;
 
@@ -385,7 +385,7 @@ namespace casita
         {
           string region = options.predictionFilter.substr(start, end - start);
           predictionFilter.push_back( region );
-          UTILS_MSG( true, "%s ", region.c_str() );
+          UTILS_MSG( mpiRank == 0, "%s ", region.c_str() );
         }
         start = end + 1;
       }
@@ -394,7 +394,7 @@ namespace casita
       {
         string region = options.predictionFilter.substr(start);
         predictionFilter.push_back(region);
-        UTILS_MSG( true, "%s ", region.c_str() );
+        UTILS_MSG( mpiRank == 0, "%s ", region.c_str() );
       }
     }
 

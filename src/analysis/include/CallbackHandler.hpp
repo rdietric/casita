@@ -24,17 +24,10 @@ namespace casita
  {
    public:
 
-     typedef struct
-     {
-       uint64_t callTime;
-       uint64_t followingEventTime;
-       uint32_t regionRef;
-     } OTF2_Barrier_Event;
-
      CallbackHandler( AnalysisEngine& analysis );
 
      AnalysisEngine&
-     getAnalysis( );
+     getAnalysis();
 
      void
      printNode( GraphNode* node, EventStream* stream );
@@ -118,8 +111,6 @@ namespace casita
    private:
      AnalysisEngine& analysis;
      int mpiRank;
-
-     std::map< uint64_t, OTF2_Barrier_Event > lastBarrierEvent;
 
      /**
       * Get an uint32_t type attribute (or key-value) from the given key value list.

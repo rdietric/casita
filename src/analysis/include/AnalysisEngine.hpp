@@ -64,8 +64,7 @@ namespace casita
      addDetectedParadigm( Paradigm paradigm );
 
      static bool
-     getFunctionType( uint32_t            id,
-                      const char*         name,
+     getFunctionType( const char*         name,
                       EventStream*        stream,
                       FunctionDescriptor* descr );
 
@@ -80,6 +79,9 @@ namespace casita
 
      const char*
      getFunctionName( uint32_t id );
+     
+     bool
+     isFunctionFiltered( uint32_t funcId );
 
      GraphNode*
      newGraphNode( uint64_t time, uint64_t streamId,
@@ -193,6 +195,8 @@ namespace casita
      std::map< uint32_t, std::string > functionMap;
      uint32_t maxFunctionId;
      uint32_t waitStateFuncId;
+     
+     std::set< uint32_t > filteredFunctions;
      
      // maximum metric class and member IDs that has been read by the event reader
      uint32_t maxMetricClassId;

@@ -110,12 +110,13 @@ namespace casita
       OTF2ParallelTraceWriter( uint32_t        mpiRank,
                                uint32_t        mpiSize,
                                bool            writeToFile,
-                               AnalysisMetric* metrics );
+                               AnalysisMetric* metrics,
+                               std::set< uint32_t >& filteredFunctions );
       virtual
       ~OTF2ParallelTraceWriter();
 
       void
-      open();
+      open( );
 
       void
       close();
@@ -149,6 +150,9 @@ namespace casita
 
       std::string
       getRegionName( const OTF2_RegionRef regionRef ) const;
+      
+      bool
+      isFunctionFiltered( uint32_t funcId );
       
       ActivityGroupMap*
       getActivityGroupMap()
@@ -210,6 +214,8 @@ namespace casita
 
       //!< maps OTF2 IDs to strings (global definitions)
       std::map< uint32_t, const char* > idStringMap;
+      
+      std::set< uint32_t >& filteredFunctions;
 
       void
       copyGlobalDefinitions();
@@ -250,6 +256,8 @@ namespace casita
         EventStream::SortedGraphNodeList::iterator currentNodeIter;
         
         EventStream* stream;
+        
+        bool isFilterOn;
         
         //!< save last counter values to avoid writing of unused counter records
         CounterMap lastMetricValues;

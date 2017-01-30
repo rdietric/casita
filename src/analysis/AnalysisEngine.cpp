@@ -102,8 +102,7 @@ AnalysisEngine::haveParadigm( Paradigm paradigm )
 }
 
 bool
-AnalysisEngine::getFunctionType( uint32_t            id,
-                                 const char*         name,
+AnalysisEngine::getFunctionType( const char*         name,
                                  EventStream*        stream,
                                  FunctionDescriptor* descr )
 {
@@ -111,8 +110,8 @@ AnalysisEngine::getFunctionType( uint32_t            id,
   assert( descr );
   assert( stream );
 
-  return FunctionTable::getAPIFunctionType( name, descr, stream->isDeviceStream( ),
-                                            stream->isDeviceNullStream( ) );
+  return FunctionTable::getAPIFunctionType( name, descr, stream->isDeviceStream(),
+                                            stream->isDeviceNullStream() );
 }
 
 void
@@ -120,10 +119,16 @@ AnalysisEngine::addFunction( uint32_t funcId, const char* name )
 {
   maxFunctionId       = std::max( maxFunctionId, funcId );
   functionMap[funcId] = name;
+  
+  if( 0 == strcmp(Parser::getInstance().getProgramOptions().predictionFilter.c_str(), name ) )
+  {
+    UTILS_WARNING("Found definition of filtered function" );
+    filteredFunctions.insert( funcId );
+  }
 }
 
 uint32_t
-AnalysisEngine::getNewFunctionId( )
+AnalysisEngine::getNewFunctionId()
 {
   return ++maxFunctionId;
 }
@@ -148,6 +153,12 @@ AnalysisEngine::getFunctionName( uint32_t id )
   {
     return NULL;
   }
+}
+
+bool
+AnalysisEngine::isFunctionFiltered( uint32_t funcId )
+{
+  return ( filteredFunctions.count( funcId ) > 0 );
 }
 
 bool
@@ -636,9 +647,10 @@ AnalysisEngine::writeOTF2Definitions( const bool writeToFile )
     mpiAnalysis.getMPIRank(),
     mpiAnalysis.getMPISize(),
     writeToFile,
-    &( this->getCtrTable() ) );
+    &( this->getCtrTable() ),
+    this->filteredFunctions );
 
-  writer->open();
+  writer->open( );
   
   if( writeToFile )
   {

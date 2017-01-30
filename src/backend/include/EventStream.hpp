@@ -215,7 +215,13 @@ namespace casita
      clearNodes();
      
      void 
-     setFilter( bool enable );
+     setFilter( bool enable, uint64_t time );
+     
+     bool
+     isFilterOn();
+     
+     uint64_t&
+     getPredictionOffset();
 
      void
      addPendingKernel( GraphNode* kernelLeave );
@@ -434,9 +440,6 @@ namespace casita
      bool
      hasNewNodes();
      
-     uint64_t
-     getPredictionOffset();
-     
      void
      reset();
 
@@ -471,7 +474,10 @@ namespace casita
      //!< list of nodes in this stream
      SortedGraphNodeList nodes;
      
-     bool                isFilterOn;
+     bool                isFiltering;
+     
+     //!< time stamp when the filter has been enabled
+     uint64_t            filterStartTime;
      
      //!< time offset due to removal of regions
      uint64_t            predictionOffset;
