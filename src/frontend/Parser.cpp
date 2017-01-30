@@ -326,16 +326,25 @@ namespace casita
           
           UTILS_MSG( mpiRank == 0, "Output file does already exist, %s", rmCmd.c_str() );
 
-          system( rmCmd.c_str() );
-        }
-        else // if the output file already exists, append unique number
+        string traceEvtDir = pathToFile;
+        if( !pathToFile.empty() )
         {
-          int n = 2;
-          std::stringstream num;
-          num << n;
+          traceEvtDir += string( "/");
+        }
 
-          // append underscore for new output directory
-          traceEvtDir += std::string( "_" );
+        traceEvtDir += outArchiveName;
+
+        string file = traceEvtDir + string( ".otf2" );
+
+        // if output .otf2 file or trace directory exist
+        if( access( file.c_str( ), F_OK ) == 0 ||
+            access( traceEvtDir.c_str( ), F_OK ) == 0 )
+        {
+          if( options.replaceCASITAoutput )
+          {
+            string rmCmd = string( "rm -rf " ) + traceEvtDir + string( "*" );
+
+            UTILS_MSG( mpiRank == 0, "Output file does already exist, %s", rmCmd.c_str( ) );
 
           // search for unique number to append 
           while( access( (traceEvtDir + num.str() + std::string( ".otf2" )).c_str(), F_OK ) == 0 ||
@@ -345,7 +354,31 @@ namespace casita
             num.str( "" );
             num.clear();
             num << n;
+
+            // append underscore for new output directory
+            traceEvtDir += string( "_" );
+
+            // search for unique number to append 
+            while( access( (traceEvtDir + num.str( ) + string( ".otf2" )).c_str( ), F_OK ) == 0 ||
+                   access( (traceEvtDir + num.str( )).c_str( ), F_OK ) == 0 )
+            {
+              n++;
+              num.str( "" );
+              num.clear( );
+              num << n;
+            }
+
+            outArchiveName = outArchiveName + string( "_" ) + num.str( );
+
+            UTILS_MSG( mpiRank == 0,
+                       "Output file does already exist, changed to: %s",
+                       outArchiveName.c_str( ) );
           }
+        }
+        else //output trace directory or file do not exist
+        if( !pathToFile.empty() ) // and path is given
+        {
+          string mkdirCmd = string( "mkdir -p " ) + pathToFile;
 
           outArchiveName = outArchiveName + std::string( "_" ) + num.str();
 
@@ -366,10 +399,29 @@ namespace casita
         system( mkdirCmd.c_str() );
       }
       
-      // if the path is empty (only output file given) -> writing in PWD
-      if( pathToFile.empty() )
+      if( !options.predictionFilter.empty() )
       {
-        pathToFile = std::string( "." );
+        UTILS_MSG_NOBR( true, "Evaluate runtime impact of " );
+        
+        size_t start = 0, end = 0;
+        
+        while ((end = options.predictionFilter.find(";", start)) != std::string::npos) 
+        {
+          if (end != start) 
+          {
+            string region = options.predictionFilter.substr(start, end - start);
+            predictionFilter.push_back( region );
+            UTILS_MSG( true, "%s ", region.c_str() );
+          }
+          start = end + 1;
+        }
+        
+        if (end != start) 
+        {
+          string region = options.predictionFilter.substr(start);
+          predictionFilter.push_back(region);
+          UTILS_MSG( true, "%s ", region.c_str() );
+        }
       }
     }
       
