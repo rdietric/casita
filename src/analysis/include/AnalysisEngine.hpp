@@ -32,6 +32,10 @@ using namespace casita::io;
 
 namespace casita
 {
+  enum AnalysisFeature
+  {
+    CUDA_EVENTS = ( 1 << 0 )
+  };
 
  class IAnalysisParadigm;
 
@@ -58,10 +62,16 @@ namespace casita
      checkPendingMPIRequests();
      
      bool 
-     haveParadigm( Paradigm paradigm );
+     haveParadigm( Paradigm paradigm ) const;
      
      void
      addDetectedParadigm( Paradigm paradigm );
+     
+     void
+     addAnalysisFeature( AnalysisFeature feature );
+     
+     bool
+     haveAnalysisFeature( AnalysisFeature feature ) const;
 
      static bool
      getFunctionType( uint32_t            id,
@@ -125,7 +135,7 @@ namespace casita
      getNullStream( ) const;
 
      size_t
-     getNumAllDeviceStreams( );
+     getNumAllDeviceStreams();
 
      GraphNode*
      getLastLeaveNode( uint64_t timestamp, uint64_t streamId ) const;
@@ -134,7 +144,7 @@ namespace casita
      getLastLeaveEvent( EventStream **stream, uint64_t *timestamp );
 
      void
-     reset( );
+     reset();
      
      void
      writeOTF2Definitions( const bool writeToFile );
@@ -203,6 +213,9 @@ namespace casita
      
      // available analysis paradigms (identified during reading the trace)
      int availableParadigms;
+     
+     // available analysis features (set by parsing the OTF2 definitions)
+     int analysisFeature;
  };
 
 }

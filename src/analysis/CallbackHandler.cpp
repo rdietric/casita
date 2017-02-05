@@ -191,6 +191,12 @@ CallbackHandler::handleDefFunction( OTF2TraceReader* reader,
   
   analysis.addFunction( functionId, name );
   
+  // add 
+  if( strcmp( name, "cuEventRecord" ) == 0 )
+  {
+    analysis.addAnalysisFeature( CUDA_EVENTS );
+  }
+  
   //\todo: check for MPI paradigm
 }
 

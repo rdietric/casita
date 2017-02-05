@@ -42,13 +42,19 @@ AnalysisParadigmCUDA::AnalysisParadigmCUDA( AnalysisEngine* analysisEngine ) :
   //addRule( new BlameSyncRule( 1 ) );   // triggered on cudaSync
   //addRule( new LateSyncRule( 2 ) );    // triggered on cudaSync
   addRule( new SyncRule( 1 ) ); // triggered on cudaSync
-  addRule( new EventLaunchRule( 1 ) );
-  addRule( new EventSyncRule( 1 ) );
-  addRule( new EventQueryRule( 1 ) );
+  
+  // add rules that are related to CUDA events only if necessary
+  if( analysisEngine->haveAnalysisFeature( CUDA_EVENTS ) )
+  {
+    addRule( new EventLaunchRule( 1 ) );
+    addRule( new EventSyncRule( 1 ) );
+    addRule( new EventQueryRule( 1 ) );
+  }
+  
   addRule( new StreamWaitRule( 1 ) );
 }
 
-AnalysisParadigmCUDA::~AnalysisParadigmCUDA( )
+AnalysisParadigmCUDA::~AnalysisParadigmCUDA()
 {
   reset();
 }

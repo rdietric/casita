@@ -42,7 +42,8 @@ AnalysisEngine::AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize ) :
   maxMetricClassId( 0 ),
   maxMetricMemberId( 0 ),
   maxAttributeId( 0 ),
-  availableParadigms ( 0 )
+  availableParadigms ( 0 ),
+  analysisFeature( 0 )
 {
   // add analysis paradigms
   // \todo: Where deleted?
@@ -90,7 +91,7 @@ AnalysisEngine::addDetectedParadigm( Paradigm paradigm )
 }
 
 bool 
-AnalysisEngine::haveParadigm( Paradigm paradigm )
+AnalysisEngine::haveParadigm( Paradigm paradigm ) const
 {
   //\todo: check not implemented
   if( paradigm == PARADIGM_MPI )
@@ -99,6 +100,18 @@ AnalysisEngine::haveParadigm( Paradigm paradigm )
   }
   
   return availableParadigms & paradigm;
+}
+
+void
+AnalysisEngine::addAnalysisFeature( AnalysisFeature feature )
+{
+  analysisFeature |= feature;
+}
+
+bool 
+AnalysisEngine::haveAnalysisFeature( AnalysisFeature feature ) const
+{
+  return analysisFeature & feature;
 }
 
 bool
@@ -680,17 +693,17 @@ AnalysisEngine::writeOTF2EventStreams( const uint64_t eventsToRead )
  * Check for pending non-blocking MPI.
  */
 void
-AnalysisEngine::checkPendingMPIRequests( )
+AnalysisEngine::checkPendingMPIRequests()
 {
   const EventStreamGroup::EventStreamList& streams = getHostStreams();
   for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-              streams.begin( ); pIter != streams.end( ); ++pIter )
+              streams.begin(); pIter != streams.end( ); ++pIter )
   {
-    if( (*pIter)->havePendingMPIRequests( ) )
+    if( (*pIter)->havePendingMPIRequests() )
     {
       UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE, 
                  "[%"PRIu32"] There are pending MPI requests on stream %"PRIu64" (%s)!", 
-                 getMPIRank(), (*pIter)->getId( ), (*pIter)->getName( ) );
+                 getMPIRank(), (*pIter)->getId(), (*pIter)->getName() );
     }
   }
 }

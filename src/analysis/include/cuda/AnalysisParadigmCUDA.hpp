@@ -23,7 +23,7 @@ using namespace casita::io;
 namespace casita
 {
  namespace cuda
- {
+ { 
   class AnalysisParadigmCUDA :
     public IAnalysisParadigm
   {

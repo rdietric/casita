@@ -19,6 +19,7 @@ CUDA
 - fused BlameKernelRule, BlameSyncRule, and LateSyncRule
 - avoid CUDA analysis if input trace does not meet the requirements 
   (CUDA stream references)
+- add CUDA event rules only if cuEventRecord occurs in the trace
 
 OpenCL
 - avoid OpenCL analysis if input trace does not meet the requirements 
