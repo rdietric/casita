@@ -488,6 +488,4 @@ namespace casita
      GraphNode*    caller;
      void* data; /**< node specific data pointer */
  };
-
- typedef GraphNode* GraphNodePtr;
 }

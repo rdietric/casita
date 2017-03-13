@@ -33,6 +33,15 @@ namespace casita
 
     private:
 
+      /**
+       * 
+       * Note: Slack time can be ignored for buffered sends. We assume a 
+       * buffered send for now. 
+       * 
+       * @param analysis
+       * @param sendLeave
+       * @return 
+       */
       bool
       apply( AnalysisParadigmMPI* analysis, GraphNode* sendLeave )
       {

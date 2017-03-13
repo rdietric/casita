@@ -945,6 +945,11 @@ namespace casita
      setCounter( MetricType metric, uint64_t value )
      {
        counters[metric] = value;
+       
+       if( metric == SLACK_TIME )
+       {
+         time = time - value;
+       }
      }
 
      void

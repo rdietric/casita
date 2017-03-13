@@ -230,7 +230,7 @@ namespace casita
      void
      addCPUData( uint32_t nodes, uint64_t exclCPUEvtTime )
      {
-       UTILS_ASSERT( cpuNodes == 0, "Can not set CPU data multiple times" );
+       UTILS_ASSERT( cpuNodes == 0, "Cannot set CPU data multiple times" );
 
        if ( nodes > 0 )
        {
@@ -245,7 +245,7 @@ namespace casita
       * @return 
       */
      uint64_t
-     getCPUNodesExclTime( )
+     getCPUNodesExclTime()
      {
        return cpuEvtExclTime;
      }
@@ -257,7 +257,7 @@ namespace casita
      }
 
      double
-     getCPUBlame( )
+     getCPUBlame()
      {
        return cpuBlame;
      }
@@ -270,7 +270,8 @@ namespace casita
      
      GraphNode::GraphNodePair pair;
 
-     uint32_t cpuNodes;
+     //\TODO: Remove cpuNodes
+     uint32_t cpuNodes;      //<!  
      uint64_t cpuEvtExclTime; //<! time of regions from CPU events between the edge nodes
      
      double cpuBlame;
@@ -292,7 +293,7 @@ namespace casita
            tmpDuration = 1;
          }
 
-         return std::numeric_limits< uint64_t >::max( ) - tmpDuration;
+         return std::numeric_limits< uint64_t >::max() - tmpDuration;
        }
        else
        {

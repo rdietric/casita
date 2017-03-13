@@ -49,7 +49,7 @@ namespace casita
           commonAnalysis->getMPIAnalysis().getMPIRank( partnerProcessId );
         
         // replay receive and retrieve information from communication partner
-        uint64_t   buffer[CASITA_MPI_P2P_BUF_SIZE];
+        uint64_t buffer[CASITA_MPI_P2P_BUF_SIZE];
         MPI_CHECK( MPI_Recv( buffer, 
                              CASITA_MPI_P2P_BUF_SIZE, 
                              CASITA_MPI_P2P_ELEMENT_TYPE,
@@ -75,6 +75,26 @@ namespace casita
         
         uint64_t recvStartTime = recvEnter->getTime();
         uint64_t recvEndTime   = recvLeave->getTime();
+        
+        // a blocking MPI receive cannot end before the corresponding MPI send
+        if( sendEndTime > recvEndTime )
+        {
+          // compute new slack
+          
+          
+          recvEndTime = sendEndTime;
+          
+          if( recvStartTime > recvEndTime )
+          {
+            
+          }
+        }
+        
+        // idealized communication: MPI_Recv and MPI_Send end at the same time
+        if( sendEndTime > recvEndTime )
+        {
+          
+        }
         
         // send local information to communication partner to compute wait states
         // use another tag to not mix up with replayed communication

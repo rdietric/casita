@@ -371,8 +371,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   if( analysis.isFunctionFiltered( functionId ) )
   {
     UTILS_MSG(true, "Disable filter for %s", funcName );
-    
-    // set the filter to on (ignore nested regions)
+
     stream->setFilter( false, time );
   }
   

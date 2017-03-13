@@ -620,6 +620,7 @@ GraphEngine::runSanityCheck( uint32_t mpiRank )
  * 
  * @param time the time stamp of the event
  * @param stream the stream the event occurred
+ * @param isLeave
  */
 void
 GraphEngine::addCPUEvent( uint64_t time, uint64_t stream, bool isLeave )
@@ -656,6 +657,11 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   UTILS_ASSERT( node->getStreamId() == stream->getId(), 
                 "Cannot add graph node with stream ID %" PRIu64 " to stream "
                 "with ID %" PRIu64, node->getStreamId(), stream->getId() );
+  
+  // add slack time to node
+  node->setCounter( SLACK_TIME, stream->getPredictionOffset() );
+  node->set
+  
 
   if( !stream->getLastNode() || Node::compareLess(stream->getLastNode(), node) )
   {
@@ -785,7 +791,6 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
                       temp->getName().c_str() );
 
         temp->addCPUData( cpuData.numberOfEvents,
-                          //cpuData.startTime, cpuData.endTime,
                           cpuData.exclEvtRegTime );
 
         /* check if this already is the direct predecessor */
@@ -886,6 +891,7 @@ GraphEngine::addNewGraphNode( uint64_t       time,
 {
   GraphNode* node = newGraphNode( time, stream->getId(), name,
                                   paradigm, recordType, nodeType );
+  
   addNewGraphNodeInternal( node, stream );
 
   return node;
@@ -902,7 +908,9 @@ GraphEngine::addNewEventNode( uint64_t                      time,
   EventNode* node = newEventNode( time, stream->getId(), eventId,
                                   fResult, name, desc->paradigm, desc->recordType, 
                                   desc->functionType );
+  
   addNewGraphNodeInternal( node, stream );
+  
   return node;
 }
 

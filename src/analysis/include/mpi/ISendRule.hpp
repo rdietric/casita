@@ -23,6 +23,8 @@ namespace casita
   /** What this rule does:
    *  1) Forward replay: MPI_Isend
    *  2) Backward replay: MPI_Irecv
+   * 
+   * Note: Slack time can be ignored.
    */
   class ISendRule :
     public IMPIRule
