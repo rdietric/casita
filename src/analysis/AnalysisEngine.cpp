@@ -29,14 +29,11 @@
 #include "omp/AnalysisParadigmOMP.hpp"
 #include "cuda/AnalysisParadigmCUDA.hpp"
 
-#include "otf/OTF2ParallelTraceWriter.hpp"
-
 using namespace casita;
 using namespace casita::io;
 
 AnalysisEngine::AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize ) :
   mpiAnalysis( mpiRank, mpiSize ),
-  writer( NULL ),
   maxFunctionId( 0 ),
   waitStateFuncId( 0 ),
   maxMetricClassId( 0 ),
@@ -57,11 +54,6 @@ AnalysisEngine::~AnalysisEngine()
         iter != analysisParadigms.end(); ++iter )
   {
     delete iter->second;
-  }
-  if ( writer != NULL )
-  {
-    writer->close();
-    delete writer;
   }
 }
 
@@ -222,7 +214,7 @@ AnalysisEngine::handlePostLeave( GraphNode* node )
 }
 
 void
-AnalysisEngine::handleKeyValuesEnter( OTF2TraceReader*     reader,
+AnalysisEngine::handleKeyValuesEnter( OTF2TraceReader*  reader,
                                       GraphNode*        node,
                                       OTF2KeyValueList* list )
 {
@@ -234,7 +226,7 @@ AnalysisEngine::handleKeyValuesEnter( OTF2TraceReader*     reader,
 }
 
 void
-AnalysisEngine::handleKeyValuesLeave( OTF2TraceReader*     reader,
+AnalysisEngine::handleKeyValuesLeave( OTF2TraceReader*  reader,
                                       GraphNode*        node,
                                       GraphNode*        oldNode,
                                       OTF2KeyValueList* list )
@@ -579,20 +571,6 @@ AnalysisEngine::getNumAllDeviceStreams()
   return streamGroup.getNumStreams() - streamGroup.getNumHostStreams();
 }
 
-OTF2ParallelTraceWriter::ActivityGroupMap*
-AnalysisEngine::getActivityGroupMap()
-{
-  if ( !writer )
-  {
-    UTILS_MSG( true, "Writer is NULL!!!" );
-    return NULL;
-  }
-  else
-  {
-    return writer->getActivityGroupMap();
-  }
-}
-
 double
 AnalysisEngine::getRealTime( uint64_t t )
 {
@@ -635,59 +613,6 @@ streamSort( EventStream* p1, EventStream* p2 )
 
   return p1->getId() <= p2->getId();
 }*/
-
-/**
- * Write OTF2 output trace definitions. Should be called only once per rank.
- * 
- * @param origFilename
- * @param writeToFile
- */
-void
-AnalysisEngine::writeOTF2Definitions( const bool writeToFile )
-{
-  writer = new OTF2ParallelTraceWriter(
-    mpiAnalysis.getMPIRank(),
-    mpiAnalysis.getMPISize(),
-    writeToFile,
-    &( this->getCtrTable() ) );
-
-  writer->open();
-  
-  if( writeToFile )
-  {
-    writer->writeAnalysisMetricDefinitions();
-  }
-
-  MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
-  
-  writer->setupGlobalEvtReader();
-}
-
-/**
- * Write process events to OTF2 output.
- * 
- * @return number of events read by event writer
- */
-uint64_t 
-AnalysisEngine::writeOTF2EventStreams( const uint64_t eventsToRead )
-{
-  assert( writer );
-  
-  // reset "per interval" values in the trace writer
-  writer->reset();
-
-  // \todo: needed?
-  MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
-  
-  // write all process local streams
-  // \todo: make this a private class member!
-  const EventStreamGroup::EventStreamList allStreams = getStreams();
-  
-  uint64_t events_read = 
-    writer->writeLocations( allStreams, &( this->getGraph() ), eventsToRead );
-  
-  return events_read;
-}
 
 /**
  * Check for pending non-blocking MPI.

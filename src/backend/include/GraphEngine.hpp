@@ -52,12 +52,12 @@ namespace casita
      typedef std::stack< GraphNode* > GraphNodeStack;
      typedef std::map< uint64_t, GraphNodeStack > GraphNodeStackMap;
 
-     GraphEngine( );
+     GraphEngine();
      virtual
-     ~GraphEngine( );
+     ~GraphEngine();
 
      Graph&
-     getGraph( );
+     getGraph();
 
      Graph*
      getGraph( Paradigm paradigm );
@@ -154,7 +154,7 @@ namespace casita
      removeEdge( Edge* e );
 
      GraphNode*
-     getSourceNode( ) const;
+     getSourceNode() const;
 
      GraphNode*
      getFirstTimedGraphNode( Paradigm paradigm ) const;
@@ -169,10 +169,10 @@ namespace casita
      setTimerResolution( uint64_t ticksPerSecond );
 
      uint64_t
-     getTimerResolution( );
+     getTimerResolution();
 
      uint64_t
-     getDeltaTicks( );
+     getDeltaTicks();
 
      void
      runSanityCheck( uint32_t mpiRank );

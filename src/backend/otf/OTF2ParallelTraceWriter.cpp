@@ -106,7 +106,22 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t        mpiRank,
 
 OTF2ParallelTraceWriter::~OTF2ParallelTraceWriter()
 {
+  
+}
 
+void
+OTF2ParallelTraceWriter::setupWriter()
+{
+  open();
+  
+  if( writeToFile )
+  {
+    writeAnalysisMetricDefinitions();
+  }
+
+  MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
+  
+  setupGlobalEvtReader();
 }
 
 void
@@ -564,6 +579,12 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
 {
   UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_SOME, 
              "[%"PRIu32"] Write streams ...", mpiRank );
+  
+  // reset "per interval" values in the trace writer
+  reset();
+
+  // \todo: needed?
+  MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
   
   // check whether this is the first call of this function (set initial onCP value)
   static bool firstCall = true;

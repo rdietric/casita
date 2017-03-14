@@ -66,11 +66,13 @@ namespace casita
      mergeStatistics();
 
    private:
-     int      mpiRank;
-     int      mpiSize;
+     int mpiRank;
+     int mpiSize;
      AnalysisEngine analysis;
      ProgramOptions& options;
      CallbackHandler callbacks;
+     
+     io::OTF2ParallelTraceWriter* writer;
      
      //!< members to determine the critical path length
      uint64_t globalLengthCP;

@@ -37,7 +37,8 @@ Runner::Runner( int mpiRank, int mpiSize ) :
   mpiSize( mpiSize ),
   analysis( mpiRank, mpiSize ),
   options( Parser::getInstance().getProgramOptions() ),
-  callbacks( analysis ),
+  callbacks( analysis ), // construct the CallbackHandler
+  writer ( NULL ),
   globalLengthCP( 0 )
 {
   if ( options.noErrors )
@@ -66,6 +67,12 @@ Runner::Runner( int mpiRank, int mpiSize ) :
 
 Runner::~Runner()
 {
+  // close the OTF2 trace writer
+  if ( writer != NULL )
+  {
+    writer->close();
+    delete writer;
+  }
 }
 
 ProgramOptions&
@@ -343,8 +350,11 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     // write OTF2 definitions for this MPI rank (only once), not thread safe!
     if( !otf2_def_written )
     {
-      // write the OTF2 output trace definitions and setup the OTF2 input reader
-      analysis.writeOTF2Definitions( options.createTraceFile );
+      // write the OTF2 output trace definitions and setup the OTF2 trace writer
+      writer = new OTF2ParallelTraceWriter( mpiRank, mpiSize,
+                                            options.createTraceFile,
+                                            &( analysis.getCtrTable() ) );
+      writer->setupWriter();
       
       UTILS_MSG( mpiRank == 0, "[0] Writing result to %s", 
                  Parser::getInstance().getPathToFile().c_str() );
@@ -353,7 +363,9 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     }
 
     // writes the OTF2 event streams and computes blame for CPU functions
-    if( analysis.writeOTF2EventStreams( events_to_read ) != events_to_read )
+    const EventStreamGroup::EventStreamList allStreams = analysis.getStreams();
+    if( writer->writeLocations( allStreams, &( analysis.getGraph() ), events_to_read ) 
+        != events_to_read )
     {
       UTILS_MSG( true, "[%d] Reader and writer are not synchronous! Aborting ...", 
                        mpiRank );
@@ -437,7 +449,7 @@ void
 Runner::mergeActivityGroups()
 {
   OTF2ParallelTraceWriter::ActivityGroupMap* activityGroupMap =
-    analysis.getActivityGroupMap();
+    writer->getActivityGroupMap();
   
   assert( activityGroupMap );
 
@@ -1693,7 +1705,7 @@ void
 Runner::printAllActivities()
 {
   OTF2ParallelTraceWriter::ActivityGroupMap* activityGroupMap =
-    analysis.getActivityGroupMap();
+    writer->getActivityGroupMap();
 
   if ( mpiRank == 0 )
   {

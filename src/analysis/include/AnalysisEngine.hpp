@@ -28,7 +28,6 @@
 #include "Statistics.hpp"
 
 #include "otf/OTF2TraceReader.hpp"
-#include "otf/OTF2ParallelTraceWriter.hpp"
 
 using namespace casita::io;
 
@@ -147,15 +146,6 @@ namespace casita
 
      void
      reset();
-     
-     void
-     writeOTF2Definitions( const bool writeToFile );
-
-     uint64_t
-     writeOTF2EventStreams( const uint64_t eventsToRead  );
-
-     io::OTF2ParallelTraceWriter::ActivityGroupMap*
-     getActivityGroupMap();
 
      double
      getRealTime( uint64_t t );
@@ -200,12 +190,10 @@ namespace casita
 
      // map of analysis paradigms
      typedef std::map< Paradigm, IAnalysisParadigm* > AnalysisParadigmsMap;
-     AnalysisParadigmsMap      analysisParadigms;
+     AnalysisParadigmsMap analysisParadigms;
      
      //!< defer nodes that could not be processed
      EventStream::SortedGraphNodeList deferredNodes;
-
-     io::OTF2ParallelTraceWriter* writer;
      
      std::map< uint32_t, std::string > functionMap;
      uint32_t maxFunctionId;

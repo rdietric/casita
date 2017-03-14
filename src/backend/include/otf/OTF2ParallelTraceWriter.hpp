@@ -124,6 +124,9 @@ namespace casita
       void
       reset();
       
+      void
+      setupWriter();
+      
       /**
        * Write definitions for self-defined (analysis) metrics to output trace file.
        */
