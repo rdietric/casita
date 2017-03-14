@@ -219,8 +219,8 @@ namespace casita
               syncEdge->makeBlocking();
               
               // count statistics
-              commonAnalysis->getStatistics().addStatCUDA( 
-                CUDA_STAT_EARLY_BLOCKING_SYNC, 
+              commonAnalysis->getStatistics().addStatWithCountOffloading( 
+                OFLD_STAT_EARLY_BLOCKING_WAIT, 
                 syncLeave->getTime() - syncEnter->getTime() );
             }
 

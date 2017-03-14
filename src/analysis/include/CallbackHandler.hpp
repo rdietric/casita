@@ -62,6 +62,12 @@ namespace casita
                          uint32_t          key, 
                          const char*       name );
 
+     void
+     handleDeviceTaskEnter( uint64_t time, bool isCompute = false );
+     
+     void
+     handleDeviceTaskLeave( uint64_t time, bool isCompute = false );
+     
      static void
      handleEnter( io::OTF2TraceReader* reader, uint64_t time, uint32_t functionId,
                   uint64_t streamId, io::OTF2KeyValueList* list );
@@ -88,6 +94,21 @@ namespace casita
      handleRmaWinDestroy( io::OTF2TraceReader* reader,
                           uint64_t             time,
                           uint64_t             streamId );
+     
+     static void
+     handleRmaPut( io::OTF2TraceReader* reader,
+                   uint64_t             time,
+                   uint64_t             streamId );
+     
+     static void
+     handleRmaGet( io::OTF2TraceReader* reader,
+                   uint64_t             time,
+                   uint64_t             streamId );
+     
+     static void
+     handleRmaOpCompleteBlocking( io::OTF2TraceReader* reader,
+                                  uint64_t             time,
+                                  uint64_t             streamId );
 
      static void
      handleMPIComm( io::OTF2TraceReader* reader,
@@ -118,8 +139,14 @@ namespace casita
    private:
      AnalysisEngine& analysis;
      int mpiRank;
-
-     std::map< uint64_t, OTF2_Barrier_Event > lastBarrierEvent;
+     
+     //<! used to detect offloading idle
+     int deviceRef;
+     uint64_t lastIdleStart;
+     
+     //<! used to detect offloading idle
+     int deviceComputeRef;
+     uint64_t lastComputeIdleStart;
 
      /**
       * Get an uint32_t type attribute (or key-value) from the given key value list.

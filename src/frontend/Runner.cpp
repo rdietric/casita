@@ -108,6 +108,9 @@ Runner::startAnalysisRun()
   traceReader->handleMPIIrecvRequest   = CallbackHandler::handleMPIIrecvRequest;
   traceReader->handleMPIIsendComplete  = CallbackHandler::handleMPIIsendComplete;
   traceReader->handleRmaWinDestroy     = CallbackHandler::handleRmaWinDestroy;
+  traceReader->handleRmaPut            = CallbackHandler::handleRmaPut;
+  traceReader->handleRmaGet            = CallbackHandler::handleRmaGet;
+  traceReader->handleRmaOpCompleteBlocking = CallbackHandler::handleRmaOpCompleteBlocking;
 
   traceReader->open( options.filename, 10 );
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
@@ -603,17 +606,17 @@ Runner::mergeStatistics()
   Statistics& stats = analysis.getStatistics();
 
   //\todo: MPI_Gatherv might be better
-  uint64_t statsRecvBuf[ mpiSize * STATS_CUDA ];
-  MPI_CHECK( MPI_Gather( stats.getStatsCUDA(), STATS_CUDA, MPI_UINT64_T, 
-                         statsRecvBuf,  STATS_CUDA, MPI_UINT64_T, 
+  uint64_t statsRecvBuf[ mpiSize * STATS_OFFLOADING ];
+  MPI_CHECK( MPI_Gather( stats.getStatsOffloading(), STATS_OFFLOADING, MPI_UINT64_T, 
+                         statsRecvBuf,  STATS_OFFLOADING, MPI_UINT64_T, 
                          0, MPI_COMM_WORLD ) );
 
   if( 0 == mpiRank )
   {
     // add stats from all other MPI streams
-    for ( int rank = STATS_CUDA; rank < mpiSize * STATS_CUDA; rank += STATS_CUDA )
+    for ( int rank = STATS_OFFLOADING; rank < mpiSize * STATS_OFFLOADING; rank += STATS_OFFLOADING )
     {
-      stats.addAllStatsCUDA( &statsRecvBuf[ rank ] );
+      stats.addAllStatsOffloading( &statsRecvBuf[ rank ] );
     }
   }
     
@@ -1820,14 +1823,18 @@ Runner::printAllActivities()
             "  Early blocking wait for kernel: %"PRIu64" (%lf s)\n"
             "  Total attributed waiting time: %lf s\n"
             "  Early test for completion: %"PRIu64" (%lf s)\n"
-            "  Blocking communication: %"PRIu64" (%lf s)\n\n",
-            stats.getStatsCUDA()[CUDA_STAT_EARLY_BLOCKING_SYNC],
-            analysis.getRealTime( stats.getStatsCUDA()[CUDA_STAT_EARLY_BLOCKING_SYNC_TIME] ),
+            "  Blocking communication: %"PRIu64" (%lf s)\n"
+            "  Idle device: %lf s\n"
+            "  Compute idle device: %lf s\n\n",
+            stats.getStatsOffloading()[OFLD_STAT_EARLY_BLOCKING_WAIT],
+            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_EARLY_BLOCKING_WAIT_TIME] ),
             analysis.getRealTime( sumWaitingTime ),
-            stats.getStatsCUDA()[CUDA_STAT_EARLY_QUERY],
-            analysis.getRealTime( stats.getStatsCUDA()[CUDA_STAT_EARLY_QUERY_TIME] ),
-            stats.getStatsCUDA()[CUDA_STAT_BLOCKING_COMM],
-            analysis.getRealTime( stats.getStatsCUDA()[CUDA_STAT_BLOCKING_COMM_TIME] )
+            stats.getStatsOffloading()[OFLD_STAT_EARLY_TEST],
+            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_EARLY_TEST_TIME] ),
+            stats.getStatsOffloading()[OFLD_STAT_BLOCKING_COM],
+            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_BLOCKING_COM_TIME] ),
+            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_IDLE_TIME] ),
+            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_COMPUTE_IDLE_TIME] )
            );
     
     if (options.createRatingCSV)

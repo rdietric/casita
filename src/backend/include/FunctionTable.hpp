@@ -204,7 +204,7 @@ namespace casita
    "MPI_Alltoallv",
    "MPI_Reduce_scatter",
    "MPI_Reduce",  // allToOne
-   "MPI_Gather",  //allToOne
+   "MPI_Gather",  // allToOne
    "MPI_Scatter", // oneToAll
    "MPI_Bcast"    // oneToAll
  };

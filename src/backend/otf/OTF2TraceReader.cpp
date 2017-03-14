@@ -229,9 +229,17 @@ OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
   OTF2_GlobalEvtReaderCallbacks_SetThreadJoinCallback(
     event_callbacks, &OTF2_GlobalEvtReaderCallback_ThreadJoin );
   
-  // 
+  // registered because this might be the last event in a stream
   OTF2_GlobalEvtReaderCallbacks_SetRmaWinDestroyCallback(
     event_callbacks, &otf2CallbackComm_RmaWinDestroy );
+  
+  // register for GPU communication events
+  OTF2_GlobalEvtReaderCallbacks_SetRmaGetCallback(
+    event_callbacks, &otf2CallbackComm_RmaGet );
+  OTF2_GlobalEvtReaderCallbacks_SetRmaPutCallback(
+    event_callbacks, &otf2CallbackComm_RmaPut );
+  OTF2_GlobalEvtReaderCallbacks_SetRmaOpCompleteBlockingCallback(
+    event_callbacks, &otf2CallbackComm_RmaOpCompleteBlocking );
   
   if ( !ignoreAsyncMPI )
   {
@@ -786,7 +794,7 @@ OTF2TraceReader::otf2CallbackEnter( OTF2_LocationRef    location,
 
   if ( tr->handleEnter )
   {
-    OTF2KeyValueList& kvList = tr->getKVList( );
+    OTF2KeyValueList& kvList = tr->getKVList();
     kvList.setList( attributes );
 
     tr->handleEnter(tr, time - tr->getTimerOffset(), region, location, &kvList);
@@ -1048,6 +1056,66 @@ OTF2TraceReader::otf2CallbackComm_RmaWinDestroy(
   if ( tr->handleRmaWinDestroy )
   {
     tr->handleRmaWinDestroy( tr, time - tr->getTimerOffset() , location );
+  }
+  
+  return OTF2_CALLBACK_SUCCESS;
+}
+
+OTF2_CallbackCode
+OTF2TraceReader::otf2CallbackComm_RmaPut( OTF2_LocationRef location,
+                                                  OTF2_TimeStamp   time,
+                                                  void*            userData,
+                                                  OTF2_AttributeList* attributes,
+                                                  OTF2_RmaWinRef   win,
+                                                  uint32_t         remote,
+                                                  uint64_t         bytes,
+                                                  uint64_t         matchingId )
+{
+  OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+
+  if ( tr->handleRmaPut )
+  {
+    tr->handleRmaPut( tr, time - tr->getTimerOffset() , location );
+  }
+
+  return OTF2_CALLBACK_SUCCESS;
+}
+
+OTF2_CallbackCode
+OTF2TraceReader::otf2CallbackComm_RmaOpCompleteBlocking( 
+                                           OTF2_LocationRef    location,
+                                           OTF2_TimeStamp      time,
+                                           void*               userData,
+                                           OTF2_AttributeList* attributeList,
+                                           OTF2_RmaWinRef      win,
+                                           uint64_t            matchingId )
+{
+  OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+  
+  if ( tr->handleRmaOpCompleteBlocking )
+  {
+    tr->handleRmaOpCompleteBlocking( tr, time - tr->getTimerOffset() , location );
+  }
+
+  return OTF2_CALLBACK_SUCCESS;
+}
+
+OTF2_CallbackCode
+OTF2TraceReader::otf2CallbackComm_RmaGet( OTF2_LocationRef location,
+                                                  OTF2_TimeStamp   time,
+                                                  void*            userData,
+                                                  OTF2_AttributeList*
+                                                  attributeList,
+                                                  OTF2_RmaWinRef   win,
+                                                  uint32_t         remote,
+                                                  uint64_t         bytes,
+                                                  uint64_t         matchingId )
+{
+  OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+
+  if ( tr->handleRmaGet )
+  {
+    tr->handleRmaGet( tr, time - tr->getTimerOffset() , location );
   }
   
   return OTF2_CALLBACK_SUCCESS;

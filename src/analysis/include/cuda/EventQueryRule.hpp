@@ -137,8 +137,8 @@ namespace casita
               prevQuery.second->incCounter( WAITING_TIME, waitingTime );
               kernelLeave->incCounter( BLAME, waitingTime );
               
-              commonAnalysis->getStatistics().addStatCUDA( 
-                CUDA_STAT_EARLY_QUERY, waitingTime );
+              commonAnalysis->getStatistics().addStatWithCountOffloading( 
+                OFLD_STAT_EARLY_TEST, waitingTime );
 
               // add a blocking dependency, so it cannot be used for critical path analysis
               // \todo: needed anymore?

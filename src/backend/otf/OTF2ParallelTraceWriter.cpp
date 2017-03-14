@@ -1892,8 +1892,7 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaGet( OTF2_LocationRef location,
   if ( tw->writeToFile )
   {
     OTF2_CHECK( OTF2_EvtWriter_RmaGet( tw->evt_writerMap[location], attributeList,
-                                       time,
-                                       win, remote, bytes, matchingId ) );
+                                       time, win, remote, bytes, matchingId ) );
   }
 
   return OTF2_CALLBACK_SUCCESS;

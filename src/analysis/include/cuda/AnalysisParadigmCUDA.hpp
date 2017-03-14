@@ -40,13 +40,13 @@ namespace casita
       AnalysisParadigmCUDA( AnalysisEngine* analysisEngine );
 
       virtual
-      ~AnalysisParadigmCUDA( );
+      ~AnalysisParadigmCUDA();
       
       void 
       reset();
 
       Paradigm
-      getParadigm( );
+      getParadigm();
 
       void
       handlePostEnter( GraphNode* node );

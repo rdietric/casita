@@ -124,8 +124,8 @@ AnalysisEngine::getFunctionType( uint32_t            id,
   assert( descr );
   assert( stream );
 
-  return FunctionTable::getAPIFunctionType( name, descr, stream->isDeviceStream( ),
-                                            stream->isDeviceNullStream( ) );
+  return FunctionTable::getAPIFunctionType( name, descr, stream->isDeviceStream(),
+                                            stream->isDeviceNullStream() );
 }
 
 void
@@ -136,7 +136,7 @@ AnalysisEngine::addFunction( uint32_t funcId, const char* name )
 }
 
 uint32_t
-AnalysisEngine::getNewFunctionId( )
+AnalysisEngine::getNewFunctionId()
 {
   return ++maxFunctionId;
 }
@@ -322,8 +322,8 @@ AnalysisEngine::getLastLeaveNode( uint64_t timestamp, uint64_t streamId ) const
   //\todo: Why do we not use our find function and pass a node as input
   EventStream::SortedGraphNodeList& nodes = stream->getNodes();
   for ( EventStream::SortedGraphNodeList::const_reverse_iterator rIter =
-          nodes.rbegin( );
-        rIter != nodes.rend( ); ++rIter )
+          nodes.rbegin();
+        rIter != nodes.rend(); ++rIter )
   {
     GraphNode* node = *rIter;
     
@@ -526,7 +526,7 @@ AnalysisEngine::createIntermediateBegin()
     if( isMpiStream )
     //if ( p->isHostStream() )
     {
-      GraphNode* lastNode = p->getLastNode( );
+      GraphNode* lastNode = p->getLastNode();
 
       // set the stream's last node to type atomic (the collective end node)
       lastNode->setRecordType( RECORD_ATOMIC );
@@ -565,7 +565,7 @@ AnalysisEngine::createIntermediateBegin()
 void
 AnalysisEngine::reset()
 {
-  //GraphEngine::reset( );
+  //GraphEngine::reset();
   for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
         iter != analysisParadigms.end(); ++iter )
   {
@@ -574,13 +574,13 @@ AnalysisEngine::reset()
 }
 
 size_t
-AnalysisEngine::getNumAllDeviceStreams( )
+AnalysisEngine::getNumAllDeviceStreams()
 {
-  return streamGroup.getNumStreams( ) - streamGroup.getNumHostStreams( );
+  return streamGroup.getNumStreams() - streamGroup.getNumHostStreams();
 }
 
 OTF2ParallelTraceWriter::ActivityGroupMap*
-AnalysisEngine::getActivityGroupMap( )
+AnalysisEngine::getActivityGroupMap()
 {
   if ( !writer )
   {
@@ -589,14 +589,14 @@ AnalysisEngine::getActivityGroupMap( )
   }
   else
   {
-    return writer->getActivityGroupMap( );
+    return writer->getActivityGroupMap();
   }
 }
 
 double
 AnalysisEngine::getRealTime( uint64_t t )
 {
-  return (double)t / (double)getTimerResolution( );
+  return (double)t / (double)getTimerResolution();
 }
 
 /**
@@ -614,7 +614,7 @@ AnalysisEngine::getNodeInfo( Node* node )
   
   sstream << node->getUniqueName() << ":" << getRealTime( node->getTime() );
 
-  return sstream.str( );
+  return sstream.str();
 }
 
 /**
@@ -623,17 +623,17 @@ AnalysisEngine::getNodeInfo( Node* node )
 static bool
 streamSort( EventStream* p1, EventStream* p2 )
 {
-  if ( p1->isDeviceStream( ) && p2->isHostStream( ) )
+  if ( p1->isDeviceStream() && p2->isHostStream() )
   {
     return false;
   }
 
-  if ( p2->isDeviceStream( ) && p1->isHostStream( ) )
+  if ( p2->isDeviceStream() && p1->isHostStream() )
   {
     return true;
   }
 
-  return p1->getId( ) <= p2->getId( );
+  return p1->getId() <= p2->getId();
 }*/
 
 /**
@@ -697,7 +697,7 @@ AnalysisEngine::checkPendingMPIRequests()
 {
   const EventStreamGroup::EventStreamList& streams = getHostStreams();
   for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-              streams.begin(); pIter != streams.end( ); ++pIter )
+              streams.begin(); pIter != streams.end(); ++pIter )
   {
     if( (*pIter)->havePendingMPIRequests() )
     {

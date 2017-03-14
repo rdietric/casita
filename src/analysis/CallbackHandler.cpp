@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -22,13 +22,13 @@ using namespace casita::omp;
 
 CallbackHandler::CallbackHandler( AnalysisEngine& analysis ) :
   analysis( analysis ),
-  mpiRank( analysis.getMPIRank( ) )
+  mpiRank( analysis.getMPIRank() )
 {
-
+  deviceRef = -1;
 }
 
 AnalysisEngine&
-CallbackHandler::getAnalysis( )
+CallbackHandler::getAnalysis()
 {
   return analysis;
 }
@@ -38,9 +38,9 @@ CallbackHandler::printNode( GraphNode* node, EventStream* stream )
 {
   if ( ( Parser::getInstance().getVerboseLevel() >= VERBOSE_ALL ) ||
        ( ( Parser::getInstance().getVerboseLevel() > VERBOSE_BASIC ) &&
-         ( !node->isEventNode( ) ||
+         ( !node->isEventNode() ||
            ( ( (EventNode*)node )->
-             getFunctionResult( ) ==
+             getFunctionResult() ==
              EventNode::FR_SUCCESS ) ) ) )
   {
     fprintf( stderr, " [%u]", mpiRank );
@@ -70,17 +70,17 @@ CallbackHandler::printNode( GraphNode* node, EventStream* stream )
              stream->getName(), stream->getId(),
              Node::typeToStr( node->getParadigm(), node->getType() ).c_str() );
 
-    uint64_t refProcess = node->getReferencedStreamId( );
+    uint64_t refProcess = node->getReferencedStreamId();
     if ( refProcess )
     {
       fprintf( stderr, ", ref = %lu", refProcess );
     }
 
-    if ( node->isLeave( ) && node->isEventNode( ) )
+    if ( node->isLeave() && node->isEventNode() )
     {
       fprintf( stderr, ", event = %" PRIu64 ", result = %u",
-               ( (EventNode*)node )->getEventId( ),
-               ( (EventNode*)node )->getFunctionResult( ) );
+               ( (EventNode*)node )->getEventId(),
+               ( (EventNode*)node )->getFunctionResult() );
     }
 
     fprintf( stderr, "\n" );
@@ -104,7 +104,7 @@ CallbackHandler::readAttributeUint32( OTF2TraceReader*  reader,
   else
   {
     CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
-    AnalysisEngine&  analysis = handler->getAnalysis( );
+    AnalysisEngine&  analysis = handler->getAnalysis();
     UTILS_WARNING( "[%"PRIu32"] No value for key %s found", 
                    analysis.getMPIRank(), keyName );
   }
@@ -132,7 +132,7 @@ CallbackHandler::handleProcessMPIMapping( OTF2TraceReader* reader,
                                           uint64_t         streamId,
                                           uint32_t         mpiRank )
 {
-  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
   handler->getAnalysis().getMPIAnalysis().setMPIRank( streamId, mpiRank );
 }
 
@@ -237,14 +237,88 @@ CallbackHandler::handleDefAttribute( OTF2TraceReader* reader,
 }
 
 void
+CallbackHandler::handleDeviceTaskEnter( uint64_t time, bool isCompute )
+{
+  if( deviceRef < 0 )
+  {
+    deviceRef = 1;
+    
+    // set initial time
+    lastIdleStart = time;
+    
+    // also set last compute idle time
+    lastComputeIdleStart = time;
+    deviceComputeRef = 0;
+  }
+  else if( deviceRef == 0 )
+  {
+    // add device idle time to statistics
+    analysis.getStatistics().addStatTimeOffloading( OFLD_STAT_IDLE_TIME, 
+                                                    time - lastIdleStart );
+
+    deviceRef = 1;
+  }
+  else
+  {
+    deviceRef++;
+  }
+  
+  if( isCompute )
+  {
+    if( deviceComputeRef < 0 )
+    {
+      deviceComputeRef = 1;
+
+      // set initial time
+      lastComputeIdleStart = time;
+    }
+    else if( deviceComputeRef == 0 )
+    {
+      // add device idle time to statistics
+      analysis.getStatistics().addStatTimeOffloading( OFLD_STAT_COMPUTE_IDLE_TIME, 
+                                                      time - lastComputeIdleStart );
+
+      deviceComputeRef = 1;
+    }
+    else
+    {
+      deviceComputeRef++;
+    }
+  }
+}
+
+void
+CallbackHandler::handleDeviceTaskLeave( uint64_t time, bool isCompute )
+{
+  deviceRef--;
+
+  if( deviceRef == 0 )
+  {
+    //save time
+    lastIdleStart = time;
+  }
+  
+  if( isCompute )
+  {
+    deviceComputeRef--;
+
+    if( deviceComputeRef == 0 )
+    {
+      //save time
+      lastComputeIdleStart = time;
+    }
+  }
+}
+
+void
 CallbackHandler::handleEnter( OTF2TraceReader*  reader,
                               uint64_t          time,
                               uint32_t          functionId,
                               uint64_t          streamId,
                               OTF2KeyValueList* list )
 {
-  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
-  AnalysisEngine&  analysis = handler->getAnalysis( );
+  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
+  AnalysisEngine&  analysis = handler->getAnalysis();
 
   EventStream* stream = analysis.getStream( streamId );
   if ( !stream )
@@ -258,9 +332,14 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   }
   
   // save the time stamp of the last enter event
-  if( stream->getPeriod( ).second < time )
+  if( stream->getPeriod().second < time )
   {
-    stream->getPeriod( ).second = time;
+    stream->getPeriod().second = time;
+  }
+  
+  if( stream->isDeviceStream() )
+  {
+    handler->handleDeviceTaskEnter( time, true );
   }
 
   //const char* funcName = analysis.getFunctionName(functionId);
@@ -280,7 +359,7 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   // for CPU functions no graph node is created
   // only start time, end time and number of CPU events between nodes is stored
   if ( functionDesc.paradigm == PARADIGM_CPU )
-  {
+  {    
     //UTILS_MSG( true, "CPU event: %s", funcName );
     analysis.addCPUEvent( time, streamId, false );
     return;
@@ -302,6 +381,12 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
                                           stream,
                                           funcName,
                                           &functionDesc );
+  }
+  
+  // assign offloading idle until MPI_Finalize for now
+  if( enterNode->isMPIFinalize() )
+  {
+    handler->handleDeviceTaskEnter( time, true );
   }
 
   enterNode->setFunctionId( functionId );
@@ -342,6 +427,11 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   if( stream->getPeriod().second < time )
   {
     stream->getPeriod().second = time;
+  }
+  
+  if( stream->isDeviceStream() )
+  {
+    handler->handleDeviceTaskLeave( time, true );
   }
 
   std::string funcStr = reader->getFunctionName( functionId );
@@ -409,7 +499,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   if( ( functionType.functionType & CUDA_BLOCKING_COMM ) && 
       functionType.paradigm == PARADIGM_CUDA )
   {
-    analysis.getStatistics().addStatCUDA( CUDA_STAT_BLOCKING_COMM, 
+    analysis.getStatistics().addStatWithCountOffloading( OFLD_STAT_BLOCKING_COM, 
       leaveNode->getTime() - enterNode->getTime() );
   }
 
@@ -424,7 +514,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   if ( analysis.getMPISize() > 1 && 
        Parser::getInstance().getProgramOptions().analysisInterval &&
       // if we have read a global blocking collective, we can start the analysis
-       ( leaveNode->isMPICollective( ) /*|| leaveNode->isMPIAllToOne() || leaveNode->isMPIOneToAll()*/ ) &&
+       ( leaveNode->isMPICollective() /*|| leaveNode->isMPIAllToOne() || leaveNode->isMPIOneToAll()*/ ) &&
        !( leaveNode->isMPIInit() ) && !( leaveNode->isMPIFinalize() ) )
   {
     const uint32_t mpiGroupId = leaveNode->getReferencedStreamId();
@@ -466,8 +556,8 @@ CallbackHandler::handleRmaWinDestroy( OTF2TraceReader* reader,
                                       uint64_t         time,
                                       uint64_t         streamId )
 {
-  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
-  EventStream*     stream  = handler->getAnalysis( ).getStream( streamId );
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
+  EventStream*     stream  = handler->getAnalysis().getStream( streamId );
   
   if ( !stream )
   {
@@ -478,6 +568,53 @@ CallbackHandler::handleRmaWinDestroy( OTF2TraceReader* reader,
   if( stream->getLastEventTime() < time )
   {
     stream->setLastEventTime( time );
+  }
+}
+
+void
+CallbackHandler::handleRmaPut( OTF2TraceReader* reader,
+                               uint64_t         time,
+                               uint64_t         streamId )
+{
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
+  AnalysisEngine& analysis = handler->getAnalysis();
+  EventStream*     stream  = analysis.getStream( streamId );
+  
+  // communication task on device streams starts
+  if( stream->isDeviceStream() )
+  {
+    handler->handleDeviceTaskEnter( time );
+  }
+}
+
+void
+CallbackHandler::handleRmaGet( OTF2TraceReader* reader,
+                               uint64_t         time,
+                               uint64_t         streamId )
+{
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
+  AnalysisEngine& analysis = handler->getAnalysis();
+  EventStream*     stream  = analysis.getStream( streamId );
+  
+  // communication task on device streams starts
+  if( stream->isDeviceStream() )
+  {
+    handler->handleDeviceTaskEnter( time );
+  }
+}
+
+void
+CallbackHandler::handleRmaOpCompleteBlocking( OTF2TraceReader* reader,
+                                              uint64_t         time,
+                                              uint64_t         streamId )
+{
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
+  EventStream*     stream  = handler->getAnalysis().getStream( streamId );
+  
+  // communication task on device streams ends
+  if( stream->isDeviceStream() )
+  {
+    handler->handleDeviceTaskLeave( time );
   }
 }
 
@@ -499,8 +636,8 @@ CallbackHandler::handleMPIComm( OTF2TraceReader* reader,
                                 uint32_t         root,
                                 uint32_t         tag )
 {
-  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData( ) );
-  AnalysisEngine&  analysis = handler->getAnalysis( );
+  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
+  AnalysisEngine&  analysis = handler->getAnalysis();
   EventStream*     stream   = analysis.getStream( streamId );
 
   EventStream::MPIType pMPIType;
@@ -525,7 +662,7 @@ CallbackHandler::handleMPIComm( OTF2TraceReader* reader,
 
   UTILS_MSG( Parser::getInstance().getVerboseLevel() > VERBOSE_ALL,
              " [%u] mpi record, [%lu > %lu], type %u, tag %u",
-             analysis.getMPIRank( ),
+             analysis.getMPIRank(),
              streamId, partnerId,
              pMPIType, tag );
 
@@ -536,9 +673,9 @@ void
 CallbackHandler::handleMPICommGroup( OTF2TraceReader* reader, uint32_t group,
                                      uint32_t numProcs, const uint64_t* procs )
 {
-  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
 
-  handler->getAnalysis( ).getMPIAnalysis( ).setMPICommGroupMap( group,
+  handler->getAnalysis().getMPIAnalysis().setMPICommGroupMap( group,
                                                                 numProcs,
                                                                 procs );
 }
@@ -557,8 +694,8 @@ CallbackHandler::handleMPIIsend( OTF2TraceReader* reader,
                                  uint64_t      receiver,
                                  uint64_t      requestId )
 {
-  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
-  AnalysisEngine&  analysis = handler->getAnalysis( );
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
+  AnalysisEngine&  analysis = handler->getAnalysis();
   EventStream*     stream   = analysis.getStream( streamId );
   
   stream->handleMPIIsendEventData( requestId, receiver );
@@ -583,8 +720,8 @@ CallbackHandler::handleMPIIrecv( OTF2TraceReader* reader,
                                  uint64_t      sender,
                                  uint64_t      requestId )
 {
-  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
-  AnalysisEngine&  analysis = handler->getAnalysis( );
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
+  AnalysisEngine&  analysis = handler->getAnalysis();
   EventStream*     stream   = analysis.getStream( streamId );
   
   stream->handleMPIIrecvEventData( requestId, sender );
@@ -605,8 +742,8 @@ CallbackHandler::handleMPIIrecvRequest( OTF2TraceReader* reader,
                                         uint64_t streamId, 
                                         uint64_t requestId )
 {
-  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
-  EventStream*     stream  = handler->getAnalysis( ).getStream(streamId);
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
+  EventStream*     stream  = handler->getAnalysis().getStream(streamId);
   
   stream->saveMPIIrecvRequest( requestId );
 }
@@ -616,8 +753,8 @@ CallbackHandler::handleMPIIsendComplete( OTF2TraceReader* reader,
                                          uint64_t streamId, 
                                          uint64_t requestId )
 {
-  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData( ) );
-  AnalysisEngine&  analysis = handler->getAnalysis( );
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
+  AnalysisEngine&  analysis = handler->getAnalysis();
   EventStream*     stream   = analysis.getStream( streamId );
   
   stream->saveMPIIsendRequest( requestId );

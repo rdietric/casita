@@ -16,15 +16,17 @@
 #include <inttypes.h>
 
 // CUDA stats have always a count and in the following field the time
-#define STATS_CUDA 6
-enum StatsCUDA
+#define STATS_OFFLOADING 8
+enum StatsOffloading
 {
-   CUDA_STAT_BLOCKING_COMM = 0,
-   CUDA_STAT_BLOCKING_COMM_TIME  = 1,
-   CUDA_STAT_EARLY_BLOCKING_SYNC = 2,
-   CUDA_STAT_EARLY_BLOCKING_SYNC_TIME  = 3,
-   CUDA_STAT_EARLY_QUERY = 4,
-   CUDA_STAT_EARLY_QUERY_TIME  = 5
+   OFLD_STAT_BLOCKING_COM = 0,
+   OFLD_STAT_BLOCKING_COM_TIME  = 1,
+   OFLD_STAT_EARLY_BLOCKING_WAIT = 2,
+   OFLD_STAT_EARLY_BLOCKING_WAIT_TIME  = 3,
+   OFLD_STAT_EARLY_TEST = 4,
+   OFLD_STAT_EARLY_TEST_TIME  = 5,
+   OFLD_STAT_IDLE_TIME = 6,
+   OFLD_STAT_COMPUTE_IDLE_TIME = 7
 };
 
 namespace casita
@@ -47,8 +49,8 @@ namespace casita
       uint64_t fastest_communication; //\todo: per type (size)
       uint64_t avg_communication; //\todo: per type (size)
       
-      // CUDA
-      uint64_t cuda_stats[STATS_CUDA];
+      // offloading
+      uint64_t offloading_stats[STATS_OFFLOADING];
       //uint64_t launch_overhead;
       //uint64_t launch_distance;      
       
@@ -59,27 +61,34 @@ namespace casita
     public:
       
       void
-      addStatCUDA( StatsCUDA statType, uint64_t waiting_time, uint64_t count = 1 )
+      addStatWithCountOffloading( StatsOffloading statType, uint64_t time, 
+                                  uint64_t count = 1 )
       {
-        cuda_stats[ statType ] += count;
-        cuda_stats[ statType + 1 ] += waiting_time;
+        offloading_stats[ statType ] += count;
+        offloading_stats[ statType + 1 ] += time;
       }
       
       void
-      addAllStatsCUDA( uint64_t* stats )
+      addStatTimeOffloading( StatsOffloading statType, uint64_t time )
+      {
+        offloading_stats[ statType ] += time;
+      }
+      
+      void
+      addAllStatsOffloading( uint64_t* stats )
       {
         //cuda_stats = stats;
         int i;
-        for( i = 0; i < STATS_CUDA; ++i )
+        for( i = 0; i < STATS_OFFLOADING; ++i )
         {
-          cuda_stats[ i ] += stats[ i ];
+          offloading_stats[ i ] += stats[ i ];
         }
       }
       
       uint64_t*
-      getStatsCUDA()
+      getStatsOffloading()
       {
-        return cuda_stats;
+        return offloading_stats;
       }
   };
 }

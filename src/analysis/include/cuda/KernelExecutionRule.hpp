@@ -43,14 +43,14 @@ namespace casita
       {
 
         // applied at kernel leave
-        if ( !kernelLeave->isCUDAKernel( ) || !kernelLeave->isLeave( ) )
+        if ( !kernelLeave->isCUDAKernel() || !kernelLeave->isLeave() )
         {
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon();
 
-        uint64_t kernelStrmId = kernelLeave->getStreamId( );
+        uint64_t kernelStrmId = kernelLeave->getStreamId();
 
         // find the stream which launched this kernel and consume the launch event
         // the number of kernel launches and kernel executions has to be the same
@@ -88,14 +88,14 @@ namespace casita
           GraphNode* syncEvtLeave = ( GraphNode* )launchEnterEvent->getData();
           
           // if it is a CUDA event synchronize leave (compare EventSyncRule)
-          if ( syncEvtLeave->isCUDAEventSync( ) && syncEvtLeave->isLeave( ) )
+          if ( syncEvtLeave->isCUDAEventSync() && syncEvtLeave->isLeave() )
           {
             GraphNode* syncEvtEnter = syncEvtLeave->getPartner();
 
             /*UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME, 
                        "[%u] Process deferred node %s at %s",
-                       commonAnalysis->getMPIRank( ), 
-                       syncEvtLeave->getUniqueName( ).c_str( ),
+                       commonAnalysis->getMPIRank(), 
+                       syncEvtLeave->getUniqueName().c_str(),
                        kernelLeave->getUniqueName().c_str() );*/
 
             if ( syncEvtEnter->getTime() < kernelLeave->getTime() )
@@ -111,7 +111,7 @@ namespace casita
 
             commonAnalysis->newEdge( kernelLeave, syncEvtLeave );
             
-            //commonAnalysis->getStream( kernelStrmId )->consumePendingKernel( );
+            //commonAnalysis->getStream( kernelStrmId )->consumePendingKernel();
             // clear all pending kernels before that kernel
             commonAnalysis->getStream( kernelLeave->getStreamId() )
                                          ->consumePendingKernels( kernelLeave );

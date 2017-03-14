@@ -99,6 +99,10 @@ GraphEngine::newEventStream( uint64_t                     id,
       {
         deviceId = atoi( name.c_str()+19 );
       }
+      else if( strstr( name.c_str(), "CUDA[" ) ) // CUDA streams
+      {
+        deviceId = atoi( name.c_str()+5 );
+      }
       else if( strstr( name.c_str(), "MIC [" ) ) // deprecated (libmpti)
       {
         deviceId = atoi( name.c_str()+5 );
