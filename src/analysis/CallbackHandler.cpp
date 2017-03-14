@@ -398,11 +398,20 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
 
   leaveNode->setFunctionId( functionId );
 
+  GraphNode* enterNode = leaveNode->getGraphPair().first;
   // applied for offloading paradigms only
-  analysis.handleKeyValuesLeave( reader, leaveNode, leaveNode->getGraphPair().first, list );
+  analysis.handleKeyValuesLeave( reader, leaveNode, enterNode, list );
   
   // additional handling for special nodes (e.g. MPI communication and OpenMP)
   analysis.handlePostLeave( leaveNode );
+  
+  // statistics
+  if( ( functionType.functionType & CUDA_BLOCKING_COMM ) && 
+      functionType.paradigm == PARADIGM_CUDA )
+  {
+    analysis.getStatistics().addStatCUDA( CUDA_STAT_BLOCKING_COMM, 
+      leaveNode->getTime() - enterNode->getTime() );
+  }
 
   // for debugging
   handler->printNode( leaveNode, stream );

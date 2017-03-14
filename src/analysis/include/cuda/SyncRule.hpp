@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2016,
+ * Copyright (c) 2016, 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -32,7 +32,7 @@ namespace casita
        * This rule uses the pending kernel list and needs access to kernel
        * enter and leave nodes.
        * 
-       * \todo: handle default stream, needs attribute
+       * \todo: handle default stream
        * 
        * Blames late synchronization operations.
        * 
@@ -120,9 +120,14 @@ namespace casita
 
               // make edge between sync enter and leave blocking (early sync)
               Edge* syncEdge = analysis->getEdge( syncEnter, syncLeave );
-              if( syncEdge )
+              if( syncEdge && !syncEdge->isBlocking() )
               {
                 syncEdge->makeBlocking();
+                
+                // count statistics
+                analysis->getStatistics().addStatCUDA( 
+                  CUDA_STAT_EARLY_BLOCKING_SYNC,
+                  syncLeave->getTime() - syncEnter->getTime());
               }
 
               GraphNode* kernelEnter = kernelLeave->getGraphPair().first;
@@ -140,6 +145,8 @@ namespace casita
               kernelLeave->setLink( syncLeave );
 
               isLateSync = false;
+              
+              //\todo: distribute blame over all direct predecessors
             }
             else
             {

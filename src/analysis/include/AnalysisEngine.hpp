@@ -25,6 +25,8 @@
 #include "opencl/AnalysisParadigmOpenCL.hpp"
 #include "omp/AnalysisParadigmOMP.hpp"
 
+#include "Statistics.hpp"
+
 #include "otf/OTF2TraceReader.hpp"
 #include "otf/OTF2ParallelTraceWriter.hpp"
 
@@ -187,9 +189,14 @@ namespace casita
       */
      void
      processDeferredNodes( Paradigm paradigm );
+     
+     Statistics&
+     getStatistics( void );
 
    private:
      MPIAnalysis mpiAnalysis;
+     
+     Statistics statistics;
 
      // map of analysis paradigms
      typedef std::map< Paradigm, IAnalysisParadigm* > AnalysisParadigmsMap;

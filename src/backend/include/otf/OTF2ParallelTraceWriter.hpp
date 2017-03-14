@@ -66,6 +66,7 @@ namespace casita
         uint32_t numUnifyStreams;
         uint64_t totalDuration;
         uint64_t totalDurationOnCP;
+        uint64_t waitingTime;
         uint64_t totalBlame;
         uint64_t blameOnCP;
         double   fractionCP;

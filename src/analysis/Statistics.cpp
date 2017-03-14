@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2016,
+ * Copyright (c) 2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -18,11 +18,12 @@ using namespace casita;
 /**
  * Constructor
  */
-Statistics::Statistics( ) { }
+Statistics::Statistics() 
+{ }
 
 
 /**
  * Destructor
  */
-Statistics::~Statistics( ) { }
+Statistics::~Statistics() { }
 

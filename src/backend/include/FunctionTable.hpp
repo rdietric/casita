@@ -48,16 +48,20 @@ namespace casita
  } FunctionDescriptor;
 
  ///////////////// CUDA functions ////////////////
- static const char* FTABLE_CUDA_COLL_SYNC[] =
+ static const char* FTABLE_CUDA_BLOCKING_COMM[] =
  {
-   "cuCtxSynchronize",
-
    "cuMemcpyDtoD",
    "cuMemcpyDtoH",
    "cuMemcpyDtoH_v2",
    "cuMemcpyHtoD",
-   "cuMemcpyHtoD_v2",
-
+   "cuMemcpyHtoD_v2"
+ };
+ 
+ static const char* FTABLE_CUDA_COLL_SYNC[] =
+ {
+   "cuCtxSynchronize",
+   "cudaSynchronize",
+     
    "cuMemAlloc",
    "cuMemAlloc_v2",
    "cuMemAllocHost",
@@ -69,9 +73,7 @@ namespace casita
    "cuMemsetD32",
    "cuMemsetD2D8",
    "cuMemsetD2D16",
-   "cuMemsetD2D32",
-
-   "cudaSynchronize"
+   "cuMemsetD2D32"
  };
 
  static const char* FTABLE_CUDA_SYNC[]         =
@@ -231,10 +233,10 @@ namespace casita
    //"MPI_Bsend", "MPI_Cancel", "MPI_Probe"
  //};
 
- static const size_t      fTableEntriesCUDA = 9;
+ static const size_t      fTableEntriesCUDA = 10;
  static const FTableEntry fTableCUDA[fTableEntriesCUDA] =
  {
-   { CUDA_COLLSYNC, 7, FTABLE_CUDA_COLL_SYNC },
+   { CUDA_COLLSYNC, 2, FTABLE_CUDA_COLL_SYNC },
    { CUDA_SYNC, 1, FTABLE_CUDA_SYNC },
    { CUDA_QUERY, 1, FTABLE_CUDA_QUERY },
    { CUDA_KERNEL_LAUNCH, 5, FTABLE_CUDA_LAUNCH },
@@ -242,7 +244,8 @@ namespace casita
    { CUDA_EV_SYNC, 1, FTABLE_CUDA_EVENT_SYNC },
    { CUDA_EV_LAUNCH, 1, FTABLE_CUDA_EVENT_LAUNCH },
    { CUDA_STREAMWAIT, 1, FTABLE_CUDA_STREAM_WAIT },
-   { CUDA_WAITSTATE, 1, FTABLE_GPU_WAITSTATE }
+   { CUDA_WAITSTATE, 1, FTABLE_GPU_WAITSTATE },
+   { CUDA_BLOCKING_COMM, 5, FTABLE_CUDA_BLOCKING_COMM }
  };
  
  static const size_t      fTableEntriesOpenCL = 6;
@@ -442,6 +445,10 @@ namespace casita
            case PARADIGM_CUDA:
              switch ( descr->functionType )
              {
+               case CUDA_BLOCKING_COMM:
+                 descr->functionType = CUDA_COLLSYNC | CUDA_SYNC | CUDA_BLOCKING_COMM;
+                 return true;
+                 
                case CUDA_COLLSYNC:
                  descr->functionType = CUDA_COLLSYNC | CUDA_SYNC;
                  return true;

@@ -79,6 +79,8 @@ main( int argc, char** argv )
 
       runner->mergeActivityGroups();
       
+      runner->mergeStatistics();
+      
       ts_merge = clock() - ts_merge;
     
       UTILS_MSG( mpiRank == 0, " (%f sec)", ( (float) ts_merge ) / CLOCKS_PER_SEC );

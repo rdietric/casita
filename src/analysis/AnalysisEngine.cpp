@@ -707,3 +707,9 @@ AnalysisEngine::checkPendingMPIRequests()
     }
   }
 }
+
+Statistics&
+AnalysisEngine::getStatistics()
+{
+  return statistics;
+}

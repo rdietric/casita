@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -214,9 +214,14 @@ namespace casita
           if ( syncEnter && ( syncEnter->getTime() < kernelLeave->getTime() ) )
           {
             Edge* syncEdge = commonAnalysis->getEdge( syncEnter, syncLeave );
-            if( syncEdge )
+            if( syncEdge && !syncEdge->isBlocking() )
             {
               syncEdge->makeBlocking();
+              
+              // count statistics
+              commonAnalysis->getStatistics().addStatCUDA( 
+                CUDA_STAT_EARLY_BLOCKING_SYNC, 
+                syncLeave->getTime() - syncEnter->getTime() );
             }
 
             // set counters

@@ -470,7 +470,7 @@ Runner::mergeActivityGroups()
   if ( 0 == mpiRank )
   {
     UTILS_MSG_NOBR( options.verbose >= VERBOSE_BASIC,
-                    " Combining results from %d analysis processes", mpiSize );
+                    " Combining regions from %d analysis processes", mpiSize );
   
     // receive number of entries
     uint32_t numEntriesSend = 0; // we do not evaluate this for root rank 0
@@ -592,6 +592,31 @@ Runner::mergeActivityGroups()
 
     delete[]buf;
   }
+}
+
+void
+Runner::mergeStatistics()
+{
+  UTILS_MSG_NOBR( 0 == mpiRank && options.verbose >= VERBOSE_BASIC,
+                  " Combining statistics from %d analysis processes", mpiSize );
+  
+  Statistics& stats = analysis.getStatistics();
+
+  //\todo: MPI_Gatherv might be better
+  uint64_t statsRecvBuf[ mpiSize * STATS_CUDA ];
+  MPI_CHECK( MPI_Gather( stats.getStatsCUDA(), STATS_CUDA, MPI_UINT64_T, 
+                         statsRecvBuf,  STATS_CUDA, MPI_UINT64_T, 
+                         0, MPI_COMM_WORLD ) );
+
+  if( 0 == mpiRank )
+  {
+    // add stats from all other MPI streams
+    for ( int rank = STATS_CUDA; rank < mpiSize * STATS_CUDA; rank += STATS_CUDA )
+    {
+      stats.addAllStatsCUDA( &statsRecvBuf[ rank ] );
+    }
+  }
+    
 }
 
 /**
@@ -1730,6 +1755,8 @@ Runner::printAllActivities()
     double sumFractionCP    = 0.0;
     double sumFractionBlame = 0.0;
     
+    uint64_t sumWaitingTime = 0;
+    
     size_t ctr           = 0;
     for ( std::set< OTF2ParallelTraceWriter::ActivityGroup,
                     OTF2ParallelTraceWriter::ActivityGroupCompare >::
@@ -1745,6 +1772,8 @@ Runner::printAllActivities()
         sumBlameOnCP     += iter->blameOnCP;
         sumFractionCP    += iter->fractionCP;
         sumFractionBlame += iter->fractionBlame;
+        
+        sumWaitingTime   += iter->waitingTime;
       
         printf( "%50.50s %10u %11f %11f %6.2f %8.4f %6.6f %11.6f\n",
                 analysis.getFunctionName( iter->functionId ),
@@ -1783,6 +1812,23 @@ Runner::printAllActivities()
               100.0 * sumFractionCP,
               100.0 * sumFractionBlame, 
               analysis.getRealTime( sumBlameOnCP ) );
+    
+    // print statistics
+    Statistics& stats = analysis.getStatistics();
+    printf( "\nPattern summary:\n"
+            " CUDA\n"
+            "  Early blocking wait for kernel: %"PRIu64" (%lf s)\n"
+            "  Total attributed waiting time: %lf s\n"
+            "  Early test for completion: %"PRIu64" (%lf s)\n"
+            "  Blocking communication: %"PRIu64" (%lf s)\n\n",
+            stats.getStatsCUDA()[CUDA_STAT_EARLY_BLOCKING_SYNC],
+            analysis.getRealTime( stats.getStatsCUDA()[CUDA_STAT_EARLY_BLOCKING_SYNC_TIME] ),
+            analysis.getRealTime( sumWaitingTime ),
+            stats.getStatsCUDA()[CUDA_STAT_EARLY_QUERY],
+            analysis.getRealTime( stats.getStatsCUDA()[CUDA_STAT_EARLY_QUERY_TIME] ),
+            stats.getStatsCUDA()[CUDA_STAT_BLOCKING_COMM],
+            analysis.getRealTime( stats.getStatsCUDA()[CUDA_STAT_BLOCKING_COMM_TIME] )
+           );
     
     if (options.createRatingCSV)
     {

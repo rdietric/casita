@@ -76,7 +76,8 @@ namespace casita
    CUDA_EV_LAUNCH     = ( 1 << 7 ),
    CUDA_EV_QUERY      = ( 1 << 8 ),
    CUDA_QUERY         = ( 1 << 9 ),
-   CUDA_STREAMWAIT    = ( 1 << 10 )
+   CUDA_STREAMWAIT    = ( 1 << 10 ),
+   CUDA_BLOCKING_COMM = ( 1 << 11 )
  };
  
  enum NodeTypeOCL

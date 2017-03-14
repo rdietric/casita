@@ -788,14 +788,25 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event,
     // time between the last and the current event
     uint64_t timeDiff = 
       event.time - streamStatusMap[ event.location ].lastEventTime;
+    
+    uint64_t blame = 0;
+    if( counters.count( BLAME ) )
+    {
+      blame = counters[ BLAME ];
+      activityGroupMap[ currentActivity ].totalBlame += blame;
+    }
+    
+    if( counters.count( WAITING_TIME ) )
+    {
+      activityGroupMap[ currentActivity ].waitingTime += counters[ WAITING_TIME ];
+    }
 
     activityGroupMap[ currentActivity ].totalDuration += timeDiff;
-    activityGroupMap[ currentActivity ].totalBlame    += counters[ BLAME ];
     
     if( onCP )
     {
       activityGroupMap[ currentActivity ].totalDurationOnCP += timeDiff;
-      activityGroupMap[ currentActivity ].blameOnCP         += counters[ BLAME ];
+      activityGroupMap[ currentActivity ].blameOnCP         += blame;
     }
     
     /*UTILS_MSG( strcmp( getRegionName(event.regionRef).c_str(), "clFinish" ) == 0,

@@ -61,6 +61,9 @@ namespace casita
 
      void
      mergeActivityGroups();
+     
+     void
+     mergeStatistics();
 
    private:
      int      mpiRank;
