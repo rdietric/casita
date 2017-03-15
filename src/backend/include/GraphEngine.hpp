@@ -21,7 +21,6 @@
 #include "graph/EventNode.hpp"
 #include "graph/Edge.hpp"
 #include "otf/OTF2ParallelTraceWriter.hpp"
-#include "Activity.hpp"
 #include "EventStream.hpp"
 #include "EventStreamGroup.hpp"
 #include "AnalysisMetric.hpp"

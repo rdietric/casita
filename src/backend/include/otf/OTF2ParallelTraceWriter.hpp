@@ -18,10 +18,12 @@
 #include <stack>
 #include <list>
 #include <string>
+
+//#include "AnalysisEngine.hpp"
 #include "AnalysisMetric.hpp"
 #include "OTF2TraceReader.hpp"
 #include "EventStreamGroup.hpp"
-#include "graph/Graph.hpp"
+#include "GraphEngine.hpp"
 
 namespace casita
 {
@@ -111,6 +113,7 @@ namespace casita
       OTF2ParallelTraceWriter( uint32_t        mpiRank,
                                uint32_t        mpiSize,
                                bool            writeToFile,
+                               //AnalysisEngine* analysis,
                                AnalysisMetric* metrics );
       virtual
       ~OTF2ParallelTraceWriter();
@@ -177,6 +180,8 @@ namespace casita
       bool writeToFile;
 
     private:
+      
+      //AnalysisEngine* analysis;
       
       uint32_t mpiRank, mpiSize;
       

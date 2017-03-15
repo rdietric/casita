@@ -26,17 +26,14 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
-#include <otf2/OTF2_MPI_Collectives.h>
 #include <map>
 
-#include "graph/EventNode.hpp"
-#include "AnalysisMetric.hpp"
+#include "otf/OTF2ParallelTraceWriter.hpp"
+#include <otf2/OTF2_MPI_Collectives.h>
+
 #include "common.hpp"
 #include "FunctionTable.hpp"
-#include "otf/OTF2TraceReader.hpp"
-#include "otf/OTF2ParallelTraceWriter.hpp"
-#include "GraphEngine.hpp"
-#include <Parser.hpp>
+#include "Parser.hpp"
 
 using namespace casita;
 using namespace casita::io;
@@ -82,6 +79,7 @@ postFlush( void* userData, OTF2_FileType fileType,
 OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t        mpiRank,
                                                   uint32_t        mpiSize,
                                                   bool            writeToFile,
+                                                  //AnalysisEngine* analysis,
                                                   AnalysisMetric* metrics )
   :
     writeToFile( writeToFile ),
