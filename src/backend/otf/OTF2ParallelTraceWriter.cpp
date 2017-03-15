@@ -76,16 +76,12 @@ postFlush( void* userData, OTF2_FileType fileType,
  * @param writeToFile           Write to new OTF2 file or just analysis
  * @param metrics               Analysis metrics to be written
  */
-OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t        mpiRank,
-                                                  uint32_t        mpiSize,
-                                                  bool            writeToFile,
-                                                  //AnalysisEngine* analysis,
-                                                  AnalysisMetric* metrics )
+OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( AnalysisEngine* analysis )
   :
-    writeToFile( writeToFile ),
-    mpiRank( mpiRank ),
-    mpiSize( mpiSize ),
-    cTable( metrics ),
+    analysis( analysis ),
+    mpiRank( analysis->getMPIRank() ),
+    mpiSize( analysis->getMPISize() ),
+    cTable( &( analysis->getCtrTable() ) ),
     ompForkJoinRef( 0 ),
     otf2Archive( NULL ),
     otf2GlobalDefWriter( NULL ),
@@ -93,13 +89,12 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( uint32_t        mpiRank,
     otf2GlobalEventReader( NULL ),
     graph( NULL )
 {
-  outputFilename.assign( "" );
-  pathToFile.assign( "" );
-
   flush_callbacks.otf2_post_flush = postFlush;
   flush_callbacks.otf2_pre_flush  = preFlush;
 
   commGroup = MPI_COMM_WORLD;
+  
+  open();
 }
 
 OTF2ParallelTraceWriter::~OTF2ParallelTraceWriter()
@@ -108,28 +103,18 @@ OTF2ParallelTraceWriter::~OTF2ParallelTraceWriter()
 }
 
 void
-OTF2ParallelTraceWriter::setupWriter()
-{
-  open();
-  
-  if( writeToFile )
-  {
-    writeAnalysisMetricDefinitions();
-  }
-
-  MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
-  
-  setupGlobalEvtReader();
-}
-
-void
 OTF2ParallelTraceWriter::open()
 {
-  outputFilename = Parser::getInstance().getOutArchiveName();
-  pathToFile = Parser::getInstance().getPathToFile();
+  // initialize OTF2 output members
+  std::string outputFilename = Parser::getInstance().getOutArchiveName();
+  std::string pathToFile     = Parser::getInstance().getPathToFile();
   
+  writeToFile = Parser::getInstance().getProgramOptions().createTraceFile;
+  
+  // open OTF2 archive for writing and set flush and collective callbacks
   if ( writeToFile )
-  {    
+  {
+    //\todo: needed?
     MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
     // open new otf2 file
@@ -145,10 +130,12 @@ OTF2ParallelTraceWriter::open()
     OTF2_MPI_Archive_SetCollectiveCallbacks( otf2Archive, commGroup, MPI_COMM_NULL );
   }
 
+  // initialize time and string definition members
   timerOffset     = 0;
   timerResolution = 0;
   counterForStringDefinitions = 0;
   
+  // open OTF2 input trace
   const char* originalFilename = 
     Parser::getInstance().getProgramOptions().filename.c_str();
 
@@ -159,19 +146,24 @@ OTF2ParallelTraceWriter::open()
   if ( !otf2Reader )
   {
     throw RTException( "Failed to open OTF2 trace file %s",
-                       originalFilename );
+                        originalFilename );
   }
 
   // copy global definitions
   copyGlobalDefinitions();
 
-  MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
-
-  /* open event files for each location
-  if ( writeToFile )
+  if( writeToFile )
   {
-    OTF2_Archive_OpenEvtFiles( otf2Archive );
-  }*/
+    //\todo: needed?
+    MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
+    
+    writeAnalysisMetricDefinitions();
+  }
+
+  //\todo: needed?
+  MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
+  
+  setupGlobalEvtReader();
 }
 
 void
@@ -572,8 +564,7 @@ OTF2ParallelTraceWriter::registerEventCallbacks()
 }
 
 uint64_t
-OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList& streams,
-                                         Graph* graph, const uint64_t eventsToRead )
+OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
 {
   UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_SOME, 
              "[%"PRIu32"] Write streams ...", mpiRank );
@@ -588,6 +579,7 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
   static bool firstCall = true;
   
   // iterate over all streams that have been analyzed
+  const EventStreamGroup::EventStreamList streams = analysis->getStreams();
   for( EventStreamGroup::EventStreamList::const_iterator itStream = streams.begin();
        itStream != streams.end(); ++itStream )
   {
@@ -648,7 +640,7 @@ OTF2ParallelTraceWriter::writeLocations( const EventStreamGroup::EventStreamList
     streamState.currentNodeIter = currentNodeIter;
 
     // store a pointer to the graph as class member (global for all local streams)
-    this->graph = graph;
+    this->graph = &( analysis->getGraph() );
 
     /* reset last counter values before processing the current stream
     const AnalysisMetric::MetricIdSet& ctrIdSet = cTable->getAllCounterIds();

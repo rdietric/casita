@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -15,15 +15,11 @@
 #include <map>
 #include <vector>
 #include <string>
+
 #include "utils/ErrorUtils.hpp"
 #include "graph/Graph.hpp"
-#include "graph/Node.hpp"
 #include "graph/EventNode.hpp"
-#include "graph/Edge.hpp"
-#include "otf/OTF2ParallelTraceWriter.hpp"
-#include "EventStream.hpp"
 #include "EventStreamGroup.hpp"
-#include "AnalysisMetric.hpp"
 #include "FunctionTable.hpp"
 
 #define SYNC_DELTA 500 /* in us */

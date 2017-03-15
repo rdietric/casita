@@ -351,10 +351,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     if( !otf2_def_written )
     {
       // write the OTF2 output trace definitions and setup the OTF2 trace writer
-      writer = new OTF2ParallelTraceWriter( mpiRank, mpiSize,
-                                            options.createTraceFile,
-                                            &( analysis.getCtrTable() ) );
-      writer->setupWriter();
+      writer = new OTF2ParallelTraceWriter( &analysis );
       
       UTILS_MSG( mpiRank == 0, "[0] Writing result to %s", 
                  Parser::getInstance().getPathToFile().c_str() );
@@ -363,9 +360,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     }
 
     // writes the OTF2 event streams and computes blame for CPU functions
-    const EventStreamGroup::EventStreamList allStreams = analysis.getStreams();
-    if( writer->writeLocations( allStreams, &( analysis.getGraph() ), events_to_read ) 
-        != events_to_read )
+    if( writer->writeLocations( events_to_read ) != events_to_read )
     {
       UTILS_MSG( true, "[%d] Reader and writer are not synchronous! Aborting ...", 
                        mpiRank );

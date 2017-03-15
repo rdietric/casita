@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -25,12 +25,9 @@
 #include <cstdlib>
 
 #include "GraphEngine.hpp"
-#include "FunctionTable.hpp"
 #include "common.hpp"
-#include "graph/Node.hpp"
 
 using namespace casita;
-using namespace casita::io;
 
 GraphEngine::GraphEngine() :
   ticksPerSecond( 1000 )

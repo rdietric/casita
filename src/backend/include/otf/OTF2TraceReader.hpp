@@ -12,12 +12,12 @@
 
 #pragma once
 
-#include <otf2/otf2.h>
 #include <map>
 #include <vector>
 #include <stack>
 #include <set>
 #include <list>
+
 #include "OTF2KeyValueList.hpp"
 
 namespace casita

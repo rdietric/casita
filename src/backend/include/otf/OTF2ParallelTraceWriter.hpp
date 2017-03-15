@@ -19,11 +19,8 @@
 #include <list>
 #include <string>
 
-//#include "AnalysisEngine.hpp"
+#include "AnalysisEngine.hpp"
 #include "AnalysisMetric.hpp"
-#include "OTF2TraceReader.hpp"
-#include "EventStreamGroup.hpp"
-#include "GraphEngine.hpp"
 
 namespace casita
 {
@@ -110,11 +107,8 @@ namespace casita
         }
       } ActivityGroupCompare;
 
-      OTF2ParallelTraceWriter( uint32_t        mpiRank,
-                               uint32_t        mpiSize,
-                               bool            writeToFile,
-                               //AnalysisEngine* analysis,
-                               AnalysisMetric* metrics );
+      OTF2ParallelTraceWriter( AnalysisEngine* analysis );
+      
       virtual
       ~OTF2ParallelTraceWriter();
 
@@ -127,9 +121,6 @@ namespace casita
       void
       reset();
       
-      void
-      setupWriter();
-      
       /**
        * Write definitions for self-defined (analysis) metrics to output trace file.
        */
@@ -140,16 +131,10 @@ namespace casita
       setupGlobalEvtReader();
       
       uint64_t
-      writeLocations( const EventStreamGroup::EventStreamList& streams,
-                      Graph* graph, const uint64_t eventsToRead );
+      writeLocations( const uint64_t eventsToRead );
       
       void
       setupEventReader( uint64_t streamId );
-      
-      bool
-      writeStream( EventStream* stream,
-                   Graph*       graph,
-                   uint64_t*    events_read );
       
       void
       writeMetricStreams();
@@ -162,30 +147,15 @@ namespace casita
       {
         return &activityGroupMap;
       }
-      
-      static ProcessGroup
-      streamTypeToGroup( EventStream::EventStreamType pt )
-      {
-        switch ( pt )
-        {
-          case EventStream::ES_DEVICE:
-            return PG_DEVICE;
-          case EventStream::ES_DEVICE_NULL:
-            return PG_DEVICE_NULL;
-          default:
-            return PG_HOST;
-        }
-      }
-      
-      bool writeToFile;
-
     private:
       
-      //AnalysisEngine* analysis;
+      AnalysisEngine* analysis;
       
       uint32_t mpiRank, mpiSize;
-      
+
       MPI_Comm commGroup;
+      
+      bool writeToFile;
       
       // maps OTF2 region references to activity groups to collect a global profile
       ActivityGroupMap activityGroupMap;
@@ -193,6 +163,7 @@ namespace casita
       //!< pointer to the table of available counters
       AnalysisMetric* cTable; 
       
+      //!< timer resolution and offset
       uint64_t timerResolution;
       uint64_t timerOffset;
       
@@ -204,8 +175,6 @@ namespace casita
       
       //!< regionReference for internal Fork/Join
       uint32_t ompForkJoinRef;
-
-      std::string outputFilename, pathToFile;
 
       //!< maps each process to corresponding evtWriter
       std::map< uint64_t, OTF2_EvtWriter* > evt_writerMap;
@@ -640,9 +609,10 @@ namespace casita
                             const OTF2_Type*        typeIDs,
                             const OTF2_MetricValue* metricValues );
 
-      /* tell OTF2 what to do after bufferFlush */
+      //<! tell OTF2 what to do after bufferFlush
       OTF2_FlushCallbacks      flush_callbacks;
-      /* callbacks to support parallel writing */
+      
+      //<! callbacks to support parallel writing
       OTF2_CollectiveCallbacks coll_callbacks;
   };
 

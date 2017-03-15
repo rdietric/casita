@@ -122,12 +122,12 @@ namespace casita
      handlePostLeave( GraphNode* node );
 
      void
-     handleKeyValuesEnter( OTF2TraceReader*     reader,
+     handleKeyValuesEnter( OTF2TraceReader*  reader,
                            GraphNode*        node,
                            OTF2KeyValueList* list );
 
      void
-     handleKeyValuesLeave( OTF2TraceReader*     reader,
+     handleKeyValuesLeave( OTF2TraceReader*  reader,
                            GraphNode*        node,
                            GraphNode*        oldNode,
                            OTF2KeyValueList* list );
