@@ -26,11 +26,6 @@ namespace casita
 {
  namespace io
  {
-    enum ProcessGroup
-    {
-      PG_HOST = 1, PG_DEVICE, PG_DEVICE_NULL
-    };
-
   typedef struct
   {
     uint64_t         time;
@@ -58,6 +53,7 @@ namespace casita
   {
     public:
       
+      //<! set of metrics for a program region
       typedef struct
       {
         uint32_t functionId;
@@ -72,7 +68,7 @@ namespace casita
         double   fractionBlame;
       } ActivityGroup;
       
-      // key: OTF2 region reference, value: activity group
+      // key: OTF2 region reference (function ID), value: activity group
       typedef std::map< uint32_t, ActivityGroup > ActivityGroupMap;
 
       // sort activities by blame on critical path 
@@ -120,6 +116,9 @@ namespace casita
       
       void
       reset();
+      
+      void
+      writeDeviceIdleDefinitions( void );
       
       /**
        * Write definitions for self-defined (analysis) metrics to output trace file.
@@ -169,12 +168,6 @@ namespace casita
       
       double
       getRealTime( uint64_t time );
-      
-      //!< counter to assign IDs to string definitions
-      uint64_t counterForStringDefinitions;
-      
-      //!< regionReference for internal Fork/Join
-      uint32_t ompForkJoinRef;
 
       //!< maps each process to corresponding evtWriter
       std::map< uint64_t, OTF2_EvtWriter* > evt_writerMap;
@@ -186,8 +179,17 @@ namespace casita
       OTF2_GlobalEvtReader* otf2GlobalEventReader;
       //OTF2_AttributeList*   attributes;
 
-      //!< maps OTF2 IDs to strings (global definitions)
-      std::map< uint32_t, const char* > idStringMap;
+      //!< maps OTF2 IDs to strings (global definitions), maps are ordered by key
+      std::map< uint32_t, const char* > stringRefMap;
+      
+      //!< maps OTF2 region IDs to OTF2 string reference
+      std::map< uint32_t, OTF2_StringRef > regionRefMap;
+      
+      //!< region reference for internal Fork/Join
+      uint32_t ompForkJoinRef;
+      
+      //!< region reference for device idle
+      uint32_t deviceIdleRegRef;
 
       void
       copyGlobalDefinitions();
@@ -210,7 +212,23 @@ namespace casita
       
       void
       writeCounterMetrics( OTF2Event event, CounterMap& counters );
+      
+      //<! used to detect offloading idle
+      int deviceRefCount;
+      uint64_t lastIdleStart;
 
+      //<! used to detect offloading compute idle
+      int deviceComputeRefCount;
+      uint64_t lastComputeIdleStart;
+
+      void
+      handleDeviceTaskEnter( uint64_t time, OTF2_LocationRef location, 
+                             bool isCompute = false );
+
+      void
+      handleDeviceTaskLeave( uint64_t time, OTF2_LocationRef location, 
+                             bool isCompute = false );
+     
       void
       processNextEvent( OTF2Event event, OTF2_AttributeList* attributes );
       
@@ -252,14 +270,10 @@ namespace casita
       
       typedef std::map < uint64_t, StreamStatus > StreamStatusMap;
       StreamStatusMap streamStatusMap;
-      
-      
-      
+
       typedef std::map< uint64_t, uint64_t > LocationParentMap;
       LocationParentMap locationParentMap;
-      
-      //!< maps OTF2 region IDs to OTF2 string reference (key: OTF2 region ID)
-      std::map< uint32_t, OTF2_StringRef > regionNameIdList;
+
 
       /* Definition callbacks */
       static OTF2_CallbackCode

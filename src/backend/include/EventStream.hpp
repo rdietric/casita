@@ -138,15 +138,15 @@ namespace casita
      static bool
      streamSort( const EventStream* p1, const EventStream* p2 )
      {
-       if ( p1->isDeviceStream( ) && p2->isHostStream( ) )
+       if ( p1->isDeviceStream() && p2->isHostStream() )
        {
          return false;
        }
-        if ( p2->isDeviceStream( ) && p1->isHostStream( ) )
+        if ( p2->isDeviceStream() && p1->isHostStream() )
        {
          return true;
        }
-        return p1->getId( ) <= p2->getId( );
+        return p1->getId() <= p2->getId();
      }
      
      /**
@@ -163,7 +163,7 @@ namespace casita
       * @return true, if the critical path starts on this stream
       */
      bool&
-     isFirstCritical( );
+     isFirstCritical();
      
      /**
       * Does this stream contains the global last event (of the trace)?
@@ -171,10 +171,10 @@ namespace casita
       * @return true, if the critical path ends on this stream
       */
      bool&
-     hasLastGlobalEvent( );
+     hasLastGlobalEvent();
 
      GraphNode*
-     getLastNode( ) const;
+     getLastNode() const;
 
      GraphNode*
      getLastNode( Paradigm paradigm ) const;
@@ -189,7 +189,7 @@ namespace casita
       * @return time stamp of the last event
       */
      uint64_t
-     getLastEventTime( ) const;
+     getLastEventTime() const;
      
      /**
       * Set the time of the last read event. 
@@ -209,19 +209,19 @@ namespace casita
                       GraphNode::ParadigmNodeMap& nextNodes );
 
      EventStream::SortedGraphNodeList&
-     getNodes( );
+     getNodes();
      
      void
-     clearNodes( );
+     clearNodes();
 
      void
      addPendingKernel( GraphNode* kernelLeave );
 
      GraphNode*
-     getLastPendingKernel( );
+     getLastPendingKernel();
 
      GraphNode*
-     consumeLastPendingKernel( );
+     consumeLastPendingKernel();
      
      /**
       * Consume all pending kernels before the given node.
@@ -233,7 +233,7 @@ namespace casita
      setPendingKernelsSyncLink( GraphNode* syncLeave );
 
      void
-     clearPendingKernels( );
+     clearPendingKernels();
 
      void
      setPendingMPIRecord( MPIType mpiType, uint64_t partnerId, uint64_t rootId );
@@ -245,7 +245,7 @@ namespace casita
       * @return a copy of all pending (blocking) MPI records
       */
      EventStream::MPICommRecordList
-     getPendingMPIRecords( );
+     getPendingMPIRecords();
      
      /**
       * Temporarily save the MPI_Irecv request ID. The following MPI_Irecv function 
@@ -356,7 +356,7 @@ namespace casita
       * @return true, if we have pending MPI requests in the list.
       */
      bool
-     havePendingMPIRequests( );
+     havePendingMPIRequests();
 
      /**
       * Safely complete MPI request that are associated with the request ID.
@@ -399,7 +399,7 @@ namespace casita
       * Wait for open MPI_Request handles. Should be called before MPI_Finalize().
       */
      void
-     waitForAllPendingMPIRequests( );
+     waitForAllPendingMPIRequests();
      
      /**
       * Analysis rules for non-blocking MPI communication:
@@ -409,13 +409,13 @@ namespace casita
       * This might improve the performance of the MPI implementation. 
       */
      void
-     testAllPendingMPIRequests( );
+     testAllPendingMPIRequests();
 
      Edge::TimeProfileMap*
-     newTimeProfile( );
+     newTimeProfile();
 
      Edge::TimeProfileMap*
-     getTimeProfile( );
+     getTimeProfile();
 
      bool
      walkBackward( GraphNode* node, StreamWalkCallback callback, void* userData );
@@ -429,10 +429,10 @@ namespace casita
       * @return true, if nodes have been added, otherwise false
       */
      bool
-     hasNewNodes( );
+     hasNewNodes();
      
      void
-     reset( );
+     reset();
 
    private:
      uint64_t            id;

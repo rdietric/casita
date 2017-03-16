@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -23,13 +23,6 @@ namespace casita
  class CallbackHandler
  {
    public:
-
-     typedef struct
-     {
-       uint64_t callTime;
-       uint64_t followingEventTime;
-       uint32_t regionRef;
-     } OTF2_Barrier_Event;
 
      CallbackHandler( AnalysisEngine& analysis );
 
@@ -61,12 +54,6 @@ namespace casita
                          uint64_t          streamId,
                          uint32_t          key, 
                          const char*       name );
-
-     void
-     handleDeviceTaskEnter( uint64_t time, bool isCompute = false );
-     
-     void
-     handleDeviceTaskLeave( uint64_t time, bool isCompute = false );
      
      static void
      handleEnter( io::OTF2TraceReader* reader, uint64_t time, uint32_t functionId,
@@ -95,7 +82,7 @@ namespace casita
                           uint64_t             time,
                           uint64_t             streamId );
      
-     static void
+     /*static void
      handleRmaPut( io::OTF2TraceReader* reader,
                    uint64_t             time,
                    uint64_t             streamId );
@@ -108,7 +95,7 @@ namespace casita
      static void
      handleRmaOpCompleteBlocking( io::OTF2TraceReader* reader,
                                   uint64_t             time,
-                                  uint64_t             streamId );
+                                  uint64_t             streamId );*/
 
      static void
      handleMPIComm( io::OTF2TraceReader* reader,
@@ -139,14 +126,6 @@ namespace casita
    private:
      AnalysisEngine& analysis;
      int mpiRank;
-     
-     //<! used to detect offloading idle
-     int deviceRef;
-     uint64_t lastIdleStart;
-     
-     //<! used to detect offloading idle
-     int deviceComputeRef;
-     uint64_t lastComputeIdleStart;
 
      /**
       * Get an uint32_t type attribute (or key-value) from the given key value list.

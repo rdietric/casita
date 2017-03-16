@@ -55,51 +55,51 @@ EventStream::EventStream( uint64_t          id,
 
 EventStream::~EventStream()
 {
-  for ( SortedGraphNodeList::iterator iter = nodes.begin( );
-        iter != nodes.end( ); ++iter )
+  for ( SortedGraphNodeList::iterator iter = nodes.begin();
+        iter != nodes.end(); ++iter )
   {
     delete( *iter );
   }
 }
 
 uint64_t
-EventStream::getId( ) const
+EventStream::getId() const
 {
   return id;
 }
 
 uint64_t
-EventStream::getParentId( ) const
+EventStream::getParentId() const
 {
   return parentId;
 }
 
 const char*
-EventStream::getName( ) const
+EventStream::getName() const
 {
-  return name.c_str( );
+  return name.c_str();
 }
 
 EventStream::EventStreamType
-EventStream::getStreamType( ) const
+EventStream::getStreamType() const
 {
   return streamType;
 }
 
 bool
-EventStream::isHostStream( ) const
+EventStream::isHostStream() const
 {
   return streamType & ( ES_HOST | ES_HOST_MASTER );
 }
 
 bool
-EventStream::isHostMasterStream( ) const
+EventStream::isHostMasterStream() const
 {
   return streamType & ES_HOST_MASTER;
 }
 
 bool
-EventStream::isDeviceStream( ) const
+EventStream::isDeviceStream() const
 {
   return streamType & ( ES_DEVICE | ES_DEVICE_NULL );
 }
@@ -134,7 +134,7 @@ EventStream::getDeviceId() const
  * @return a pair the first enter and last leave time stamp
  */
 std::pair< uint64_t, uint64_t >&
-EventStream::getPeriod( )
+EventStream::getPeriod()
 {
   return streamPeriod;
 }
@@ -145,7 +145,7 @@ EventStream::getPeriod( )
  * @return true, if the critical path starts on this stream
  */
 bool&
-EventStream::isFirstCritical( )
+EventStream::isFirstCritical()
 {
   return hasFirstCriticalNode;
 }
@@ -156,13 +156,13 @@ EventStream::isFirstCritical( )
  * @return true, if the critical path ends on this stream
  */
 bool&
-EventStream::hasLastGlobalEvent( )
+EventStream::hasLastGlobalEvent()
 {
   return hasLastEvent;
 }
 
 GraphNode*
-EventStream::getLastNode( ) const
+EventStream::getLastNode() const
 {
   return lastNode;
   //return getLastNode( PARADIGM_ALL );
@@ -225,7 +225,7 @@ EventStream::setLastEventTime( uint64_t time )
 }
 
 uint64_t
-EventStream::getLastEventTime( ) const
+EventStream::getLastEventTime() const
 {
   if ( lastEventTime > streamPeriod.second )
   {
@@ -290,7 +290,7 @@ EventStream::addGraphNode( GraphNode*                  node,
   if ( nodeParadigm == PARADIGM_MPI )
   {
     // \todo: This was probably wrong. Therefore, took the last node before changing the graph data.
-    //GraphNode* lastLocalCompute = getLastNode( );
+    //GraphNode* lastLocalCompute = getLastNode();
 
     //std::cerr << "[" << this->id << "] " << node->getUniqueName() 
     //          << "setLinkLeft: " << lastLocalNode->getUniqueName() << std::endl;
@@ -301,16 +301,16 @@ EventStream::addGraphNode( GraphNode*                  node,
   }
 
   
-  if ( node->isEnter( ) )
+  if ( node->isEnter() )
   {
     for ( SortedGraphNodeList::const_iterator iter =
-            unlinkedMPINodes.begin( );
-          iter != unlinkedMPINodes.end( ); ++iter )
+            unlinkedMPINodes.begin();
+          iter != unlinkedMPINodes.end(); ++iter )
     {
       //std::cerr << "XXXXXRight  " << ( *iter )->getUniqueName() << " -> " << node->getUniqueName() << std::endl;
       ( *iter )->setLinkRight( node );
     }
-    unlinkedMPINodes.clear( );
+    unlinkedMPINodes.clear();
   }
 }
 
@@ -329,15 +329,15 @@ EventStream::insertGraphNode( GraphNode*                  node,
   }
 
   // add the node to the sorted nodes list
-  SortedGraphNodeList::iterator result = nodes.end( );
-  for ( SortedGraphNodeList::iterator iter = nodes.begin( );
-        iter != nodes.end( ); ++iter )
+  SortedGraphNodeList::iterator result = nodes.end();
+  for ( SortedGraphNodeList::iterator iter = nodes.begin();
+        iter != nodes.end(); ++iter )
   {
     SortedGraphNodeList::iterator next = iter;
     ++next;
 
     // if next is end of list, then push the node at the end of the vector
-    if ( next == nodes.end( ) )
+    if ( next == nodes.end() )
     {      
       nodes.push_back( node );
       break;
@@ -360,7 +360,7 @@ EventStream::insertGraphNode( GraphNode*                  node,
     /* find previous node */
     GraphNode* predNode = NULL;
     current = result;
-    while ( current != nodes.begin( ) )
+    while ( current != nodes.begin() )
     {
       --current;
       if ( ( *current )->hasParadigm( (Paradigm)paradigm ) )
@@ -390,7 +390,7 @@ EventStream::insertGraphNode( GraphNode*                  node,
 
     GraphNode* nextNode = NULL;
 
-    while ( next != nodes.end( ) )
+    while ( next != nodes.end() )
     {
       if ( ( *next )->hasParadigm( (Paradigm)paradigm ) )
       {
@@ -427,22 +427,22 @@ EventStream::insertGraphNode( GraphNode*                  node,
  * @return true, if nodes have been added, otherwise false
  */
 bool
-EventStream::hasNewNodes( )
+EventStream::hasNewNodes()
 {
   return nodesAdded;
 }
 
 EventStream::SortedGraphNodeList&
-EventStream::getNodes( )
+EventStream::getNodes()
 {
   return nodes;
 }
 
 void
-EventStream::clearNodes( )
+EventStream::clearNodes()
 {
   // clear the nodes list (do not delete the nodes themselves)
-  nodes.clear( );
+  nodes.clear();
   
   // set the first and last Node to NULL
   for ( size_t i = 0; i < NODE_PARADIGM_COUNT; ++i )
@@ -547,7 +547,7 @@ EventStream::clearPendingKernels()
 void
 EventStream::setPendingKernelsSyncLink( GraphNode* syncLeave )
 {
-  for( SortedGraphNodeList::iterator it = pendingKernels.begin( );
+  for( SortedGraphNodeList::iterator it = pendingKernels.begin();
        it != pendingKernels.end(); ++it )
   {
     (*it)->setLink( syncLeave );
@@ -580,15 +580,15 @@ EventStream::setPendingMPIRecord( MPIType  mpiType,
  * @return a copy of all pending (blocking) MPI records
  */
 EventStream::MPICommRecordList
-EventStream::getPendingMPIRecords( )
+EventStream::getPendingMPIRecords()
 {
   // create a copy of the current pending records
   MPICommRecordList copyList;
-  copyList.assign( mpiCommRecords.begin( ), mpiCommRecords.end( ) );
+  copyList.assign( mpiCommRecords.begin(), mpiCommRecords.end() );
   // the list is cleared in AnalysisParadigmMPI::handlePostLeave())
   
   // clear the pending list
-  mpiCommRecords.clear( );
+  mpiCommRecords.clear();
   return copyList;
 }
 
@@ -665,7 +665,7 @@ EventStream::addPendingMPIIrecvNode( GraphNode* node )
     node->setData( &mpiIcommRecords[pendingMPIRequestId] );
 
     //invalidate request ID variable
-    pendingMPIRequestId = std::numeric_limits< uint64_t >::max( );
+    pendingMPIRequestId = std::numeric_limits< uint64_t >::max();
 }
 
 /**
@@ -796,7 +796,7 @@ EventStream::setMPIIsendNodeData( GraphNode* node )
 void
 EventStream::setMPIWaitNodeData( GraphNode* node )
 {  
-  if( pendingRequests.size( ) == 1 )
+  if( pendingRequests.size() == 1 )
   {
     uint64_t pendingReqId = pendingRequests.back();
     
@@ -816,7 +816,7 @@ EventStream::setMPIWaitNodeData( GraphNode* node )
                  PRIu64, this->id, pendingReqId );
     }
   }
-  else if( pendingRequests.size( ) == 0 )
+  else if( pendingRequests.size() == 0 )
   {
     // assign waiting time to this node, as it is unnecessary
     node->setCounter( WAITING_TIME, 
@@ -825,7 +825,7 @@ EventStream::setMPIWaitNodeData( GraphNode* node )
   else
   {
     UTILS_MSG( true, "List of pending OTF2 request IDs > 1 (#%llu) at %s", 
-               pendingRequests.size( ), node->getUniqueName().c_str() );
+               pendingRequests.size(), node->getUniqueName().c_str() );
   }
 }
 
@@ -875,15 +875,15 @@ EventStream::setMPIWaitallNodeData( GraphNode* node )
 void
 EventStream::handleMPITest( GraphNode* node )
 {  
-  if( pendingRequests.size( ) == 1 )
+  if( pendingRequests.size() == 1 )
   {
     // remove the record
     mpiIcommRecords.erase( pendingRequests.back() );
 
     // request ID is consumed, therefore pop it from the vector
-    pendingRequests.pop_back( );
+    pendingRequests.pop_back();
   }
-  else if( pendingRequests.size( ) == 0 )
+  else if( pendingRequests.size() == 0 )
   {
     // assign waiting time to this node, as it is unnecessary
     node->setCounter( WAITING_TIME, 
@@ -892,7 +892,7 @@ EventStream::handleMPITest( GraphNode* node )
   else
   {
     UTILS_MSG( true, "List of pending OTF2 request IDs > 1 (#%llu) at %s", 
-               pendingRequests.size( ), node->getUniqueName().c_str() );
+               pendingRequests.size(), node->getUniqueName().c_str() );
   }
 }
 
@@ -931,7 +931,7 @@ EventStream::handleMPITestall( GraphNode* node )
  * @return true, if we have pending MPI requests in the list.
  */
 bool
-EventStream::havePendingMPIRequests( )
+EventStream::havePendingMPIRequests()
 {
   return !(mpiIcommRecords.empty());
 }
@@ -950,7 +950,7 @@ EventStream::waitForPendingMPIRequest( uint64_t requestId )
 { 
   MPIIcommRecordMap::iterator it = mpiIcommRecords.begin();
 
-  while ( it != mpiIcommRecords.end( ) )
+  while ( it != mpiIcommRecords.end() )
   {
     if ( it->first == requestId )
     {
@@ -1048,7 +1048,7 @@ EventStream::waitForPendingMPIRequests( GraphNode* node )
  
   MPIIcommRecordMap::iterator it = mpiIcommRecords.begin();
 
-  while ( it != mpiIcommRecords.end( ) )
+  while ( it != mpiIcommRecords.end() )
   {
     if ( it->second.leaveNode == node )
     {
@@ -1091,7 +1091,7 @@ EventStream::waitForPendingMPIRequests( GraphNode* node )
  * Wait for open MPI_Request handles. 
  */
 void
-EventStream::waitForAllPendingMPIRequests( )
+EventStream::waitForAllPendingMPIRequests()
 {  
   MPIIcommRecordMap::iterator it = mpiIcommRecords.begin();
   
@@ -1099,7 +1099,7 @@ EventStream::waitForAllPendingMPIRequests( )
              "[%"PRIu64"] Number of pending MPI request handles at "
              "MPI_Finalize: %lu", this->id, mpiIcommRecords.size() );
 
-  for (; it != mpiIcommRecords.end( ); ++it )
+  for (; it != mpiIcommRecords.end(); ++it )
   {
     MPI_Request request = it->second.requests[0];
     
@@ -1125,11 +1125,11 @@ EventStream::waitForAllPendingMPIRequests( )
  * This might improve the performance of the MPI implementation. 
  */
 void
-EventStream::testAllPendingMPIRequests( )
+EventStream::testAllPendingMPIRequests()
 {
   MPIIcommRecordMap::iterator it = mpiIcommRecords.begin();
   
-  while ( it != mpiIcommRecords.end( ) )
+  while ( it != mpiIcommRecords.end() )
   {
     MPI_Status status;
     int finished[2] = {0,0};
@@ -1202,16 +1202,16 @@ EventStream::walkBackward( GraphNode*         node,
     UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME, 
                "Binary search did not find %s in stream %lu. "
                "Perform sequential search for convenience ...", 
-               node->getUniqueName( ).c_str( ), node->getStreamId( ) );
+               node->getUniqueName().c_str(), node->getStreamId() );
     iter = find( nodes.rbegin(), nodes.rend(), node );
   }
   
   // make sure that we found a node
   UTILS_ASSERT( *iter == node, "no %s in stream %lu",
-                node->getUniqueName( ).c_str( ), node->getStreamId( ) );
+                node->getUniqueName().c_str(), node->getStreamId() );
 
   // iterate backwards over the list of nodes
-  for (; iter != nodes.rend( ); ++iter )
+  for (; iter != nodes.rend(); ++iter )
   {
     // stop iterating (and adding nodes to the list and increasing waiting time) 
     // when e.g. MPI leave node found
@@ -1238,10 +1238,10 @@ EventStream::walkForward( GraphNode*         node,
   }
 
   SortedGraphNodeList::const_reverse_iterator iter_tmp = findNode( node );
-  SortedGraphNodeList::const_iterator iter = iter_tmp.base( );
+  SortedGraphNodeList::const_iterator iter = iter_tmp.base();
 
   // iterate forward over the list of nodes
-  for (; iter != nodes.end( ); ++iter )
+  for (; iter != nodes.end(); ++iter )
   {
     result = callback( userData, *iter );
     if ( result == false )
@@ -1258,20 +1258,20 @@ EventStream::SortedGraphNodeList::const_reverse_iterator
 EventStream::findNode( GraphNode* node ) const
 {
   // the vector is empty
-  if ( nodes.size( ) == 0 )
+  if ( nodes.size() == 0 )
   {
-    return nodes.rend( );
+    return nodes.rend();
   }
 
   // there is only one node in the vector
-  if ( nodes.size( ) == 1 )
+  if ( nodes.size() == 1 )
   {
-    return nodes.rbegin( );
+    return nodes.rbegin();
   }
 
   // set start boundaries for the search
   size_t indexMin = 0;
-  size_t indexMax = nodes.size( ) - 1;
+  size_t indexMax = nodes.size() - 1;
   
   size_t indexPrevMin = indexMin;
   size_t indexPrevMax = indexMax;
@@ -1286,14 +1286,14 @@ EventStream::findNode( GraphNode* node ) const
     indexPrev = indexPrevMax - ( indexPrevMax - indexPrevMin ) / 2;
     size_t index = indexMax - ( indexMax - indexMin ) / 2;
 
-    UTILS_ASSERT( index < nodes.size( ), "index %lu indexMax %lu indexMin %lu", 
+    UTILS_ASSERT( index < nodes.size(), "index %lu indexMax %lu indexMin %lu", 
                   index, indexMax, indexMin );
 
     // if we found the node at index ('middle' element)
     // for uneven elements, index points on the element after the half
     if ( nodes[index] == node )
     {
-      return nodes.rbegin( ) + ( nodes.size( ) - index - 1 );
+      return nodes.rbegin() + ( nodes.size() - index - 1 );
     }
 
     // indexMin == indexMax == index
@@ -1302,27 +1302,27 @@ EventStream::findNode( GraphNode* node ) const
     if ( indexMin == indexMax )
     {
       std::cerr << "Stream " << node->getStreamId() << " Looking for node " 
-                << node->getUniqueName( ) << " - Wrong node found! Index (" 
+                << node->getUniqueName() << " - Wrong node found! Index (" 
                 << index << ") node on break: "
-                << nodes[index]->getUniqueName( ) << std::endl;
+                << nodes[index]->getUniqueName() << std::endl;
 
       std::cerr << "Node sequence:" << std::endl;
       for(size_t i = index - 3; i < index + 4; i++)
       {
         if( nodes[i] )
-          std::cerr << nodes[i]->getUniqueName( ) << std::endl;
+          std::cerr << nodes[i]->getUniqueName() << std::endl;
       }
       
       std::cerr << " Previous compare node [" << indexPrevMin << ":" << indexPrevMax 
-                << "]:" << nodes[indexPrev]->getUniqueName( )
+                << "]:" << nodes[indexPrev]->getUniqueName()
                 << " with result: " << Node::compareLess( node, nodes[indexPrev] ) 
                 << std::endl;
       
-      std::cerr << " Pre-Previous compare node: " << nodes[indexPrev2]->getUniqueName( )
+      std::cerr << " Pre-Previous compare node: " << nodes[indexPrev2]->getUniqueName()
                 << " with result: " << Node::compareLess( node, nodes[indexPrev2] ) 
                 << std::endl;
-      //std::cerr << "return nodes.rbegin( ) = " << nodes.rbegin( ) << std::endl;
-      //std::cerr << "return nodes.rend( ) = " << nodes.rend( ) << std::endl;
+      //std::cerr << "return nodes.rbegin() = " << nodes.rbegin() << std::endl;
+      //std::cerr << "return nodes.rend() = " << nodes.rend() << std::endl;
       
       break;
     }
@@ -1353,7 +1353,7 @@ EventStream::findNode( GraphNode* node ) const
   while ( true );
 
   // return iterator to first element, if node could not be found
-  return nodes.rend( );
+  return nodes.rend();
 }
 
 void
@@ -1369,7 +1369,7 @@ EventStream::addNodeInternal( SortedGraphNodeList& nodes, GraphNode* node )
  * The routine does not touch the list of nodes!!!
  */
 void
-EventStream::reset( )
+EventStream::reset()
 {
   nodesAdded = false;
   
@@ -1394,11 +1394,11 @@ EventStream::reset( )
     }
     
     // do not clear pending kernels as they might be required in the following interval
-    //clearPendingKernels( );
+    //clearPendingKernels();
   }
   
-  //\todo nodes // currently handled in GraphEngine::createIntermediateBegin( )
-  //\todo reset graphData //currently handled GraphEngine::createIntermediateBegin( )
+  //\todo nodes // currently handled in GraphEngine::createIntermediateBegin()
+  //\todo reset graphData //currently handled GraphEngine::createIntermediateBegin()
   
   // clear list of unlinked MPI nodes (print to stderr before), the last node is always unlinked!
   if( unlinkedMPINodes.size() > 1 )
@@ -1407,7 +1407,7 @@ EventStream::reset( )
                      this->id, this->unlinkedMPINodes.size() );
     
     for ( SortedGraphNodeList::const_iterator iter =
-            unlinkedMPINodes.begin( ); iter != unlinkedMPINodes.end( ); ++iter )
+            unlinkedMPINodes.begin(); iter != unlinkedMPINodes.end(); ++iter )
     {
       UTILS_MSG( true, "[%"PRIu64"]   %s", 
                        this->id, ( *iter )->getUniqueName().c_str() );
@@ -1420,8 +1420,8 @@ EventStream::reset( )
   mpiCommRecords.clear();
   
   // reset temporary values for non-blocking MPI communication
-  pendingMPIRequestId = std::numeric_limits< uint64_t >::max( );
-  mpiIsendPartner = std::numeric_limits< uint64_t >::max( );
+  pendingMPIRequestId = std::numeric_limits< uint64_t >::max();
+  mpiIsendPartner = std::numeric_limits< uint64_t >::max();
     
   // reset list of pending request IDs (non-blocking MPI)
   if( !(pendingRequests.empty()) )

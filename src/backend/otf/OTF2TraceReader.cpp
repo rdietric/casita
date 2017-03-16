@@ -233,13 +233,13 @@ OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
   OTF2_GlobalEvtReaderCallbacks_SetRmaWinDestroyCallback(
     event_callbacks, &otf2CallbackComm_RmaWinDestroy );
   
-  // register for GPU communication events
+  /* register MPI RMA communication callbacks
   OTF2_GlobalEvtReaderCallbacks_SetRmaGetCallback(
     event_callbacks, &otf2CallbackComm_RmaGet );
   OTF2_GlobalEvtReaderCallbacks_SetRmaPutCallback(
     event_callbacks, &otf2CallbackComm_RmaPut );
   OTF2_GlobalEvtReaderCallbacks_SetRmaOpCompleteBlockingCallback(
-    event_callbacks, &otf2CallbackComm_RmaOpCompleteBlocking );
+    event_callbacks, &otf2CallbackComm_RmaOpCompleteBlocking );*/
   
   if ( !ignoreAsyncMPI )
   {
@@ -1060,7 +1060,7 @@ OTF2TraceReader::otf2CallbackComm_RmaWinDestroy(
   
   return OTF2_CALLBACK_SUCCESS;
 }
-
+/*
 OTF2_CallbackCode
 OTF2TraceReader::otf2CallbackComm_RmaPut( OTF2_LocationRef location,
                                                   OTF2_TimeStamp   time,
@@ -1120,6 +1120,7 @@ OTF2TraceReader::otf2CallbackComm_RmaGet( OTF2_LocationRef location,
   
   return OTF2_CALLBACK_SUCCESS;
 }
+*/
 
 std::string
 OTF2TraceReader::getStringRef( Token t )

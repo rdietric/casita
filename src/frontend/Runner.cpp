@@ -115,9 +115,9 @@ Runner::startAnalysisRun()
   traceReader->handleMPIIrecvRequest   = CallbackHandler::handleMPIIrecvRequest;
   traceReader->handleMPIIsendComplete  = CallbackHandler::handleMPIIsendComplete;
   traceReader->handleRmaWinDestroy     = CallbackHandler::handleRmaWinDestroy;
-  traceReader->handleRmaPut            = CallbackHandler::handleRmaPut;
-  traceReader->handleRmaGet            = CallbackHandler::handleRmaGet;
-  traceReader->handleRmaOpCompleteBlocking = CallbackHandler::handleRmaOpCompleteBlocking;
+  //traceReader->handleRmaPut            = CallbackHandler::handleRmaPut;
+  //traceReader->handleRmaGet            = CallbackHandler::handleRmaGet;
+  //traceReader->handleRmaOpCompleteBlocking = CallbackHandler::handleRmaOpCompleteBlocking;
 
   traceReader->open( options.filename, 10 );
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
@@ -482,35 +482,34 @@ Runner::mergeActivityGroups()
     UTILS_MSG_NOBR( options.verbose >= VERBOSE_BASIC,
                     " Combining regions from %d analysis processes", mpiSize );
   
-    // receive number of entries
+    // receive number of regions from other processes
     uint32_t numEntriesSend = 0; // we do not evaluate this for root rank 0
-    uint32_t numEntriesRecv[ mpiSize ];
+    uint32_t numRegionsRecv[ mpiSize ];
     MPI_CHECK( MPI_Gather( &numEntriesSend, 1, MPI_UINT32_T, 
-                           numEntriesRecv,  1, MPI_UINT32_T, 
+                           numRegionsRecv,  1, MPI_UINT32_T, 
                            0, MPI_COMM_WORLD ) );
     
     // receive from all other MPI streams
     for ( int rank = 1; rank < mpiSize; ++rank )
     {
-      uint32_t numEntries = numEntriesRecv[ rank ];
+      uint32_t numRegions = numRegionsRecv[ rank ];
 
-      // receive the entries
-      if ( numEntries > 0 )
+      // receive the regions from current rank
+      if ( numRegions > 0 )
       {
+        // allocate array to receive region information
         OTF2ParallelTraceWriter::ActivityGroup* buf =
-          new OTF2ParallelTraceWriter::ActivityGroup[ numEntries ];
+          new OTF2ParallelTraceWriter::ActivityGroup[ numRegions ];
         
         //\todo: Could be replaced by MPI_Gatherv
         MPI_CHECK( MPI_Recv( buf,
-                   numEntries * sizeof( OTF2ParallelTraceWriter::ActivityGroup ),
-                   MPI_BYTE,
-                   rank,
-                   MPI_ENTRIES_TAG,
+                   numRegions * sizeof( OTF2ParallelTraceWriter::ActivityGroup ),
+                   MPI_BYTE, rank, MPI_ENTRIES_TAG,
                    MPI_COMM_WORLD, MPI_STATUS_IGNORE ) );
 
-        // combine with own activity groups and generate a global metrics
+        // combine with own regions and generate a global metrics
         OTF2ParallelTraceWriter::ActivityGroupMap::iterator groupIter;
-        for ( uint32_t i = 0; i < numEntries; ++i )
+        for ( uint32_t i = 0; i < numRegions; ++i )
         {
           OTF2ParallelTraceWriter::ActivityGroup* group = &( buf[i] );
           uint32_t fId = group->functionId;
@@ -526,7 +525,7 @@ Runner::mergeActivityGroups()
             groupIter->second.blameOnCP         += group->blameOnCP;
             groupIter->second.numUnifyStreams++;
           }
-          else
+          else // create region and set region information
           {
             ( *activityGroupMap )[fId].functionId        = fId;
             ( *activityGroupMap )[fId].numInstances      = group->numInstances;
@@ -538,6 +537,7 @@ Runner::mergeActivityGroups()
             ( *activityGroupMap )[fId].numUnifyStreams   = group->numUnifyStreams;
           }
 
+          // add the region's blame to overall blame
           globalBlame += group->totalBlame;
         }
 
@@ -571,18 +571,20 @@ Runner::mergeActivityGroups()
   }
   else
   {
-    uint32_t i          = 0;
-    uint32_t numEntries = activityGroupMap->size();
+    // number of local regions
+    uint32_t numRegions = activityGroupMap->size();
 
-    // send number of entries to root rank
+    // send number of (local) activity groups to root rank
     uint32_t numEntriesRecv; // is ignored for the sender
-    MPI_CHECK( MPI_Gather( &numEntries, 1, MPI_UINT32_T, 
+    MPI_CHECK( MPI_Gather( &numRegions, 1, MPI_UINT32_T, 
                            &numEntriesRecv, 1, MPI_UINT32_T, 
                            0, MPI_COMM_WORLD ) );
 
+    // copy region information form map into array
     OTF2ParallelTraceWriter::ActivityGroup* buf =
-      new OTF2ParallelTraceWriter::ActivityGroup[ numEntries ];
+      new OTF2ParallelTraceWriter::ActivityGroup[ numRegions ];
 
+    uint32_t i = 0;
     for ( OTF2ParallelTraceWriter::ActivityGroupMap::iterator groupIter =
             activityGroupMap->begin();
           groupIter != activityGroupMap->end(); ++groupIter )
@@ -592,13 +594,10 @@ Runner::mergeActivityGroups()
       ++i;
     }
 
-    // send entries to root rank
+    // send region information of all local regions to root rank
     MPI_CHECK( MPI_Send( buf,
-               numEntries * sizeof( OTF2ParallelTraceWriter::ActivityGroup ),
-               MPI_CHAR,
-               0, 
-               MPI_ENTRIES_TAG,
-               MPI_COMM_WORLD ) );
+               numRegions * sizeof( OTF2ParallelTraceWriter::ActivityGroup ),
+               MPI_BYTE, 0, MPI_ENTRIES_TAG, MPI_COMM_WORLD ) );
 
     delete[]buf;
   }
@@ -612,7 +611,7 @@ Runner::mergeStatistics()
   
   Statistics& stats = analysis.getStatistics();
 
-  //\todo: MPI_Gatherv might be better
+  //\todo: MPI_Gatherv might be better?
   uint64_t statsRecvBuf[ mpiSize * STATS_OFFLOADING ];
   MPI_CHECK( MPI_Gather( stats.getStatsOffloading(), STATS_OFFLOADING, MPI_UINT64_T, 
                          statsRecvBuf,  STATS_OFFLOADING, MPI_UINT64_T, 

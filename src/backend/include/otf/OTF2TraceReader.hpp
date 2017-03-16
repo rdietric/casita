@@ -253,9 +253,9 @@ namespace casita
       HandleMPIIrecvRequest   handleMPIIrecvRequest;
       HandleMPIIsendComplete  handleMPIIsendComplete;
       HandleRmaWinDestroy     handleRmaWinDestroy;
-      HandleRmaPut            handleRmaPut;
-      HandleRmaGet            handleRmaGet;
-      HandleRmaOpCompleteBlocking handleRmaOpCompleteBlocking;
+      //HandleRmaPut            handleRmaPut;
+      //HandleRmaGet            handleRmaGet;
+      //HandleRmaOpCompleteBlocking handleRmaOpCompleteBlocking;
 
     private:
       static OTF2_CallbackCode

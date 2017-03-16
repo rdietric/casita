@@ -24,7 +24,7 @@ CallbackHandler::CallbackHandler( AnalysisEngine& analysis ) :
   analysis( analysis ),
   mpiRank( analysis.getMPIRank() )
 {
-  deviceRef = -1;
+  
 }
 
 AnalysisEngine&
@@ -237,80 +237,6 @@ CallbackHandler::handleDefAttribute( OTF2TraceReader* reader,
 }
 
 void
-CallbackHandler::handleDeviceTaskEnter( uint64_t time, bool isCompute )
-{
-  if( deviceRef < 0 )
-  {
-    deviceRef = 1;
-    
-    // set initial time
-    lastIdleStart = time;
-    
-    // also set last compute idle time
-    lastComputeIdleStart = time;
-    deviceComputeRef = 0;
-  }
-  else if( deviceRef == 0 )
-  {
-    // add device idle time to statistics
-    analysis.getStatistics().addStatTimeOffloading( OFLD_STAT_IDLE_TIME, 
-                                                    time - lastIdleStart );
-
-    deviceRef = 1;
-  }
-  else
-  {
-    deviceRef++;
-  }
-  
-  if( isCompute )
-  {
-    if( deviceComputeRef < 0 )
-    {
-      deviceComputeRef = 1;
-
-      // set initial time
-      lastComputeIdleStart = time;
-    }
-    else if( deviceComputeRef == 0 )
-    {
-      // add device idle time to statistics
-      analysis.getStatistics().addStatTimeOffloading( OFLD_STAT_COMPUTE_IDLE_TIME, 
-                                                      time - lastComputeIdleStart );
-
-      deviceComputeRef = 1;
-    }
-    else
-    {
-      deviceComputeRef++;
-    }
-  }
-}
-
-void
-CallbackHandler::handleDeviceTaskLeave( uint64_t time, bool isCompute )
-{
-  deviceRef--;
-
-  if( deviceRef == 0 )
-  {
-    //save time
-    lastIdleStart = time;
-  }
-  
-  if( isCompute )
-  {
-    deviceComputeRef--;
-
-    if( deviceComputeRef == 0 )
-    {
-      //save time
-      lastComputeIdleStart = time;
-    }
-  }
-}
-
-void
 CallbackHandler::handleEnter( OTF2TraceReader*  reader,
                               uint64_t          time,
                               uint32_t          functionId,
@@ -335,11 +261,6 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   if( stream->getPeriod().second < time )
   {
     stream->getPeriod().second = time;
-  }
-  
-  if( stream->isDeviceStream() )
-  {
-    handler->handleDeviceTaskEnter( time, true );
   }
 
   //const char* funcName = analysis.getFunctionName(functionId);
@@ -382,12 +303,6 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
                                           funcName,
                                           &functionDesc );
   }
-  
-  // assign offloading idle until MPI_Finalize for now
-  if( enterNode->isMPIFinalize() )
-  {
-    handler->handleDeviceTaskEnter( time, true );
-  }
 
   enterNode->setFunctionId( functionId );
 
@@ -427,11 +342,6 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   if( stream->getPeriod().second < time )
   {
     stream->getPeriod().second = time;
-  }
-  
-  if( stream->isDeviceStream() )
-  {
-    handler->handleDeviceTaskLeave( time, true );
   }
 
   std::string funcStr = reader->getFunctionName( functionId );
@@ -570,21 +480,14 @@ CallbackHandler::handleRmaWinDestroy( OTF2TraceReader* reader,
     stream->setLastEventTime( time );
   }
 }
-
+/*
 void
 CallbackHandler::handleRmaPut( OTF2TraceReader* reader,
                                uint64_t         time,
                                uint64_t         streamId )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
-  AnalysisEngine& analysis = handler->getAnalysis();
-  EventStream*     stream  = analysis.getStream( streamId );
-  
-  // communication task on device streams starts
-  if( stream->isDeviceStream() )
-  {
-    handler->handleDeviceTaskEnter( time );
-  }
+  EventStream*     stream  = handler->getAnalysis().getStream( streamId );
 }
 
 void
@@ -593,14 +496,7 @@ CallbackHandler::handleRmaGet( OTF2TraceReader* reader,
                                uint64_t         streamId )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
-  AnalysisEngine& analysis = handler->getAnalysis();
-  EventStream*     stream  = analysis.getStream( streamId );
-  
-  // communication task on device streams starts
-  if( stream->isDeviceStream() )
-  {
-    handler->handleDeviceTaskEnter( time );
-  }
+  EventStream*     stream  = handler->getAnalysis().getStream( streamId );
 }
 
 void
@@ -610,13 +506,8 @@ CallbackHandler::handleRmaOpCompleteBlocking( OTF2TraceReader* reader,
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
   EventStream*     stream  = handler->getAnalysis().getStream( streamId );
-  
-  // communication task on device streams ends
-  if( stream->isDeviceStream() )
-  {
-    handler->handleDeviceTaskLeave( time );
-  }
 }
+*/
 
 /**
  * Handle blocking MPI communication.

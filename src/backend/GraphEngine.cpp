@@ -145,6 +145,12 @@ GraphEngine::getStream( uint64_t id ) const
   }
 }
 
+EventStreamGroup&
+GraphEngine::getStreamGroup()
+{
+  return streamGroup;
+}
+
 const EventStreamGroup::EventStreamList&
 GraphEngine::getStreams() const
 {
@@ -330,8 +336,8 @@ GraphNode*
 GraphEngine::getFirstTimedGraphNode( Paradigm paradigm ) const
 {
   GraphNode* firstNode = NULL;
-  EventStreamGroup::EventStreamList streams;
-  streamGroup.getAllStreams( streams );
+  
+  const EventStreamGroup::EventStreamList streams = streamGroup.getAllStreams();
 
   for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin();
         iter != streams.end(); ++iter )
@@ -361,8 +367,6 @@ GraphEngine::getFirstTimedGraphNode( Paradigm paradigm ) const
         }
       }
     }
-    
-    
 
     if ( firstStreamGNode )
     {
@@ -379,8 +383,6 @@ GraphEngine::getFirstTimedGraphNode( Paradigm paradigm ) const
       }
     }
   }
-  
-  streams.clear();
 
   return firstNode;
 }

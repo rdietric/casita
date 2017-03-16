@@ -69,6 +69,9 @@ namespace casita
      EventStream*
      getStream( uint64_t id ) const;
      
+     EventStreamGroup&
+     getStreamGroup();
+     
      /**
       * Get a constant reference to a vector of all execution streams.
       * 

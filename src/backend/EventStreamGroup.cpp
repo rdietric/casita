@@ -20,19 +20,18 @@
 using namespace casita;
 
 EventStreamGroup::EventStreamGroup() :
-  nullStream( NULL )
+  deviceNullStream( NULL )
 {
 
 }
 
-EventStreamGroup::EventStreamGroup( uint64_t               start,
-                                    const EventStreamList& hostStreams,
+EventStreamGroup::EventStreamGroup( const EventStreamList& hostStreams,
                                     const EventStreamList& deviceStreams,
                                     EventStream*           nullStream )
 {
   this->hostStreams.assign( hostStreams.begin(), hostStreams.end() );
   this->deviceStreams.assign( deviceStreams.begin(), deviceStreams.end() );
-  this->nullStream = nullStream;
+  this->deviceNullStream = nullStream;
 }
 
 EventStreamGroup::~EventStreamGroup()
@@ -57,48 +56,29 @@ EventStreamGroup::addDeviceStream( EventStream* p )
 EventStreamGroup::EventStreamList::iterator
 EventStreamGroup::removeHostStream( EventStream* p )
 {
-  for ( EventStreamList::iterator iter = hostStreams.begin( );
-        iter != hostStreams.end( ); ++iter )
+  for ( EventStreamList::iterator iter = hostStreams.begin();
+        iter != hostStreams.end(); ++iter )
   {
     if ( *iter == p )
     {
       return hostStreams.erase( iter );
     }
   }
-  return hostStreams.end( );
+  return hostStreams.end();
 }
 
 void
 EventStreamGroup::setNullStream( EventStream* p )
 {
-  nullStream = p;
+  deviceNullStream = p;
   
-  allStreams.push_back( nullStream );
+  allStreams.push_back( deviceNullStream );
 }
 
 const EventStreamGroup::EventStreamList&
 EventStreamGroup::getAllStreams() const
 {
   return allStreams;
-}
-
-void
-EventStreamGroup::getAllStreams( EventStreamList& streams ) const
-{
-  // clear list of streams (input)
-  streams.clear( );
-  
-  // add all host streams
-  streams.assign( hostStreams.begin( ), hostStreams.end( ) );
-  
-  // add the device null stream if available
-  if ( nullStream )
-  {
-    streams.insert( streams.end( ), nullStream );
-  }
-  
-  // add all other device streams
-  streams.insert( streams.end( ), deviceStreams.begin( ), deviceStreams.end( ) );
 }
 
 void
@@ -110,9 +90,9 @@ EventStreamGroup::getAllStreams( EventStreamList& streams,
   
   // add all streams
   streams.assign( hostStreams.begin(), hostStreams.end() );
-  if ( nullStream )
+  if ( deviceNullStream )
   {
-    streams.insert( streams.end(), nullStream );
+    streams.insert( streams.end(), deviceNullStream );
   }
   streams.insert( streams.end(), deviceStreams.begin(), deviceStreams.end() );
 
@@ -172,9 +152,9 @@ EventStreamGroup::getAllDeviceStreams(
                      EventStreamGroup::EventStreamList& newDeviceStreams ) const
 {
   newDeviceStreams.clear();
-  if ( nullStream )
+  if ( deviceNullStream )
   {
-    newDeviceStreams.insert( newDeviceStreams.end(), nullStream );
+    newDeviceStreams.insert( newDeviceStreams.end(), deviceNullStream );
   }
   newDeviceStreams.insert( newDeviceStreams.end(),
                            deviceStreams.begin(), deviceStreams.end() );
@@ -183,7 +163,7 @@ EventStreamGroup::getAllDeviceStreams(
 EventStream*
 EventStreamGroup::getNullStream() const
 {
-  return nullStream;
+  return deviceNullStream;
 }
 
 size_t
@@ -192,7 +172,7 @@ EventStreamGroup::getNumStreams() const
   //size_t numProcs = hostStreams.size() + deviceStreams.size();
   size_t numProcs = allStreams.size();
   
-  if ( nullStream )
+  if ( deviceNullStream )
   {
     numProcs++;
   }
@@ -210,4 +190,17 @@ size_t
 EventStreamGroup::getNumDeviceStreams() const
 {
   return deviceStreams.size();
+}
+
+EventStream*
+EventStreamGroup::getFirstDeviceStream( int deviceId )
+{
+  if( deviceFirstStreamMap.count( deviceId ) == 0 )
+  {
+    std::sort( deviceStreams.begin(), deviceStreams.end() );
+    
+    deviceFirstStreamMap[ deviceId ] = deviceStreams.front();
+  }
+  
+  return deviceFirstStreamMap[ deviceId ];
 }

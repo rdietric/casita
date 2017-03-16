@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014, 2016,
+ * Copyright (c) 2013-2014, 2016, 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -90,8 +90,6 @@ namespace casita
     std::cout << "  -c [--interval-analysis=][uint32_t]   Run analysis in intervals (between global" << std::endl
       << "                          collectives) to reduce memory footprint. The optional value sets the " << std::endl
       << "                          number of pending graph nodes before an analysis run is started." << std::endl;
-
-
   }
 
   bool

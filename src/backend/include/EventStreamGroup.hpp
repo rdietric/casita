@@ -19,75 +19,73 @@
 namespace casita
 {
 
- class EventStreamGroup
- {
-   public:
+  class EventStreamGroup
+  {
+    public:
 
-     typedef std::vector< EventStream* > EventStreamList;
+      typedef std::vector< EventStream* > EventStreamList;
 
-     EventStreamGroup();
-     EventStreamGroup( uint64_t               start,
-                       const EventStreamList& hostStreams,
-                       const EventStreamList& deviceProcs,
-                       EventStream*           nullStream );
-     virtual
-     ~EventStreamGroup();
+      EventStreamGroup();
+      EventStreamGroup( const EventStreamList& hostStreams,
+                        const EventStreamList& deviceProcs,
+                        EventStream*           nullStream );
+      virtual
+      ~EventStreamGroup();
 
-     void
-     addHostStream( EventStream* p );
+      void
+      addHostStream( EventStream* p );
 
-     void
-     addDeviceStream( EventStream* p );
+      void
+      addDeviceStream( EventStream* p );
 
-     EventStreamList::iterator
-     removeHostStream( EventStream* p );
+      EventStreamList::iterator
+      removeHostStream( EventStream* p );
 
-     void
-     setNullStream( EventStream* p );
+      void
+      setNullStream( EventStream* p );
      
-     const EventStreamList&
-     getAllStreams() const;
+      const EventStreamList&
+      getAllStreams() const;
 
-     void
-     getAllStreams( EventStreamList& streams ) const;
+      void
+      getAllStreams( EventStreamList& streams, Paradigm paradigm ) const;
 
-     void
-     getAllStreams( EventStreamList& streams, Paradigm paradigm ) const;
+      const EventStreamList&
+      getHostStreams() const;
 
-     const EventStreamList&
-     getHostStreams() const;
-
-     const EventStreamList&
-     getDeviceStreams() const;
+      const EventStreamList&
+      getDeviceStreams() const;
      
-     void
-     getDeviceStreams( int deviceId, EventStreamList& newDeviceStreams ) const;
+      void
+      getDeviceStreams( int deviceId, EventStreamList& newDeviceStreams ) const;
 
-     void
-     getAllDeviceStreams( EventStreamList& newDeviceStreams ) const;
+      void
+      getAllDeviceStreams( EventStreamList& newDeviceStreams ) const;
 
-     EventStream*
-     getNullStream( ) const;
+      EventStream*
+      getNullStream() const;
 
-     size_t
-     getNumStreams( ) const;
+      size_t
+      getNumStreams() const;
 
-     size_t
-     getNumHostStreams( ) const;
+      size_t
+      getNumHostStreams() const;
 
-     size_t
-     getNumDeviceStreams( ) const;
+      size_t
+      getNumDeviceStreams() const;
+      
+      EventStream*
+      getFirstDeviceStream( int deviceId );
 
-     uint64_t
-     getStartTime( ) const;
-
-   private:
+    private:
      
-     EventStreamList hostStreams;
-     EventStreamList deviceStreams;
-     EventStreamList allStreams;
+      EventStreamList hostStreams;
+      EventStreamList deviceStreams;
+      EventStreamList allStreams;
      
-     EventStream*    nullStream;
+      EventStream*    deviceNullStream;
+      
+      std::map< int, EventStream* > deviceFirstStreamMap;      
  };
 
 }
