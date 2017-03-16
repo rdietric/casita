@@ -369,7 +369,7 @@ OTF2ParallelTraceWriter::writeDeviceIdleDefinitions()
   stringRefMap[ newStringRef ] = "deviceIdle";
   
   // get a new region reference
-  uint32_t deviceIdleRegRef = 1;
+  deviceIdleRegRef = 1;
   if( !regionRefMap.empty() )
   {
     // get the largest region reference and add '1'
@@ -386,7 +386,7 @@ OTF2ParallelTraceWriter::writeDeviceIdleDefinitions()
     OTF2_CHECK( OTF2_GlobalDefWriter_WriteRegion( otf2GlobalDefWriter,
                                     deviceIdleRegRef,
                                     newStringRef,
-                                    OTF2_UNDEFINED_STRING,
+                                    newStringRef,
                                     OTF2_UNDEFINED_STRING,
                                     OTF2_REGION_ROLE_ARTIFICIAL,
                                     OTF2_PARADIGM_CUDA,
@@ -1176,7 +1176,7 @@ OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time,
   {
     // add device idle time to statistics
     analysis->getStatistics().addStatTimeOffloading( OFLD_STAT_IDLE_TIME, 
-                                                    time - lastIdleStart );
+                                                     time - lastIdleStart );
 
     deviceRefCount = 1;
     
