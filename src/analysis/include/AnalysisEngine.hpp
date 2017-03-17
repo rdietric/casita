@@ -82,11 +82,8 @@ namespace casita
      void
      addFunction( uint32_t funcId, const char* name );
 
-     uint32_t
-     getNewFunctionId();
-
      void
-     setWaitStateFunctionId( uint32_t id );
+     setWaitStateRegion( );
 
      const char*
      getFunctionName( uint32_t id );

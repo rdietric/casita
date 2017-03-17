@@ -122,8 +122,7 @@ AnalysisEngine::getFunctionType( const char*         name,
 void
 AnalysisEngine::addFunction( uint32_t funcId, const char* name )
 {
-  maxFunctionId       = std::max( maxFunctionId, funcId );
-  functionMap[funcId] = name;
+  functionMap[ funcId ] = name;
   
   if( 0 == strcmp(Parser::getInstance().getProgramOptions().predictionFilter.c_str(), name ) )
   {
@@ -132,17 +131,17 @@ AnalysisEngine::addFunction( uint32_t funcId, const char* name )
   }
 }
 
-uint32_t
-AnalysisEngine::getNewFunctionId()
-{
-  return ++maxFunctionId;
-}
-
 void
-AnalysisEngine::setWaitStateFunctionId( uint32_t id )
+AnalysisEngine::setWaitStateRegion()
 {
-  waitStateFuncId = id;
-  functionMap[waitStateFuncId] = "WaitState";
+  uint32_t newRegionRef = 1;
+  if( !functionMap.empty() )
+  {
+    // get the largest function id (region reference) and add '1'
+    newRegionRef += functionMap.rbegin()->first;
+  }
+  
+  functionMap[ newRegionRef ] = "WaitState";
 }
 
 const char*

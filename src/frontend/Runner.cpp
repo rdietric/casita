@@ -154,8 +154,8 @@ Runner::startAnalysisRun()
   // TODO:
   analysis.getMPIAnalysis().createMPICommunicatorsFromMap();
   
-  // TODO: 
-  analysis.setWaitStateFunctionId( analysis.getNewFunctionId() );
+  // set wait state function (requires definitions to be read)
+  analysis.setWaitStateRegion();
 
   // set the timer resolution in the analysis engine
   uint64_t timerResolution = traceReader->getTimerResolution();
