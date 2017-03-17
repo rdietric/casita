@@ -253,6 +253,52 @@ OTF2ParallelTraceWriter::getRealTime( uint64_t time )
 }
 
 /**
+ * Get new OTF2 string reference based on the sorted property of the 
+ * stringRefMap.
+ * 
+ * @param string string to generate a new OTF2 reference for
+ * @return new OTF2 string reference
+ */
+uint32_t
+OTF2ParallelTraceWriter::getNewStringRef( const char* string )
+{
+  uint32_t newStringRef = 1;
+  
+  if( !stringRefMap.empty() )
+  {
+    // get the largest string reference and add '1'
+    newStringRef += stringRefMap.rbegin()->first;
+  }
+  
+  stringRefMap[ newStringRef ] = string;
+  
+  return newStringRef;
+}
+
+/**
+ * Get new OTF2 region reference based on the sorted property of the 
+ * regionRefMap.
+ * 
+ * @param stringRef OTF2 string reference to generate a new OTF2 region reference for
+ * @return new OTF2 region reference
+ */
+uint32_t
+OTF2ParallelTraceWriter::getNewRegionRef( uint32_t stringRef )
+{
+  uint32_t newRegionRef = 1;
+  
+  if( !regionRefMap.empty() )
+  {
+    // get the largest region reference and add '1'
+    newRegionRef += regionRefMap.rbegin()->first;
+  }
+  
+  regionRefMap[ newRegionRef ] = stringRef;
+  
+  return newRegionRef;
+}
+
+/**
  * Read definitions from original trace.
  * Write them to new one, if new OTF2 file is written.
  */
@@ -340,42 +386,20 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions()
   UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
              "[0] Trace writer: Read/wrote %"PRIu64" definitions", 
              definitions_read );
-  
-  // get a new string reference
-  uint32_t newStringRef = 1;
-  if( !stringRefMap.empty() )
-  {
-    // get the largest string reference and add '1'
-    newStringRef += stringRefMap.rbegin()->first;
-  }
-  
+
   // add fork/join "region" to support internal OMP-fork/join model
   // ( OMP-fork/join is a node in CASITA internally )
-  stringRefMap[newStringRef]          = OTF2_OMP_FORKJOIN_INTERNAL;
-  ompForkJoinRef                     = regionRefMap.size();
-  regionRefMap[ ompForkJoinRef ] = newStringRef;
+  ompForkJoinRef = getNewRegionRef( getNewStringRef( OTF2_OMP_FORKJOIN_INTERNAL ) );
 }
 
 void
 OTF2ParallelTraceWriter::writeDeviceIdleDefinitions()
 {
   // get a new string reference
-  uint32_t newStringRef = 1;
-  if( !stringRefMap.empty() )
-  {
-    // get the largest string reference and add '1'
-    newStringRef += stringRefMap.rbegin()->first;
-  }
-  stringRefMap[ newStringRef ] = "deviceIdle";
+  uint32_t newStringRef = getNewStringRef( "deviceIdle" );
   
   // get a new region reference
-  deviceIdleRegRef = 1;
-  if( !regionRefMap.empty() )
-  {
-    // get the largest region reference and add '1'
-    deviceIdleRegRef += regionRefMap.rbegin()->first;
-  }
-  regionRefMap[ deviceIdleRegRef ] = newStringRef;
+  deviceIdleRegRef = getNewRegionRef( newStringRef );
   
   if ( mpiRank == 0 )
   {
@@ -711,6 +735,8 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
     // set the initial critical path value if this is the first call of this function
     if( firstCall ) 
     {
+      streamState.isFilterOn = false;
+      
       // set the initial critical path value for this stream
       // (only in the first call of this function)
       if( stream->isFirstCritical() )
@@ -2159,6 +2185,19 @@ OTF2ParallelTraceWriter::otf2CallbackEnter( OTF2_LocationRef    location,
                                             OTF2_RegionRef      region )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
+  
+  if( tw->streamStatusMap[ location ].isFilterOn )
+  {
+    UTILS_WARNING("asdf");
+    return OTF2_CALLBACK_SUCCESS;
+  }
+  
+  if( tw->analysis->isFunctionFiltered( region ) )
+  {
+    tw->streamStatusMap[location].isFilterOn = true;
+    UTILS_WARNING("asdf4");
+    return OTF2_CALLBACK_SUCCESS;
+  }
 
   // define event to write next node in list
   OTF2Event event;
@@ -2190,6 +2229,19 @@ OTF2ParallelTraceWriter::otf2CallbackLeave( OTF2_LocationRef    location, // str
                                             OTF2_RegionRef      region )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
+  
+  if( tw->analysis->isFunctionFiltered( region ) )
+  {
+    UTILS_WARNING("asdf3");
+    tw->streamStatusMap[location].isFilterOn = false;
+    return OTF2_CALLBACK_SUCCESS;
+  }
+  
+  if( tw->streamStatusMap[location].isFilterOn )
+  {
+    UTILS_WARNING("asdf2");
+    return OTF2_CALLBACK_SUCCESS;
+  }
 
   // Define event to write next node in list
   OTF2Event event;

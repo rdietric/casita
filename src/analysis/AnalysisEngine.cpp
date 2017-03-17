@@ -107,8 +107,7 @@ AnalysisEngine::haveAnalysisFeature( AnalysisFeature feature ) const
 }
 
 bool
-AnalysisEngine::getFunctionType( uint32_t            id,
-                                 const char*         name,
+AnalysisEngine::getFunctionType( const char*         name,
                                  EventStream*        stream,
                                  FunctionDescriptor* descr )
 {
@@ -125,6 +124,12 @@ AnalysisEngine::addFunction( uint32_t funcId, const char* name )
 {
   maxFunctionId       = std::max( maxFunctionId, funcId );
   functionMap[funcId] = name;
+  
+  if( 0 == strcmp(Parser::getInstance().getProgramOptions().predictionFilter.c_str(), name ) )
+  {
+    UTILS_WARNING("Found definition of filtered function" );
+    filteredFunctions.insert( funcId );
+  }
 }
 
 uint32_t
@@ -153,6 +158,12 @@ AnalysisEngine::getFunctionName( uint32_t id )
   {
     return NULL;
   }
+}
+
+bool
+AnalysisEngine::isFunctionFiltered( uint32_t funcId )
+{
+  return ( filteredFunctions.count( funcId ) > 0 );
 }
 
 bool

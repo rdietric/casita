@@ -252,6 +252,7 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
     throw RTException( "Process %lu not found.", streamId );
   }
   
+  // save the time stamp of the first enter event
   if( stream->getPeriod().first > time )
   {
     stream->getPeriod().first = time;
@@ -263,13 +264,38 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
     stream->getPeriod().second = time;
   }
 
-  //const char* funcName = analysis.getFunctionName(functionId);
-  std::string funcStr = reader->getFunctionName( functionId );
-  const char* funcName = funcStr.c_str();
+  const char* funcName = analysis.getFunctionName( functionId );
+  //std::string funcStr = reader->getFunctionName( functionId );
+  //const char* funcName = funcStr.c_str(); //analysis.getFunctionName( functionId );
+  
+  if( stream->isFilterOn() )
+  {
+    UTILS_MSG(true, "Filtering nested region %s", funcName );
+    
+    return;
+  }
+  
+  if( analysis.isFunctionFiltered( functionId ) )
+  {
+    if( stream->isFilterOn() )
+    {
+      UTILS_WARNING( "Region %s is nested into already filtered function.", 
+                     funcName );
+      
+      return;
+    }
+    else
+    {
+      UTILS_MSG(true, "Enable filter for %s (%u)", funcName, functionId );
+    
+      // set the filter to on (ignore nested regions)
+      stream->setFilter( true, time );
+    }
+  }
 
   FunctionDescriptor functionDesc;
   functionDesc.recordType = RECORD_ENTER; // needed to determine correct function type
-  AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionDesc );
+  AnalysisEngine::getFunctionType( funcName, stream, &functionDesc );
   
   /* check for function with the OpenMP paradigm (move check to handle process definitions)
   if ( functionDesc.paradigm == PARADIGM_OMP )
@@ -344,12 +370,25 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
     stream->getPeriod().second = time;
   }
 
-  std::string funcStr = reader->getFunctionName( functionId );
-  const char* funcName = funcStr.c_str(); //analysis.getFunctionName( functionId );
+  const char* funcName = analysis.getFunctionName( functionId );
+  //std::string funcStr = reader->getFunctionName( functionId );
+  //const char* funcName = funcStr.c_str();
+  
+  if( analysis.isFunctionFiltered( functionId ) )
+  {
+    UTILS_MSG(true, "Disable filter for %s", funcName );
+
+    stream->setFilter( false, time );
+  }
+  
+  if( stream->isFilterOn() )
+  {
+    return false;
+  }
 
   FunctionDescriptor functionType;
   functionType.recordType = RECORD_LEAVE; // needed to determine correct function type
-  AnalysisEngine::getFunctionType( functionId, funcName, stream, &functionType );
+  AnalysisEngine::getFunctionType( funcName, stream, &functionType );
 
   if ( functionType.paradigm == PARADIGM_CPU )
   {

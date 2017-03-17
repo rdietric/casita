@@ -27,7 +27,7 @@ namespace casita
      CallbackHandler( AnalysisEngine& analysis );
 
      AnalysisEngine&
-     getAnalysis( );
+     getAnalysis();
 
      void
      printNode( GraphNode* node, EventStream* stream );
@@ -54,7 +54,7 @@ namespace casita
                          uint64_t          streamId,
                          uint32_t          key, 
                          const char*       name );
-     
+
      static void
      handleEnter( io::OTF2TraceReader* reader, uint64_t time, uint32_t functionId,
                   uint64_t streamId, io::OTF2KeyValueList* list );

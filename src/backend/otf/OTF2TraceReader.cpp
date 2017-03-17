@@ -96,12 +96,6 @@ OTF2TraceReader::getProcessNameTokenMap( )
   return processNameTokenMap;
 }
 
-OTF2TraceReader::TokenTokenMap&
-OTF2TraceReader::getFunctionNameTokenMap( )
-{
-  return functionNameTokenMap;
-}
-
 OTF2TraceReader::NameTokenMap&
 OTF2TraceReader::getNameKeysMap( )
 {
@@ -485,10 +479,26 @@ OTF2TraceReader::readDefinitions()
              "[0] Read %" PRIu64 " definitions in Phase 2", definitions_read );
 
   // add forkjoin "region" to support internal OMP-fork/join model
-  uint32_t stringSize = definitionTokenStringMap.size( );
-  definitionTokenStringMap[stringSize] = OTF2_OMP_FORKJOIN_INTERNAL;
-  ompForkJoinRef = functionNameTokenMap.size( );
-  functionNameTokenMap[ompForkJoinRef] = stringSize;
+  // get a new string reference
+  uint32_t newStringRef = 1;
+  if( !stringRefMap.empty() )
+  {
+    // get the largest string reference and add '1'
+    newStringRef += stringRefMap.rbegin()->first;
+  }
+  stringRefMap[ newStringRef ] = OTF2_OMP_FORKJOIN_INTERNAL;
+  
+  // get a new OTF2 region reference for the internal forkjoin node
+  ompForkJoinRef = 1;
+  if( !regionRefMap.empty() )
+  {
+    // get the largest string reference and add '1'
+    ompForkJoinRef += regionRefMap.rbegin()->first;
+  }
+  regionRefMap[ ompForkJoinRef ] = newStringRef;
+
+  this->handleDefFunction( this, 0, ompForkJoinRef, OTF2_OMP_FORKJOIN_INTERNAL, 
+                           OTF2_PARADIGM_OPENMP );
   
   /* check OTF2 location reference, MPI rank map
   IdTokenMap& processRankMap = this->getProcessRankMap( );
@@ -752,7 +762,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Region( void*          userData,
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
   // locations are processes
-  tr->getFunctionNameTokenMap( )[self] = name;
+  tr->regionRefMap[self] = name;
 
   if ( tr->handleDefFunction )
   {
@@ -1140,7 +1150,7 @@ OTF2TraceReader::readCommunication( )
 OTF2TraceReader::TokenNameMap&
 OTF2TraceReader::getDefinitionTokenStringMap( )
 {
-  return definitionTokenStringMap;
+  return stringRefMap;
 }
 
 uint64_t
@@ -1232,11 +1242,11 @@ OTF2TraceReader::getFunctionName( uint32_t id )
 {
   // use the OTF2 region reference/ID to get the OTF2 string reference and 
   // translate it to a string with getKeyName  
-  return getKeyName( getFunctionNameTokenMap( )[id] );
+  return getKeyName( regionRefMap[id] );
 }
 
 OTF2TraceReader::ProcessGroupMap&
-OTF2TraceReader::getProcGoupMap( )
+OTF2TraceReader::getProcGoupMap()
 {
   return processGroupMap;
 }

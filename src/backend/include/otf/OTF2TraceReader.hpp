@@ -201,9 +201,6 @@ namespace casita
       IdNameTokenMap&
       getProcessNameTokenMap();
 
-      TokenTokenMap&
-      getFunctionNameTokenMap();
-
       std::vector< uint32_t >
       getKeys( const std::string keyName );
 
@@ -566,10 +563,10 @@ namespace casita
       IdNameTokenMap   processNameTokenMap;
       
       // stores the OTF2 region ref as key with the OTF2 string ref as value
-      TokenTokenMap    functionNameTokenMap; 
+      TokenTokenMap    regionRefMap; 
       
       // stores an OTF2 string ref as key with the char* as value
-      TokenNameMap     definitionTokenStringMap;
+      TokenNameMap     stringRefMap;
       GroupIdGroupMap  groupMap;
 
       ProcessGroupMap  processGroupMap;

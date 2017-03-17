@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -39,6 +39,9 @@ EventStream::EventStream( uint64_t          id,
   hasLastEvent( false ),
   lastNode( NULL ),
   lastEventTime( 0 ),
+  isFiltering( false ),
+  filterStartTime( 0 ),
+  predictionOffset ( 0 ),
   pendingMPIRequestId( std::numeric_limits< uint64_t >::max() ),
   mpiIsendPartner( std::numeric_limits< uint64_t >::max() )
 {
@@ -452,6 +455,33 @@ EventStream::clearNodes()
   }
   
   lastNode = NULL;
+}
+
+void
+EventStream::setFilter( bool enable, uint64_t time )
+{
+  isFiltering = enable;
+  
+  if( enable )
+  {
+    filterStartTime = time;
+  }
+  else
+  {
+    predictionOffset += time - filterStartTime;
+  }
+}
+
+uint64_t&
+EventStream::getPredictionOffset()
+{
+  return predictionOffset;
+}
+
+bool 
+EventStream::isFilterOn()
+{
+  return isFiltering;
 }
 
 void

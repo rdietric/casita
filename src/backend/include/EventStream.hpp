@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2014, 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -213,6 +213,15 @@ namespace casita
      
      void
      clearNodes();
+
+     void
+     setFilter( bool enable, uint64_t time );
+     
+     bool
+     isFilterOn();
+     
+     uint64_t&
+     getPredictionOffset();
 
      void
      addPendingKernel( GraphNode* kernelLeave );
@@ -453,9 +462,6 @@ namespace casita
      //! Does this stream contain the last global event of the trace?
      bool                hasLastEvent;
 
-     //!< list of unsynchronized kernels (leave nodes only)
-     SortedGraphNodeList pendingKernels;
-
      //!< pointer to the last node (paradigm independent) of the analysis interval
      GraphNode*          lastNode;
      
@@ -464,7 +470,22 @@ namespace casita
      
      //<! first and last node of the analysis interval (for each paradigm)
      GraphData           graphData[NODE_PARADIGM_COUNT];
+     
+     //!< list of nodes in this stream
      SortedGraphNodeList nodes;
+     
+     bool                isFiltering;
+     
+     //!< time stamp when the filter has been enabled
+     uint64_t            filterStartTime;
+     
+     //!< time offset due to removal of regions
+     uint64_t            predictionOffset;
+
+     //!< list of unsynchronized CUDA kernels (leave nodes only)
+     SortedGraphNodeList pendingKernels;
+
+     //!< MPI nodes that have not yet been linked
      SortedGraphNodeList unlinkedMPINodes;
 
      //!< pending blocking MPI communcation records

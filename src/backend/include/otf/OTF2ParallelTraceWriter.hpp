@@ -190,6 +190,12 @@ namespace casita
       
       //!< region reference for device idle
       uint32_t deviceIdleRegRef;
+      
+      uint32_t
+      getNewStringRef( const char* string );
+      
+      uint32_t
+      getNewRegionRef( uint32_t stringRef );
 
       void
       copyGlobalDefinitions();
@@ -246,6 +252,8 @@ namespace casita
         EventStream::SortedGraphNodeList::iterator currentNodeIter;
         
         EventStream* stream;
+        
+        bool isFilterOn;
         
         //!< save last counter values to avoid writing of unused counter records
         CounterMap lastMetricValues;
