@@ -89,6 +89,7 @@ namespace casita
     cout << "  -s [--summary]          create summary CSV file" << endl;
     cout << "      --top=INTEGER       print top optimization candidates" << endl;
     cout << "      --filter=List       filter regions" << endl;
+    cout << "      --idle=[0,1,2]    write idle regions (0=no, 1=device idle(default), 2=compute idle" << endl;
     cout << "  -p [--path]             print critical paths" << endl;
     cout << "     [--cpa-loop-check]   detect circular loops in process-local critical path (slower)" << endl;
     cout << "     [--no-errors]        ignore non-fatal errors" << endl;
@@ -210,6 +211,12 @@ namespace casita
       else if( opt.find( "--filter=" ) != string::npos )
       {
         options.predictionFilter = opt.erase( 0, string( "--filter=" ).length() );
+      }
+      
+      // write device [compute] idle
+      else if( opt.find( "--idle=" ) != string::npos )
+      {
+        options.deviceIdle = atoi( opt.erase( 0, string( "--idle=" ).length() ).c_str() );
       }
 
       // print path
@@ -453,6 +460,7 @@ namespace casita
     options.verbose = 0;
     options.topX = 20;
     options.predictionFilter = "";
+    options.deviceIdle = 1;
     options.ignoreAsyncMpi = false;
     options.ignoreCUDA = false;
     options.createRatingCSV = true;

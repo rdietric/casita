@@ -32,6 +32,7 @@ namespace casita
    bool        createRatingCSV;
    size_t      topX;
    string      predictionFilter;
+   int         deviceIdle;
    bool        printCriticalPath;
    bool        cpaLoopCheck;
    bool        mergeActivities;

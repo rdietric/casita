@@ -88,6 +88,7 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( AnalysisEngine* analysis )
     otf2GlobalEventReader( NULL ),
     ompForkJoinRef( 0 ),
     deviceIdleRegRef( 0 ),
+    deviceComputeIdleRegRef( 0 ),
     graph( NULL )
 {
   flush_callbacks.otf2_post_flush = postFlush;
@@ -283,17 +284,21 @@ OTF2ParallelTraceWriter::getNewStringRef( const char* string )
  * @return new OTF2 region reference
  */
 uint32_t
-OTF2ParallelTraceWriter::getNewRegionRef( uint32_t stringRef )
+OTF2ParallelTraceWriter::getNewRegionRef( const char* string, 
+                                          OTF2_Paradigm paradigm )
 {
   uint32_t newRegionRef = 1;
   
-  if( !regionRefMap.empty() )
+  if( !regionInfoMap.empty() )
   {
     // get the largest region reference and add '1'
-    newRegionRef += regionRefMap.rbegin()->first;
+    newRegionRef += regionInfoMap.rbegin()->first;
   }
   
-  regionRefMap[ newRegionRef ] = stringRef;
+  RegionInfo regInf;
+  regInf.name = string;
+  regInf.paradigm = paradigm;
+  regionInfoMap[ newRegionRef ] = regInf;
   
   return newRegionRef;
 }
@@ -387,36 +392,59 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions()
              "[0] Trace writer: Read/wrote %"PRIu64" definitions", 
              definitions_read );
 
-  // add fork/join "region" to support internal OMP-fork/join model
-  // ( OMP-fork/join is a node in CASITA internally )
-  ompForkJoinRef = getNewRegionRef( getNewStringRef( OTF2_OMP_FORKJOIN_INTERNAL ) );
+  // add internal fork/join "region", 
+  // no string entry needed as respective definition will not be written
+  ompForkJoinRef = getNewRegionRef( OTF2_OMP_FORKJOIN_INTERNAL, OTF2_PARADIGM_OPENMP );
 }
 
 void
 OTF2ParallelTraceWriter::writeDeviceIdleDefinitions()
 {
-  // get a new string reference
-  uint32_t newStringRef = getNewStringRef( "deviceIdle" );
-  
-  // get a new region reference
-  deviceIdleRegRef = getNewRegionRef( newStringRef );
+  // get compute region references (needed by all processes)
+  deviceIdleRegRef = getNewRegionRef( "deviceIdle", OTF2_PARADIGM_UNKNOWN );
+  deviceComputeIdleRegRef = getNewRegionRef( "deviceComputeIdle", OTF2_PARADIGM_UNKNOWN );
   
   if ( mpiRank == 0 )
   {
-    OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( otf2GlobalDefWriter,
-                                                  newStringRef,
-                                                  stringRefMap[ newStringRef ] ) );
+    if( Parser::getInstance().getProgramOptions().deviceIdle == 1 )
+    {
+      uint32_t newStringRef  = getNewStringRef( "deviceIdle" );
+      
+      OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( otf2GlobalDefWriter,
+                                                    newStringRef,
+                                                    stringRefMap[ newStringRef ] ) );
+
+      OTF2_CHECK( OTF2_GlobalDefWriter_WriteRegion( otf2GlobalDefWriter,
+                                      deviceIdleRegRef,
+                                      newStringRef,
+                                      newStringRef,
+                                      OTF2_UNDEFINED_STRING,
+                                      OTF2_REGION_ROLE_ARTIFICIAL,
+                                      OTF2_PARADIGM_CUDA,
+                                      OTF2_REGION_FLAG_NONE,
+                                      OTF2_UNDEFINED_STRING,
+                                      0, 0 ) );
+    }
     
-    OTF2_CHECK( OTF2_GlobalDefWriter_WriteRegion( otf2GlobalDefWriter,
-                                    deviceIdleRegRef,
-                                    newStringRef,
-                                    newStringRef,
-                                    OTF2_UNDEFINED_STRING,
-                                    OTF2_REGION_ROLE_ARTIFICIAL,
-                                    OTF2_PARADIGM_CUDA,
-                                    OTF2_REGION_FLAG_NONE,
-                                    OTF2_UNDEFINED_STRING,
-                                    0, 0 ) );
+    if( Parser::getInstance().getProgramOptions().deviceIdle == 2 )
+    {
+      uint32_t newStringRef = getNewStringRef( "deviceComputeIdle" );
+      
+      OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( otf2GlobalDefWriter,
+                                                    newStringRef,
+                                                    stringRefMap[ newStringRef ] ) );
+
+      OTF2_CHECK( OTF2_GlobalDefWriter_WriteRegion( otf2GlobalDefWriter,
+                                      deviceComputeIdleRegRef,
+                                      newStringRef,
+                                      newStringRef,
+                                      OTF2_UNDEFINED_STRING,
+                                      OTF2_REGION_ROLE_ARTIFICIAL,
+                                      OTF2_PARADIGM_CUDA,
+                                      OTF2_REGION_FLAG_NONE,
+                                      OTF2_UNDEFINED_STRING,
+                                      0, 0 ) );
+    }
   }
 }
 
@@ -803,27 +831,18 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
 }
 
 /**
- * Returns the name of a region as a string.
+ * Returns the name of a region as a string. (used for every enter/leave event)
  *
  * @param regionRef     ID of region the name is requested for
- * @return              String with Name of the region
+ * @return              string with Name of the region
  */
-std::string
-OTF2ParallelTraceWriter::getRegionName( const OTF2_RegionRef regionRef ) const
+RegionInfo&
+OTF2ParallelTraceWriter::getRegionInfo( const OTF2_RegionRef regionRef )
 {
-  std::map< uint32_t, OTF2_StringRef >::const_iterator regionNameIter =
-    regionRefMap.find( regionRef );
-
-  UTILS_ASSERT( regionNameIter != regionRefMap.end(),
-                "Could not find region reference in map" );
-
-  std::map< uint32_t, const char* >::const_iterator idStrIter         =
-    stringRefMap.find( regionNameIter->second );
-
-  UTILS_ASSERT( idStrIter != stringRefMap.end(),
-                "Could not find string reference in map" );
-
-  return idStrIter->second;
+  UTILS_ASSERT( regionInfoMap.count( regionRef ) > 0,
+                "Could not find region reference!" )
+  
+  return regionInfoMap[ regionRef ];
 }
 
 /**
@@ -1187,18 +1206,7 @@ OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time,
                                                 OTF2_LocationRef location, 
                                                 bool isCompute )
 {
-  if( deviceRefCount < 0 )
-  {
-    deviceRefCount = 1;
-    
-    // set initial time
-    lastIdleStart = time;
-    
-    // also set last compute idle time
-    lastComputeIdleStart = time;
-    deviceComputeRefCount = 0;
-  }
-  else if( deviceRefCount == 0 )
+  if( deviceRefCount == 0 )
   {
     // add device idle time to statistics
     analysis->getStatistics().addStatTimeOffloading( OFLD_STAT_IDLE_TIME, 
@@ -1206,34 +1214,39 @@ OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time,
 
     deviceRefCount = 1;
     
-    // something is happening on the device again, leave idle region
-    int deviceId = analysis->getStream( location )->getDeviceId();
-    EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
-    uint64_t streamId = stream->getId();
-    OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writerMap[ streamId ], NULL, time, 
-                                      deviceIdleRegRef ) );
+    if( writeToFile && Parser::getInstance().getProgramOptions().deviceIdle == 1 )
+    {
+      // something is happening on the device again, leave idle region
+      int deviceId = analysis->getStream( location )->getDeviceId();
+      EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
+      OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writerMap[ stream->getId() ], NULL, 
+                                        time, deviceIdleRegRef ) );
+    }
   }
   else
   {
     deviceRefCount++;
   }
   
+  // if this is a device compute task
   if( isCompute )
   {
-    if( deviceComputeRefCount < 0 )
-    {
-      deviceComputeRefCount = 1;
-
-      // set initial time
-      lastComputeIdleStart = time;
-    }
-    else if( deviceComputeRefCount == 0 )
+    if( deviceComputeRefCount == 0 )
     {
       // add device idle time to statistics
       analysis->getStatistics().addStatTimeOffloading( OFLD_STAT_COMPUTE_IDLE_TIME, 
-                                                      time - lastComputeIdleStart );
+                                                       time - lastComputeIdleStart );
 
       deviceComputeRefCount = 1;
+      
+      if( writeToFile && Parser::getInstance().getProgramOptions().deviceIdle == 2 )
+      {
+        // something is happening on the device again, leave idle region
+        int deviceId = analysis->getStream( location )->getDeviceId();
+        EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
+        OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writerMap[ stream->getId() ], NULL, 
+                                          time, deviceComputeIdleRegRef ) );
+      }
     }
     else
     {
@@ -1254,12 +1267,14 @@ OTF2ParallelTraceWriter::handleDeviceTaskLeave( uint64_t time,
     //save time
     lastIdleStart = time;
     
-    // write OTF2 idle region
-    int deviceId = analysis->getStream( location )->getDeviceId();
-    EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
-    uint64_t streamId = stream->getId();
-    OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ streamId ], NULL, time, 
-                                      deviceIdleRegRef ) );
+    if( writeToFile && Parser::getInstance().getProgramOptions().deviceIdle == 1 )
+    {
+      // write OTF2 idle enter
+      int deviceId = analysis->getStream( location )->getDeviceId();
+      EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
+      OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
+                                        time, deviceIdleRegRef ) );
+    }
   }
   
   if( isCompute )
@@ -1270,6 +1285,15 @@ OTF2ParallelTraceWriter::handleDeviceTaskLeave( uint64_t time,
     {
       //save time
       lastComputeIdleStart = time;
+      
+      if( writeToFile && Parser::getInstance().getProgramOptions().deviceIdle == 2 )
+      {
+        // write OTF2 device compute idle region
+        int deviceId = analysis->getStream( location )->getDeviceId();
+        EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
+        OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
+                                          time, deviceComputeIdleRegRef ) );
+      }
     }
   }
 }
@@ -1286,7 +1310,8 @@ void
 OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, 
                                            OTF2_AttributeList* attributeList )
 {  
-  const std::string eventName = getRegionName( event.regionRef );
+  RegionInfo& regionInfo = getRegionInfo( event.regionRef );  
+  const char* eventName = regionInfo.name;
   
   UTILS_ASSERT( streamStatusMap.count( event.location ) > 0, 
                 "Could not find stream status!" );
@@ -1298,18 +1323,35 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   // set event type to determine if an internal node is available
   eventDesc.recordType = event.type; 
   const bool mapsInternalNode = FunctionTable::getAPIFunctionType(
-    eventName.c_str(), &eventDesc, currentStream->isDeviceStream(), false );  
+    eventName, &eventDesc, currentStream->isDeviceStream(), false );  
   
-  // handle device compute tasks to determine offloading idle
-  if( currentStream->isDeviceStream() )
+  // write enter event for device idle regions at first occurrence of any offloading API routine
+  if( deviceRefCount < 0 &&
+      ( regionInfo.paradigm == OTF2_PARADIGM_CUDA ||
+        regionInfo.paradigm == OTF2_PARADIGM_OPENCL ) )
   {
-    if( event.type == RECORD_LEAVE )
+    deviceRefCount = 0;
+    deviceComputeRefCount = 0;
+    
+    lastIdleStart = event.time;
+    lastComputeIdleStart = event.time;
+      
+    if( Parser::getInstance().getProgramOptions().deviceIdle == 1 )
     {
-      handleDeviceTaskLeave( event.time, event.location, true );
+      // write OTF2 idle enter
+      int deviceId = analysis->getStream( event.location )->getDeviceId();
+      EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
+      OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
+                                        event.time, deviceIdleRegRef ) );
     }
-    else if( event.type == RECORD_ENTER )
+    
+    if( Parser::getInstance().getProgramOptions().deviceIdle == 2 )
     {
-      handleDeviceTaskEnter( event.time, event.location, true );
+      // something is happening on the device again, leave idle region
+      int deviceId = analysis->getStream( event.location )->getDeviceId();
+      EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
+      OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
+                                        event.time, deviceComputeIdleRegRef ) );
     }
   }
 
@@ -1333,7 +1375,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       UTILS_MSG( true, "[%u] OTF2 writer: More events than nodes! "
                        "(%s (%" PRIu64 "): %s (%d) at %" PRIu64 ")", 
                  mpiRank, currentStream->getName(), event.location, 
-                 eventName.c_str(), event.type, getRealTime( event.time ) );
+                 eventName, event.type, getRealTime( event.time ) );
     }
     else
     {
@@ -1353,8 +1395,8 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
                     //&& currentNode->getRecordType() == event.type,
                     " [%u] RegionRef doesn't fit for event %"PRIu64":%s:%d:%" PRIu64 ":%lf"
                     " and internal node %s:%lf, %u != %" PRIu64, mpiRank, 
-                    event.location, eventName.c_str(), event.type, event.time, getRealTime(event.time),
-                    currentNode->getUniqueName().c_str(),
+                    event.location, eventName, event.type, event.time, getRealTime(event.time),
+                    currentNode->getUniqueName(),
                     (double)currentNode->getTime() / (double)timerResolution,
                     event.regionRef, currentNode->getFunctionId() );
 
@@ -1365,7 +1407,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
                       "ForkJoin must have regionRef %u", ompForkJoinRef );
 
         UTILS_ASSERT( event.type == RECORD_ATOMIC,
-                      "Event %s has unexpected type", eventName.c_str() );
+                      "Event %s has unexpected type", eventName );
         
         if( streamStatusMap[event.location].activityStack.size() > 0 )
         {
@@ -1555,11 +1597,23 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   
   streamState.currentNodeIter = currentNodeIter;
 
+  // write idle leave before the device task enter
+  if( currentStream->isDeviceStream() && event.type == RECORD_ENTER )
+  {
+    handleDeviceTaskEnter( event.time, event.location, true );
+  }
+  
   // write event with counters
   if ( writeToFile )
   {
     writeCounterMetrics( event, tmpCounters );
     writeEventsWithAttributes( event, attributeList, tmpCounters );    
+  }
+  
+  // write idle enter after the device task leave
+  if( currentStream->isDeviceStream() && event.type == RECORD_LEAVE )
+  {
+    handleDeviceTaskLeave( event.time, event.location, true );
   }
 
   // update values in activityGroupMap
@@ -1799,17 +1853,27 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Region(
                                                 uint32_t        endLineNumber )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
-
-  tw->regionRefMap[self] = name;
+  
+  RegionInfo regionInfo;
+  if( tw->stringRefMap.count( name ) > 0 )
+  {
+    regionInfo.name = tw->stringRefMap[ name ];
+  }
+  else
+  {
+    UTILS_WARNING( "OTF2TraceWriter: Could no find string reference %u", name );
+    regionInfo.name = NULL;
+  }
+  regionInfo.paradigm = paradigm;
+  tw->regionInfoMap[ self ] = regionInfo;
 
   if ( tw->mpiRank == 0 && tw->writeToFile )
   {
     OTF2_CHECK( OTF2_GlobalDefWriter_WriteRegion( tw->otf2GlobalDefWriter, self,
-                                                  name,
-                                                  cannonicalName, description,
-                                                  regionRole, paradigm,
-                                                  regionFlags, sourceFile,
-                                                  beginLineNumber,
+                                                  name, cannonicalName, 
+                                                  description, regionRole, 
+                                                  paradigm, regionFlags, 
+                                                  sourceFile, beginLineNumber,
                                                   endLineNumber ) );
   }
 

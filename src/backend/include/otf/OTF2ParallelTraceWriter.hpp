@@ -28,6 +28,13 @@ namespace casita
  {
   typedef struct
   {
+    //OTF2_StringRef stringRef;
+    const char*   name;
+    OTF2_Paradigm paradigm;
+  }RegionInfo;
+      
+  typedef struct
+  {
     uint64_t         time;
     OTF2_RegionRef   regionRef;
     OTF2_LocationRef location;
@@ -138,9 +145,6 @@ namespace casita
       void
       writeMetricStreams();
 
-      std::string
-      getRegionName( const OTF2_RegionRef regionRef ) const;
-      
       ActivityGroupMap*
       getActivityGroupMap()
       {
@@ -179,11 +183,14 @@ namespace casita
       OTF2_GlobalEvtReader* otf2GlobalEventReader;
       //OTF2_AttributeList*   attributes;
 
+      //!< maps OTF2 region IDs (references) to region information
+      std::map< uint32_t, RegionInfo > regionInfoMap;
+
       //!< maps OTF2 IDs to strings (global definitions), maps are ordered by key
       std::map< uint32_t, const char* > stringRefMap;
       
       //!< maps OTF2 region IDs to OTF2 string reference
-      std::map< uint32_t, OTF2_StringRef > regionRefMap;
+      //std::map< uint32_t, OTF2_StringRef > regionRefMap;
       
       //!< region reference for internal Fork/Join
       uint32_t ompForkJoinRef;
@@ -191,11 +198,19 @@ namespace casita
       //!< region reference for device idle
       uint32_t deviceIdleRegRef;
       
+      //!< region reference for device compute idle
+      uint32_t deviceComputeIdleRegRef;
+      
+      //!< get a new OTF2 string reference
       uint32_t
       getNewStringRef( const char* string );
       
+      //!< get a new OTF2 region reference
       uint32_t
-      getNewRegionRef( uint32_t stringRef );
+      getNewRegionRef( const char* string, OTF2_Paradigm paradigm );
+      
+      RegionInfo&
+      getRegionInfo( const OTF2_RegionRef regionRef );
 
       void
       copyGlobalDefinitions();
