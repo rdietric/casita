@@ -96,8 +96,14 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( AnalysisEngine* analysis )
 
   commGroup = MPI_COMM_WORLD;
   
+  // set the device reference counts to invalid
   deviceRefCount = -1;
   deviceComputeRefCount = -1;
+  
+  // set consecutive device communication count to zero
+  deviceConsecutiveComCount = 0;
+  //previousDeviceComTaskH2D = true;
+  //currentDeviceComTaskH2D = true;
   
   open();
 }
@@ -1211,7 +1217,7 @@ OTF2ParallelTraceWriter::writeCounterMetrics( OTF2Event event,
 void
 OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time, 
                                                 OTF2_LocationRef location, 
-                                                bool isCompute )
+                                                bool isCompute, bool isH2D )
 {
   if( deviceRefCount == 0 )
   {
@@ -1259,6 +1265,15 @@ OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time,
     {
       deviceComputeRefCount++;
     }
+    
+    // reset count
+    deviceConsecutiveComCount = 0;
+  }
+  else
+  {
+    previousDeviceComTaskH2D   = currentDeviceComTaskH2D;
+    currentDeviceComTaskH2D    = isH2D;
+    lastDeviceComTaskEnterTime = time;
   }
 }
 
@@ -1292,6 +1307,28 @@ OTF2ParallelTraceWriter::handleDeviceTaskLeave( uint64_t time,
         OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
                                           time, deviceComputeIdleRegRef ) );
       }
+    }
+    
+    deviceConsecutiveComCount = 0;
+  }
+  else // communication task
+  {
+    // the previous device communication task has the same direction
+    if( currentDeviceComTaskH2D == previousDeviceComTaskH2D )
+    {
+      // if the previous device task was a communication
+      if( deviceConsecutiveComCount > 0 )
+      {
+        // add this consecutive communication to stats
+        analysis->getStatistics().addStatWithCountOffloading( 
+          OFLD_STAT_MULTIPLE_COM, time - lastDeviceComTaskEnterTime );
+      }
+
+      deviceConsecutiveComCount++;
+    }
+    else
+    {
+      deviceConsecutiveComCount = 1;
     }
   }
   
@@ -1340,36 +1377,39 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   const bool mapsInternalNode = FunctionTable::getAPIFunctionType(
     eventName, &eventDesc, currentStream->isDeviceStream(), false );  
   
-  // write enter event for device idle regions at first occurrence of any 
-  // offloading API routine
-  if( deviceRefCount < 0 &&
-      ( regionInfo.paradigm == OTF2_PARADIGM_CUDA ||
-        regionInfo.paradigm == OTF2_PARADIGM_OPENCL ) )
+  // special handling for offloading API routines
+  if( regionInfo.paradigm == OTF2_PARADIGM_CUDA ||
+      regionInfo.paradigm == OTF2_PARADIGM_OPENCL )
   {
-    deviceRefCount = 0;
-    deviceComputeRefCount = 0;
-    
-    lastIdleStart = event.time;
-    lastComputeIdleStart = event.time;
-    
-    // compute idle has to be written first (includes device idle)
-    if( Parser::getInstance().getProgramOptions().deviceIdle & (1 << 1) )
+    // write enter event for device idle regions at first occurrence of any 
+    // offloading API routine
+    if( deviceRefCount < 0 )
     {
-      // write compute idle enter
-      int deviceId = analysis->getStream( event.location )->getDeviceId();
-      EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
-      OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
-                                        event.time, deviceComputeIdleRegRef ) );
-    }
-      
-    // device idle
-    if( Parser::getInstance().getProgramOptions().deviceIdle & 1 )
-    {
-      // write OTF2 idle enter
-      int deviceId = analysis->getStream( event.location )->getDeviceId();
-      EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
-      OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
-                                        event.time, deviceIdleRegRef ) );
+      deviceRefCount = 0;
+      deviceComputeRefCount = 0;
+
+      lastIdleStart = event.time;
+      lastComputeIdleStart = event.time;
+
+      // compute idle has to be written first (includes device idle)
+      if( Parser::getInstance().getProgramOptions().deviceIdle & (1 << 1) )
+      {
+        // write compute idle enter
+        int deviceId = analysis->getStream( event.location )->getDeviceId();
+        EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
+        OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
+                                          event.time, deviceComputeIdleRegRef ) );
+      }
+
+      // device idle
+      if( Parser::getInstance().getProgramOptions().deviceIdle & 1 )
+      {
+        // write OTF2 idle enter
+        int deviceId = analysis->getStream( event.location )->getDeviceId();
+        EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
+        OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
+                                          event.time, deviceIdleRegRef ) );
+      }
     }
   }
 
@@ -1407,6 +1447,12 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       else if( currentNode->isMPIFinalize() )
       {
         handleDeviceTaskEnter( event.time, event.location, true );
+      }
+      
+      // reset consecutive communication count at MPI leave nodes
+      if( currentNode->isMPI() && currentNode->isLeave() )
+      {
+        deviceConsecutiveComCount = 0;
       }
 
       UTILS_ASSERT( currentNode->getFunctionId() == event.regionRef,
@@ -2134,7 +2180,8 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaPut( OTF2_LocationRef location,
   // communication task on device streams starts
   if( stream->isDeviceStream() )
   {
-    tw->handleDeviceTaskEnter( time, location, false );
+    // device communication task device-to-host
+    tw->handleDeviceTaskEnter( time, location, false, false );
   }
 
   if ( tw->writeToFile )
@@ -2193,7 +2240,8 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaGet( OTF2_LocationRef location,
   // communication task on device streams starts, leave device idle region
   if( stream->isDeviceStream() )
   {
-    tw->handleDeviceTaskEnter( time, location, false );
+    // device communication task host-to-device
+    tw->handleDeviceTaskEnter( time, location, false, true );
   }
   
   if ( tw->writeToFile )

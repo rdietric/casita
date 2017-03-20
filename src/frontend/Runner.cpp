@@ -1826,21 +1826,24 @@ Runner::printAllActivities()
     Statistics& stats = analysis.getStatistics();
     printf( "\nPattern summary:\n"
             " CUDA\n"
-            "  Early blocking wait for kernel: %"PRIu64" (%lf s)\n"
-            "  Total attributed waiting time: %lf s\n"
+            "  Early blocking wait for kernel: %"PRIu64" (%lf sec)\n"
+            "  Total attributed waiting time: %lf sec\n"
             "  Early test for completion: %"PRIu64" (%lf s)\n"
-            "  Blocking communication: %"PRIu64" (%lf s)\n"
-            "  Idle device: %lf s\n"
-            "  Compute idle device: %lf s\n\n",
+            "  Idle device: %lf sec\n"
+            "  Compute idle device: %lf sec\n"
+            "  Blocking communication: %"PRIu64" (%lf sec)\n"
+            "  Consecutive communication: %"PRIu64" (%lf sec)\n\n",
             stats.getStatsOffloading()[OFLD_STAT_EARLY_BLOCKING_WAIT],
             analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_EARLY_BLOCKING_WTIME] ),
             analysis.getRealTime( sumWaitingTime ),
             stats.getStatsOffloading()[OFLD_STAT_EARLY_TEST],
             analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_EARLY_TEST_TIME] ),
+            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_IDLE_TIME] ),
+            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_COMPUTE_IDLE_TIME]),
             stats.getStatsOffloading()[OFLD_STAT_BLOCKING_COM],
             analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_BLOCKING_COM_TIME] ),
-            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_IDLE_TIME] ),
-            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_COMPUTE_IDLE_TIME] )
+            stats.getStatsOffloading()[OFLD_STAT_MULTIPLE_COM],
+            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_MULTIPLE_COM_TIME] )
            );
     
     if (options.createRatingCSV)

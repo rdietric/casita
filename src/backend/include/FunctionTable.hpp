@@ -266,7 +266,7 @@ namespace casita
    { MPI_FINALIZE, 1, FTABLE_MPI_FINALIZE },
    { MPI_RECV, 1, FTABLE_MPI_RECV },
    { MPI_SEND, 4, FTABLE_MPI_SEND },
-   { MPI_COLL, 11, FTABLE_MPI_COLL },
+   { MPI_COLLECTIVE, 11, FTABLE_MPI_COLL },
 //   { MPI_ONETOALL, 2, FTABLE_MPI_ONETOALL }, // oneToAll rule might be broken
 //   { MPI_ALLTOONE, 0, FTABLE_MPI_ALLTOONE }, // allToOne rule is broken
    { MPI_SENDRECV, 1, FTABLE_MPI_SENDRECV },
@@ -481,8 +481,8 @@ namespace casita
                case MPI_INIT:
                case MPI_FINALIZE:
                  descr->functionType |= MPI_ALLRANKS; // these two are always executed on all ranks
-                 descr->functionType |= MPI_COLL;     // these two are collectives
-               case MPI_COLL:
+                 descr->functionType |= MPI_COLLECTIVE;     // these two are collectives
+               case MPI_COLLECTIVE:
                case MPI_ONETOALL:
                case MPI_ALLTOONE:
                case MPI_SENDRECV:

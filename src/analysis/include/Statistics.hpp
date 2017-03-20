@@ -16,7 +16,7 @@
 #include <inttypes.h>
 
 // CUDA stats have always a count and in the following field the time
-#define STATS_OFFLOADING 8
+#define STATS_OFFLOADING 10
 enum StatsOffloading
 {
    OFLD_STAT_BLOCKING_COM = 0,       // number of blocking communications

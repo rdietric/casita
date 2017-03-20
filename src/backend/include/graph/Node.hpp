@@ -93,25 +93,26 @@ namespace casita
 
  enum NodeTypeMPI
  {
-   MPI_RECV      = ( 1 << 1 ),
-   MPI_SEND      = ( 1 << 2 ),
-   MPI_WAIT      = ( 1 << 3 ),
-   MPI_COLL      = ( 1 << 4 ),
-   MPI_SENDRECV  = ( 1 << 5 ),
-   MPI_MISC      = ( 1 << 6 ),
-   MPI_EXIT      = ( 1 << 7 ),
-   MPI_WAITSTATE = ( 1 << 8 ),
-   MPI_ONETOALL  = ( 1 << 9 ),
-   MPI_ALLTOONE  = ( 1 << 10 ),
-   MPI_ISEND     = ( 1 << 11 ),
-   MPI_IRECV     = ( 1 << 12 ),
-   MPI_WAITALL   = ( 1 << 13 ),
-   MPI_TEST      = ( 1 << 14 ),
-   MPI_TESTALL   = ( 1 << 15 ),
-   MPI_INIT      = ( 1 << 16 ),
-   MPI_FINALIZE  = ( 1 << 17 ),
-   MPI_ALLRANKS  = ( 1 << 18 ), // all ranks are involved in the MPI operation
-   MPI_BLOCKING  = ( 1 << 19 )  // blocking MPI operation
+   MPI_RECV       = ( 1 << 1 ),
+   MPI_SEND       = ( 1 << 2 ),
+   MPI_WAIT       = ( 1 << 3 ),
+   MPI_COLLECTIVE = ( 1 << 4 ),
+   MPI_SENDRECV   = ( 1 << 5 ),
+   MPI_MISC       = ( 1 << 6 ),
+   MPI_EXIT       = ( 1 << 7 ),
+   MPI_WAITSTATE  = ( 1 << 8 ),
+   MPI_ONETOALL   = ( 1 << 9 ),
+   MPI_ALLTOONE   = ( 1 << 10 ),
+   MPI_ISEND      = ( 1 << 11 ),
+   MPI_IRECV      = ( 1 << 12 ),
+   MPI_WAITALL    = ( 1 << 13 ),
+   MPI_TEST       = ( 1 << 14 ),
+   MPI_TESTALL    = ( 1 << 15 ),
+   MPI_INIT       = ( 1 << 16 ),
+   MPI_FINALIZE   = ( 1 << 17 ),
+   MPI_ALLRANKS   = ( 1 << 18 ), // all ranks are involved in the MPI operation
+   MPI_BLOCKING   = ( 1 << 19 ), // blocking MPI operation
+   MPI_COMM       = ( 1 << 20 )  // MPI communication (not set yet)
  };
 
  enum NodeTypeOMP
@@ -183,7 +184,7 @@ namespace casita
    { MPI_SEND, "mpi_send" },
    { MPI_ISEND, "mpi_isend" },
    { MPI_WAIT, "mpi_wait" },
-   { MPI_COLL, "mpi_coll" },
+   { MPI_COLLECTIVE, "mpi_coll" },
    { MPI_ONETOALL, "mpi_one_to_all" },
    { MPI_ALLTOONE, "mpi_all_to_one" },
    { MPI_SENDRECV, "mpi_sendrecv" },
@@ -451,7 +452,7 @@ namespace casita
      isMPICollective() const
      {
 
-       return isMPI() && ( nodeType & MPI_COLL );
+       return isMPI() && ( nodeType & MPI_COLLECTIVE );
      }
      
      /**

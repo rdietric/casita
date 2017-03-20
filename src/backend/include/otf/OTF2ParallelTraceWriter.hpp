@@ -234,6 +234,7 @@ namespace casita
       void
       writeCounterMetrics( OTF2Event event, CounterMap& counters );
       
+      ///// \todo: works only for a single device per MPI rank ////
       //<! used to detect offloading idle
       int deviceRefCount;
       uint64_t lastIdleStart;
@@ -241,14 +242,23 @@ namespace casita
       //<! used to detect offloading compute idle
       int deviceComputeRefCount;
       uint64_t lastComputeIdleStart;
+      
+      //<! consecutive device communication 
+      // \todo: does not work for concurrent communication
+      uint64_t lastDeviceComTaskEnterTime;
+      bool     currentDeviceComTaskH2D;
+      bool     previousDeviceComTaskH2D;
+      size_t   deviceConsecutiveComCount;
+      
+      //////////////////////////////////////////////////////////////
 
       void
       handleDeviceTaskEnter( uint64_t time, OTF2_LocationRef location, 
-                             bool isCompute = false );
+                             bool isCompute = false, bool isH2D = false );
 
       void
       handleDeviceTaskLeave( uint64_t time, OTF2_LocationRef location, 
-                             bool isCompute = false );
+                             bool isCompute = false  );
      
       void
       processNextEvent( OTF2Event event, OTF2_AttributeList* attributes );
