@@ -19,14 +19,16 @@
 #define STATS_OFFLOADING 8
 enum StatsOffloading
 {
-   OFLD_STAT_BLOCKING_COM = 0,
-   OFLD_STAT_BLOCKING_COM_TIME  = 1,
-   OFLD_STAT_EARLY_BLOCKING_WAIT = 2,
-   OFLD_STAT_EARLY_BLOCKING_WAIT_TIME  = 3,
-   OFLD_STAT_EARLY_TEST = 4,
-   OFLD_STAT_EARLY_TEST_TIME  = 5,
-   OFLD_STAT_IDLE_TIME = 6,
-   OFLD_STAT_COMPUTE_IDLE_TIME = 7
+   OFLD_STAT_BLOCKING_COM = 0,       // number of blocking communications
+   OFLD_STAT_BLOCKING_COM_TIME  = 1, // accumulated blocking communication time
+   OFLD_STAT_EARLY_BLOCKING_WAIT = 2,   // number of early blocking waits
+   OFLD_STAT_EARLY_BLOCKING_WTIME  = 3, // accumulated early blocking wait time
+   OFLD_STAT_EARLY_TEST = 4,       // number of early tests
+   OFLD_STAT_EARLY_TEST_TIME  = 5, // accumulated time of early tests
+   OFLD_STAT_IDLE_TIME = 6,         // time an offloading device is idle
+   OFLD_STAT_COMPUTE_IDLE_TIME = 7, // compute idle time
+   OFLD_STAT_MULTIPLE_COM = 8,      // multiple consecutive communication count
+   OFLD_STAT_MULTIPLE_COM_TIME = 9  // multiple consecutive communication time
 };
 
 namespace casita

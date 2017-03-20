@@ -87,17 +87,20 @@ namespace casita
     cout << "  -r [--replace]          replace CASITA trace and summary file" << endl;
     cout << "  -v [--verbose=]INTEGER  verbosity level" << endl;
     cout << "  -s [--summary]          create summary CSV file" << endl;
-    cout << "      --top=INTEGER       print top optimization candidates" << endl;
-    cout << "      --filter=List       filter regions" << endl;
-    cout << "      --idle=[0,1,2]    write idle regions (0=no, 1=device idle(default), 2=compute idle" << endl;
+    cout << "  -t  --top=INTEGER       print top optimization candidates" << endl;
+    cout << "  -f  --filter=List       filter regions (ignored in analysis and output trace)" << endl;
+    cout << "      --idle=[0,1,2,3]    write device idle regions to output trace" << endl
+         << "                          (0=no, 1=device idle(default), 2=compute idle, 3=both)" << endl;
     cout << "  -p [--path]             print critical paths" << endl;
-    cout << "     [--cpa-loop-check]   detect circular loops in process-local critical path (slower)" << endl;
+    cout << "     [--cpa-loop-check]   detect circular loops in process-local critical path" << endl
+         << "                          (default: off)" << endl;
     cout << "     [--no-errors]        ignore non-fatal errors" << endl;
     cout << "     [--ignore-impi]      treat non-blocking MPI functions as CPU functions" << endl;
     cout << "     [--ignore-cuda]      treat CUDA functions as CPU functions" << endl;
-    cout << "  -c [--interval-analysis=][uint32_t]   Run analysis in intervals (between global" << endl
-      << "                          collectives) to reduce memory footprint. The optional value sets the " << endl
-      << "                          number of pending graph nodes before an analysis run is started." << endl;
+    cout << "  -c [--interval-analysis=]UINT  Run analysis in intervals (between global MPI" << endl
+         << "                          collectives) to reduce memory footprint. The value" << endl
+         << "                          (default: 64) sets the number of pending graph nodes" << endl
+         << "                          before an analysis run is started." << endl;
   }
 
   bool
@@ -108,36 +111,34 @@ namespace casita
     {
       opt = string( argv[i] );
 
-      //  input file:
+      // if the first argument does not start with a dash interpret as input file
       if( i == 1 && opt.find_first_of( "-" ) != 0 )
       {
         options.filename = string( argv[1] );
       }
-
-      else if( opt.compare( string( "-i" ) ) == 0 )
+      else if( opt.compare( string( "-i" ) ) == 0 ||
+               opt.compare( string( "--input" ) ) == 0 )
       {
-        if( ++i < argc )
+        if( ++i < argc && argv[i][0] != '-' )
         {
           options.filename = string( argv[i] );
         }
       }
-
       else if( opt.find( "--input=" ) != string::npos )
       {
         options.filename = opt.erase( 0, string( "--input=" ).length() );
       }
 
-
         //  output file
-      else if( opt.compare( string( "-o" ) ) == 0 )
+      else if( opt.compare( string( "-o" ) ) == 0 ||
+               opt.compare( string( "--output" ) ) == 0 )
       {
-        if( ++i < argc )
+        if( ++i < argc && argv[i][0] != '-' )
         {
           options.outOtfFile = string( argv[i] );
           options.createTraceFile = true;
         }
       }
-
       else if( opt.find( "--output=" ) != string::npos )
       {
         options.outOtfFile = opt.erase( 0, string( "--output=" ).length() );
@@ -165,7 +166,7 @@ namespace casita
       else if( opt.compare( string( "-v" ) ) == 0 ||
                opt.compare( string( "--verbose" ) ) == 0 )
       {
-        if( ++i < argc )
+        if( ++i < argc && argv[i][0] != '-' )
         {
           int verbose;
           if( from_string( verbose, argv[i] ) )
@@ -202,12 +203,27 @@ namespace casita
 
 
       // print top X activities
+      else if( opt.compare( string( "-t" ) ) == 0 ||
+               opt.compare( string( "--top" ) ) == 0 )
+      {
+        if( ++i < argc && argv[i][0] != '-' )
+        {
+          options.topX = atoi( argv[i] );
+        }
+      }
       else if( opt.find( "--top=" ) != string::npos )
       {
         options.topX = atoi( opt.erase( 0, string( "--top=" ).length() ).c_str() );
       }
       
       // get prediction filter
+      else if( opt.compare( string( "-f" ) ) == 0 )
+      {
+        if( ++i < argc && argv[i][0] != '-' )
+        {
+          options.predictionFilter = string( argv[i] );
+        }
+      }
       else if( opt.find( "--filter=" ) != string::npos )
       {
         options.predictionFilter = opt.erase( 0, string( "--filter=" ).length() );
@@ -255,10 +271,10 @@ namespace casita
         options.ignoreCUDA = true;
       }
 
-      // interval analysis TODO: complete optional?
+      // interval analysis
       else if( opt.compare( string( "-c" ) ) == 0 )
       {
-        if( ++i < argc )
+        if( ++i < argc && argv[i][0] != '-'  )
         {
           options.analysisInterval = atoi( argv[i] );
         }

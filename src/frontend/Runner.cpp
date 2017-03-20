@@ -1833,7 +1833,7 @@ Runner::printAllActivities()
             "  Idle device: %lf s\n"
             "  Compute idle device: %lf s\n\n",
             stats.getStatsOffloading()[OFLD_STAT_EARLY_BLOCKING_WAIT],
-            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_EARLY_BLOCKING_WAIT_TIME] ),
+            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_EARLY_BLOCKING_WTIME] ),
             analysis.getRealTime( sumWaitingTime ),
             stats.getStatsOffloading()[OFLD_STAT_EARLY_TEST],
             analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_EARLY_TEST_TIME] ),
