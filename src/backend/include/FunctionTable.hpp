@@ -417,6 +417,13 @@ namespace casita
          {
            if ( strcmp( entry.table[j], name ) == 0 )
            {
+             if ( Parser::getInstance().getProgramOptions().ignoreOCL )
+             {
+               descr->paradigm     = PARADIGM_CPU;
+               descr->functionType = MISC_CPU;
+               return false;
+             }
+             
              descr->paradigm     = PARADIGM_OCL;
              descr->functionType = entry.type;
              set = true;

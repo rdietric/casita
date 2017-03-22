@@ -95,8 +95,9 @@ namespace casita
     cout << "     [--cpa-loop-check]   detect circular loops in process-local critical path" << endl
          << "                          (default: off)" << endl;
     cout << "     [--no-errors]        ignore non-fatal errors" << endl;
-    cout << "     [--ignore-impi]      treat non-blocking MPI functions as CPU functions" << endl;
-    cout << "     [--ignore-cuda]      treat CUDA functions as CPU functions" << endl;
+    cout << "     [--ignore-impi]      handle non-blocking MPI functions as CPU functions" << endl;
+    cout << "     [--ignore-cuda]      handle CUDA functions as CPU functions" << endl;
+    cout << "     [--ignore-opencl]    handle OpenCL functions as CPU functions" << endl;
     cout << "  -c [--interval-analysis=]UINT  Run analysis in intervals (between global MPI" << endl
          << "                          collectives) to reduce memory footprint. The value" << endl
          << "                          (default: 64) sets the number of pending graph nodes" << endl
@@ -259,16 +260,22 @@ namespace casita
         options.noErrors = true;
       }
 
-      // ignore non blocking
+      // do not apply rules for non-blocking MPI
       else if( opt.find( "--ignore-impi" ) != string::npos )
       {
         options.ignoreAsyncMpi = true;
       }
       
-      // ignore non blocking
+      // do not run CUDA analysis
       else if( opt.find( "--ignore-cuda" ) != string::npos )
       {
         options.ignoreCUDA = true;
+      }
+      
+      // do not run OpenCL analysis
+      else if( opt.find( "--ignore-opencl" ) != string::npos )
+      {
+        options.ignoreOCL = true;
       }
 
       // interval analysis
@@ -479,6 +486,7 @@ namespace casita
     options.deviceIdle = 1;
     options.ignoreAsyncMpi = false;
     options.ignoreCUDA = false;
+    options.ignoreOCL = false;
     options.createRatingCSV = true;
   }
 

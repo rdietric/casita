@@ -145,6 +145,11 @@ Runner::startAnalysisRun()
   {
     analysis.addAnalysisParadigm( new opencl::AnalysisParadigmOpenCL( &analysis ) );
   }
+  else
+  {
+    // avoid the generation of OpenCL graph nodes
+    Parser::getInstance().getProgramOptions().ignoreOCL = true;
+  }
   
   if( analysis.haveParadigm( PARADIGM_OMP ) )
   {
@@ -292,14 +297,16 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     // apply analysis to all nodes of a certain paradigm
     // availability of a certain paradigm is checked when the trace is read
     // analysis creates dependency edges, identifies wait states, distributes blame
-    if ( analysis.haveParadigm( PARADIGM_CUDA ) )
+    if ( analysis.haveParadigm( PARADIGM_CUDA ) && 
+         Parser::getInstance().getProgramOptions().ignoreCUDA == false )
     {
       time_tmp = clock();
       runAnalysis( PARADIGM_CUDA, allNodes );
       time_analysis_cuda += clock() - time_tmp;
     }
     
-    if ( analysis.haveParadigm( PARADIGM_OCL ) )
+    if ( analysis.haveParadigm( PARADIGM_OCL ) && 
+         Parser::getInstance().getProgramOptions().ignoreOCL == false )
     {
       time_tmp = clock();
       runAnalysis( PARADIGM_OCL, allNodes );
