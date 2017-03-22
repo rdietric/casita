@@ -44,10 +44,9 @@ namespace casita
 
      static void
      handleDefFunction( io::OTF2TraceReader* reader,
-                        uint64_t          streamId,
-                        uint32_t          functionId,
-                        const char*       name,
-                        uint32_t          functionGroupId );
+                        uint32_t             functionId,
+                        const char*          name,
+                        OTF2_Paradigm        paradigm );
      
      static void
      handleDefAttribute( io::OTF2TraceReader* reader,

@@ -126,7 +126,7 @@ AnalysisEngine::addFunction( uint32_t funcId, const char* name )
   
   if( 0 == strcmp(Parser::getInstance().getProgramOptions().predictionFilter.c_str(), name ) )
   {
-    UTILS_WARNING("Found definition of filtered function" );
+    UTILS_WARNING( "Found definition of filtered function: %s", name );
     filteredFunctions.insert( funcId );
   }
 }

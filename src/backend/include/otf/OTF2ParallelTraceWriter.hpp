@@ -29,8 +29,9 @@ namespace casita
   typedef struct
   {
     //OTF2_StringRef stringRef;
-    const char*   name;
-    OTF2_Paradigm paradigm;
+    const char*     name;
+    OTF2_Paradigm   paradigm;
+    OTF2_RegionRole role;
   }RegionInfo;
       
   typedef struct
@@ -123,6 +124,9 @@ namespace casita
       
       void
       reset();
+      
+      void
+      handleFinalDeviceIdleLeave();
       
       void
       writeDeviceIdleDefinitions( void );
@@ -238,6 +242,7 @@ namespace casita
       //<! used to detect offloading idle
       int deviceRefCount;
       uint64_t lastIdleStart;
+      uint64_t lastOffloadApiEvtTime;
 
       //<! used to detect offloading compute idle
       int deviceComputeRefCount;

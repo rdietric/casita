@@ -105,6 +105,8 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( AnalysisEngine* analysis )
   //previousDeviceComTaskH2D = true;
   //currentDeviceComTaskH2D = true;
   
+  lastOffloadApiEvtTime = 0;
+  
   open();
 }
 
@@ -213,6 +215,40 @@ OTF2ParallelTraceWriter::reset()
   
   // do not clear the activity stack, as activities might be active (not closed)
   // over interval boundaries
+}
+
+void
+OTF2ParallelTraceWriter::handleFinalDeviceIdleLeave()
+{
+  if( lastOffloadApiEvtTime == 0 )
+  {
+    return;
+  }
+  
+  // add device idle times to statistics
+  analysis->getStatistics().addStatTimeOffloading( OFLD_STAT_IDLE_TIME, 
+    lastOffloadApiEvtTime - lastIdleStart );
+  analysis->getStatistics().addStatTimeOffloading( OFLD_STAT_COMPUTE_IDLE_TIME, 
+    lastOffloadApiEvtTime - lastComputeIdleStart );
+    
+
+  //\todo: finds the first device stream
+  uint64_t streamId = analysis->getStreamGroup().getFirstDeviceStream( -1 )->getId();
+
+  if( writeToFile && Parser::getInstance().getProgramOptions().deviceIdle & 1 )
+  {
+    OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writerMap[ streamId ], NULL, 
+                                      lastOffloadApiEvtTime, deviceIdleRegRef ) );
+  }
+
+  if( writeToFile && Parser::getInstance().getProgramOptions().deviceIdle  & (1 << 1) )
+  {
+    OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writerMap[ streamId ], NULL, 
+                                      lastOffloadApiEvtTime, deviceComputeIdleRegRef ) );
+  }
+
+  // write idle leave only once
+  lastOffloadApiEvtTime = 0;
 }
 
 /**
@@ -1395,6 +1431,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       if( Parser::getInstance().getProgramOptions().deviceIdle & (1 << 1) )
       {
         // write compute idle enter
+        //\todo: deviceId will be -1
         int deviceId = analysis->getStream( event.location )->getDeviceId();
         EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
         OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
@@ -1410,6 +1447,13 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
                                           event.time, deviceIdleRegRef ) );
       }
+    }
+    
+    // remember last event time for offloading API functions (not BUFFER_FLUSH)
+    // to write offloading idle leave events
+    if( regionInfo.role == OTF2_REGION_ROLE_WRAPPER )
+    {
+      lastOffloadApiEvtTime = event.time;
     }
   }
 
@@ -1444,12 +1488,9 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       {
         OTF2_AttributeList_RemoveAllAttributes( attributeList );
       }
-      else if( currentNode->isMPIFinalize() )
-      {
-        handleDeviceTaskEnter( event.time, event.location, true );
-      }
       
-      // reset consecutive communication count at MPI leave nodes
+      // reset consecutive communication count at MPI leave nodes 
+      // (assumes that offloading is used in between MPI operations) 
       if( currentNode->isMPI() && currentNode->isLeave() )
       {
         deviceConsecutiveComCount = 0;
@@ -1928,6 +1969,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Region(
     regionInfo.name = NULL;
   }
   regionInfo.paradigm = paradigm;
+  regionInfo.role     = regionRole;
   tw->regionInfoMap[ self ] = regionInfo;
 
   if ( tw->mpiRank == 0 && tw->writeToFile )
@@ -2155,6 +2197,17 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaWinDestroy( OTF2_LocationRef locati
 
   if ( tw->writeToFile )
   {
+    // handle last device idle leave
+    if( tw->lastOffloadApiEvtTime != 0 )
+    {
+      StreamStatus& streamState = tw->streamStatusMap[ location ];
+      EventStream* currentStream = streamState.stream;
+      if( currentStream->isDeviceStream() )
+      {
+        tw->handleFinalDeviceIdleLeave();
+      }
+    }
+    
     OTF2_CHECK( OTF2_EvtWriter_RmaWinDestroy( tw->evt_writerMap[location],
                                               attributeList, time,
                                               win ) );
@@ -2317,14 +2370,12 @@ OTF2ParallelTraceWriter::otf2CallbackEnter( OTF2_LocationRef    location,
   
   if( tw->streamStatusMap[ location ].isFilterOn )
   {
-    UTILS_WARNING("asdf");
     return OTF2_CALLBACK_SUCCESS;
   }
   
   if( tw->analysis->isFunctionFiltered( region ) )
   {
     tw->streamStatusMap[location].isFilterOn = true;
-    UTILS_WARNING("asdf4");
     return OTF2_CALLBACK_SUCCESS;
   }
 

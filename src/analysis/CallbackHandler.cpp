@@ -181,10 +181,9 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
 
 void
 CallbackHandler::handleDefFunction( OTF2TraceReader* reader,
-                                    uint64_t         streamId,
                                     uint32_t         functionId,
                                     const char*      name,
-                                    uint32_t         functionGroupId )
+                                    OTF2_Paradigm    paradigm )
 {
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
   AnalysisEngine&  analysis = handler->getAnalysis();

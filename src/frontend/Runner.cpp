@@ -388,6 +388,9 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
   } while( events_available );
   
+  // write the last device idle leave events
+  writer->handleFinalDeviceIdleLeave();
+  
   if( mpiRank == 0 )
   {
     // Time consumption output for individual analysis steps

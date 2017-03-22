@@ -44,9 +44,9 @@ namespace casita
   typedef void ( *HandleProcessMPIMapping )( OTF2TraceReader* reader,
                                              uint64_t      processId,
                                              uint32_t      mpiRank );
-  typedef void ( *HandleDefFunction )( OTF2TraceReader* reader, uint64_t streamId,
+  typedef void ( *HandleDefFunction )( OTF2TraceReader* reader, 
                                        uint32_t functionId, const char* name,
-                                       uint32_t functionGroupId );
+                                       OTF2_Paradigm paradigm );
   typedef void ( *HandleDefAttribute )( OTF2TraceReader* reader, uint64_t streamId,
                                         uint32_t key, const char* name );
   typedef void ( *HandleMPIComm )( OTF2TraceReader* reader, MPIType mpiType,

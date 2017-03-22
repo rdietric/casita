@@ -497,7 +497,7 @@ OTF2TraceReader::readDefinitions()
   }
   regionRefMap[ ompForkJoinRef ] = newStringRef;
 
-  this->handleDefFunction( this, 0, ompForkJoinRef, OTF2_OMP_FORKJOIN_INTERNAL, 
+  this->handleDefFunction( this, ompForkJoinRef, OTF2_OMP_FORKJOIN_INTERNAL, 
                            OTF2_PARADIGM_OPENMP );
   
   /* check OTF2 location reference, MPI rank map
@@ -766,7 +766,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Region( void*          userData,
 
   if ( tr->handleDefFunction )
   {
-    tr->handleDefFunction( tr, 0, self, tr->getFunctionName( self ).c_str(), 
+    tr->handleDefFunction( tr, self, tr->getFunctionName( self ).c_str(), 
                            paradigm );
   }
 
