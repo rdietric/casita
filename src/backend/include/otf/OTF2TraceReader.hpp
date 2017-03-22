@@ -181,10 +181,7 @@ namespace casita
       getGroupMap();
 
       std::string
-      getStringRef( Token t );
-
-      std::string
-      getKeyName( uint32_t id );
+      getStringRef( uint32_t id );
 
       /**
        * Get the name of the function by its OTF2 region id (reference).
@@ -227,12 +224,6 @@ namespace casita
 
       uint32_t
       getOmpForkJoinRef();
-
-      bool
-      isChildOf( uint64_t child, uint64_t parent );
-
-      int
-      getProcessingPhase();
       
       void*
       getUserData();
@@ -543,10 +534,7 @@ namespace casita
       
       //<! location ID (OTF2 location reference) for this MPI rank 
       uint64_t         mpiProcessId;
-      
-      // maps (parent) process ID (OTF2 location reference) to MPI rank
-      // key: OTF2 location reference, value: MPI rank
-      //IdTokenMap       processRankMap; 
+
       
       // Map of MPI ranks with its corresponding stream IDs / OTF2 location references
       RankStreamIdMap  rankStreamMap; 
@@ -574,8 +562,6 @@ namespace casita
       uint64_t         timerOffset;
       uint64_t         traceLength;
       uint32_t         ompForkJoinRef;
-      
-      int processingPhase;
   };
  }
 }

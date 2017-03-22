@@ -95,7 +95,7 @@ MPIAnalysis::getMPIRank( uint64_t            streamId,
 void
 MPIAnalysis::setMPIRank( uint64_t streamId, uint32_t rank )
 {
-  processRankMap[streamId] = rank;
+  processRankMap[ streamId ] = rank;
 }
 
 void

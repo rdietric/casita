@@ -58,17 +58,16 @@ OTF2TraceReader::OTF2TraceReader( void*    userData,
   ticksPerSecond( 1 ),
   timerOffset( 0 ),
   traceLength( 0 ),
-  ompForkJoinRef( 0 ),
-  processingPhase( 0 )
+  ompForkJoinRef( 0 )
 {
 
 }
 
-OTF2TraceReader::~OTF2TraceReader( )
+OTF2TraceReader::~OTF2TraceReader()
 {
   /* delete process groups */
-  for ( ProcessGroupMap::iterator iter = processGroupMap.begin( );
-        iter != processGroupMap.end( ); ++iter )
+  for ( ProcessGroupMap::iterator iter = processGroupMap.begin();
+        iter != processGroupMap.end(); ++iter )
   {
     ProcessGroup* pg = iter->second;
     if ( pg->name != NULL )
@@ -83,63 +82,57 @@ OTF2TraceReader::~OTF2TraceReader( )
   }
 
   /* delete members of mpi-groups */
-  for ( GroupIdGroupMap::iterator iter = groupMap.begin( );
-        iter != groupMap.end( ); iter++ )
+  for ( GroupIdGroupMap::iterator iter = groupMap.begin();
+        iter != groupMap.end(); iter++ )
   {
     delete[]iter->second.members;
   }
 }
 
 OTF2TraceReader::IdNameTokenMap&
-OTF2TraceReader::getProcessNameTokenMap( )
+OTF2TraceReader::getProcessNameTokenMap()
 {
   return processNameTokenMap;
 }
 
 OTF2TraceReader::NameTokenMap&
-OTF2TraceReader::getNameKeysMap( )
+OTF2TraceReader::getNameKeysMap()
 {
   return nameKeysMap;
 }
 
 OTF2TraceReader::TokenNameMap&
-OTF2TraceReader::getKeyNameMap( )
+OTF2TraceReader::getKeyNameMap()
 {
   return kNameMap;
 }
 
 OTF2TraceReader::TokenTokenMap64&
-OTF2TraceReader::getProcessFamilyMap( )
+OTF2TraceReader::getProcessFamilyMap()
 {
   return processFamilyMap;
 }
 
 /*OTF2TraceReader::IdTokenMap&
-OTF2TraceReader::getProcessRankMap( )
+OTF2TraceReader::getProcessRankMap()
 {
   return processRankMap;
 }*/
 
 OTF2TraceReader::GroupIdGroupMap&
-OTF2TraceReader::getGroupMap( )
+OTF2TraceReader::getGroupMap()
 {
   return groupMap;
 }
 
-int
-OTF2TraceReader::getProcessingPhase( )
-{
-  return processingPhase;
-}
-
 OTF2KeyValueList&
-OTF2TraceReader::getKVList( )
+OTF2TraceReader::getKVList()
 {
   return kvList;
 }
 
 uint64_t
-OTF2TraceReader::getMPIProcessId( )
+OTF2TraceReader::getMPIProcessId()
 {
   return mpiProcessId;
 }
@@ -154,20 +147,20 @@ void
 OTF2TraceReader::open( const std::string otfFilename, uint32_t maxFiles )
 {
   baseFilename.assign( "" );
-  baseFilename.append( otfFilename.c_str( ), otfFilename.length( ) );
-  reader = OTF2_Reader_Open( baseFilename.c_str( ) );
+  baseFilename.append( otfFilename.c_str(), otfFilename.length() );
+  reader = OTF2_Reader_Open( baseFilename.c_str() );
 
   // TODO: why?
   OTF2_Reader_SetSerialCollectiveCallbacks( reader );
 
   if ( !reader )
   {
-    throw RTException( "Failed to open OTF2 trace file %s", baseFilename.c_str( ) );
+    throw RTException( "Failed to open OTF2 trace file %s", baseFilename.c_str() );
   }
 }
 
 void
-OTF2TraceReader::close( )
+OTF2TraceReader::close()
 {
   OTF2_CHECK( OTF2_Reader_Close( reader ) );
 }
@@ -180,7 +173,7 @@ OTF2TraceReader::close( )
 void
 OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
 {
-  // processNameTokenMap is initialized during traceReader->readDefinitions( );
+  // processNameTokenMap is initialized during traceReader->readDefinitions();
   for ( IdNameTokenMap::const_iterator iter = processNameTokenMap.begin();
         iter != processNameTokenMap.end(); ++iter )
   {
@@ -319,7 +312,7 @@ OTF2TraceReader::readEventsForProcess( uint64_t id, bool ignoreAsyncMPI )
       reader );  
 
   OTF2_GlobalEvtReaderCallbacks* event_callbacks =
-    OTF2_GlobalEvtReaderCallbacks_New( );
+    OTF2_GlobalEvtReaderCallbacks_New();
   OTF2_GlobalEvtReaderCallbacks_SetEnterCallback( event_callbacks,
                                                   &otf2CallbackEnter );
   OTF2_GlobalEvtReaderCallbacks_SetLeaveCallback( event_callbacks,
@@ -387,9 +380,7 @@ OTF2TraceReader::readDefinitions()
   OTF2_GlobalDefReaderCallbacks* global_def_callbacks =
     OTF2_GlobalDefReaderCallbacks_New();
 
-  processingPhase = 1;
-
-  /* Phase 1 -> read string definitions and Groups */
+  // set definition callbacks
   OTF2_GlobalDefReaderCallbacks_SetAttributeCallback(
     global_def_callbacks, &OTF2_GlobalDefReaderCallback_Attribute );
   
@@ -432,7 +423,7 @@ OTF2TraceReader::readDefinitions()
   UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
              "[0] Read %" PRIu64 " definitions in Phase 1", definitions_read );
 
-  close( );
+  close();
   
   /*if ( ( processRankMap.size() == 0 && mpiSize > 1 ) || 
        ( processRankMap.size() && (mpiSize != processRankMap.size() ) ) )
@@ -448,32 +439,7 @@ OTF2TraceReader::readDefinitions()
     return false;
   }
 
-  open( baseFilename.c_str( ), 10 );
-
-  // read definitions (part 2)
-  processingPhase      = 2;
-  global_def_reader    = OTF2_Reader_GetGlobalDefReader( reader );
-
-  global_def_callbacks = OTF2_GlobalDefReaderCallbacks_New( );
-
-  /* Phase 2 -> read string definitions and Groups */
-  OTF2_GlobalDefReaderCallbacks_SetLocationCallback(
-    global_def_callbacks, &OTF2_GlobalDefReaderCallback_Location );
-
-  // register callbacks
-  OTF2_Reader_RegisterGlobalDefCallbacks( reader,
-                                          global_def_reader,
-                                          global_def_callbacks,
-                                          this );
-
-  OTF2_GlobalDefReaderCallbacks_Delete( global_def_callbacks );
-
-  definitions_read = 0;
-
-  /* read definitions */
-  OTF2_Reader_ReadAllGlobalDefinitions( reader,
-                                        global_def_reader,
-                                        &definitions_read );
+  open( baseFilename.c_str(), 10 );
 
   UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
              "[0] Read %" PRIu64 " definitions in Phase 2", definitions_read );
@@ -501,11 +467,11 @@ OTF2TraceReader::readDefinitions()
                            OTF2_PARADIGM_OPENMP );
   
   /* check OTF2 location reference, MPI rank map
-  IdTokenMap& processRankMap = this->getProcessRankMap( );
+  IdTokenMap& processRankMap = this->getProcessRankMap();
   IdTokenMap::iterator iter = processRankMap.begin();
 
   UTILS_MSG(true, "[%u] OTF2 location reference, MPI rank map", mpiRank )
-  for( ; iter != processRankMap.end( ); ++iter )
+  for( ; iter != processRankMap.end(); ++iter )
   {
     UTILS_MSG(true, "[%u] %llu, %u", mpiRank, iter->first, iter->second )
   }*/
@@ -539,11 +505,27 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(
                                           OTF2_LocationGroupRef locationGroup )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
-  int phase           = tr->getProcessingPhase();
 
-  if ( phase == 1 )
+  // store all locations with their parent
+  tr->processFamilyMap[ self ] = locationGroup;
+  
+  // generate mapping of stream IDs to MPI ranks for all processes/streams
+  if ( tr->handleProcessMPIMapping )
   {
-    tr->getProcessFamilyMap()[self] = locationGroup;
+    tr->handleProcessMPIMapping( tr, self, locationGroup );
+  }
+  
+  // for this MPI rank
+  if( tr->mpiRank == locationGroup )
+  {
+    tr->getProcessNameTokenMap()[self] = name;
+    
+    if ( tr->handleDefProcess )
+    {
+      tr->handleDefProcess( tr, self, locationGroup, 
+                            tr->getStringRef( name ).c_str(), NULL, 
+                            locationType == OTF2_LOCATION_TYPE_GPU ? true : false );
+    }
   }
   
   /* ignore unknown locations
@@ -560,35 +542,6 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(
     return OTF2_CALLBACK_SUCCESS;
   }*/
 
-  if ( phase == 2 )
-  {
-    if ( tr->handleProcessMPIMapping )
-    {
-      tr->handleProcessMPIMapping( tr, self, locationGroup );
-    }
-
-    // skip all processes but the mapping MPI master process and its children
-    if ( tr->getMPISize() > 1 )
-    {
-      if ( self != tr->getMPIProcessId() &&
-           ( !tr->isChildOf( self, tr->getMPIProcessId() ) ) )
-      {
-        return OTF2_CALLBACK_SUCCESS;
-      }
-    }
-
-    // Locations are processes
-    tr->getProcessNameTokenMap()[self] = name;
-
-    if ( tr->handleDefProcess )
-    {
-      tr->handleDefProcess( tr, self, locationGroup, 
-                            tr->getStringRef( name ).c_str(), NULL, 
-                            locationType == OTF2_LOCATION_TYPE_GPU ? true : false );
-    }
-
-  }
-
   return OTF2_CALLBACK_SUCCESS;
 }
 /*
@@ -601,7 +554,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationGroup(
                                 OTF2_SystemTreeNodeRef systemTreeParent)
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
-  int phase           = tr->getProcessingPhase( );
+  int phase           = tr->getProcessingPhase();
 
   if ( phase == 1 && locationGroupType == OTF2_LOCATION_GROUP_TYPE_PROCESS )
   {
@@ -641,7 +594,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
   UTILS_MSG( tr->mpiRank == 0 && Parser::getVerboseLevel() > VERBOSE_BASIC && 
              name != OTF2_UNDEFINED_STRING, 
              "[0] Read OTF2 group definition: %s",  
-             tr->getDefinitionTokenStringMap( )[name].c_str() );
+             tr->getDefinitionTokenStringMap()[name].c_str() );
 
   uint64_t* myMembers = new uint64_t[numberOfMembers];
   for ( uint32_t i = 0; i < numberOfMembers; i++ )
@@ -657,7 +610,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
   myGroup.groupType        = groupType;
   myGroup.groupFlag        = groupFlags;
 
-  tr->getGroupMap( )[self] = myGroup;
+  tr->getGroupMap()[self] = myGroup;
 
   if ( ( groupType == OTF2_GROUP_TYPE_COMM_LOCATIONS ) &&
        ( paradigm == OTF2_PARADIGM_MPI ) )
@@ -671,7 +624,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
           mpiRank );
     }
 
-    //IdTokenMap& processRankMap = tr->getProcessRankMap( );
+    //IdTokenMap& processRankMap = tr->getProcessRankMap();
     
     // set the trace reader's stream ID
     tr->setMPIStreamId( members[mpiRank] );
@@ -712,10 +665,10 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Comm( void*          userData,
   UTILS_MSG( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC && 
              name != OTF2_UNDEFINED_STRING, 
              "[0] Read OTF2 communicator definition: %s",  
-             tr->getDefinitionTokenStringMap( )[name].c_str() );
+             tr->getDefinitionTokenStringMap()[name].c_str() );
 
-  GroupIdGroupMap::const_iterator iter = tr->getGroupMap( ).find( group );
-  UTILS_ASSERT( iter != tr->getGroupMap( ).end( ), "Group not found" );
+  GroupIdGroupMap::const_iterator iter = tr->getGroupMap().find( group );
+  UTILS_ASSERT( iter != tr->getGroupMap().end(), "Group not found" );
   OTF2Group myGroup   = iter->second;
 
   if ( myGroup.paradigm == OTF2_PARADIGM_MPI )
@@ -741,7 +694,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_String( void*          userData,
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
   uint32_t max_length = 1000;
   std::string str( string, strnlen( string, max_length ) );
-  tr->getDefinitionTokenStringMap( )[self] = str;
+  tr->getDefinitionTokenStringMap()[self] = str;
 
   return OTF2_CALLBACK_SUCCESS;
 }
@@ -781,7 +734,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Attribute( void*             userD
                                                          OTF2_Type         type )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
-  std::string      s  = tr->getKeyName( name );
+  std::string      s  = tr->getStringRef( name );
   tr->getNameKeysMap().insert( std::make_pair( s, self ) );
   tr->getKeyNameMap().insert( std::make_pair( self, s ) );
 
@@ -825,10 +778,10 @@ OTF2TraceReader::otf2CallbackLeave( OTF2_LocationRef    location,
 
   if ( tr->handleLeave )
   {
-    OTF2KeyValueList& kvList = tr->getKVList( );
+    OTF2KeyValueList& kvList = tr->getKVList();
     kvList.setList( attributes );
 
-    bool interrupt = tr->handleLeave( tr, time - tr->getTimerOffset( ), region, 
+    bool interrupt = tr->handleLeave( tr, time - tr->getTimerOffset(), region, 
                                       location, &kvList );
     
     if ( interrupt )
@@ -881,13 +834,13 @@ OTF2TraceReader::otf2Callback_MpiCollectiveEnd( OTF2_LocationRef  locationID,
         break;
     }
     
-    uint64_t rootStreamId = std::numeric_limits< uint64_t >::max( );
+    uint64_t rootStreamId = std::numeric_limits< uint64_t >::max();
     
     if( mpiType == io::MPI_ONEANDALL )
     {
       RankStreamIdMap::iterator it = tr->rankStreamMap.find( root );
       
-      if ( it != tr->rankStreamMap.end( ) )
+      if ( it != tr->rankStreamMap.end() )
       {
         rootStreamId = tr->rankStreamMap[root];
       }
@@ -1050,7 +1003,7 @@ OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadJoin( OTF2_LocationRef locat
 
   return OTF2TraceReader::otf2CallbackLeave( locationID, time, userData,
                                              attributeList,
-                                             tr->getOmpForkJoinRef( ) );
+                                             tr->getOmpForkJoinRef() );
 }
 
 OTF2_CallbackCode
@@ -1132,29 +1085,14 @@ OTF2TraceReader::otf2CallbackComm_RmaGet( OTF2_LocationRef location,
 }
 */
 
-std::string
-OTF2TraceReader::getStringRef( Token t )
-{
-  return getKeyName( t );
-}
-
-/*
- *  Just reading communication events to place them again into the output trace
- */
-void
-OTF2TraceReader::readCommunication( )
-{
-
-}
-
 OTF2TraceReader::TokenNameMap&
-OTF2TraceReader::getDefinitionTokenStringMap( )
+OTF2TraceReader::getDefinitionTokenStringMap()
 {
   return stringRefMap;
 }
 
 uint64_t
-OTF2TraceReader::getTimerResolution( )
+OTF2TraceReader::getTimerResolution()
 {
   return ticksPerSecond;
 }
@@ -1166,7 +1104,7 @@ OTF2TraceReader::setTimerResolution( uint64_t ticksPerSecond )
 }
 
 uint64_t
-OTF2TraceReader::getTimerOffset( )
+OTF2TraceReader::getTimerOffset()
 {
   return timerOffset;
 }
@@ -1178,7 +1116,7 @@ OTF2TraceReader::setTimerOffset( uint64_t offset )
 }
 
 uint64_t
-OTF2TraceReader::getTraceLength( )
+OTF2TraceReader::getTraceLength()
 {
   return traceLength;
 }
@@ -1190,19 +1128,19 @@ OTF2TraceReader::setTraceLength( uint64_t length )
 }
 
 uint32_t
-OTF2TraceReader::getOmpForkJoinRef( )
+OTF2TraceReader::getOmpForkJoinRef()
 {
   return ompForkJoinRef;
 }
 
 uint32_t
-OTF2TraceReader::getMPIRank( )
+OTF2TraceReader::getMPIRank()
 {
   return mpiRank;
 }
 
 uint32_t
-OTF2TraceReader::getMPISize( )
+OTF2TraceReader::getMPISize()
 {
   return mpiSize;
 }
@@ -1214,11 +1152,11 @@ OTF2TraceReader::getMPISize( )
  * @return string object the OTF2 string reference refers to
  */
 std::string
-OTF2TraceReader::getKeyName( uint32_t id )
+OTF2TraceReader::getStringRef( uint32_t id )
 {
-  TokenNameMap& nm = getDefinitionTokenStringMap( );
+  TokenNameMap& nm = getDefinitionTokenStringMap();
   TokenNameMap::iterator iter = nm.find( id );
-  if ( iter != nm.end( ) )
+  if ( iter != nm.end() )
   {
     return iter->second;
   }
@@ -1242,7 +1180,7 @@ OTF2TraceReader::getFunctionName( uint32_t id )
 {
   // use the OTF2 region reference/ID to get the OTF2 string reference and 
   // translate it to a string with getKeyName  
-  return getKeyName( regionRefMap[id] );
+  return getStringRef( regionRefMap[id] );
 }
 
 OTF2TraceReader::ProcessGroupMap&
@@ -1288,44 +1226,7 @@ OTF2TraceReader::getFirstKey( const std::string keyName )
 }
 
 void*
-OTF2TraceReader::getUserData( )
+OTF2TraceReader::getUserData()
 {
   return userData;
-}
-
-bool
-OTF2TraceReader::isChildOf( uint64_t child, uint64_t parent )
-{
-  TokenTokenMap64::const_iterator iter = processFamilyMap.find( child );
-  if ( iter == processFamilyMap.end() )
-  {
-    throw RTException( "Requesting parent of unknown child process" );
-  }
-
-  bool myOwnParent = false;
-
-  iter = processFamilyMap.find( child );
-
-  while ( !myOwnParent )
-  {
-    uint64_t directParent = iter->second;
-
-    if ( directParent == parent )
-    {
-      return true;
-    }
-
-    iter = processFamilyMap.find( directParent );
-    if ( iter == processFamilyMap.end( ) )
-    {
-      return false;
-    }
-
-    if ( directParent == iter->second )
-    {
-      myOwnParent = true;
-    }
-  }
-
-  return false;
 }
