@@ -145,7 +145,8 @@ namespace casita
         
         // set myself as last entering stream
         uint64_t lastStreamId = sendRecvLeave->getStreamId();
-        uint64_t lastNodeId = sendRecvLeave->getId();
+        uint64_t lastNodeId   = sendRecvLeave->getId();
+        uint64_t lastTime     = myStartTime;
         
         // set my operation edge to NULL 
         // (if it gets set, this operation is not the last)
@@ -170,6 +171,7 @@ namespace casita
           
           lastStreamId = mpiAnalysis.getStreamId( recvRank, comRef );
           lastNodeId   = recvRankEnterId;
+          lastTime     = recvRankStartTime;
         }
         
         // handle similar to MPI_Send (which is often buffered)
@@ -186,12 +188,14 @@ namespace casita
               // receive rank is the latest
               lastStreamId = mpiAnalysis.getStreamId( recvRank, comRef );
               lastNodeId   = recvRankEnterId;
+              lastTime     = recvRankStartTime;
             }
             else
             {
               // send rank is the latest
               lastStreamId = mpiAnalysis.getStreamId( sendRank, comRef );
               lastNodeId   = sendRankEnterId;
+              lastTime     = sendRankStartTime;
             }
           }
           else// create blocking edge due to send rank operation
@@ -208,16 +212,26 @@ namespace casita
                              sendRecvLeave->getStreamId() );
             }
 
-            //\todo: waiting time
-
             lastStreamId = mpiAnalysis.getStreamId( sendRank, comRef );
             lastNodeId   = sendRankEnterId;
+            lastTime     = sendRankStartTime;
           }
         }
         
         // if this operation is blocking, we need a continuation edge for CPA
         if( myEdge )
         {
+          uint64_t waitEnd = std::min( lastTime, myEndTime );
+          if( myStartTime < waitEnd )
+          {
+            sendRecvLeave->incCounter( WAITING_TIME, waitEnd - myStartTime );
+          }
+          else
+          {
+            UTILS_WARNING( "[%"PRIu64"] SendrecvRule: Error in determining "
+                           "waiting time." );
+          }
+          
           // point to potential continuation (node ID, stream ID)
           commonAnalysis->getMPIAnalysis().addRemoteMPIEdge(
                 sendRecvLeave, lastNodeId, lastStreamId );
