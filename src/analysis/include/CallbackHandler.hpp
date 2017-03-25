@@ -100,21 +100,23 @@ namespace casita
      handleMPIComm( io::OTF2TraceReader* reader,
                     io::MPIType       mpiType,
                     uint64_t          streamId,
-                    uint64_t          partnerId,
-                    uint32_t          root,
+                    uint32_t          partnerId,
+                    uint32_t          root_comm,
                     uint32_t          tag );
 
      static void
      handleMPICommGroup( io::OTF2TraceReader* reader, uint32_t group,
-                         uint32_t numProcs, const uint64_t* procs );
+                         uint32_t numProcs, const uint32_t* procs );
 
      static void
-     handleMPIIsend( OTF2TraceReader* reader, uint64_t streamId, uint64_t receiver,
-                     uint64_t request );
+     handleMPIIsend( OTF2TraceReader* reader, uint64_t streamId, 
+                     uint64_t receiver, OTF2_CommRef communicator, 
+                     uint32_t msgTag,uint64_t request );
      
      static void
-     handleMPIIrecv( OTF2TraceReader* reader, uint64_t streamId, uint64_t sender,
-                     uint64_t request );
+     handleMPIIrecv( OTF2TraceReader* reader, uint64_t streamId, 
+                     uint64_t sender, OTF2_CommRef communicator,
+                     uint32_t msgTag, uint64_t request );
 
      static void
      handleMPIIrecvRequest( OTF2TraceReader* reader, uint64_t streamId, uint64_t request );

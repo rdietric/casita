@@ -20,6 +20,7 @@
 #include <mpi.h>
 #include <list>
 #include <stack>
+#include <ios>
 
 #include "IAnalysisParadigm.hpp"
 #include "AnalysisEngine.hpp"
@@ -206,21 +207,33 @@ AnalysisEngine::getAnalysisParadigm( Paradigm paradigm )
 void
 AnalysisEngine::handlePostEnter( GraphNode* node )
 {
-  for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
-        iter != analysisParadigms.end(); ++iter )
+  AnalysisParadigmsMap::iterator iter = analysisParadigms.find( node->getParadigm() );
+  if ( iter != analysisParadigms.end() )
   {
     iter->second->handlePostEnter( node );
   }
+  
+  /*for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
+        iter != analysisParadigms.end(); ++iter )
+  {
+    iter->second->handlePostEnter( node );
+  }*/
 }
 
 void
 AnalysisEngine::handlePostLeave( GraphNode* node )
 {
-  for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
-        iter != analysisParadigms.end(); ++iter )
+  AnalysisParadigmsMap::iterator iter = analysisParadigms.find( node->getParadigm() );
+  if ( iter != analysisParadigms.end() )
   {
     iter->second->handlePostLeave( node );
   }
+  
+  /*for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
+        iter != analysisParadigms.end(); ++iter )
+  {
+    iter->second->handlePostLeave( node );
+  }*/
 }
 
 void
@@ -397,10 +410,20 @@ AnalysisEngine::createIntermediateBegin()
 
   const EventStreamGroup::EventStreamList streams = getStreams();
   
-  cuda::AnalysisParadigmCUDA* cudaAnalysis = 
-    (cuda::AnalysisParadigmCUDA*)this->getAnalysisParadigm( PARADIGM_CUDA );
+  cuda::AnalysisParadigmCUDA* cudaAnalysis = NULL;
+  if( haveParadigm( PARADIGM_CUDA ) )
+  {
+    cudaAnalysis = 
+      (cuda::AnalysisParadigmCUDA*)this->getAnalysisParadigm( PARADIGM_CUDA );
+    //cudaAnalysis->printKernelLaunchMap();
+  }
   
-  //cudaAnalysis->printKernelLaunchMap();
+  /*opencl::AnalysisParadigmOpenCL* oclAnalysis = NULL;
+  if( haveParadigm( PARADIGM_OCL ) )
+  {
+    oclAnalysis = 
+      (opencl::AnalysisParadigmOpenCL*)this->getAnalysisParadigm( PARADIGM_OCL );
+  }*/
   
   for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin();
         iter != streams.end(); ++iter )
@@ -453,7 +476,15 @@ AnalysisEngine::createIntermediateBegin()
           havePendingKernels = false;
           
           // clear pending kernel launches for this stream
-          cudaAnalysis->clearKernelLaunches( p->getId() );
+          if( cudaAnalysis )
+          {
+            cudaAnalysis->clearKernelLaunches( p->getId() );
+          }
+          
+          /*if( oclAnalysis )
+          {
+            oclAnalysis->clearKernelLaunches( p->getId() );
+          }*/
         }
       }
       

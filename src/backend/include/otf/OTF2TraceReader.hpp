@@ -50,19 +50,23 @@ namespace casita
   typedef void ( *HandleDefAttribute )( OTF2TraceReader* reader, uint64_t streamId,
                                         uint32_t key, const char* name );
   typedef void ( *HandleMPIComm )( OTF2TraceReader* reader, MPIType mpiType,
-                                   uint64_t processId, uint64_t partnerId,
+                                   uint64_t processId, uint32_t partnerId,
                                    uint32_t root, uint32_t tag );
   typedef void ( *HandleMPICommGroup )( OTF2TraceReader* reader, uint32_t group,
                                         uint32_t numProcs,
-                                        const uint64_t* procs );
+                                        const uint32_t* procs );
   typedef void ( *HandleMPIIsend )( OTF2TraceReader* reader, 
-                                    uint64_t      streamId,
-                                    uint64_t      receiver,
-                                    uint64_t      request );
+                                    uint64_t         streamId,
+                                    uint64_t         receiver,
+                                    OTF2_CommRef     communicator,
+                                    uint32_t         msgTag,
+                                    uint64_t         request );
   typedef void ( *HandleMPIIrecv )( OTF2TraceReader* reader, 
-                                    uint64_t      streamId,
-                                    uint64_t      sender,
-                                    uint64_t      request );
+                                    uint64_t         streamId,
+                                    uint64_t         sender,
+                                    OTF2_CommRef     communicator,
+                                    uint32_t         msgTag,
+                                    uint64_t         request );
   typedef void ( *HandleMPIIrecvRequest )( OTF2TraceReader* reader,
                                            uint64_t      streamId,
                                            uint64_t      request );
@@ -97,26 +101,26 @@ namespace casita
 
       typedef struct
       {
-        uint32_t       groupId;
-        uint32_t       stringRef;
-        uint32_t       numberOfMembers;
-        uint8_t        paradigm;
-        uint8_t        groupType;
+        OTF2_GroupRef  groupId;
+        OTF2_StringRef stringRef;
+        OTF2_Paradigm  paradigm;
+        OTF2_GroupType groupType;
         OTF2_GroupFlag groupFlag;
-        uint64_t*      members;
+        uint32_t       numberOfMembers;
+        uint32_t*      members;         //!< OTF2 communication group members
       } OTF2Group;
 
       typedef uint32_t Token;
       typedef std::multimap< std::string, Token > NameTokenMap;
       typedef std::map< Token, std::string > TokenNameMap;
-      typedef std::map< uint64_t, Token > IdNameTokenMap;
       typedef std::map< Token, Token > TokenTokenMap;
       typedef std::map< uint64_t, uint64_t > TokenTokenMap64;
       typedef std::map< uint64_t, Token > IdTokenMap;
       typedef std::set< Token > TokenSet;
       typedef std::map< Token, TokenSet > TokenSetMap;
-      typedef std::map< uint32_t, OTF2Group > GroupIdGroupMap;
+      typedef std::map< uint32_t, OTF2Group > CommGroupMap;
       typedef std::map< uint32_t, uint64_t > RankStreamIdMap;
+      typedef std::map< uint64_t, uint32_t > LocationStringRefMap;
 
       typedef std::map< Token, ProcessGroup* > ProcessGroupMap;
 
@@ -168,17 +172,11 @@ namespace casita
       TokenNameMap&
       getKeyNameMap();
 
-      TokenNameMap&
-      getDefinitionTokenStringMap();
-
       ProcessGroupMap&
       getProcGoupMap();
 
       OTF2KeyValueList&
       getKVList();
-
-      GroupIdGroupMap&
-      getGroupMap();
 
       std::string
       getStringRef( uint32_t id );
@@ -191,12 +189,6 @@ namespace casita
        */
       std::string
       getFunctionName( uint32_t id );
-
-      /*std::string
-      getProcessName( uint64_t id );*/
-
-      IdNameTokenMap&
-      getProcessNameTokenMap();
 
       std::vector< uint32_t >
       getKeys( const std::string keyName );
@@ -548,14 +540,16 @@ namespace casita
       std::string      baseFilename;
       NameTokenMap     nameKeysMap;
       TokenNameMap     kNameMap;
-      IdNameTokenMap   processNameTokenMap;
+      
+      //!< maps OTF2 location references to OTF2 string references
+      LocationStringRefMap locationStringRefMap;
       
       // stores the OTF2 region ref as key with the OTF2 string ref as value
       TokenTokenMap    regionRefMap; 
       
-      // stores an OTF2 string ref as key with the char* as value
+      // stores an OTF2 string ref as key with the string as value
       TokenNameMap     stringRefMap;
-      GroupIdGroupMap  groupMap;
+      CommGroupMap  groupMap;
 
       ProcessGroupMap  processGroupMap;
       uint64_t         ticksPerSecond;

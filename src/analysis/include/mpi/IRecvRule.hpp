@@ -48,8 +48,6 @@ namespace casita
         
         AnalysisEngine* commonAnalysis = analysis->getCommon();
 
-        
-        
         EventStream::MPIIcommRecord* record = 
                           (EventStream::MPIIcommRecord* )irecvLeave->getData();
         
@@ -62,19 +60,20 @@ namespace casita
           
           return false;
         }
+        
+        MPIAnalysis& mpiAnalysis = commonAnalysis->getMPIAnalysis();
+        MPI_Comm communicator = mpiAnalysis.getMPICommGroup( record->comRef ).comm;
 
-        uint64_t partnerProcessId = irecvLeave->getReferencedStreamId();
-        uint32_t partnerMPIRank   =
-          commonAnalysis->getMPIAnalysis().getMPIRank( partnerProcessId );
+        int partnerRank = (int) irecvLeave->getReferencedStreamId();
 
         // replay MPI_Irecv (receive buffer is never read as data are first valid in MPI_Wait[all])
         MPI_CHECK( MPI_Irecv( record->recvBuffer, 
                               CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
-                              partnerMPIRank, 
-                              CASITA_MPI_REPLAY_TAG, 
-                              MPI_COMM_WORLD, 
-                              &(record->requests[0]) ) );
+                              partnerRank, 
+                              record->msgTag, //CASITA_MPI_REPLAY_TAG, 
+                              communicator, //MPI_COMM_WORLD, 
+                              &(record->requests[ 0 ]) ) );
         
         GraphNode* irecvEnter = irecvLeave->getGraphPair().first;
         
@@ -85,16 +84,17 @@ namespace casita
         buffer_send[1] = irecvLeave->getTime();
         buffer_send[2] = irecvEnter->getId();
         buffer_send[3] = irecvLeave->getId(); // 
-        buffer_send[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_IRECV;
+        buffer_send[CASITA_MPI_P2P_BUF_LAST] = MPI_IRECV;
 
         // Send indicator that this is an MPI_Irecv
         // use another tag to not mix up with replayed communication
         MPI_CHECK( MPI_Isend( buffer_send, 
                               CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
-                              partnerMPIRank,
-                              CASITA_MPI_REVERS_REPLAY_TAG, 
-                              MPI_COMM_WORLD, &(record->requests[1]) ) );
+                              partnerRank,
+                              record->msgTag + CASITA_MPI_REVERS_REPLAY_TAG, 
+                              communicator, //MPI_COMM_WORLD, 
+                              &(record->requests[ 1 ]) ) );
 
         // collect pending non-blocking MPI operations
         int finished = 0;

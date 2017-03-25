@@ -23,6 +23,7 @@
 #include "utils/ErrorUtils.hpp"
 
 
+
 using namespace casita;
 
 EventStream::EventStream( uint64_t          id,
@@ -42,8 +43,8 @@ EventStream::EventStream( uint64_t          id,
   isFiltering( false ),
   filterStartTime( 0 ),
   predictionOffset ( 0 ),
-  pendingMPIRequestId( std::numeric_limits< uint64_t >::max() ),
-  mpiIsendPartner( std::numeric_limits< uint64_t >::max() )
+  pendingMPIRequestId( UINT64_MAX ),
+  mpiIsendPartner( UINT64_MAX )
 {
   for ( size_t i = 0; i < NODE_PARADIGM_COUNT; ++i )
   {
@@ -52,8 +53,10 @@ EventStream::EventStream( uint64_t          id,
   }
   
   // set the initial values for first enter and last leave
-  streamPeriod.first = std::numeric_limits< uint64_t >::max();
+  streamPeriod.first = UINT64_MAX;
   streamPeriod.second = 0;
+  
+  pendingMpiComm.comRef = UINT32_MAX;
 }
 
 EventStream::~EventStream()
@@ -587,20 +590,42 @@ EventStream::setPendingKernelsSyncLink( GraphNode* syncLeave )
 /**
  * 
  * @param mpiType
- * @param partnerId
- * @param rootId root MPI rank of the ONEANDALL collective
+ * @param partnerId MPI rank of communication partner in communicator "root_comm_id"
+ * @param root_comm_id root MPI rank in collectives or communicator for point to point
  */
 void
-EventStream::setPendingMPIRecord( MPIType  mpiType,
-                                  uint64_t partnerId,
-                                  uint64_t rootId )
+EventStream::setPendingMPIRecord( MPIType  mpiType, uint32_t partnerId,
+                                  uint32_t root_comm_id, uint32_t tag )
 {
-  MPICommRecord record;
+  /*MPICommRecord record;
   record.mpiType   = mpiType;
-  record.partnerId = partnerId; // the communicator for collectives
-  record.rootId    = rootId;
+  record.partnerId = partnerId;    // the communicator for collectives
+  record.rootId    = root_comm_id; // root rank for collectives, communicator for point to point
+  record.tag       = tag;
 
-  mpiCommRecords.push_back( record );
+  mpiCommRecords.push_back( record );*/
+  
+  switch ( mpiType )
+  {
+    case MPI_COLLECTIVE:
+      pendingMpiComm.comRef  = partnerId;
+      pendingMpiComm.sendPartnerId = root_comm_id;
+      break;
+      
+    case MPI_RECV:
+      pendingMpiComm.comRef  = root_comm_id;
+      pendingMpiComm.recvPartnerId = partnerId;
+      pendingMpiComm.recvTag       = tag;
+      break;
+      
+    case MPI_SEND:
+      pendingMpiComm.comRef  = root_comm_id;
+      pendingMpiComm.sendPartnerId = partnerId;
+      pendingMpiComm.sendTag       = tag;
+      break;
+      
+    default: throw RTException( "Unknown EventStream::MPIType %u", mpiType );
+  }
 }
 
 /**
@@ -620,6 +645,12 @@ EventStream::getPendingMPIRecords()
   // clear the pending list
   mpiCommRecords.clear();
   return copyList;
+}
+
+EventStream::MpiBlockingCommData&
+EventStream::getPendingMpiCommRecord()
+{
+  return pendingMpiComm;
 }
 
 /**
@@ -709,15 +740,17 @@ EventStream::addPendingMPIIrecvNode( GraphNode* node )
  * @param partnerId stream ID of the communication partner
  */
 void
-EventStream::handleMPIIrecvEventData( uint64_t requestId,
-                                      uint64_t partnerId )
+EventStream::handleMPIIrecvEventData( uint64_t requestId, uint64_t partnerId,
+                                      OTF2_CommRef comm, uint32_t tag )
 {
   //UTILS_MSG( true, "[%"PRIu64"] MPIIrecv: mpiWaitRequest = %"PRIu64, 
   //                 this->id, requestId );
   
   if( mpiIcommRecords.count( requestId ) > 0 )
   {
-    mpiIcommRecords[requestId].leaveNode->setReferencedStreamId( partnerId );
+    mpiIcommRecords[ requestId ].leaveNode->setReferencedStreamId( partnerId );
+    mpiIcommRecords[ requestId ].comRef = comm;
+    mpiIcommRecords[ requestId ].msgTag = tag;
 
     // temporarily store the request that is consumed by MPI_Wait[all] leave event
     pendingRequests.push_back( requestId );
@@ -742,11 +775,21 @@ EventStream::handleMPIIrecvEventData( uint64_t requestId,
  * @param requestId OTF2 MPI_Isend request ID 
  */
 void
-EventStream::handleMPIIsendEventData( uint64_t requestId,
-                                      uint64_t partnerId )
+EventStream::handleMPIIsendEventData( uint64_t requestId, uint64_t partnerId,
+                                      OTF2_CommRef comm, uint32_t tag )
 {
   pendingMPIRequestId = requestId;
-  mpiIsendPartner = partnerId;
+  mpiIsendPartner     = partnerId;
+  
+  // add new record to map
+  MPIIcommRecord record;
+  record.comRef       = comm;
+  record.msgTag       = tag;
+  record.requests[0]  = MPI_REQUEST_NULL;
+  record.requests[1]  = MPI_REQUEST_NULL;
+  record.leaveNode    = NULL;
+  record.requestId    = requestId;
+  mpiIcommRecords[ requestId ] = record;
 }
 
 /**
@@ -791,12 +834,25 @@ EventStream::setMPIIsendNodeData( GraphNode* node )
   }
  
   // add new record to map
-  MPIIcommRecord record;
-  record.requests[0] = MPI_REQUEST_NULL;
-  record.requests[1] = MPI_REQUEST_NULL;
-  record.leaveNode = node;
-  record.requestId = pendingMPIRequestId;
-  mpiIcommRecords[pendingMPIRequestId] = record;
+//  MPIIcommRecord record;
+//  record.requests[0] = MPI_REQUEST_NULL;
+//  record.requests[1] = MPI_REQUEST_NULL;
+//  record.leaveNode = node;
+//  record.requestId = pendingMPIRequestId;
+//  mpiIcommRecords[pendingMPIRequestId] = record;
+  if( mpiIcommRecords.count( pendingMPIRequestId ) > 0 )
+  {
+    mpiIcommRecords[ pendingMPIRequestId ].leaveNode = node;
+  }
+  else
+  {
+    UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE,
+               "%s: no record found for MPI request ID (%"PRIu64").",
+               node->getUniqueName().c_str(), pendingMPIRequestId );
+    node->setData( NULL );
+    return;
+  }
+  
   
   //UTILS_MSG( true, "[%"PRIu64"] New MPI_Isend record: %s Request ID: %"PRIu64,
   //           this->id, node->getUniqueName().c_str(), pendingMPIRequestId );
@@ -808,7 +864,7 @@ EventStream::setMPIIsendNodeData( GraphNode* node )
   
   //invalidate temporary stored request and partner ID
   pendingMPIRequestId = std::numeric_limits< uint64_t >::max();
-  mpiIsendPartner = std::numeric_limits< uint64_t >::max();
+  mpiIsendPartner     = std::numeric_limits< uint64_t >::max();
 }
 
 /**

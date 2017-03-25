@@ -46,8 +46,8 @@ namespace casita
 
      typedef struct
      {
-       MPI_Comm             comm;
-       std::set< uint64_t > procs;
+       MPI_Comm                comm;
+       std::vector< uint32_t > procs;
      } MPICommGroup;
 
      enum MPIEdgeDirection
@@ -74,31 +74,37 @@ namespace casita
 
      typedef std::map< uint64_t, MPIEdge > MPIIdEdgeMap;
      typedef std::map< uint64_t, MPIIdEdgeMap > MPIRemoteEdgeMap;
-     typedef std::map< uint64_t, MPICommGroup > MPICommGroupMap;
+     typedef std::map< uint32_t, MPICommGroup > MPICommGroupMap;
 
      MPIAnalysis( uint32_t mpiRank, uint32_t mpiSize );
      virtual
-     ~MPIAnalysis( );
+     ~MPIAnalysis();
 
      uint32_t
-     getMPIRank( ) const;
-
+     getMPISize() const;
+     
      uint32_t
-     getMPISize( ) const;
+     getMPIRank() const;
 
      uint32_t
      getMPIRank( uint64_t streamId ) const;
+     
+     uint32_t
+     getMPIRank( uint64_t streamId, const MPICommGroup& commGroup ) const;
 
      void
      setMPIRank( uint64_t streamId, uint32_t rank );
+     
+     uint64_t
+     getStreamId( int rank, uint32_t comRef );
 
      void
-     setMPICommGroupMap( uint32_t        group,
-                         uint32_t        numProcs,
-                         const uint64_t* procs );
+     addMPICommGroup( uint32_t        group,
+                      uint32_t        numProcs,
+                      const uint32_t* procs );
 
      void
-     createMPICommunicatorsFromMap( );
+     createMPICommunicatorsFromMap();
 
      const MPICommGroup&
      getMPICommGroup( uint32_t group ) const;
@@ -120,12 +126,12 @@ namespace casita
      getMpiPartnersRank( GraphNode* node );
 
      void
-     reset( );
+     reset();
 
    private:
      uint32_t             mpiRank;
      uint32_t             mpiSize;
-     TokenTokenMap        processRankMap;
+     TokenTokenMap        streamIdRankMap;
      MPICommGroupMap      mpiCommGroupMap;
      MPIRemoteEdgeMap     remoteMpiEdgeMap;
      

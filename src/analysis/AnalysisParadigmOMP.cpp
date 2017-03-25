@@ -44,10 +44,10 @@ AnalysisParadigmOMP::AnalysisParadigmOMP( AnalysisEngine* analysisEngine ) :
   }
 }
 
-AnalysisParadigmOMP::~AnalysisParadigmOMP( ){ }
+AnalysisParadigmOMP::~AnalysisParadigmOMP(){ }
 
 Paradigm
-AnalysisParadigmOMP::getParadigm( )
+AnalysisParadigmOMP::getParadigm()
 {
   return PARADIGM_OMP;
 }

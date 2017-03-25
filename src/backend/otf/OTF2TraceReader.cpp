@@ -82,17 +82,11 @@ OTF2TraceReader::~OTF2TraceReader()
   }
 
   /* delete members of mpi-groups */
-  for ( GroupIdGroupMap::iterator iter = groupMap.begin();
+  for ( CommGroupMap::iterator iter = groupMap.begin();
         iter != groupMap.end(); iter++ )
   {
     delete[]iter->second.members;
   }
-}
-
-OTF2TraceReader::IdNameTokenMap&
-OTF2TraceReader::getProcessNameTokenMap()
-{
-  return processNameTokenMap;
 }
 
 OTF2TraceReader::NameTokenMap&
@@ -111,18 +105,6 @@ OTF2TraceReader::TokenTokenMap64&
 OTF2TraceReader::getProcessFamilyMap()
 {
   return processFamilyMap;
-}
-
-/*OTF2TraceReader::IdTokenMap&
-OTF2TraceReader::getProcessRankMap()
-{
-  return processRankMap;
-}*/
-
-OTF2TraceReader::GroupIdGroupMap&
-OTF2TraceReader::getGroupMap()
-{
-  return groupMap;
 }
 
 OTF2KeyValueList&
@@ -174,8 +156,8 @@ void
 OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
 {
   // processNameTokenMap is initialized during traceReader->readDefinitions();
-  for ( IdNameTokenMap::const_iterator iter = processNameTokenMap.begin();
-        iter != processNameTokenMap.end(); ++iter )
+  for ( LocationStringRefMap::const_iterator iter = locationStringRefMap.begin();
+        iter != locationStringRefMap.end(); ++iter )
   {
     OTF2_Reader_SelectLocation( reader, iter->first );
   }
@@ -183,8 +165,8 @@ OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
   OTF2_Reader_OpenEvtFiles( reader );
   OTF2_Reader_OpenDefFiles( reader );
 
-  for ( IdNameTokenMap::const_iterator iter = processNameTokenMap.begin();
-        iter != processNameTokenMap.end(); ++iter )
+  for ( LocationStringRefMap::const_iterator iter = locationStringRefMap.begin();
+        iter != locationStringRefMap.end(); ++iter )
   {
     OTF2_DefReader* def_reader = OTF2_Reader_GetDefReader( reader, iter->first );
     uint64_t def_reads         = 0;
@@ -423,13 +405,8 @@ OTF2TraceReader::readDefinitions()
   UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
              "[0] Read %" PRIu64 " definitions in Phase 1", definitions_read );
 
-  close();
+  close();  
   
-  /*if ( ( processRankMap.size() == 0 && mpiSize > 1 ) || 
-       ( processRankMap.size() && (mpiSize != processRankMap.size() ) ) )
-  {
-    UTILS_MSG( true, "[%u] CASITA has to be run with %zu MPI process(es)!",
-               mpiRank, processRankMap.size() == 0 ? 1 : processRankMap.size() );*/
   if ( ( rankStreamMap.size() == 0 && mpiSize > 1 ) || 
        ( rankStreamMap.size() && (mpiSize != rankStreamMap.size() ) ) )
   {
@@ -444,7 +421,7 @@ OTF2TraceReader::readDefinitions()
   UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
              "[0] Read %" PRIu64 " definitions in Phase 2", definitions_read );
 
-  // add forkjoin "region" to support internal OMP-fork/join model
+  // add forkJoin "region" to support internal OMP-fork/join model
   // get a new string reference
   uint32_t newStringRef = 1;
   if( !stringRefMap.empty() )
@@ -466,15 +443,17 @@ OTF2TraceReader::readDefinitions()
   this->handleDefFunction( this, ompForkJoinRef, OTF2_OMP_FORKJOIN_INTERNAL, 
                            OTF2_PARADIGM_OPENMP );
   
-  /* check OTF2 location reference, MPI rank map
-  IdTokenMap& processRankMap = this->getProcessRankMap();
-  IdTokenMap::iterator iter = processRankMap.begin();
-
-  UTILS_MSG(true, "[%u] OTF2 location reference, MPI rank map", mpiRank )
-  for( ; iter != processRankMap.end(); ++iter )
+  /* check OTF2 location reference, MPI rank map 
+  if( mpiRank == 0 && mpiSize > 1 )
   {
-    UTILS_MSG(true, "[%u] %llu, %u", mpiRank, iter->first, iter->second )
+    TokenTokenMap64::iterator iter = processFamilyMap.begin();
+    for( ; iter != processFamilyMap.end(); ++iter )
+    {
+      UTILS_MSG( true, "[0] stream %" PRIu64 " -> rank %" PRIu64 "", 
+                 iter->first, iter->second );
+    }
   }*/
+    
   
   return true;
 }
@@ -515,10 +494,10 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(
     tr->handleProcessMPIMapping( tr, self, locationGroup );
   }
   
-  // for this MPI rank
+  // for all locations of this MPI rank
   if( tr->mpiRank == locationGroup )
   {
-    tr->getProcessNameTokenMap()[self] = name;
+    tr->locationStringRefMap[ self ] = name;
     
     if ( tr->handleDefProcess )
     {
@@ -575,7 +554,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationGroup(
  * @param paradigm
  * @param groupFlags
  * @param numberOfMembers
- * @param members identifiers of the group members
+ * @param members identifiers of the group members (OTF2 location references)
  * 
  * @return 
  */
@@ -591,53 +570,63 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
   
-  UTILS_MSG( tr->mpiRank == 0 && Parser::getVerboseLevel() > VERBOSE_BASIC && 
-             name != OTF2_UNDEFINED_STRING, 
-             "[0] Read OTF2 group definition: %s",  
-             tr->getDefinitionTokenStringMap()[name].c_str() );
-
-  uint64_t* myMembers = new uint64_t[numberOfMembers];
-  for ( uint32_t i = 0; i < numberOfMembers; i++ )
+  // group paradigm is MPI (MPI communication groups)
+  if( paradigm == OTF2_PARADIGM_MPI )
   {
-    myMembers[i] = members[i];
-  }
-  OTF2Group myGroup;
-  myGroup.groupId          = self;
-  myGroup.members          = myMembers;
-  myGroup.numberOfMembers  = numberOfMembers;
-  myGroup.paradigm         = paradigm;
-  myGroup.stringRef        = name;
-  myGroup.groupType        = groupType;
-  myGroup.groupFlag        = groupFlags;
+    UTILS_MSG_NOBR( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC && 
+                    name != OTF2_UNDEFINED_STRING, 
+                    "[0] Handle OTF2 MPI group definition %u: %s (",  
+                    self, tr->stringRefMap[ name ].c_str() );
 
-  tr->getGroupMap()[self] = myGroup;
-
-  if ( ( groupType == OTF2_GROUP_TYPE_COMM_LOCATIONS ) &&
-       ( paradigm == OTF2_PARADIGM_MPI ) )
-  {
-    uint32_t mpiRank = tr->getMPIRank();
-
-    if ( numberOfMembers <= tr->getMPIRank() )
+    // store group members
+    uint32_t* myMembers = new uint32_t[ numberOfMembers ];
+    for ( uint32_t i = 0; i < numberOfMembers; i++ )
     {
-      throw RTException(
-          "Process group MPI_COMM_WORLD has no process for this MPI rank (%u)",
-          mpiRank );
+      myMembers[ i ] = members[ i ];
+      UTILS_MSG_NOBR( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+                      " %llu", members[ i ] );
     }
+    UTILS_MSG( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, " )" );
 
-    //IdTokenMap& processRankMap = tr->getProcessRankMap();
-    
-    // set the trace reader's stream ID
-    tr->setMPIStreamId( members[mpiRank] );
-    for ( uint32_t i = 0; i < numberOfMembers; ++i )
-    {
-      //processRankMap[ members[i] ] = i;
-      tr->rankStreamMap[i] = members[i];
-    }
-    if ( tr->handleMPICommGroup )
-    {
-      tr->handleMPICommGroup( tr, 0, myGroup.numberOfMembers, myGroup.members );
-    }
+    OTF2Group myGroup;
+    myGroup.groupId          = self;
+    myGroup.members          = myMembers;
+    myGroup.numberOfMembers  = numberOfMembers;
+    myGroup.paradigm         = paradigm;
+    myGroup.stringRef        = name;
+    myGroup.groupType        = groupType;
+    myGroup.groupFlag        = groupFlags;
 
+    // store the group in a map
+    tr->groupMap[ self ] = myGroup;
+  
+    // all MPI locations (to map  global ranks to OTF2 location IDs)
+    if( groupType == OTF2_GROUP_TYPE_COMM_LOCATIONS )
+    {
+      // the number of MPI members has to be more than the rank number
+      if ( numberOfMembers <= tr->mpiRank )
+      {
+        throw RTException(
+            "Process group MPI_COMM_WORLD has no process for this MPI rank (%u)",
+            tr->mpiRank );
+      }
+
+      // set the trace reader's stream ID
+      //\todo: needed?
+      tr->setMPIStreamId( members[ tr->mpiRank ] );
+
+      // save all members of the global MPI group with their rank
+      for ( uint32_t i = 0; i < numberOfMembers; ++i )
+      {
+        tr->rankStreamMap[ i ] = members[ i ];
+      }
+      
+      // handle the global group of all MPI ranks (replaces MPI_COMM_WORLD)
+      if ( tr->handleMPICommGroup )
+      {
+        tr->handleMPICommGroup( tr, 0, myGroup.numberOfMembers, myGroup.members );
+      }
+    }
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -661,23 +650,36 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Comm( void*          userData,
                                                     OTF2_CommRef   parent )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+
+  // get the associated communication group
+  CommGroupMap::iterator iter = tr->groupMap.find( group );
+  
+  // if group was not found, it is not of paradigm MPI
+  if( iter == tr->groupMap.end() )
+  {
+    return OTF2_CALLBACK_SUCCESS;
+  }
+  //UTILS_ASSERT( iter != tr->groupMap.end(), 
+  //              "OTF2 definition reader: Group not found" );
   
   UTILS_MSG( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC && 
              name != OTF2_UNDEFINED_STRING, 
-             "[0] Read OTF2 communicator definition: %s",  
-             tr->getDefinitionTokenStringMap()[name].c_str() );
-
-  GroupIdGroupMap::const_iterator iter = tr->getGroupMap().find( group );
-  UTILS_ASSERT( iter != tr->getGroupMap().end(), "Group not found" );
-  OTF2Group myGroup   = iter->second;
-
-  if ( myGroup.paradigm == OTF2_PARADIGM_MPI )
+             "[0] Handle OTF2 communicator definition %u: %s",  
+             self, tr->stringRefMap[ name ].c_str() );
+  
+  OTF2Group& myGroup = iter->second;
+  if ( myGroup.paradigm == OTF2_PARADIGM_MPI ) // only MPI is stored
   {
+    // make sure that no other definition of MPI_COMM_WORLD is written
+    if( self == 0 && myGroup.numberOfMembers != tr->mpiSize )
+    {
+      UTILS_WARNING( "OTF2 MPI communicator 0 already set!" );
+      return OTF2_CALLBACK_SUCCESS;
+    }
+    
     if ( tr->handleMPICommGroup )
     {
-      tr->handleMPICommGroup( tr,
-                              self,
-                              myGroup.numberOfMembers,
+      tr->handleMPICommGroup( tr, self, myGroup.numberOfMembers,
                               myGroup.members );
     }
   }
@@ -694,7 +696,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_String( void*          userData,
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
   uint32_t max_length = 1000;
   std::string str( string, strnlen( string, max_length ) );
-  tr->getDefinitionTokenStringMap()[self] = str;
+  tr->stringRefMap[ self ] = str;
 
   return OTF2_CALLBACK_SUCCESS;
 }
@@ -851,12 +853,24 @@ OTF2TraceReader::otf2Callback_MpiCollectiveEnd( OTF2_LocationRef  locationID,
       }
     }
 
-    tr->handleMPIComm( tr, mpiType, locationID, communicator, /*root*/rootStreamId, 0 );
+    tr->handleMPIComm( tr, mpiType, locationID, communicator, rootStreamId, 0 );
   }
 
   return OTF2_CALLBACK_SUCCESS;
 }
 
+/**
+ * 
+ * @param locationID
+ * @param time
+ * @param userData
+ * @param attributeList
+ * @param sender MPI rank of sender in communicator.
+ * @param communicator
+ * @param msgTag
+ * @param msgLength
+ * @return 
+ */
 OTF2_CallbackCode
 OTF2TraceReader::otf2Callback_MpiRecv( OTF2_LocationRef    locationID,
                                        OTF2_TimeStamp      time,
@@ -871,7 +885,7 @@ OTF2TraceReader::otf2Callback_MpiRecv( OTF2_LocationRef    locationID,
 
   if ( tr->handleMPIComm )
   {
-    tr->handleMPIComm( tr, MPI_RECV, locationID, sender, 0, msgTag );
+    tr->handleMPIComm( tr, MPI_RECV, locationID, sender, communicator, msgTag );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -891,7 +905,7 @@ OTF2TraceReader::otf2Callback_MpiSend( OTF2_LocationRef    locationID,
 
   if ( tr->handleMPIComm )
   {
-    tr->handleMPIComm( tr, MPI_SEND, locationID, receiver, 0, msgTag );
+    tr->handleMPIComm( tr, MPI_SEND, locationID, receiver, communicator, msgTag );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -912,7 +926,7 @@ OTF2TraceReader::otf2Callback_MpiISend( OTF2_LocationRef    locationID,
 
   if ( tr->handleMPIIsend )
   {
-    tr->handleMPIIsend( tr, locationID, receiver, requestID );
+    tr->handleMPIIsend( tr, locationID, receiver, communicator, msgTag, requestID );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -967,7 +981,7 @@ OTF2TraceReader::otf2Callback_MpiIRecv( OTF2_LocationRef    locationID,
 
   if ( tr->handleMPIIrecv )
   {
-    tr->handleMPIIrecv( tr, locationID, sender, requestID );
+    tr->handleMPIIrecv( tr, locationID, sender, communicator, msgTag, requestID );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -1085,12 +1099,6 @@ OTF2TraceReader::otf2CallbackComm_RmaGet( OTF2_LocationRef location,
 }
 */
 
-OTF2TraceReader::TokenNameMap&
-OTF2TraceReader::getDefinitionTokenStringMap()
-{
-  return stringRefMap;
-}
-
 uint64_t
 OTF2TraceReader::getTimerResolution()
 {
@@ -1154,7 +1162,7 @@ OTF2TraceReader::getMPISize()
 std::string
 OTF2TraceReader::getStringRef( uint32_t id )
 {
-  TokenNameMap& nm = getDefinitionTokenStringMap();
+  TokenNameMap& nm = stringRefMap;
   TokenNameMap::iterator iter = nm.find( id );
   if ( iter != nm.end() )
   {

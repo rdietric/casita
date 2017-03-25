@@ -53,14 +53,14 @@ namespace casita
         AnalysisEngine* commonAnalysis = analysis->getCommon();
 
         EventStream::MPIIcommRecord* record = 
-                (EventStream::MPIIcommRecord* ) isendLeave->getData( );
+                (EventStream::MPIIcommRecord* ) isendLeave->getData();
         
         // check if the record has been invalidated/deleted
         if( NULL == record )
         {
           UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_TIME, 
                      "[%" PRIu64 "] MPI_Isend rule: No record data.",
-                     isendLeave->getStreamId());
+                     isendLeave->getStreamId() );
           
           return false;
         }
@@ -73,18 +73,21 @@ namespace casita
         buffer[1] = isendLeave->getTime(); // isend leave time
         buffer[2] = isendEnter->getId();  // send start node
         buffer[3] = isendLeave->getId(); // send leave node
-        buffer[CASITA_MPI_P2P_BUF_SIZE - 1] = MPI_ISEND; //send.second->getType( );
+        buffer[CASITA_MPI_P2P_BUF_LAST] = MPI_ISEND; //send.second->getType( );
         
-        uint64_t partnerProcessId = isendLeave->getReferencedStreamId();
-        uint32_t partnerMPIRank =
-          commonAnalysis->getMPIAnalysis( ).getMPIRank( partnerProcessId );
+        MPIAnalysis& mpiAnalysis = commonAnalysis->getMPIAnalysis();
+        MPI_Comm communicator    = mpiAnalysis.getMPICommGroup( record->comRef ).comm;
+        
+        int partnerRank = (int) isendLeave->getReferencedStreamId();
 
         // replay the MPI_Isend and provide the receiver with local information
         // a blocking MPI_Recv can distribute blame then
         MPI_CHECK( MPI_Isend( buffer, CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
-                              partnerMPIRank, CASITA_MPI_REPLAY_TAG, 
-                              MPI_COMM_WORLD, &(record->requests[1]) ) );
+                              partnerRank, 
+                              record->msgTag, //CASITA_MPI_REPLAY_TAG, 
+                              communicator, //MPI_COMM_WORLD, 
+                              &(record->requests[1]) ) );
         
         // MPI_Isend would like to know if partner is an MPI_Irecv or MPI_Recv
         // for the latter we need the dependency edge
@@ -93,8 +96,9 @@ namespace casita
         // MPI_Irecv to have a matching partner for MPI_[I]Send rule
         MPI_CHECK( MPI_Irecv( record->recvBuffer, CASITA_MPI_P2P_BUF_SIZE, 
                               CASITA_MPI_P2P_ELEMENT_TYPE, 
-                              partnerMPIRank, CASITA_MPI_REVERS_REPLAY_TAG, 
-                              MPI_COMM_WORLD, 
+                              partnerRank, 
+                              record->msgTag + CASITA_MPI_REVERS_REPLAY_TAG, 
+                              communicator, //MPI_COMM_WORLD, 
                               &(record->requests[0]) ) );
         
         /*
@@ -121,17 +125,6 @@ namespace casita
         {
           // TODO: should be done by the MPI implementation
           record->requests[0] = MPI_REQUEST_NULL; 
-          
-          /* if receive finished, we can use the buffer
-          
-          if(record->recvBuffer[CASITA_MPI_P2P_BUF_SIZE - 1] & MPI_RECV )
-          {
-            commonAnalysis->getMPIAnalysis( ).addRemoteMPIEdge(
-              send.first,
-              (uint32_t)record->recvBuffer[3],
-              partnerProcessId,
-              MPIAnalysis::MPI_EDGE_LOCAL_REMOTE );
-          }*/
         }
         
         return true;

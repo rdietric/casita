@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -36,30 +36,33 @@ namespace casita
       bool
       apply( AnalysisParadigmMPI* analysis, GraphNode* sendLeave )
       {
-        /* applied at MPI_Send leave */
+        // applied at MPI_Send leave
         if ( !sendLeave->isMPISend() || !sendLeave->isLeave() )
         {
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon();
+        MPIAnalysis& mpiAnalysis = commonAnalysis->getMPIAnalysis();
 
         GraphNode* sendEnter = sendLeave->getGraphPair().first;
+
+        // get communication partner rank in the communicator
+        int partnerRank = (int) sendLeave->getReferencedStreamId();
+        
+        //uint32_t partnerMPIRank  = mpiAnalysis.getMPIRank( partnerStreamId );
+        
+        uint32_t* data        = (uint32_t*)( sendLeave->getData() );
+        uint32_t mpiTag       = data[ 0 ];
+        uint32_t comRef       = data[1];
+        MPI_Comm communicator = mpiAnalysis.getMPICommGroup( comRef ).comm;
+        
+        // delete data field allocated in class AnalysisParadigmMPI
+        delete[] data;
         
         // send
         uint64_t sendStartTime = sendEnter->getTime();
         uint64_t sendEndTime   = sendLeave->getTime();
-
-        // allocated in class AnalysisParadigmMPI, still used in CPA later
-        uint64_t* data = (uint64_t*)( sendLeave->getData( ) );
-        uint64_t partnerProcessId = *data;
-        
-        // set referenced stream field and delete allocated memory of data field
-        sendLeave->setReferencedStreamId( partnerProcessId );// for debugging in CPA
-        delete data;
-        
-        uint32_t partnerMPIRank  =
-          commonAnalysis->getMPIAnalysis().getMPIRank( partnerProcessId );
 
         // replay MPI_Send to transfer information on this MPI_Send activity
         uint64_t buffer[CASITA_MPI_P2P_BUF_SIZE];
@@ -72,23 +75,35 @@ namespace casita
         MPI_CHECK( MPI_Send( buffer, 
                              CASITA_MPI_P2P_BUF_SIZE, 
                              CASITA_MPI_P2P_ELEMENT_TYPE,
-                             partnerMPIRank,
-                             CASITA_MPI_REPLAY_TAG, MPI_COMM_WORLD ) );
+                             partnerRank,
+                             mpiTag, //CASITA_MPI_REPLAY_TAG, 
+                             communicator ) );
         
         // receive the communication partner start time to compute wait states
         // use another tag to not mix up with replayed communication
         MPI_CHECK( MPI_Recv( buffer, CASITA_MPI_P2P_BUF_SIZE, 
-                             CASITA_MPI_P2P_ELEMENT_TYPE, partnerMPIRank,
-                             CASITA_MPI_REVERS_REPLAY_TAG, MPI_COMM_WORLD, 
+                             CASITA_MPI_P2P_ELEMENT_TYPE, partnerRank,
+                             mpiTag + CASITA_MPI_REVERS_REPLAY_TAG, 
+                             communicator, //MPI_COMM_WORLD, 
                              MPI_STATUS_IGNORE ) );
+        
+        /*if( ( buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_SEND ) &&
+            ( buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_RECV ) )
+        {
+          UTILS_WARNING( "[%"PRIu64"] SendRule: Partner rank %"PRIu32" is"
+                         " MPI_SENDRECV (%"PRIu64") at %s", 
+                         sendLeave->getStreamId(),
+                         partnerRank, buffer[CASITA_MPI_P2P_BUF_LAST],
+                         sendLeave->getUniqueName().c_str() );
+        }*/
         
         // the communication partner should be a receive!!!
         if ( !( buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_RECV || 
                 buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_IRECV ) )
         {
-          UTILS_WARNING( "[%"PRIu64"] MPI_Send rule: Partner rank %"PRIu32" is"
-                         "not MPI_[I]RECV (%"PRIu64")", sendLeave->getStreamId(),
-                         partnerMPIRank, buffer[CASITA_MPI_P2P_BUF_LAST] );
+          UTILS_WARNING( "[%"PRIu64"] MPI_Send rule: Partner rank %"PRIu32" is "
+                         "not MPI_[I]RECV (%"PRIu64"), tag: %u", sendLeave->getStreamId(),
+                         partnerRank, buffer[CASITA_MPI_P2P_BUF_LAST], mpiTag );
           
           return false;
         }
@@ -107,11 +122,14 @@ namespace casita
             {
               sendRecordEdge->makeBlocking();
               
+              uint64_t partnerStreamId = 
+                mpiAnalysis.getStreamId( partnerRank, comRef );
+              
               // add remote edge for critical path analysis
               commonAnalysis->getMPIAnalysis().addRemoteMPIEdge(
                 sendLeave,
                 buffer[3], // remote node ID (receive leave)
-                partnerProcessId );
+                partnerStreamId );
             }
             else
             {
@@ -132,6 +150,8 @@ namespace casita
             distributeBlame( commonAnalysis, sendEnter,
                              sendStartTime - recvStartTime, 
                              streamWalkCallback );
+            //UTILS_WARNING( "Send blame: %lf", 
+            //               commonAnalysis->getRealTime( sendStartTime - recvStartTime ) );
           }
         }
 

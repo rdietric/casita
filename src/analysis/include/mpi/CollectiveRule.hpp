@@ -49,7 +49,7 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon();
         
         // test for pending non-blocking MPI communication (to close open requests)
         if ( !colLeave->isMPIInit() )
@@ -58,16 +58,11 @@ namespace casita
                                ->testAllPendingMPIRequests();
         }
         
-        /*
-        UTILS_MSG( 0 == strcmp( colLeave->getName(), "MPI_Reduce" ), 
-                   "[%u] MPI collective: %s", colLeave->getStreamId(), colLeave->getUniqueName().c_str());
-        */
-        
         GraphNode* colEnter = colLeave->getGraphPair().first;
         
-        uint32_t mpiGroupId = colLeave->getReferencedStreamId( );
+        uint32_t mpiGroupId = colLeave->getReferencedStreamId();
         const MPIAnalysis::MPICommGroup& mpiCommGroup =
-          commonAnalysis->getMPIAnalysis( ).getMPICommGroup( mpiGroupId ); 
+          commonAnalysis->getMPIAnalysis().getMPICommGroup( mpiGroupId ); 
 
         if ( mpiCommGroup.comm == MPI_COMM_SELF )
         {
@@ -94,6 +89,11 @@ namespace casita
         sendBuffer[1] = colEnter->getId();
         sendBuffer[2] = colLeave->getId();
         sendBuffer[3] = colLeave->getStreamId();
+        
+        /*UTILS_WARNING( "[%"PRIu64"] MPI collective rule for %s (group %u)", 
+                       colLeave->getStreamId(), 
+                       colLeave->getUniqueName().c_str(),
+                       mpiGroupId );*/
 
         //\todo: replace with a custom MPI_Allreduce
         MPI_CHECK( MPI_Allgather( sendBuffer, BUFFER_SIZE, MPI_UINT64_T,
@@ -119,7 +119,7 @@ namespace casita
         }
 
         // this is not the last -> blocking + remoteEdge to lastEnter
-        if ( lastEnterProcessId != colLeave->getStreamId( ) ) // collStartTime < lastEnterTime )
+        if ( lastEnterProcessId != colLeave->getStreamId() ) // collStartTime < lastEnterTime )
         {
           Edge* collRecordEdge = commonAnalysis->getEdge( colEnter, colLeave );
           

@@ -27,6 +27,13 @@
 #define UINT64_MAX std::numeric_limits< uint64_t >::max()
 #endif
 
+#if !defined(UINT32_MAX)
+#if !defined(UINT64_MAX)
+#include <limits>
+#endif
+#define UINT32_MAX std::numeric_limits< uint32_t >::max()
+#endif
+
 #define VERBOSE_NONE  0
 #define VERBOSE_TIME  1
 #define VERBOSE_BASIC 2

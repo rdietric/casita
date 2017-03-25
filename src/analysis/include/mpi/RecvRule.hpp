@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -43,24 +43,42 @@ namespace casita
         }
 
         AnalysisEngine* commonAnalysis = analysis->getCommon();
+        MPIAnalysis& mpiAnalysis = commonAnalysis->getMPIAnalysis();
 
-        uint64_t partnerProcessId = recvLeave->getReferencedStreamId();
-        uint32_t partnerMPIRank   =
-          commonAnalysis->getMPIAnalysis().getMPIRank( partnerProcessId );
+        int partnerRank = (int) recvLeave->getReferencedStreamId();
+        
+        uint32_t* data  = (uint32_t*)( recvLeave->getData() );
+        uint32_t mpiTag = data[ 0 ];
+        uint32_t comRef = data[1];
+        MPI_Comm communicator = mpiAnalysis.getMPICommGroup( comRef ).comm;
+        delete[] data;
+        
+        //UTILS_WARNING( "[%"PRIu64"] RecvRule: ")
         
         // replay receive and retrieve information from communication partner
-        uint64_t   buffer[CASITA_MPI_P2P_BUF_SIZE];
+        uint64_t buffer[CASITA_MPI_P2P_BUF_SIZE];
         MPI_CHECK( MPI_Recv( buffer, 
                              CASITA_MPI_P2P_BUF_SIZE, 
                              CASITA_MPI_P2P_ELEMENT_TYPE,
-                             partnerMPIRank, 
-                             CASITA_MPI_REPLAY_TAG, 
-                             MPI_COMM_WORLD, MPI_STATUS_IGNORE ) );
+                             partnerRank, 
+                             mpiTag, //CASITA_MPI_REPLAY_TAG, 
+                             communicator, //MPI_COMM_WORLD, 
+                             MPI_STATUS_IGNORE ) );
         
         GraphNode* recvEnter     = recvLeave->getGraphPair().first;
         uint64_t   sendStartTime = buffer[0];
         uint64_t   sendEndTime   = buffer[1];
         uint64_t   sendEnterId   = buffer[2];
+        
+        /*if( ( buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_SEND ) &&
+            ( buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_RECV ) )
+        {
+          UTILS_WARNING( "[%"PRIu64"] MPI_Recv rule: Partner rank %"PRIu32" is"
+                         " MPI_SENDRECV (%"PRIu64") at %s", 
+                         recvLeave->getStreamId(),
+                         partnerRank, buffer[CASITA_MPI_P2P_BUF_LAST],
+                         recvLeave->getUniqueName().c_str() );
+        }*/
         
         // the communication partner should be an MPI send operation!!!
         if ( !( buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_SEND || 
@@ -68,7 +86,7 @@ namespace casita
         {
           UTILS_WARNING( "[%"PRIu64"] MPI_Recv rule: Partner rank %"PRIu32" is"
                          "not MPI_[I]SEND (%"PRIu64")", recvLeave->getStreamId(),
-                         partnerMPIRank, buffer[CASITA_MPI_P2P_BUF_LAST] );
+                         partnerRank, buffer[CASITA_MPI_P2P_BUF_LAST] );
           
           return false;
         }
@@ -88,9 +106,10 @@ namespace casita
         MPI_CHECK( MPI_Send( buffer, 
                              CASITA_MPI_P2P_BUF_SIZE, 
                              CASITA_MPI_P2P_ELEMENT_TYPE,
-                             partnerMPIRank,
-                             CASITA_MPI_REVERS_REPLAY_TAG, 
-                             MPI_COMM_WORLD ) );
+                             partnerRank,
+                             mpiTag + CASITA_MPI_REVERS_REPLAY_TAG, 
+                             communicator //MPI_COMM_WORLD 
+          ) );
 
         // if send starts after receive starts, we found a late sender
         // no additional check for overlap needed, as MPI_Recv is always blocking
@@ -102,10 +121,13 @@ namespace casita
           {
             recvRecordEdge->makeBlocking();
 
-            commonAnalysis->getMPIAnalysis().addRemoteMPIEdge(
+            uint64_t partnerStreamId = 
+                mpiAnalysis.getStreamId( partnerRank, comRef );
+            
+            mpiAnalysis.addRemoteMPIEdge(
               recvLeave,
               sendEnterId, // remote node ID (send enter)
-              partnerProcessId );
+              partnerStreamId );
           }
           else
           {
@@ -126,6 +148,9 @@ namespace casita
                            recvEnter,
                            recvStartTime - sendStartTime,
                            streamWalkCallback );
+          
+          //UTILS_WARNING( "Recv blame: %lf", 
+          //                 commonAnalysis->getRealTime( recvStartTime - sendStartTime ) );
         }
 
         return true;

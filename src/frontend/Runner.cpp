@@ -156,7 +156,7 @@ Runner::startAnalysisRun()
     analysis.addAnalysisParadigm( new omp::AnalysisParadigmOMP( &analysis ) );
   }
   
-  // TODO:
+  // create MPI communicators according to the OTF2 trace definitions
   analysis.getMPIAnalysis().createMPICommunicatorsFromMap();
   
   // set wait state function (requires definitions to be read)
@@ -1371,6 +1371,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
                          analysis.getRealTime( currentNode->getTime() ),
                          currentNode->getUniqueName().c_str() );
 
+          // get global MPI world rank from stream ID
           uint32_t mpiPartnerRank = 
             analysis.getMPIAnalysis().getMPIRank( pnPair.streamID );
                  
@@ -1450,10 +1451,10 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
           sendBfr[1] = PATH_FOUND_MSG;
 
           // get all MPI ranks
-          std::set< uint64_t > mpiPartners =
+          std::vector< uint32_t > mpiPartners =
             analysis.getMPIAnalysis().getMPICommGroup( 0 ).procs;
           
-          for ( std::set< uint64_t >::const_iterator iter = mpiPartners.begin();
+          for ( std::vector< uint32_t >::const_iterator iter = mpiPartners.begin();
                 iter != mpiPartners.end(); ++iter )
           {
             int commMpiRank = analysis.getMPIAnalysis().getMPIRank( *iter );

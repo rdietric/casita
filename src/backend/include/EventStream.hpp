@@ -42,7 +42,7 @@ namespace casita
  {
    public:
      
-     // keep numbers to the power of two, as required by stream type identification
+     //!< keep numbers to the power of two, as required by stream type identification
      enum EventStreamType
      {
        ES_HOST        = ( 1 << 0 ), 
@@ -51,7 +51,7 @@ namespace casita
        ES_DEVICE_NULL = ( 1 << 3 )
      };
 
-     // Types for blocking MPI communication
+     //!< Types for blocking MPI communication
      enum MPIType
      {
        MPI_SEND, MPI_RECV, MPI_COLLECTIVE, MPI_SENDRECV/*, MPI_ONEANDALL*/
@@ -60,22 +60,41 @@ namespace casita
      typedef struct
      {
        MPIType  mpiType;
-       uint64_t rootId;         /**< root process ID (or 0) */
-       uint64_t partnerId;      /**< process or process group */
+       uint32_t rootId;    //!< root process ID (collectives) or communicator (P2P)
+       uint64_t partnerId; //!< process or process group (communicator)
+       uint32_t tag;       //!< MPI communication tag
      } MPICommRecord;
+     
+     typedef struct
+     {
+       uint32_t communicator; //!< MPI communicator 
+       uint64_t partnerId;    //!< communication partner process ID
+       uint32_t tag;          //!< MPI communication tag
+     } MpiBlockingP2pRecord;
+     
+     typedef struct
+     {
+       uint32_t comRef;        //!< MPI communicator OTF2 reference
+       uint32_t sendPartnerId; //!< communication partner process ID
+       uint32_t recvPartnerId; //!< communication partner process ID
+       uint32_t sendTag;       //!< MPI communication tag
+       uint32_t recvTag;       //!< MPI communication tag
+     } MpiBlockingCommData;
      
      typedef std::vector< MPICommRecord > MPICommRecordList;
 
-     /**< list of request IDs */
+     //!< list of request IDs
      typedef std::vector< uint64_t > MPIIcommRequestList;
      
      typedef struct
      {
-       uint64_t    requestId;   /**< OTF2 request ID */
-       MPI_Request requests[2]; /**< internel MPI_Isend and MPI_Irecv request */
-       uint64_t    sendBuffer[CASITA_MPI_P2P_BUF_SIZE]; /**< MPI_Isend buffer */
-       uint64_t    recvBuffer[CASITA_MPI_P2P_BUF_SIZE]; /**< MPI_Irecv buffer */
-       GraphNode*  leaveNode;   /**< pointer to associated MPI_I[send|recv] node */
+       uint32_t    comRef;      //!< MPI communicator  OTF2 reference
+       uint32_t    msgTag;      //!< MPI communication tag
+       uint64_t    requestId;   //!< OTF2 request ID
+       MPI_Request requests[2]; //!< internel MPI_Isend and MPI_Irecv request
+       uint64_t    sendBuffer[CASITA_MPI_P2P_BUF_SIZE]; //!< MPI_Isend buffer
+       uint64_t    recvBuffer[CASITA_MPI_P2P_BUF_SIZE]; //!< MPI_Irecv buffer
+       GraphNode*  leaveNode;   //!< pointer to associated MPI_I[send|recv] node
      } MPIIcommRecord;
      
      //!< Map of OTF2 request IDs (key) and the corresponding record data
@@ -245,7 +264,8 @@ namespace casita
      clearPendingKernels();
 
      void
-     setPendingMPIRecord( MPIType mpiType, uint64_t partnerId, uint64_t rootId );
+     setPendingMPIRecord( MPIType mpiType, uint32_t partnerId, 
+                          uint32_t root_comm_id, uint32_t tag );
 
      /**
       * Consume the pending (blocking) MPI records an retrieve a copy of the list.
@@ -255,6 +275,9 @@ namespace casita
       */
      EventStream::MPICommRecordList
      getPendingMPIRecords();
+     
+     MpiBlockingCommData&
+     getPendingMpiCommRecord();
      
      /**
       * Temporarily save the MPI_Irecv request ID. The following MPI_Irecv function 
@@ -296,7 +319,8 @@ namespace casita
       * @param partnerId stream ID of the communication partner
       */
      void
-     handleMPIIrecvEventData ( uint64_t requestId, uint64_t partnerId );
+     handleMPIIrecvEventData ( uint64_t requestId, uint64_t partnerId, 
+                               OTF2_CommRef comm, uint32_t tag );
      
      /**
       * Temporarily store the request that is consumed by MPI_Isend leave event.
@@ -306,7 +330,8 @@ namespace casita
       * @param requestId OTF2 MPI_Isend request ID 
       */
      void
-     handleMPIIsendEventData( uint64_t requestId, uint64_t partnerId );
+     handleMPIIsendEventData( uint64_t requestId, uint64_t partnerId,
+                              OTF2_CommRef comm, uint32_t tag );
 
      /**
       * Adds MPI_Isend request to a map and sets node-specific data. 
@@ -485,11 +510,15 @@ namespace casita
      //!< list of unsynchronized CUDA kernels (leave nodes only)
      SortedGraphNodeList pendingKernels;
 
+     //////////////// MPI-related /////////////////
+     
      //!< MPI nodes that have not yet been linked
      SortedGraphNodeList unlinkedMPINodes;
 
      //!< pending blocking MPI communcation records
      MPICommRecordList   mpiCommRecords;
+     
+     MpiBlockingCommData pendingMpiComm;
      
      //!< pending OTF2 request ID to be consumned by MPI_Isend, MPI_Irecv or MPI_Wait leave node
      uint64_t            pendingMPIRequestId;

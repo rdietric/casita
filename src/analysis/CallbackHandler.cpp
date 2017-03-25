@@ -551,18 +551,19 @@ CallbackHandler::handleRmaOpCompleteBlocking( OTF2TraceReader* reader,
  * Handle blocking MPI communication.
  * 
  * @param reader
- * @param mpiType
+ * @param mpiType type of MPI communication
  * @param streamId OTF2 location ID / reference
- * @param partnerId the MPI communication partner or the communicator for collectives
- * @param root MPI rank of root process in a collective
- * @param tag
+ * @param partnerId MPI rank of communication partner in communicator "root_comm"
+ * @param root_comm MPI rank of root process in a collective or 
+ *                  OTF2 communicator reference in MPI_Send/MPI_Recv
+ * @param tag MPI message tag
  */
 void
 CallbackHandler::handleMPIComm( OTF2TraceReader* reader,
                                 MPIType          mpiType,
                                 uint64_t         streamId,
-                                uint64_t         partnerId,
-                                uint32_t         root,
+                                uint32_t         partnerId,
+                                uint32_t         root_comm,
                                 uint32_t         tag )
 {
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
@@ -595,18 +596,26 @@ CallbackHandler::handleMPIComm( OTF2TraceReader* reader,
              streamId, partnerId,
              pMPIType, tag );
 
-  stream->setPendingMPIRecord( pMPIType, partnerId, root );
+  stream->setPendingMPIRecord( pMPIType, partnerId, root_comm, tag );
 }
 
+/**
+ * 
+ * @param reader
+ * @param group OTF2 communicator reference
+ * @param numProcs number of member processes
+ * @param procs 
+ */
 void
-CallbackHandler::handleMPICommGroup( OTF2TraceReader* reader, uint32_t group,
-                                     uint32_t numProcs, const uint64_t* procs )
+CallbackHandler::handleMPICommGroup( OTF2TraceReader* reader, 
+                                     OTF2_CommRef communicator,
+                                     uint32_t numProcs, const uint32_t* procs )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
 
-  handler->getAnalysis().getMPIAnalysis().setMPICommGroupMap( group,
-                                                                numProcs,
-                                                                procs );
+  handler->getAnalysis().getMPIAnalysis().addMPICommGroup( communicator, 
+                                                           numProcs,
+                                                           procs );
 }
 
 /**
@@ -619,15 +628,17 @@ CallbackHandler::handleMPICommGroup( OTF2TraceReader* reader, uint32_t group,
  */
 void
 CallbackHandler::handleMPIIsend( OTF2TraceReader* reader, 
-                                 uint64_t      streamId,
-                                 uint64_t      receiver,
-                                 uint64_t      requestId )
+                                 uint64_t         streamId,
+                                 uint64_t         receiver,
+                                 OTF2_CommRef     communicator,
+                                 uint32_t         msgTag,
+                                 uint64_t         requestId )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
   AnalysisEngine&  analysis = handler->getAnalysis();
   EventStream*     stream   = analysis.getStream( streamId );
   
-  stream->handleMPIIsendEventData( requestId, receiver );
+  stream->handleMPIIsendEventData( requestId, receiver, communicator, msgTag );
 }
 
 /**
@@ -645,15 +656,16 @@ CallbackHandler::handleMPIIsend( OTF2TraceReader* reader,
  */
 void
 CallbackHandler::handleMPIIrecv( OTF2TraceReader* reader, 
-                                 uint64_t      streamId,
-                                 uint64_t      sender,
-                                 uint64_t      requestId )
+                                 uint64_t         streamId,
+                                 uint64_t         sender,
+                                 OTF2_CommRef     communicator,
+                                 uint32_t         msgTag,
+                                 uint64_t         requestId )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
-  AnalysisEngine&  analysis = handler->getAnalysis();
-  EventStream*     stream   = analysis.getStream( streamId );
+  EventStream*     stream   = handler->getAnalysis().getStream( streamId );
   
-  stream->handleMPIIrecvEventData( requestId, sender );
+  stream->handleMPIIrecvEventData( requestId, sender, communicator, msgTag );
 }
 
 /**

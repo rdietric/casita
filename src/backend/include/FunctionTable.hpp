@@ -487,8 +487,8 @@ namespace casita
              {
                case MPI_INIT:
                case MPI_FINALIZE:
-                 descr->functionType |= MPI_ALLRANKS; // these two are always executed on all ranks
-                 descr->functionType |= MPI_COLLECTIVE;     // these two are collectives
+                 descr->functionType |= MPI_ALLRANKS;   // these two are always executed on all ranks
+                 descr->functionType |= MPI_COLLECTIVE; // these two are collectives
                case MPI_COLLECTIVE:
                case MPI_ONETOALL:
                case MPI_ALLTOONE:

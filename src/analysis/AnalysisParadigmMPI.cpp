@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014, 2016,
+ * Copyright (c) 2014, 2016, 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -40,8 +40,8 @@ AnalysisParadigmMPI::AnalysisParadigmMPI( AnalysisEngine* analysisEngine,
 {
   addRule( new RecvRule( 1 ) );
   addRule( new SendRule( 1 ) );
-  addRule( new CollectiveRule( 1 ) );
   addRule( new SendRecvRule( 1 ) );
+  addRule( new CollectiveRule( 1 ) );
   //addRule( new OneToAllRule( 1 ) );
   //addRule( new AllToOneRule( 1 ) );
   
@@ -56,13 +56,13 @@ AnalysisParadigmMPI::AnalysisParadigmMPI( AnalysisEngine* analysisEngine,
   }
 }
 
-AnalysisParadigmMPI::~AnalysisParadigmMPI( )
+AnalysisParadigmMPI::~AnalysisParadigmMPI()
 {
 
 }
 
 Paradigm
-AnalysisParadigmMPI::getParadigm( )
+AnalysisParadigmMPI::getParadigm()
 {
   return PARADIGM_MPI;
 }
@@ -77,77 +77,92 @@ void
 AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
 {
   EventStream* stream = commonAnalysis->getStream( node->getStreamId() );
-  
-  // handle non-blocking MPI communication enter/leave events
-  if( node->isMPI_Isend() )
-  {
-    stream->setMPIIsendNodeData( node );
-    return;
-  }
-  else  if( node->isMPI_Irecv() )
-  {
-    stream->addPendingMPIIrecvNode( node );
-    return;
-  }
-  else if( node->isMPIWait() )
-  {
-    stream->setMPIWaitNodeData( node );
-    return;
-  }
-  else if( node->isMPI_Test() )
-  {
-    stream->handleMPITest( node );
-    return;
-  }
-  else if( node->isMPIWaitall() )
-  {
-    stream->setMPIWaitallNodeData( node );
-    return;
-  }
-  else if( node->isMPI_Testall() )
-  {
-    stream->handleMPITestall( node );
-    return;
-  }
 
-  // handle blocking MPI communication events
-  EventStream::MPICommRecordList mpiCommRecords = stream->getPendingMPIRecords();
-  for ( EventStream::MPICommRecordList::const_iterator iter =
-          mpiCommRecords.begin();
-        iter != mpiCommRecords.end(); ++iter )
+  if( node->isMPIBlocking() ) // handle blocking MPI communication events
   {
-    uint64_t* tmpId = NULL;
+    EventStream::MpiBlockingCommData& commData = stream->getPendingMpiCommRecord();
 
-    switch ( iter->mpiType )
+    if( node->isMPISendRecv() )
     {
-      case EventStream::MPI_RECV:
-        node->setReferencedStreamId( iter->partnerId );
-        break;
-
-      case EventStream::MPI_COLLECTIVE:
-        node->setReferencedStreamId( iter->partnerId );
-        break;
-
-      /*case EventStream::MPI_ONEANDALL:
-        node->setReferencedStreamId( iter->partnerId );
-        tmpId  = new uint64_t; // \TODO: this is never deleted
-        *tmpId = iter->rootId;
-        node->setData( tmpId ); 
-        break;
-*/
-      case EventStream::MPI_SEND:
-        tmpId  = new uint64_t; // \TODO: not deleted in case of MPI_Sendrecv
-        *tmpId = iter->partnerId;        
-        node->setData( tmpId );
-        break;
-        
-      // MPI_Sendrecv collects the MPI_Send and MPI_Recv partner IDs from the
-      // respective pending records
-
-      default: throw RTException( "Not a valid MPICommRecord type here" );
+      // send partner, receive partner, send tag, receive tag. communicator
+      node->setReferencedStreamId( commData.comRef );
+      uint32_t *tmpId = new uint32_t[ 4 ];
+      tmpId[0] = commData.sendPartnerId;
+      tmpId[1] = commData.sendTag;
+      tmpId[2] = commData.recvPartnerId;
+      tmpId[3] = commData.recvTag;
+      node->setData( tmpId );
+    }
+    else if( node->isMPISend() )
+    {
+      // partner process, tag, communicator
+      node->setReferencedStreamId( commData.sendPartnerId );
+      uint32_t *tmpId = new uint32_t[ 2 ];
+      tmpId[0] = commData.sendTag;
+      tmpId[1] = commData.comRef;
+      node->setData( tmpId );
+    }
+    else if( node->isMPIRecv() )
+    {
+      // partner process, tag, communicator
+      node->setReferencedStreamId( commData.recvPartnerId );
+      uint32_t *tmpId = new uint32_t[ 2 ];
+      tmpId[0] = commData.recvTag;
+      tmpId[1] = commData.comRef;
+      node->setData( tmpId );
+    }
+    else if( node->isMPICollective() )
+    {
+      /*UTILS_WARNING( "[%"PRIu64"] set communicator for %s (group %u)", 
+                       node->getStreamId(), 
+                       node->getUniqueName().c_str(),
+                       commData.comRef );*/
+      
+      // MPI_Init and MPI_Finalize do not have a communicator 
+      // (referenced stream stays 0)
+      if( commData.comRef != UINT32_MAX )
+      {
+        node->setReferencedStreamId( commData.comRef );
+      }
+    }
+    
+    // invalidate communicator
+    commData.comRef = UINT32_MAX;
+  }
+  else // handle non-blocking MPI communication enter/leave events
+  {
+    if( node->isMPI_Isend() )
+    {
+      stream->setMPIIsendNodeData( node );
+      return;
+    }
+    else  if( node->isMPI_Irecv() )
+    {
+      stream->addPendingMPIIrecvNode( node );
+      return;
+    }
+    else if( node->isMPIWait() )
+    {
+      stream->setMPIWaitNodeData( node );
+      return;
+    }
+    else if( node->isMPI_Test() )
+    {
+      stream->handleMPITest( node );
+      return;
+    }
+    else if( node->isMPIWaitall() )
+    {
+      stream->setMPIWaitallNodeData( node );
+      return;
+    }
+    else if( node->isMPI_Testall() )
+    {
+      stream->handleMPITestall( node );
+      return;
     }
   }
   
-  // as all data is copied we can clear the list
-  mpiCommRecords.clear();
+    
+
 }
