@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2016,
+ * Copyright (c) 2016, 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -36,31 +36,29 @@ namespace casita
       apply( AnalysisParadigmOpenCL* analysis, GraphNode* syncLeave )
       {
         // applied at OpenCL command queue synchronization
-        if ( !syncLeave->isOpenCLQueueSync( ) || !syncLeave->isLeave( ) )
+        if ( !syncLeave->isOpenCLQueueSync() || !syncLeave->isLeave() )
         {
           return false;
         }
         
-        AnalysisEngine* commonAnalysis = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis = analysis->getCommon();
 
-        GraphNode* syncEnter = syncLeave->getGraphPair( ).first;
+        GraphNode* syncEnter = syncLeave->getGraphPair().first;
 
         bool ruleResult = false;
         /* find all referenced (device) streams */
         EventStreamGroup::EventStreamList deviceStreams;
         commonAnalysis->getAllDeviceStreams( deviceStreams );        
         for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-                deviceStreams.begin( );
-              pIter != deviceStreams.end( ); ++pIter )
+                deviceStreams.begin();
+              pIter != deviceStreams.end(); ++pIter )
         {
           EventStream* deviceStream = *pIter;
 
-          if ( !syncEnter->referencesStream( deviceStream->getId( ) ) )
+          if ( !syncEnter->referencesStream( deviceStream->getId() ) )
           {
             continue;
           }
-          
-          //ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: Found referenced queue" );
 
           // test that there is a pending kernel (leave)
           bool isFirstKernel = true;
@@ -69,20 +67,16 @@ namespace casita
             GraphNode* kernelLeave = deviceStream->getLastPendingKernel();
             if ( !kernelLeave )
             {
-              //ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: No pending kernel found" );
-
               break;
             }
             
-            //ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: Pending kernel found" );
-
             GraphNode::GraphNodePair& kernel = kernelLeave->getGraphPair();
 
             // if sync start time < kernel end time
             //\todo: What if other kernels are concurrently executed during the sync?
             
             // synchronization starts before the kernel ends
-            if ( syncEnter->getTime( ) < kernel.second->getTime() )
+            if ( syncEnter->getTime() < kernel.second->getTime() )
             {
               if ( isFirstKernel )
               {
@@ -93,27 +87,27 @@ namespace casita
 
               // the synchronization operation is a wait state
               syncLeave->incCounter( WAITING_TIME,
-                                     std::min( syncLeave->getTime( ),
-                                               kernel.second->getTime( ) ) -
-                                     std::max( syncEnter->getTime( ),
-                                               kernel.first->getTime( ) ) );
+                                     std::min( syncLeave->getTime(),
+                                               kernel.second->getTime() ) -
+                                     std::max( syncEnter->getTime(),
+                                               kernel.first->getTime() ) );
               
               // the kernel has to be blamed for causing the wait state
               kernel.second->incCounter( BLAME,
-                                         std::min( syncLeave->getTime( ),
-                                                   kernel.second->getTime( ) ) -
-                                         std::max( syncEnter->getTime( ),
-                                                   kernel.first->getTime( ) ) );
+                                         std::min( syncLeave->getTime(),
+                                                   kernel.second->getTime() ) -
+                                         std::max( syncEnter->getTime(),
+                                                   kernel.first->getTime() ) );
               
-              //ErrorUtils::getInstance( ).outputMessage("OpenCL blame kernel rule: set blame");
+              //ErrorUtils::getInstance().outputMessage("OpenCL blame kernel rule: set blame");
 
               ruleResult    = true;
               isFirstKernel = false;
-              deviceStream->consumeLastPendingKernel( );
+              deviceStream->consumeLastPendingKernel();
             }
             else
             {
-              deviceStream->clearPendingKernels( );
+              deviceStream->clearPendingKernels();
               break;
             }
           }

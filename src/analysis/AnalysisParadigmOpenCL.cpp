@@ -12,7 +12,7 @@
 #include "opencl/AnalysisParadigmOpenCL.hpp"
 #include "AnalysisEngine.hpp"
 
-#include "opencl/BlameKernelRule.hpp"
+#include "opencl/SyncRule.hpp"
 #include "opencl/KernelExecutionRule.hpp"
 
 using namespace casita;
@@ -23,7 +23,7 @@ AnalysisParadigmOpenCL::AnalysisParadigmOpenCL( AnalysisEngine* analysisEngine )
   IAnalysisParadigm( analysisEngine )
 {
   addRule( new KernelExecutionRule( 9 ) );
-  addRule( new BlameKernelRule( 2 ) ); // triggered on clFinish
+  addRule( new SyncRule( 2 ) ); // triggered on clFinish
 }
 
 AnalysisParadigmOpenCL::~AnalysisParadigmOpenCL( )
