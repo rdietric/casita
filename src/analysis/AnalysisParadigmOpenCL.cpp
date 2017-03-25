@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2016,
+ * Copyright (c) 2016, 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -26,13 +26,13 @@ AnalysisParadigmOpenCL::AnalysisParadigmOpenCL( AnalysisEngine* analysisEngine )
   addRule( new SyncRule( 2 ) ); // triggered on clFinish
 }
 
-AnalysisParadigmOpenCL::~AnalysisParadigmOpenCL( )
+AnalysisParadigmOpenCL::~AnalysisParadigmOpenCL()
 {
 
 }
 
 Paradigm
-AnalysisParadigmOpenCL::getParadigm( )
+AnalysisParadigmOpenCL::getParadigm()
 {
   return PARADIGM_OCL;
 }
@@ -40,7 +40,7 @@ AnalysisParadigmOpenCL::getParadigm( )
 void
 AnalysisParadigmOpenCL::handlePostEnter( GraphNode* node )
 {
-  if ( node->isOpenCLKernelEnqueue( ) )
+  if ( node->isOpenCLKernelEnqueue() )
   {
     addPendingKernelEnqueue( node );
   }
@@ -49,7 +49,7 @@ AnalysisParadigmOpenCL::handlePostEnter( GraphNode* node )
 void
 AnalysisParadigmOpenCL::handlePostLeave( GraphNode* node )
 {
-  if ( node->isOpenCLKernelEnqueue( ) )
+  if ( node->isOpenCLKernelEnqueue() )
   {
     addPendingKernelEnqueue( node );
   }
@@ -63,7 +63,7 @@ AnalysisParadigmOpenCL::handleKeyValuesEnter( OTF2TraceReader* reader,
   uint64_t refValue     = 0;
   int32_t  streamRefKey = reader->getFirstKey( SCOREP_OPENCL_QUEUEREF );
 
-  if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
+  if ( streamRefKey > -1 && list && list->getSize() > 0 &&
        list->getLocationRef( (uint32_t)streamRefKey,
                              &refValue ) == OTF2KeyValueList::KV_SUCCESS )
   {
@@ -88,7 +88,7 @@ AnalysisParadigmOpenCL::handleKeyValuesLeave( OTF2TraceReader* reader,
   uint64_t refValue     = 0;
   int32_t  streamRefKey = reader->getFirstKey( SCOREP_OPENCL_QUEUEREF );
 
-  if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
+  if ( streamRefKey > -1 && list && list->getSize() > 0 &&
        list->getLocationRef( (uint32_t)streamRefKey,
                              &refValue ) == OTF2KeyValueList::KV_SUCCESS )
   {
@@ -117,7 +117,7 @@ uint64_t
 AnalysisParadigmOpenCL::getEventProcessId( uint64_t eventId ) const
 {
   IdIdMap::const_iterator iter = eventProcessMap.find( eventId );
-  if ( iter != eventProcessMap.end( ) )
+  if ( iter != eventProcessMap.end() )
   {
     return iter->second;
   }
@@ -136,7 +136,7 @@ void
 AnalysisParadigmOpenCL::addPendingKernelEnqueue( GraphNode* launch )
 {
   // append at tail (FIFO)
-  pendingKernelEnqueueMap[launch->getReferencedStreamId( )].push_back(
+  pendingKernelEnqueueMap[launch->getReferencedStreamId()].push_back(
     launch );
 }
 
@@ -155,13 +155,13 @@ AnalysisParadigmOpenCL::consumeFirstPendingKernelEnqueueEnter( uint64_t kernelSt
     pendingKernelEnqueueMap.find( kernelStreamId );
   
   // return NULL, if the element could not be found
-  if ( mapIter == pendingKernelEnqueueMap.end( ) )
+  if ( mapIter == pendingKernelEnqueueMap.end() )
   {
     return NULL;
   }
 
   // return NULL, if the list of pending kernel launch events is empty
-  if ( mapIter->second.size( ) == 0 )
+  if ( mapIter->second.size() == 0 )
   {
     return NULL;
   }
@@ -171,16 +171,16 @@ AnalysisParadigmOpenCL::consumeFirstPendingKernelEnqueueEnter( uint64_t kernelSt
   // 
   // listIter->second (launch kernel node list) contains enter and leave records
   // set iterator to first element which should be a launch enter node
-  GraphNode::GraphNodeList::iterator launchIter = mapIter->second.begin( );
+  GraphNode::GraphNodeList::iterator launchIter = mapIter->second.begin();
   
   // skip leading leave nodes, as only enter nodes are erased
-  while ( ( launchIter != mapIter->second.end( ) ) &&
-          ( ( *launchIter )->isLeave( ) ) )
+  while ( ( launchIter != mapIter->second.end() ) &&
+          ( ( *launchIter )->isLeave() ) )
   {
     launchIter++;
   }
   
-  if ( launchIter == mapIter->second.end( ) )
+  if ( launchIter == mapIter->second.end() )
   {
     return NULL;
   }
@@ -208,30 +208,30 @@ AnalysisParadigmOpenCL::getLastEnqueueLeave( uint64_t timestamp,
   GraphNode* lastLaunchLeave = NULL;
 
   for ( IdNodeListMap::const_iterator listIter =
-          pendingKernelEnqueueMap.begin( );
-        listIter != pendingKernelEnqueueMap.end( ); ++listIter )
+          pendingKernelEnqueueMap.begin();
+        listIter != pendingKernelEnqueueMap.end(); ++listIter )
   {
     for ( GraphNode::GraphNodeList::const_reverse_iterator launchIter =
-            listIter->second.rbegin( );
-          launchIter != listIter->second.rend( ); ++launchIter )
+            listIter->second.rbegin();
+          launchIter != listIter->second.rend(); ++launchIter )
     {
       GraphNode* gLaunchLeave     = *launchIter;
 
-      if ( gLaunchLeave->isEnter( ) )
+      if ( gLaunchLeave->isEnter() )
       {
         continue;
       }
 
       uint64_t refDeviceProcessId =
-        gLaunchLeave->getGraphPair( ).first->getReferencedStreamId( );
+        gLaunchLeave->getGraphPair().first->getReferencedStreamId();
 
       // found the last kernel launch (leave) on this stream, break
       if ( ( refDeviceProcessId == deviceStreamId ) &&
-           ( gLaunchLeave->getTime( ) <= timestamp ) )
+           ( gLaunchLeave->getTime() <= timestamp ) )
       {
         // if this is the latest kernel launch leave so far, remember it
         if ( !lastLaunchLeave ||
-             ( gLaunchLeave->getTime( ) > lastLaunchLeave->getTime( ) ) )
+             ( gLaunchLeave->getTime() > lastLaunchLeave->getTime() ) )
         {
           lastLaunchLeave = gLaunchLeave;
         }

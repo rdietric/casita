@@ -443,7 +443,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   // additional handling for special nodes (e.g. MPI communication and OpenMP)
   analysis.handlePostLeave( leaveNode );
   
-  // statistics
+  // statistics on blocking CUDA communication
   if( ( functionType.functionType & CUDA_BLOCKING_COMM ) && 
       functionType.paradigm == PARADIGM_CUDA )
   {

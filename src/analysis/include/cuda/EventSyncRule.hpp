@@ -218,17 +218,25 @@ namespace casita
             {
               syncEdge->makeBlocking();
               
-              // count statistics
-              commonAnalysis->getStatistics().addStatWithCountOffloading( 
-                OFLD_STAT_EARLY_BLOCKING_WAIT, 
-                syncLeave->getTime() - syncEnter->getTime() );
+              // early blocking wait statistics
+                commonAnalysis->getStatistics().addStatWithCountOffloading( 
+                  OFLD_STAT_EARLY_BLOCKING_WAIT, 
+                  syncLeave->getTime() - syncEnter->getTime() );
             }
+            
+            // determine real waiting time (overlap of kernel and sync)
+            uint64_t waitingTime = std::min( syncLeave->getTime(),
+                                             kernelLeave->getTime() ) -
+                                   std::max( syncEnter->getTime(),
+                                             kernelEnter->getTime() );
+            
+            // count statistics
+            commonAnalysis->getStatistics().addStatValueOffloading( 
+              OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL, waitingTime );
 
             // set counters
-            uint64_t value = syncLeave->getTime() -
-              std::max( syncEnter->getTime(), kernelEnter->getTime() );
-            syncLeave->incCounter( WAITING_TIME, value );
-            kernelLeave->incCounter( BLAME, value );
+            syncLeave->incCounter( WAITING_TIME, waitingTime );
+            kernelLeave->incCounter( BLAME, waitingTime );
           }
 
           // add edge between kernel leave and syncLeave

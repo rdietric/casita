@@ -16,19 +16,20 @@
 #include <inttypes.h>
 
 // CUDA stats have always a count and in the following field the time
-#define STATS_OFFLOADING 10
+#define STATS_OFFLOADING 11
 enum StatsOffloading
 {
    OFLD_STAT_BLOCKING_COM = 0,       // number of blocking communications
    OFLD_STAT_BLOCKING_COM_TIME  = 1, // accumulated blocking communication time
    OFLD_STAT_EARLY_BLOCKING_WAIT = 2,   // number of early blocking waits
    OFLD_STAT_EARLY_BLOCKING_WTIME  = 3, // accumulated early blocking wait time
-   OFLD_STAT_EARLY_TEST = 4,       // number of early tests
-   OFLD_STAT_EARLY_TEST_TIME  = 5, // accumulated time of early tests
-   OFLD_STAT_IDLE_TIME = 6,         // time an offloading device is idle
-   OFLD_STAT_COMPUTE_IDLE_TIME = 7, // compute idle time
-   OFLD_STAT_MULTIPLE_COM = 8,      // multiple consecutive communication count
-   OFLD_STAT_MULTIPLE_COM_TIME = 9  // multiple consecutive communication time
+   OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL = 4, // accumulated early blocking wait time
+   OFLD_STAT_EARLY_TEST = 5,       // number of early tests
+   OFLD_STAT_EARLY_TEST_TIME  = 6, // accumulated time of early tests
+   OFLD_STAT_IDLE_TIME = 7,         // time an offloading device is idle
+   OFLD_STAT_COMPUTE_IDLE_TIME = 8, // compute idle time
+   OFLD_STAT_MULTIPLE_COM = 9,      // multiple consecutive communication count
+   OFLD_STAT_MULTIPLE_COM_TIME = 10  // multiple consecutive communication time
 };
 
 namespace casita
@@ -71,9 +72,9 @@ namespace casita
       }
       
       void
-      addStatTimeOffloading( StatsOffloading statType, uint64_t time )
+      addStatValueOffloading( StatsOffloading statType, uint64_t value )
       {
-        offloading_stats[ statType ] += time;
+        offloading_stats[ statType ] += value;
       }
       
       void

@@ -1792,9 +1792,7 @@ Runner::printAllActivities()
         sumBlameOnCP     += iter->blameOnCP;
         sumFractionCP    += iter->fractionCP;
         sumFractionBlame += iter->fractionBlame;
-        
-        sumWaitingTime   += iter->waitingTime;
-      
+
         printf( "%50.50s %10u %11f %11f %6.2f %8.4f %6.6f %11.6f\n",
                 analysis.getFunctionName( iter->functionId ),
                 iter->numInstances,
@@ -1807,7 +1805,7 @@ Runner::printAllActivities()
         
         ++ctr;
       }
-      
+
       if( options.createRatingCSV )
       {
         fprintf( summaryFile, "%s;%u;%lf;%lf;%lf;%lf;%lf;%lf\n",
@@ -1820,6 +1818,8 @@ Runner::printAllActivities()
                  iter->fractionCP + iter->fractionBlame,
                  analysis.getRealTime( iter->blameOnCP ) );
       }
+      
+      sumWaitingTime += iter->waitingTime;
     }
     
     printf( "--------------------------------------------------\n"
@@ -1836,26 +1836,45 @@ Runner::printAllActivities()
     // print statistics
     Statistics& stats = analysis.getStatistics();
     printf( "\nPattern summary:\n"
-            " CUDA\n"
-            "  Early blocking wait for kernel: %"PRIu64" (%lf sec)\n"
+            " Overall:\n"
             "  Total attributed waiting time: %lf sec\n"
-            "  Early test for completion: %"PRIu64" (%lf s)\n"
+            " CUDA\n"
             "  Idle device: %lf sec\n"
-            "  Compute idle device: %lf sec\n"
-            "  Blocking communication: %"PRIu64" (%lf sec)\n"
-            "  Consecutive communication: %"PRIu64" (%lf sec)\n\n",
-            stats.getStatsOffloading()[OFLD_STAT_EARLY_BLOCKING_WAIT],
-            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_EARLY_BLOCKING_WTIME] ),
-            analysis.getRealTime( sumWaitingTime ),
-            stats.getStatsOffloading()[OFLD_STAT_EARLY_TEST],
-            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_EARLY_TEST_TIME] ),
-            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_IDLE_TIME] ),
-            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_COMPUTE_IDLE_TIME]),
-            stats.getStatsOffloading()[OFLD_STAT_BLOCKING_COM],
-            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_BLOCKING_COM_TIME] ),
-            stats.getStatsOffloading()[OFLD_STAT_MULTIPLE_COM],
-            analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_MULTIPLE_COM_TIME] )
-           );
+            "  Compute idle device: %lf sec\n",
+      analysis.getRealTime( sumWaitingTime ),
+      analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_IDLE_TIME] ),
+      analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_COMPUTE_IDLE_TIME] ) );
+    
+    uint64_t patternCount = 
+      stats.getStatsOffloading()[OFLD_STAT_EARLY_BLOCKING_WAIT];
+    if( patternCount )
+    {
+      printf( "  Early blocking wait: %"PRIu64" (%lf sec, on kernel: %lf)\n",
+        patternCount, 
+        analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_EARLY_BLOCKING_WTIME] ),
+        analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL] ) );
+    }
+    
+    patternCount = stats.getStatsOffloading()[OFLD_STAT_EARLY_TEST];
+    if( patternCount )
+    {
+      printf( "  Early test for completion: %"PRIu64" (%lf s)\n", patternCount,
+        analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_EARLY_TEST_TIME] ) );
+    }
+    
+    patternCount = stats.getStatsOffloading()[OFLD_STAT_BLOCKING_COM];
+    if( patternCount )
+    {
+      printf( "  Blocking communication: %"PRIu64" (%lf sec)\n", patternCount,
+        analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_BLOCKING_COM_TIME] ) );
+    }
+    
+    patternCount = stats.getStatsOffloading()[OFLD_STAT_MULTIPLE_COM];
+    if( patternCount )
+    {
+      printf( "  Consecutive communication: %"PRIu64" (%lf sec)\n\n", patternCount,
+        analysis.getRealTime( stats.getStatsOffloading()[OFLD_STAT_MULTIPLE_COM_TIME] ) );
+    }
     
     if (options.createRatingCSV)
     {

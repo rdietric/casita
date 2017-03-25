@@ -124,20 +124,25 @@ namespace casita
               {
                 syncEdge->makeBlocking();
                 
-                // count statistics
+                // early blocking wait statistics
                 analysis->getStatistics().addStatWithCountOffloading( 
-                  OFLD_STAT_EARLY_BLOCKING_WAIT,
-                  syncLeave->getTime() - syncEnter->getTime());
+                  OFLD_STAT_EARLY_BLOCKING_WAIT, 
+                  syncLeave->getTime() - syncEnter->getTime() );
               }
 
               GraphNode* kernelEnter = kernelLeave->getGraphPair().first;
 
-              // set counters
+              
               uint64_t waitingTime = std::min( syncLeave->getTime(),
                                                kernelLeave->getTime() ) -
                                      std::max( syncEnter->getTime(),
                                                kernelEnter->getTime() );
 
+              // time statistics
+              analysis->getStatistics().addStatValueOffloading( 
+                OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL, waitingTime );
+            
+              // set counters
               syncLeave->incCounter( WAITING_TIME, waitingTime );
               kernelLeave->incCounter( BLAME, waitingTime );
 

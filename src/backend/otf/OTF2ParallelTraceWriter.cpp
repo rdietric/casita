@@ -226,9 +226,9 @@ OTF2ParallelTraceWriter::handleFinalDeviceIdleLeave()
   }
   
   // add device idle times to statistics
-  analysis->getStatistics().addStatTimeOffloading( OFLD_STAT_IDLE_TIME, 
+  analysis->getStatistics().addStatValueOffloading( OFLD_STAT_IDLE_TIME, 
     lastOffloadApiEvtTime - lastIdleStart );
-  analysis->getStatistics().addStatTimeOffloading( OFLD_STAT_COMPUTE_IDLE_TIME, 
+  analysis->getStatistics().addStatValueOffloading( OFLD_STAT_COMPUTE_IDLE_TIME, 
     lastOffloadApiEvtTime - lastComputeIdleStart );
     
 
@@ -1258,7 +1258,7 @@ OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time,
   if( deviceRefCount == 0 )
   {
     // add device idle time to statistics
-    analysis->getStatistics().addStatTimeOffloading( OFLD_STAT_IDLE_TIME, 
+    analysis->getStatistics().addStatValueOffloading( OFLD_STAT_IDLE_TIME, 
                                                      time - lastIdleStart );
 
     deviceRefCount = 1;
@@ -1283,7 +1283,7 @@ OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time,
     if( deviceComputeRefCount == 0 )
     {
       // add device idle time to statistics
-      analysis->getStatistics().addStatTimeOffloading( OFLD_STAT_COMPUTE_IDLE_TIME, 
+      analysis->getStatistics().addStatValueOffloading( OFLD_STAT_COMPUTE_IDLE_TIME, 
                                                        time - lastComputeIdleStart );
 
       deviceComputeRefCount = 1;
