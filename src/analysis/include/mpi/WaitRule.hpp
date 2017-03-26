@@ -37,7 +37,7 @@ namespace casita
       apply( AnalysisParadigmMPI* mpiAnalysis, GraphNode* waitLeave )
       {
         // applied at MPI_Wait leave
-        if ( !waitLeave->isMPIWait( ) || waitLeave->isEnter() )
+        if ( !waitLeave->isMPIWait() || waitLeave->isEnter() )
         {
           return false;
         }
@@ -47,7 +47,7 @@ namespace casita
           EventStream::MPIIcommRecord* record = 
                           (EventStream::MPIIcommRecord* ) waitLeave->getData(); 
           
-          AnalysisEngine* analysis = mpiAnalysis->getCommon( );
+          AnalysisEngine* analysis = mpiAnalysis->getCommon();
           
           if( !record->leaveNode )
           {
@@ -64,18 +64,18 @@ namespace casita
           }
             
           // to evaluate the receive buffer, we need to ensure the transfer has finished
-          if( record->requests[0] != MPI_REQUEST_NULL )
+          if( record->requests[ 0 ] != MPI_REQUEST_NULL )
           {
-            MPI_CHECK( MPI_Wait( &(record->requests[0]), MPI_STATUS_IGNORE ) );
+            MPI_CHECK( MPI_Wait( &(record->requests[ 0 ]), MPI_STATUS_IGNORE ) );
           }
           
           // MPI_Wait on remote process can only start after end of MPI_I*
-          uint64_t p2pPartnerTime = record->recvBuffer[1];
+          uint64_t p2pPartnerTime = record->recvBuffer[ 1 ];
+          uint64_t p2pPartnerType = record->recvBuffer[ CASITA_MPI_P2P_BUF_LAST ];
           
           // if the partner is MPI_Send|Recv use the start time as wait is
           // included in blocking MPI
-          if( record->recvBuffer[CASITA_MPI_P2P_BUF_SIZE - 1] == MPI_RECV || 
-              record->recvBuffer[CASITA_MPI_P2P_BUF_SIZE - 1] == MPI_SEND )
+          if( p2pPartnerType & ( MPI_RECV | MPI_SEND ) )
           {
             p2pPartnerTime = record->recvBuffer[0];
           }
@@ -116,15 +116,29 @@ namespace casita
               UTILS_MSG( true, "[%"PRIu64"] MPI_Wait rule: Activity edge not found.", 
                                waitLeave->getStreamId() );
             }
+            
+            uint64_t wtime = p2pPartnerTime - waitEnter->getTime();
+            
+            // add waiting time to statistics
+            if( p2pPartnerType & ( MPI_RECV | MPI_IRECV ) )
+            {
+              // partner is late MPI_[I]recv
+              analysis->getStatistics().addStatWithCount( 
+                MPI_STAT_LATE_RECEIVER, wtime );
+            }
+            else if( p2pPartnerType & ( MPI_SEND | MPI_ISEND ) )
+            {
+              analysis->getStatistics().addStatWithCount( 
+                MPI_STAT_LATE_SENDER, wtime );
+            }
 
-            waitLeave->setCounter( WAITING_TIME, 
-                                   p2pPartnerTime - waitEnter->getTime());
+            waitLeave->setCounter( WAITING_TIME, wtime );
           }
 
           // also wait for the other MPI_Request associated with the send buffer
-          if( record->requests[1] != MPI_REQUEST_NULL )
+          if( record->requests[ 1 ] != MPI_REQUEST_NULL )
           {
-            MPI_CHECK( MPI_Wait( &(record->requests[1]), MPI_STATUS_IGNORE ) );
+            MPI_CHECK( MPI_Wait( &(record->requests[ 1 ]), MPI_STATUS_IGNORE ) );
           }
           
           // remove the pending MPI request

@@ -102,10 +102,14 @@ namespace casita
               // make this barrier a blocking wait state
               barrierEdge->makeBlocking();
               
+              uint64_t wtime = 
+                latestEnterNode->getTime() - barrier.first->getTime();
+              
+              commonAnalysis->getStatistics().addStatWithCount( 
+                OMP_STAT_BARRIER, wtime );
+              
               // compute waiting time for this barrier region
-              barrier.second->setCounter( WAITING_TIME,
-                                          latestEnterNode->getTime() -
-                                          barrier.first->getTime() );
+              barrier.second->setCounter( WAITING_TIME, wtime );
 
               // create edge from latest barrier enter to other leaves
               // (non-blocking edge from blocking barrier leave node)

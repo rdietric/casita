@@ -137,7 +137,7 @@ namespace casita
               prevQuery.second->incCounter( WAITING_TIME, waitingTime );
               kernelLeave->incCounter( BLAME, waitingTime );
               
-              commonAnalysis->getStatistics().addStatWithCountOffloading( 
+              commonAnalysis->getStatistics().addStatWithCount( 
                 OFLD_STAT_EARLY_TEST, waitingTime );
 
               // add a blocking dependency, so it cannot be used for critical path analysis

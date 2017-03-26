@@ -239,9 +239,13 @@ namespace casita
       writeCounterMetrics( OTF2Event event, CounterMap& counters );
       
       ///// \todo: works only for a single device per MPI rank ////
+      
+      
+      
       //<! used to detect offloading idle
       int deviceRefCount;
       uint64_t lastIdleStart;
+      uint64_t firstOffloadApiEvtTime;
       uint64_t lastOffloadApiEvtTime;
 
       //<! used to detect offloading compute idle

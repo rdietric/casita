@@ -116,6 +116,10 @@ namespace casita
                          "Critical path analysis might fail!",
                          sendRecvLeave->getStreamId() );
             }
+            
+            // add waiting time to statistics
+            commonAnalysis->getStatistics().addStatWithCount( 
+              MPI_STAT_SENDRECV, recvRankStartTime - myStartTime );
 
             sendRecvLeave->incCounter( WAITING_TIME, recvRankStartTime - myStartTime );
           }
@@ -224,6 +228,9 @@ namespace casita
           uint64_t waitEnd = std::min( lastTime, myEndTime );
           if( myStartTime < waitEnd )
           {
+            commonAnalysis->getStatistics().addStatWithCount( 
+              MPI_STAT_SENDRECV, waitEnd - myStartTime );
+            
             sendRecvLeave->incCounter( WAITING_TIME, waitEnd - myStartTime );
           }
           else

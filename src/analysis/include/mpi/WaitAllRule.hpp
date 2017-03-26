@@ -78,18 +78,18 @@ namespace casita
             }
             
             // to evaluate the receive buffer, we need to ensure the transfer has finished
-            if( record->requests[0] != MPI_REQUEST_NULL )
+            if( record->requests[ 0 ] != MPI_REQUEST_NULL )
             {
-              MPI_CHECK( MPI_Wait( &(record->requests[0]), MPI_STATUS_IGNORE ) );
+              MPI_CHECK( MPI_Wait( &(record->requests[ 0 ]), MPI_STATUS_IGNORE ) );
             }
             
             if( record->requests[1] != MPI_REQUEST_NULL )
             {
-              MPI_CHECK( MPI_Wait( &(record->requests[1]), MPI_STATUS_IGNORE ) );
+              MPI_CHECK( MPI_Wait( &(record->requests[ 1 ]), MPI_STATUS_IGNORE ) );
             }
 
             // get start time of send operation
-            uint64_t p2pPartnerStopTime = record->recvBuffer[1];
+            uint64_t p2pPartnerStopTime = record->recvBuffer[ 1 ];
             
             // if this wait started before the communication partner operation,
             // we found a late sender or receiver
@@ -100,12 +100,12 @@ namespace casita
               //UTILS_MSG( true, "[%"PRIu64"] WaitRule: Found late sender/receiver", 
               //           waitLeave->getStreamId() );
 
-                latestCommPartnerStopTime = p2pPartnerStopTime;
-                
-                // do not delete the MPIIcommRecord, yet
-                latestRecord = record;
-                
-                continue; // do not delete the MPIIcommRecord, yet
+              latestCommPartnerStopTime = p2pPartnerStopTime;
+
+              // do not delete the MPIIcommRecord, yet
+              latestRecord = record;
+
+              continue; // do not delete the MPIIcommRecord, yet
             }
 
             // request has been handled, hence remove it
@@ -129,7 +129,7 @@ namespace casita
               // add remote edge for critical path analysis
               analysis->getMPIAnalysis().addRemoteMPIEdge(
                 waitAllLeave,
-                latestRecord->recvBuffer[2], // remote node ID (leave event)
+                latestRecord->recvBuffer[ 2 ], // remote node ID (leave event)
                 latestRecord->leaveNode->getReferencedStreamId() ); // remote process ID
             }
             else
@@ -137,9 +137,14 @@ namespace casita
               UTILS_MSG( true, "[%"PRIu64"] MPI_Waitall rule: Activity edge "
                                "not found.", waitAllLeave->getStreamId() );
             }
+            
+            uint64_t wtime = latestCommPartnerStopTime - waitAllEnter->getTime();
+            
+            // add waiting time statistics (MPI_STAT_WAITALL)
+            analysis->getStatistics().addStatWithCount( 
+                MPI_STAT_WAITALL, wtime );
 
-            waitAllLeave->setCounter( WAITING_TIME, 
-                          latestCommPartnerStopTime - waitAllEnter->getTime() );
+            waitAllLeave->setCounter( WAITING_TIME, wtime );
           }
           
           // clear the list and delete it

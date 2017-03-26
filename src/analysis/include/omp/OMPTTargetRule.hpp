@@ -161,6 +161,10 @@ namespace casita
                 waiting_time -= targetEnter->getTime();
               }
 
+              // add waiting time to offloading statistics
+              analysis->getStatistics().addStatWithCount( 
+                OFLD_STAT_EARLY_BLOCKING_WAIT, waiting_time );
+              
               node->setCounter( WAITING_TIME, waiting_time );
 
               // distribute blame on the device

@@ -105,6 +105,7 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter( AnalysisEngine* analysis )
   //previousDeviceComTaskH2D = true;
   //currentDeviceComTaskH2D = true;
   
+  firstOffloadApiEvtTime = UINT64_MAX;
   lastOffloadApiEvtTime = 0;
   
   open();
@@ -226,11 +227,17 @@ OTF2ParallelTraceWriter::handleFinalDeviceIdleLeave()
   }
   
   // add device idle times to statistics
-  analysis->getStatistics().addStatValueOffloading( OFLD_STAT_IDLE_TIME, 
+  analysis->getStatistics().addStatValue( OFLD_STAT_IDLE_TIME, 
     lastOffloadApiEvtTime - lastIdleStart );
-  analysis->getStatistics().addStatValueOffloading( OFLD_STAT_COMPUTE_IDLE_TIME, 
+  analysis->getStatistics().addStatValue( OFLD_STAT_COMPUTE_IDLE_TIME, 
     lastOffloadApiEvtTime - lastComputeIdleStart );
-    
+  
+  // add offloading time
+  if( lastOffloadApiEvtTime > firstOffloadApiEvtTime )
+  {
+    analysis->getStatistics().addStatValue( OFLD_STAT_OFLD_TIME, 
+      lastOffloadApiEvtTime - firstOffloadApiEvtTime );
+  }
 
   //\todo: finds the first device stream
   uint64_t streamId = analysis->getStreamGroup().getFirstDeviceStream( -1 )->getId();
@@ -1258,7 +1265,7 @@ OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time,
   if( deviceRefCount == 0 )
   {
     // add device idle time to statistics
-    analysis->getStatistics().addStatValueOffloading( OFLD_STAT_IDLE_TIME, 
+    analysis->getStatistics().addStatValue( OFLD_STAT_IDLE_TIME, 
                                                      time - lastIdleStart );
 
     deviceRefCount = 1;
@@ -1283,7 +1290,7 @@ OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time,
     if( deviceComputeRefCount == 0 )
     {
       // add device idle time to statistics
-      analysis->getStatistics().addStatValueOffloading( OFLD_STAT_COMPUTE_IDLE_TIME, 
+      analysis->getStatistics().addStatValue( OFLD_STAT_COMPUTE_IDLE_TIME, 
                                                        time - lastComputeIdleStart );
 
       deviceComputeRefCount = 1;
@@ -1356,7 +1363,7 @@ OTF2ParallelTraceWriter::handleDeviceTaskLeave( uint64_t time,
       if( deviceConsecutiveComCount > 0 )
       {
         // add this consecutive communication to stats
-        analysis->getStatistics().addStatWithCountOffloading( 
+        analysis->getStatistics().addStatWithCount( 
           OFLD_STAT_MULTIPLE_COM, time - lastDeviceComTaskEnterTime );
       }
 
@@ -1447,6 +1454,8 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
                                           event.time, deviceIdleRegRef ) );
       }
+      
+      firstOffloadApiEvtTime = event.time;
     }
     
     // remember last event time for offloading API functions (not BUFFER_FLUSH)

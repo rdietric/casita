@@ -135,6 +135,10 @@ namespace casita
                              "Critical path analysis might fail!", 
                              recvLeave->getStreamId() );
           }
+          
+          // add waiting time to statistics
+          commonAnalysis->getStatistics().addStatWithCount( 
+                MPI_STAT_LATE_SENDER, sendStartTime - recvStartTime );
 
           recvLeave->setCounter( WAITING_TIME, sendStartTime - recvStartTime );
         }

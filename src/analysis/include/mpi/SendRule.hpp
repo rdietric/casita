@@ -128,7 +128,7 @@ namespace casita
               // add remote edge for critical path analysis
               commonAnalysis->getMPIAnalysis().addRemoteMPIEdge(
                 sendLeave,
-                buffer[3], // remote node ID (receive leave)
+                buffer[ 3 ], // remote node ID (receive leave)
                 partnerStreamId );
             }
             else
@@ -137,12 +137,16 @@ namespace casita
                                sendLeave->getStreamId() );
             }
             
+            // add waiting time to statistics
+            commonAnalysis->getStatistics().addStatWithCount( 
+              MPI_STAT_LATE_RECEIVER, recvStartTime - sendStartTime  );
+            
             sendLeave->setCounter( WAITING_TIME, recvStartTime - sendStartTime );
           }
         }
         else // late sender (sendStartTime > recvStartTime)
         {
-          uint64_t recvEndTime = buffer[1];
+          uint64_t recvEndTime = buffer[ 1 ];
           
           // late sender AND send overlaps with receive
           if( sendStartTime < recvEndTime )

@@ -109,7 +109,7 @@ namespace casita
               syncEdge->makeBlocking();
               
               // early blocking wait statistics
-              analysis->getStatistics().addStatWithCountOffloading( 
+              analysis->getStatistics().addStatWithCount( 
                 OFLD_STAT_EARLY_BLOCKING_WAIT, 
                 syncLeave->getTime() - syncEnter->getTime() );
             }
@@ -122,7 +122,7 @@ namespace casita
                                              kernelEnter->getTime() );
             
             // time statistics
-            analysis->getStatistics().addStatValueOffloading( 
+            analysis->getStatistics().addStatValue( 
               OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL, waitingTime );
             
             // set counters

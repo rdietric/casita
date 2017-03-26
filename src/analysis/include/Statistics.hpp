@@ -15,10 +15,10 @@
 
 #include <inttypes.h>
 
-// CUDA stats have always a count and in the following field the time
-#define STATS_OFFLOADING 11
-enum StatsOffloading
+#define STATS_NUMBER 24
+enum StatMetric
 {
+  // offloading
    OFLD_STAT_BLOCKING_COM = 0,       // number of blocking communications
    OFLD_STAT_BLOCKING_COM_TIME  = 1, // accumulated blocking communication time
    OFLD_STAT_EARLY_BLOCKING_WAIT = 2,   // number of early blocking waits
@@ -28,8 +28,26 @@ enum StatsOffloading
    OFLD_STAT_EARLY_TEST_TIME  = 6, // accumulated time of early tests
    OFLD_STAT_IDLE_TIME = 7,         // time an offloading device is idle
    OFLD_STAT_COMPUTE_IDLE_TIME = 8, // compute idle time
-   OFLD_STAT_MULTIPLE_COM = 9,      // multiple consecutive communication count
-   OFLD_STAT_MULTIPLE_COM_TIME = 10  // multiple consecutive communication time
+   OFLD_STAT_OFLD_TIME = 9, // duration of the offloading interval
+   OFLD_STAT_MULTIPLE_COM = 10,      // multiple consecutive communication count
+   OFLD_STAT_MULTIPLE_COM_TIME = 11,  // multiple consecutive communication time
+     
+   //MPI (are written in rules, could also be evaluated in OTF2TraceWriter by 
+   //     reading leave node counter values)
+   MPI_STAT_LATE_SENDER = 12,       // number of late senders
+   MPI_STAT_LATE_SENDER_WTIME = 13, // late sender waiting time
+   MPI_STAT_LATE_RECEIVER = 14,       // number of late receivers
+   MPI_STAT_LATE_RECEIVER_WTIME = 15, // late receiver waiting time
+   MPI_STAT_SENDRECV = 16,
+   MPI_STAT_SENDRECV_WTIME = 17,
+   MPI_STAT_COLLECTIVE = 18,       // number of (imbalanced) collectives
+   MPI_STAT_COLLECTIVE_WTIME = 19, // waiting time in collectives
+   MPI_STAT_WAITALL = 20,
+   MPI_STAT_WAITALL_WTIME = 21,
+   
+   //OpenMP
+   OMP_STAT_BARRIER = 22,      // OpenMP barriers
+   OMP_STAT_BARRIER_WTIME = 23 // waiting time in OpenMP barriers
 };
 
 namespace casita
@@ -53,7 +71,7 @@ namespace casita
       uint64_t avg_communication; //\todo: per type (size)
       
       // offloading
-      uint64_t offloading_stats[STATS_OFFLOADING];
+      uint64_t stats[STATS_NUMBER];
       //uint64_t launch_overhead;
       //uint64_t launch_distance;      
       
@@ -64,34 +82,34 @@ namespace casita
     public:
       
       void
-      addStatWithCountOffloading( StatsOffloading statType, uint64_t time, 
+      addStatWithCount( StatMetric statType, uint64_t time, 
                                   uint64_t count = 1 )
       {
-        offloading_stats[ statType ] += count;
-        offloading_stats[ statType + 1 ] += time;
+        stats[ statType ] += count;
+        stats[ statType + 1 ] += time;
       }
       
       void
-      addStatValueOffloading( StatsOffloading statType, uint64_t value )
+      addStatValue( StatMetric statType, uint64_t value )
       {
-        offloading_stats[ statType ] += value;
+        stats[ statType ] += value;
       }
       
       void
-      addAllStatsOffloading( uint64_t* stats )
+      addAllStats( uint64_t* stats )
       {
         //cuda_stats = stats;
         int i;
-        for( i = 0; i < STATS_OFFLOADING; ++i )
+        for( i = 0; i < STATS_NUMBER; ++i )
         {
-          offloading_stats[ i ] += stats[ i ];
+          stats[ i ] += stats[ i ];
         }
       }
       
       uint64_t*
-      getStatsOffloading()
+      getStats()
       {
-        return offloading_stats;
+        return stats;
       }
   };
 }

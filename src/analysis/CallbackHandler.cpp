@@ -447,7 +447,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   if( ( functionType.functionType & CUDA_BLOCKING_COMM ) && 
       functionType.paradigm == PARADIGM_CUDA )
   {
-    analysis.getStatistics().addStatWithCountOffloading( OFLD_STAT_BLOCKING_COM, 
+    analysis.getStatistics().addStatWithCount( OFLD_STAT_BLOCKING_COM, 
       leaveNode->getTime() - enterNode->getTime() );
   }
 

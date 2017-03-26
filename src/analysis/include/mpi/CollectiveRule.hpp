@@ -112,9 +112,9 @@ namespace casita
           if ( enterTime > lastEnterTime )
           {
             lastEnterTime         = enterTime;
-            lastEnterRemoteNodeId = recvBuffer[i + 1];
-            //lastLeaveRemoteNodeId = recvBuffer[i + 2];
-            lastEnterProcessId    = recvBuffer[i + 3];
+            lastEnterRemoteNodeId = recvBuffer[ i + 1 ];
+            //lastLeaveRemoteNodeId = recvBuffer[ i + 2 ];
+            lastEnterProcessId    = recvBuffer[ i + 3 ];
           }
         }
 
@@ -138,6 +138,9 @@ namespace casita
             UTILS_WARNING( "[%"PRIu64"] MPI collective rule: Record edge not "
                            "found. CPA might fail!", colLeave->getStreamId() );
           }
+          
+          commonAnalysis->getStatistics().addStatWithCount( 
+            MPI_STAT_COLLECTIVE, lastEnterTime - collStartTime );
           
           // set the wait state counter for this blocking region
           // waiting time = last enter time - this ranks enter time
