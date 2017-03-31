@@ -91,6 +91,7 @@ namespace casita
     cout << "  -f  --filter=List       filter regions (ignored in analysis and output trace)" << endl;
     cout << "      --idle=[0,1,2,3]    write device idle regions to output trace" << endl
          << "                          (0=no, 1=device idle(default), 2=compute idle, 3=both)" << endl;
+    cout << "  -l  --link-kernels      create inter-stream kernel dependencies (default: off)" << endl;
     cout << "  -p [--path]             print critical paths" << endl;
     cout << "     [--cpa-loop-check]   detect circular loops in process-local critical path" << endl
          << "                          (default: off)" << endl;
@@ -242,7 +243,6 @@ namespace casita
         options.printCriticalPath = true;
         i++;
       }
-
       else if( opt.find( "--path=" ) != string::npos )
       {
         options.printCriticalPath = true;
@@ -276,6 +276,17 @@ namespace casita
       else if( opt.find( "--ignore-opencl" ) != string::npos )
       {
         options.ignoreOCL = true;
+      }
+      
+      // create dependencies between kernels from different streams
+      else if( opt.compare( string( "-l" ) ) == 0 )
+      {
+        options.linkKernels = true;
+        i++;
+      }
+      else if( opt.find( "--link-kernels" ) != string::npos )
+      {
+        options.linkKernels = true;
       }
 
       // interval analysis
@@ -484,6 +495,7 @@ namespace casita
     options.topX = 20;
     options.predictionFilter = "";
     options.deviceIdle = 1;
+    options.linkKernels =false;
     options.ignoreAsyncMpi = false;
     options.ignoreCUDA = false;
     options.ignoreOCL = false;

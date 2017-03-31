@@ -90,9 +90,8 @@ namespace casita
      const EventStreamGroup::EventStreamList&
      getDeviceStreams() const;
      
-     void
-     getDeviceStreams( int deviceId, 
-                       EventStreamGroup::EventStreamList& deviceStreams ) const;
+     const EventStreamGroup::EventStreamList&
+     getDeviceStreams( int deviceId );
 
      void
      getAllDeviceStreams( EventStreamGroup::EventStreamList& deviceStreams ) const;

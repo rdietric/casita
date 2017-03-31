@@ -51,7 +51,7 @@ namespace casita
        * @return true, if the rule could be applied, otherwise false
        */
       bool
-      apply( AnalysisParadigmCUDA* analysis, GraphNode* syncLeave )
+      apply( AnalysisParadigmCUDA* cudaAnalysis, GraphNode* syncLeave )
       {
 
         if ( !syncLeave->isCUDAEventSync() || !syncLeave->isLeave() )
@@ -59,10 +59,10 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon();
+        AnalysisEngine* analysis = cudaAnalysis->getCommon();
 
         // use the CUDA event ID to get cuEventRecord leave node
-        EventNode* eventRecordLeave = analysis->getEventRecordLeave(
+        EventNode* eventRecordLeave = cudaAnalysis->getEventRecordLeave(
           ( (EventNode*)syncLeave )->getEventId() );
 
         // the event record might have been deleted in intermediate flush
@@ -78,19 +78,19 @@ namespace casita
         // can be deleted in intermediate flush
         eventRecordLeave->setLink( NULL );
         
-        // get the event stream of CUDA event
-        EventStream* refProcess = commonAnalysis->getStream(
+        // get the event stream of the associated CUDA event
+        EventStream* refProcess = analysis->getStream(
           eventRecordLeave->getReferencedStreamId() );
         
         if( refProcess == NULL )
         {
           UTILS_WARNING( "[%"PRIu32"] EventSyncRule: Referenced stream (%"PRIu64
-                           ") %s (%f) on stream %s  not found!",
-                     commonAnalysis->getMPIRank(),
-                     eventRecordLeave->getReferencedStreamId(),
-                     syncLeave->getUniqueName().c_str(),
-                     commonAnalysis->getRealTime( syncLeave->getTime() ),
-                     commonAnalysis->getStream( syncLeave->getStreamId() )->getName());
+                          ") %s (%f) on stream %s  not found!",
+            analysis->getMPIRank(),
+            eventRecordLeave->getReferencedStreamId(),
+            syncLeave->getUniqueName().c_str(),
+            analysis->getRealTime( syncLeave->getTime() ),
+            analysis->getStream( syncLeave->getStreamId() )->getName());
           
           return false;
         }
@@ -100,7 +100,7 @@ namespace casita
         // put all device streams in the list, if we are synchronizing with the NULL stream
         if ( refProcess->isDeviceNullStream() )
         {
-          commonAnalysis->getAllDeviceStreams( deviceProcs );
+          analysis->getAllDeviceStreams( deviceProcs );
         }
         else
         {
@@ -111,8 +111,8 @@ namespace casita
         if( !eventRecordEnter )
         {
           UTILS_WARNING( "[%"PRIu32"] No event record enter event for %s found", 
-                         commonAnalysis->getMPIRank(),
-                         commonAnalysis->getNodeInfo( eventRecordLeave ).c_str() );
+                         analysis->getMPIRank(),
+                         analysis->getNodeInfo( eventRecordLeave ).c_str() );
           return false;
         }
         
@@ -128,7 +128,7 @@ namespace casita
           // get last kernel launch leave node of the given device stream 
           // that started before event record enter time
           uint64_t strmId = ( *iter )->getId();
-          GraphNode* kernelLaunchLeave = analysis->getLastKernelLaunchLeave(
+          GraphNode* kernelLaunchLeave = cudaAnalysis->getLastKernelLaunchLeave(
                   eventRecordEnterTime, strmId );
           
           // if the stream has no kernel launch leave, the kernel has already 
@@ -153,13 +153,13 @@ namespace casita
               "[%"PRIu32"] EventSyncRule on %s (%f) failed.\n"
               "Synchronize returned before kernel %s (%f) on stream "
               "[%u, %s] finished. Deferring node ...",
-              commonAnalysis->getMPIRank(),
+              analysis->getMPIRank(),
               syncLeave->getUniqueName().c_str(),
-              commonAnalysis->getRealTime( syncLeave->getTime() ),
+              analysis->getRealTime( syncLeave->getTime() ),
               kernelLaunchEnter->getUniqueName().c_str(),
-              commonAnalysis->getRealTime( kernelLaunchEnter->getTime() ),
+              analysis->getRealTime( kernelLaunchEnter->getTime() ),
               kernelLaunchEnter->getReferencedStreamId(),
-              commonAnalysis->getStream( 
+              analysis->getStream( 
                 kernelLaunchEnter->getReferencedStreamId() )->getName() );
             
             // Store the node in a pending list and process it later.
@@ -184,27 +184,27 @@ namespace casita
                     "Event sync %s (%f) returned but kernel from %s (%f) on "
                     "stream [%u, %s] did not finish yet",
                     syncLeave->getUniqueName().c_str(),
-                    commonAnalysis->getRealTime( syncLeave->getTime() ),
+                    analysis->getRealTime( syncLeave->getTime() ),
                     kernelLaunchEnter->getUniqueName().c_str(),
-                    commonAnalysis->getRealTime( 
+                    analysis->getRealTime( 
                       kernelLaunchEnter->getTime() ),
                     kernelLaunchEnter->getReferencedStreamId(),
-                    commonAnalysis->getStream( 
+                    analysis->getStream( 
                       kernelLaunchEnter->getReferencedStreamId() )->getName() );
           }
           else if ( kernelLeave->getTime() > syncLeave->getTime() )
           {
             UTILS_MSG( true, "[%"PRIu32"] EventSyncRule on %s (%f) failed!", 
-                       commonAnalysis->getMPIRank(),
+                       analysis->getMPIRank(),
                        syncLeave->getUniqueName().c_str(),
-                       commonAnalysis->getRealTime( syncLeave->getTime() ) );
+                       analysis->getRealTime( syncLeave->getTime() ) );
             // if the kernelLeave has been deleted in intermediate flush the 
             // following message creates a segmentation fault
             UTILS_MSG( true, "Host-Device time displacement: kernel %s > evtSync %s"
                        ", kernel launch leave: %s",
-                       commonAnalysis->getNodeInfo( kernelLeave ).c_str(), 
-                       commonAnalysis->getNodeInfo( syncLeave ).c_str(),
-                       commonAnalysis->getNodeInfo( kernelLaunchLeave ).c_str() );
+                       analysis->getNodeInfo( kernelLeave ).c_str(), 
+                       analysis->getNodeInfo( syncLeave ).c_str(),
+                       analysis->getNodeInfo( kernelLaunchLeave ).c_str() );
           }
 
           /* ignore delta ticks for now until we have a better heuristic */
@@ -213,13 +213,13 @@ namespace casita
           // if sync enter is before kernel leave it is a blocking wait state
           if ( syncEnter && ( syncEnter->getTime() < kernelLeave->getTime() ) )
           {
-            Edge* syncEdge = commonAnalysis->getEdge( syncEnter, syncLeave );
+            Edge* syncEdge = analysis->getEdge( syncEnter, syncLeave );
             if( syncEdge && !syncEdge->isBlocking() )
             {
               syncEdge->makeBlocking();
               
               // early blocking wait statistics
-                commonAnalysis->getStatistics().addStatWithCount( 
+                analysis->getStatistics().addStatWithCount( 
                   OFLD_STAT_EARLY_BLOCKING_WAIT, 
                   syncLeave->getTime() - syncEnter->getTime() );
             }
@@ -231,7 +231,7 @@ namespace casita
                                              kernelEnter->getTime() );
             
             // count statistics
-            commonAnalysis->getStatistics().addStatValue( 
+            analysis->getStatistics().addStatValue( 
               OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL, waitingTime );
 
             // set counters
@@ -240,15 +240,18 @@ namespace casita
           }
 
           // add edge between kernel leave and syncLeave
-          commonAnalysis->newEdge( kernelLeave, syncLeave );
+          analysis->newEdge( kernelLeave, syncLeave );
           ruleResult = true;
+          
+          // create edges between previous kernels which are not on the same stream
+          cudaAnalysis->createKernelDependencies( kernelEnter );
           
           // consume a pending kernel
           //commonAnalysis->getStream( kernelEnter->getStreamId() )->consumePendingKernel();
           
           // clear all pending kernels before this kernel (including this kernel)
           EventStream *kernelLeaveStream = 
-            commonAnalysis->getStream( kernelLeave->getStreamId() );
+            analysis->getStream( kernelLeave->getStreamId() );
           if( kernelLeaveStream )
           {
             kernelLeaveStream->consumePendingKernels( kernelLeave );
@@ -261,12 +264,13 @@ namespace casita
         }
         
         // if the rule could no be applied successfully, assign this sync with
-        // waiting time and blame, as it was probably not necessary
+        // waiting time (we cannot blame it, as we currently do not consider 
+        // device communication
         if( ruleResult == false )
         {
             uint64_t value = syncLeave->getTime() - syncEnter->getTime();
             syncLeave->incCounter( WAITING_TIME, value );
-            syncLeave->incCounter( BLAME, value );
+            //syncLeave->incCounter( BLAME, value );
         }
         
         // clear list of device processes

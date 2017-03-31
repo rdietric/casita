@@ -238,9 +238,15 @@ OTF2ParallelTraceWriter::handleFinalDeviceIdleLeave()
     analysis->getStatistics().addStatValue( OFLD_STAT_OFLD_TIME, 
       lastOffloadApiEvtTime - firstOffloadApiEvtTime );
   }
-
+  
   //\todo: finds the first device stream
   uint64_t streamId = analysis->getStreamGroup().getFirstDeviceStream( -1 )->getId();
+  
+  // make sure that we do not write an OTF2 event before the last written one
+  if( lastOffloadApiEvtTime < streamStatusMap[ streamId ].lastEventTime )
+  {
+    lastOffloadApiEvtTime = streamStatusMap[ streamId ].lastEventTime;
+  }
 
   if( writeToFile && Parser::getInstance().getProgramOptions().deviceIdle & 1 )
   {
@@ -1421,8 +1427,8 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
     eventName, &eventDesc, currentStream->isDeviceStream(), false );  
   
   // special handling for offloading API routines
-  if( regionInfo.paradigm == OTF2_PARADIGM_CUDA ||
-      regionInfo.paradigm == OTF2_PARADIGM_OPENCL )
+  if( ( regionInfo.paradigm == OTF2_PARADIGM_CUDA ||
+        regionInfo.paradigm == OTF2_PARADIGM_OPENCL ) && mapsInternalNode )
   {
     // write enter event for device idle regions at first occurrence of any 
     // offloading API routine

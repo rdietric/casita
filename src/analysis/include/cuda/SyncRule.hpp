@@ -66,6 +66,9 @@ namespace casita
         if( syncLeave->isCUDACollSync() )
         {
           analysis->getAllDeviceStreams( deviceStreams );
+          
+          // create dependencies between all pending kernels (no lower bound)
+          cudaAnalysis->createKernelDependencies( NULL );
         }
         else
         {
@@ -79,6 +82,10 @@ namespace casita
           }
           
           deviceStreams.push_back( analysis->getStream( refStreamId ) );
+          
+          GraphNode* kernelLeave = 
+            analysis->getStream( refStreamId )->getLastPendingKernel();
+          cudaAnalysis->createKernelDependencies( kernelLeave );
         }
         
         // if no stream has a pending kernel for early synchronization, 

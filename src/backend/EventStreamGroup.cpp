@@ -51,6 +51,9 @@ EventStreamGroup::addDeviceStream( EventStream* p )
 {
   deviceStreams.push_back( p );
   allStreams.push_back( p );
+  
+  // generate a map with per device streams
+  deviceIdStreamsMap[ p->getDeviceId() ].push_back( p );;
 }
 
 EventStreamGroup::EventStreamList::iterator
@@ -133,18 +136,10 @@ EventStreamGroup::getHostStreams() const
  * @param deviceId
  * @param newDeviceStreams
  */
-void
-EventStreamGroup::getDeviceStreams( int deviceId, 
-                      EventStreamGroup::EventStreamList& newDeviceStreams) const
+const EventStreamGroup::EventStreamList&
+EventStreamGroup::getDeviceStreams( int deviceId )
 {
-  for( EventStreamList::const_iterator it = deviceStreams.begin(); 
-       it != deviceStreams.end(); ++it )
-  {
-    if( (*it)->getDeviceId() == deviceId )
-    {
-      newDeviceStreams.insert( newDeviceStreams.end(), *it );
-    }
-  }
+  return deviceIdStreamsMap[ deviceId ];
 }
 
 void

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2016,
+ * Copyright (c) 2016, 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -97,8 +97,8 @@ namespace casita
               deviceId = targetEnter->getReferencedStreamId();
             }
             
-            EventStreamGroup::EventStreamList deviceStreams;
-            analysis->getDeviceStreams( deviceId , deviceStreams );
+            const EventStreamGroup::EventStreamList& deviceStreams =
+              analysis->getDeviceStreams( deviceId );
 
             GraphNode* firstTargetOffloadNode = NULL;
             GraphNode* lastTargetOffloadNode = NULL;
@@ -138,8 +138,6 @@ namespace casita
                 firstTargetOffloadNode = firstOffloadNode;
               }
             }
-            
-            deviceStreams.clear();
             
             // reset target enter node for next target region
             ompAnalysis->consumeOmpTargetBegin( node->getStreamId() );

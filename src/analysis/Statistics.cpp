@@ -11,6 +11,8 @@
 
 // This class collects simple statistics
 
+#include <fstream>
+
 #include "Statistics.hpp"
 
 using namespace casita;
@@ -19,7 +21,9 @@ using namespace casita;
  * Constructor
  */
 Statistics::Statistics() 
-{ }
+{ 
+  std::fill( stats, stats + STATS_NUMBER, 0 );
+}
 
 
 /**

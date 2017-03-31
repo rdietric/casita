@@ -199,7 +199,10 @@ namespace casita
      getLastNode( Paradigm paradigm ) const;
 
      GraphNode*
-     getFirstNode( Paradigm paradigm ) const;
+     getLastParadigmNode( Paradigm paradigm ) const;
+     
+     GraphNode*
+     getFirstParadigmNode( Paradigm paradigm ) const;
 
      /**
       * Get the time stamp of the last event read from an event stream. 
@@ -444,12 +447,6 @@ namespace casita
       */
      void
      testAllPendingMPIRequests();
-
-     Edge::TimeProfileMap*
-     newTimeProfile();
-
-     Edge::TimeProfileMap*
-     getTimeProfile();
 
      bool
      walkBackward( GraphNode* node, StreamWalkCallback callback, void* userData );

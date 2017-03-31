@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2016,
+ * Copyright (c) 2016, 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -59,6 +59,9 @@ namespace casita
 
       uint64_t
       getEventProcessId( uint64_t eventId ) const;
+      
+      bool
+      isKernelPending( GraphNode* kernelNode ) const;
 
       void
       addPendingKernelEnqueue( GraphNode* launch );
@@ -68,6 +71,12 @@ namespace casita
 
       GraphNode*
       getLastEnqueueLeave( uint64_t timestamp, uint64_t deviceStreamId ) const;
+      
+      void
+      removeKernelLaunch( GraphNode* kernel );
+      
+      void
+      clearKernelEnqueues( uint64_t streamId );
 
     private:
       //!< maps event ID to (device) stream ID

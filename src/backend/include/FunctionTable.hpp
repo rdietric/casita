@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -475,6 +475,7 @@ namespace casita
              {
                case OCL_SYNC_QUEUE:
                case OCL_SYNC_EVENT:
+                 descr->functionType = OCL_SYNC;
                case OCL_QUERY_EVENT:
                case OCL_ENQUEUE_KERNEL:
                case OCL_ENQUEUE_BUFFER:

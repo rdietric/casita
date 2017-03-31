@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -56,7 +56,8 @@ namespace casita
        PARADIGM_OMP | PARADIGM_OMPT | PARADIGM_OMP_TARGET )
  };
 
- const size_t NODE_PARADIGM_COUNT   = 8;
+ //\todo: we have only 5 real paradigms, check if 5 still works
+ const size_t NODE_PARADIGM_COUNT   = 5; //8;
  const size_t NODE_PARADIGM_INVALID = ( 1 << NODE_PARADIGM_COUNT );
 
  enum NodeTypeMisc
@@ -88,7 +89,8 @@ namespace casita
    OCL_ENQUEUE_KERNEL = ( 1 << 4 ),
    OCL_ENQUEUE_BUFFER = ( 1 << 5 ),
    OCL_SYNC_EVENT     = ( 1 << 6 ),
-   OCL_QUERY_EVENT    = ( 1 << 7 )
+   OCL_QUERY_EVENT    = ( 1 << 7 ),
+   OCL_SYNC           = ( 1 << 8 )
  };
 
  enum NodeTypeMPI
@@ -269,6 +271,13 @@ namespace casita
      {
 
        return isOpenCL() && ( nodeType & OCL_SYNC_EVENT );
+     }
+     
+     bool
+     isOpenCLSync() const
+     {
+
+       return isOpenCL() && ( nodeType & OCL_SYNC );
      }
 
      bool

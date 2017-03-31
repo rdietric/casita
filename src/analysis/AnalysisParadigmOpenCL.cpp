@@ -127,6 +127,34 @@ AnalysisParadigmOpenCL::getEventProcessId( uint64_t eventId ) const
   }
 }
 
+bool
+AnalysisParadigmOpenCL::isKernelPending( GraphNode* kernelNode ) const
+{
+  if( kernelNode->hasPartner() )
+  {
+    // kernel leave has not yet been synchronized (compare BlameKernelRule)
+    if( kernelNode->getGraphPair().second->getLink() == NULL )
+    {
+      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+                 "[%"PRIu64"] Do not delete unsynchronized kernel %s", 
+                 kernelNode->getStreamId(), 
+                 this->commonAnalysis->getNodeInfo( kernelNode ).c_str() );
+      return true;
+    }
+  }
+  // enter kernel nodes without partner must NOT be deleted
+  else if( kernelNode->isEnter() )
+  {
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+               "[%"PRIu64"] Do not delete incomplete kernel %s", 
+               kernelNode->getStreamId(), 
+               this->commonAnalysis->getNodeInfo( kernelNode ).c_str() );
+    return true;
+  }
+  
+  return false;
+}
+
 /**
  * Adds kernel launch event nodes at the end of the list.
  * 
@@ -240,4 +268,60 @@ AnalysisParadigmOpenCL::getLastEnqueueLeave( uint64_t timestamp,
     }
   }
   return lastLaunchLeave;
+}
+
+/**
+ * Remove a kernel launch from the map (key is stream id) of kernel launch vectors.
+ * 
+ * @param kernel kernel enter node
+ */
+void
+AnalysisParadigmOpenCL::removeKernelLaunch( GraphNode* kernel )
+{
+  GraphNode* kernelLaunchEnter = ( GraphNode* )kernel->getLink();
+  
+  if( !kernelLaunchEnter )
+  {
+    return;
+  }
+  
+  uint64_t streamId = kernel->getStreamId();
+
+  if( pendingKernelEnqueueMap.count( streamId ) > 0 )
+  {  
+    if( pendingKernelEnqueueMap[ streamId ].size() > 0 )
+    {
+      GraphNode* kernelLaunchLeave = kernelLaunchEnter->getGraphPair().second;
+      pendingKernelEnqueueMap[ streamId ].remove( kernelLaunchLeave );
+
+      UTILS_WARNING( "[%"PRIu32"] Removed %s referencing %"PRIu64" from kernel "
+                     "launch map (new list size %llu)", 
+                     commonAnalysis->getMPIRank(),
+                     commonAnalysis->getNodeInfo( kernelLaunchLeave ).c_str(),
+                     streamId,
+                     pendingKernelEnqueueMap[ streamId ].size() );
+    }
+  }
+}
+
+/**
+ * Clear the list of pending OpenCL kernel launches for a give stream ID.
+ * 
+ * @param streamId
+ */
+void
+AnalysisParadigmOpenCL::clearKernelEnqueues( uint64_t streamId )
+{
+  if( pendingKernelEnqueueMap.count( streamId ) > 0 )
+  {  
+    if( pendingKernelEnqueueMap[ streamId ].size() > 0 )
+    {
+      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+        "[%"PRIu32"] Clear list of %llu pending kernel launches for stream %"PRIu64, 
+        commonAnalysis->getMPIRank(), 
+        (unsigned long long)pendingKernelEnqueueMap[ streamId ].size(), streamId );
+      
+      pendingKernelEnqueueMap[ streamId ].clear();
+    }
+  }
 }

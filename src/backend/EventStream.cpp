@@ -123,8 +123,8 @@ EventStream::setDeviceId( int deviceId )
 }
 
 /**
- * Obtain the device ID that has been parsed from the name of the stream. It is
- * -1 if unknown.
+ * Obtain the device ID that has been parsed from the name of the stream. 
+ * Return -1 if unknown.
  * 
  * @return the device ID or -1 if unknown
  */
@@ -174,6 +174,14 @@ EventStream::getLastNode() const
   //return getLastNode( PARADIGM_ALL );
 }
 
+/**
+ * Get the last GraphNode for a given paradigm. The paradigm might be a
+ * collection of multiple paradigms. The last node is returned.
+ * 
+ * @param paradigm
+ * 
+ * @return 
+ */
 GraphNode*
 EventStream::getLastNode( Paradigm paradigm ) const
 {
@@ -212,14 +220,28 @@ EventStream::getLastNode( Paradigm paradigm ) const
 }
 
 /**
- * Get the first node of a given paradigm.
- * \todo: this works only for single paradigms and NOT for e.g. PARADIGM_ALL
+ * Get the last node of a given paradigm. 
+ * Faster than getLastNode( Paradigm paradigm ), but works only for a single 
+ * paradigm and NOT for e.g. PARADIGM_ALL.
  * 
  * @param paradigm
  * @return 
  */
 GraphNode*
-EventStream::getFirstNode( Paradigm paradigm ) const
+EventStream::getLastParadigmNode( Paradigm paradigm ) const
+{
+  return graphData[(int)log2( paradigm )].lastNode;
+}
+
+/**
+ * Get the first node of a given paradigm.
+ * This works only for a single paradigm and NOT for e.g. PARADIGM_ALL.
+ * 
+ * @param paradigm
+ * @return 
+ */
+GraphNode*
+EventStream::getFirstParadigmNode( Paradigm paradigm ) const
 {
   return graphData[(int)log2( paradigm )].firstNode;
 }
@@ -257,7 +279,7 @@ EventStream::addGraphNode( GraphNode*                  node,
   {
     oldNode[i] = NULL;
   }
-  Paradigm   nodeParadigm = node->getParadigm();
+  Paradigm nodeParadigm = node->getParadigm();
 
   for ( size_t o = 1; o < NODE_PARADIGM_INVALID; o *= 2 )
   {
@@ -398,10 +420,10 @@ EventStream::insertGraphNode( GraphNode*                  node,
 
     while ( next != nodes.end() )
     {
-      if ( ( *next )->hasParadigm( (Paradigm)paradigm ) )
+      if ( ( *next )->hasParadigm( ( Paradigm )paradigm ) )
       {
         nextNode = *next;
-        hasNextNode[paradigm_index] = true;
+        hasNextNode[ paradigm_index ] = true;
         break;
       }
       ++next;

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014-2016,
+ * Copyright (c) 2014-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -112,6 +112,9 @@ namespace casita
       
       void
       clearKernelLaunches( uint64_t streamId );
+      
+      void
+      createKernelDependencies( GraphNode* kernelEnter ) const;
       
       void 
       printDebugInformation( uint64_t eventId );

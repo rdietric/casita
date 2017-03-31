@@ -88,24 +88,33 @@ GraphEngine::newEventStream( uint64_t                     id,
 
     if ( streamType == EventStream::ES_DEVICE )
     {
-      streamGroup.addDeviceStream( p );
-      
       // try to figure out the device ID for OpenMP target threads
       int deviceId = -1;
       if( strstr( name.c_str(), "OMP target thread [" ) )
       {
-        deviceId = atoi( name.c_str()+19 );
+        deviceId = atoi( name.c_str() + 19 );
       }
       else if( strstr( name.c_str(), "CUDA[" ) ) // CUDA streams
       {
-        deviceId = atoi( name.c_str()+5 );
+        deviceId = atoi( name.c_str() + 5 );
       }
       else if( strstr( name.c_str(), "MIC [" ) ) // deprecated (libmpti)
       {
-        deviceId = atoi( name.c_str()+5 );
+        deviceId = atoi( name.c_str() + 5 );
+      }
+      else // OpenCL devices
+      {
+        size_t pos = name.find_last_of( "[" );
+        if( pos !=  string::npos )
+        {
+          deviceId = atoi( name.c_str() + pos + 1 );
+        }
       }
       
       p->setDeviceId( deviceId );
+      
+      // device ID has to be set to generate stream vectors per device
+      streamGroup.addDeviceStream( p );
     }
     else if ( streamType == EventStream::ES_DEVICE_NULL )
     {
@@ -169,15 +178,10 @@ GraphEngine::getDeviceStreams() const
   return streamGroup.getDeviceStreams();
 }
 
-void
-GraphEngine::getDeviceStreams( 
-  int deviceId, 
-  EventStreamGroup::EventStreamList& deviceStreams ) const
+const EventStreamGroup::EventStreamList&
+GraphEngine::getDeviceStreams( int deviceId )
 {
-  if( deviceId == -1 )
-    return;
-  
-  streamGroup.getDeviceStreams( deviceId, deviceStreams );
+  return streamGroup.getDeviceStreams( deviceId );
 }
 
 void
@@ -279,8 +283,12 @@ GraphEngine::newEdge( GraphNode* source, GraphNode* target,
     {
       paradigm = source->getParadigm();
     }
+    else // recently added this else branch
+    {
+      paradigm = (Paradigm) ( source->getParadigm() | target->getParadigm() );
+    }
   }
-
+  
   Edge* newEdge = new Edge( source, target,
                             target->getTime() - source->getTime(), 
                             properties, paradigm );
@@ -348,7 +356,7 @@ GraphEngine::getFirstTimedGraphNode( Paradigm paradigm ) const
     // if the paradigms is MPI, we can use this shortcut
     if( paradigm == PARADIGM_MPI )
     {
-      firstStreamGNode = p->getFirstNode( PARADIGM_MPI );
+      firstStreamGNode = p->getFirstParadigmNode( PARADIGM_MPI );
     }
     else
     {
@@ -388,7 +396,8 @@ GraphEngine::getFirstTimedGraphNode( Paradigm paradigm ) const
 }
 
 /**
- * Obtain the last (largest time stamp) graph node for a given paradigm.
+ * Obtain the last (largest time stamp) graph node for a given paradigm or 
+ * set of paradigms.
  * 
  * @param paradigm
  * 
@@ -561,11 +570,9 @@ GraphEngine::sanityCheckEdge( Edge* edge, uint32_t mpiRank )
   if ( edge->getDuration() != expectedTime )
   {
     throw RTException(
-            "[%u] Sanity check failed: edge %s has wrong duration (expected %lu, found %lu)",
-            mpiRank,
-            edge->getName().c_str(),
-            expectedTime,
-            edge->getDuration() );
+      "[%u] Sanity check failed: edge %s has wrong duration (expected %lu, found %lu)",
+      mpiRank, edge->getName().c_str(),
+      expectedTime, edge->getDuration() );
   }
 
   if ( !edge->isBlocking() && edge->getStartNode()->isWaitstate() &&
@@ -574,7 +581,7 @@ GraphEngine::sanityCheckEdge( Edge* edge, uint32_t mpiRank )
        edge->getEndNode()->isLeave() )
   {
     throw RTException(
-            "[%u] Sanity check failed: edge %s is not blocking but should be",
+            "[%u] Sanity check failed: edge %s should be blocking",
             mpiRank, edge->getName().c_str() );
   }
 
@@ -656,11 +663,17 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 {
   GraphNode::ParadigmNodeMap predNodeMap, nextNodeMap;
   
-  UTILS_ASSERT( node->getStreamId() == stream->getId(), 
+  uint64_t streamId = stream->getId();
+  
+  UTILS_ASSERT( node->getStreamId() == streamId, 
                 "Cannot add graph node with stream ID %" PRIu64 " to stream "
                 "with ID %" PRIu64, node->getStreamId(), stream->getId() );
+  
+  
 
-  if( !stream->getLastNode() || Node::compareLess(stream->getLastNode(), node) )
+  // insert/add node to sorted stream node list and initialize map of 
+  // predecessors and successors
+  if( !stream->getLastNode() || Node::compareLess( stream->getLastNode(), node ) )
   {
     //std::cerr << "last node: ";
     //std::cerr << stream->getLastNode()->getUniqueName() << std::endl;
@@ -674,7 +687,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   }
 
   // to support nesting we use a stack to keep track of open activities
-  GraphNode* stackNode = topGraphNodeStack( stream->getId() );
+  GraphNode* stackNode = topGraphNodeStack( streamId );
 
   if ( node->isLeave() )
   {
@@ -688,16 +701,16 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
       UTILS_ASSERT( stackNode->getRecordType() != node->getRecordType(),
         "[%" PRIu64 "] Partner graph nodes with identical types are not allowed!"
         " new node: %s <-> stack node: %s",
-        stream->getId(), node->getUniqueName().c_str(), 
+        streamId, node->getUniqueName().c_str(), 
         stackNode->getUniqueName().c_str(), stackNode );
       
       node->setPartner( stackNode );
       stackNode->setPartner( node );
 
-      popGraphNodeStack( node->getStreamId() );
+      popGraphNodeStack( streamId );
 
       // use the stack to get the caller/parent of this node
-      node->setCaller( topGraphNodeStack( node->getStreamId() ) );
+      node->setCaller( topGraphNodeStack( streamId ) );
     }
   }
   else if ( node->isEnter() )
@@ -705,7 +718,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
     // use the stack to get the caller/parent of this node ( might be NULL)
     node->setCaller( stackNode );
 
-    pushGraphNodeStack( node, node->getStreamId() );
+    pushGraphNodeStack( node, streamId );
   }
 
   /*
@@ -716,36 +729,39 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   // get direct predecessor and successor
   GraphNode* directPredecessor = NULL;
   GraphNode* directSuccessor   = NULL;
+  // \todo: check if this loop is really needed
   for ( size_t p_index = 0; p_index < NODE_PARADIGM_COUNT; ++p_index )
   {
     Paradigm paradigm = (Paradigm)( 1 << p_index );
-    GraphNode::ParadigmNodeMap::const_iterator predPnmIter = 
+    GraphNode::ParadigmNodeMap::const_iterator paradigmPredIter = 
       predNodeMap.find( paradigm );
-    GraphNode::ParadigmNodeMap::const_iterator nextPnmIter = 
+    GraphNode::ParadigmNodeMap::const_iterator paradigmSuccessorIter = 
       nextNodeMap.find( paradigm );
 
     // if we have a paradigm predecessor node AND 
     // (there is no direct predecessor OR the direct predecessor is before paradigm predecessor)
-    if ( predPnmIter != predNodeMap.end() && 
-         ( !directPredecessor || Node::compareLess( directPredecessor, predPnmIter->second ) ) )
+    if ( paradigmPredIter != predNodeMap.end() && 
+         ( !directPredecessor || 
+           Node::compareLess( directPredecessor, paradigmPredIter->second ) ) )
     {
       // set the direct predecessor to the paradigm predecessor
-      directPredecessor = predPnmIter->second;
-      //std::cerr << "directPredecessor found: ";
+      directPredecessor = paradigmPredIter->second;
+      //std::cerr << "directPredecessor for " << node->getUniqueName() << " found: ";
       //std::cerr << directPredecessor->getUniqueName() << std::endl;
     }
 
     // if we have a paradigm successor AND
     // (there is no direct successor OR the paradigm predecessor is before the direct successor)
-    if( nextPnmIter != nextNodeMap.end() && 
-        ( !directSuccessor || Node::compareLess( nextPnmIter->second, directSuccessor ) ) )
+    if( paradigmSuccessorIter != nextNodeMap.end() && 
+        ( !directSuccessor || 
+          Node::compareLess( paradigmSuccessorIter->second, directSuccessor ) ) )
     {
       //set the direct successor to the paradigm successor
-      directSuccessor = nextPnmIter->second;
+      directSuccessor = paradigmSuccessorIter->second;
     }
   }
   
-  EdgeCPUData& cpuData = cpuDataPerProcess[stream->getId()];
+  EdgeCPUData& cpuData = cpuDataPerProcess[ streamId ];
 
   bool directPredLinked = false;
   bool directSuccLinked = false;
@@ -756,7 +772,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
     for ( size_t p_index = 0; p_index < NODE_PARADIGM_COUNT; ++p_index )
     {
-      // 
+      // ignore paradigms that are different to the node's paradigm
       Paradigm paradigm = (Paradigm)( 1 << p_index );
       if ( ( paradigm & nodeParadigm ) != nodeParadigm )
       {
@@ -765,6 +781,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
       GraphNode::ParadigmNodeMap::const_iterator predPnmIter = predNodeMap.find(
         paradigm );
+      // if we found a node for the node's paradigm
       if ( predPnmIter != predNodeMap.end() )
       {
         GraphNode* pred     = predPnmIter->second;
@@ -779,15 +796,14 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
           }
         }
 
-        /* link to this predecessor */
-        Edge* temp = newEdge( pred, node, edgeProp, &paradigm );
-        //sanityCheckEdge( temp, stream->getId() );
+        // link to this predecessor (and create an intra-paradigm edge)
+        Edge* pEdge = newEdge( pred, node, edgeProp, &paradigm );
 
         UTILS_ASSERT( !( cpuData.numberOfEvents && ( cpuData.startTime > cpuData.endTime ) ),
                       "Violation of time order for CPU events at '%s' (%",
-                      temp->getName().c_str() );
+                      pEdge->getName().c_str() );
 
-        temp->addCPUData( cpuData.numberOfEvents,
+        pEdge->addCPUData( cpuData.numberOfEvents,
                           //cpuData.startTime, cpuData.endTime,
                           cpuData.exclEvtRegTime );
 
@@ -828,7 +844,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
         }
       }
     }
-
+    
     if ( !directPredLinked )
     {
       int edgeProp = EDGE_NONE;
@@ -876,7 +892,77 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
   // reset the number of CPU events for the following edge
   cpuData.numberOfEvents = 0;
+  
+  // create edges from device kernel enter nodes to previous nodes on the device
+  if( Parser::getInstance().getProgramOptions().linkKernels &&
+      node->isEnter() && ( node->isCUDAKernel() || node->isOpenCLKernel() ) )
+  {
+    GraphNode* directPredKernel = NULL;
+    // direct predecessor (on the same stream) should be a leave
+    if( directPredecessor && directPredecessor->isLeave() )
+    {
+      // set it as direct predecessor if no closer one on another stream is found
+      directPredKernel = directPredecessor;
+    }
 
+    // look for later leave nodes on other device streams
+    const EventStreamGroup::EventStreamList& devStreams = 
+      streamGroup.getDeviceStreams( stream->getDeviceId() );
+    
+    for ( EventStreamGroup::EventStreamList::const_iterator it = devStreams.begin(); 
+          it != devStreams.end(); ++it )
+    {
+      EventStream* devStream = *it;
+      
+      // ignore kernels on the same stream
+      if( devStream->getId() == streamId )
+      {
+        continue;
+      }
+      
+      // get last node of the offloading paradigm for current stream
+      GraphNode* predKernel = 
+        devStream->getLastParadigmNode( node->getParadigm() );
+      if( !predKernel )
+      {
+        continue;
+      }
+      
+      // use the kernel leave node (if already available)
+      predKernel = predKernel->getGraphPair().second;
+      if( !predKernel )
+      {
+        continue;
+      }
+
+      // ignore the potential preceding kernel, if it overlaps with the source kernel
+      if( predKernel->getTime() > node->getTime() )
+      {
+        continue;
+      }
+      
+      //UTILS_WARNING( "%s: last kernel %s", node->getUniqueName().c_str(),
+      //               predKernel->getUniqueName().c_str() );
+
+      // if no direct predecessor is found yet or the current last kernel
+      // is after the current predecessor
+      if( !directPredKernel || Node::compareLess( directPredKernel, predKernel ) )
+      {
+        directPredKernel = predKernel;
+      }
+    }
+
+    // if we found a direct predecessor that is different from the one on the
+    // same stream and does not link to the current source kernel itself
+    if( directPredKernel && directPredKernel != directPredecessor 
+        && node != directPredKernel )
+    {
+      node->setLinkLeft( directPredKernel );
+      
+      //UTILS_WARNING( "%s link left to %s", node->getUniqueName().c_str(),
+      //               directPredKernel->getUniqueName().c_str() );
+    }
+  }
 }
 
 GraphNode*

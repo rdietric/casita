@@ -418,12 +418,12 @@ AnalysisEngine::createIntermediateBegin()
     //cudaAnalysis->printKernelLaunchMap();
   }
   
-  /*opencl::AnalysisParadigmOpenCL* oclAnalysis = NULL;
+  opencl::AnalysisParadigmOpenCL* oclAnalysis = NULL;
   if( haveParadigm( PARADIGM_OCL ) )
   {
     oclAnalysis = 
       (opencl::AnalysisParadigmOpenCL*)this->getAnalysisParadigm( PARADIGM_OCL );
-  }*/
+  }
   
   for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin();
         iter != streams.end(); ++iter )
@@ -481,16 +481,17 @@ AnalysisEngine::createIntermediateBegin()
             cudaAnalysis->clearKernelLaunches( p->getId() );
           }
           
-          /*if( oclAnalysis )
+          if( oclAnalysis )
           {
-            oclAnalysis->clearKernelLaunches( p->getId() );
-          }*/
+            oclAnalysis->clearKernelEnqueues( p->getId() );
+          }
         }
       }
       
       // delete all remaining nodes
       for (; it != nodes.end(); ++it )
       {
+        ////////////////////// CUDA /////////////////////
         // do not remove CUDA nodes that might be required later
         if( (*it)->isCUDA() )
         {
@@ -538,9 +539,52 @@ AnalysisEngine::createIntermediateBegin()
           {
             continue;
           }
-          
-          //continue;
         }
+        ////////////////////// End: CUDA /////////////////////
+        
+        ////////////////////// OpenCL /////////////////////
+        // do not remove OpenCL nodes that might be required later
+        if( (*it)->isOpenCL() )
+        {
+          if( havePendingKernels )
+          {
+            // incomplete (only enter exists) and unsynchronized kernels are not deleted
+            if( (*it)->isOpenCLKernel() )
+            {
+              // do not delete kernels that have not yet been synchronized
+              if( oclAnalysis->isKernelPending( *it ) )
+              {
+                continue;
+              }
+              else
+              {
+                // delete kernel launch leave nodes in kernel launch map
+                if( (*it)->isEnter() )
+                {
+                  oclAnalysis->removeKernelLaunch( *it );
+                }
+                // kernel launch enter nodes are consumed from kernel launch map at kernel enter
+              }
+            }
+            else          
+            // if the CUDA kernel launch enter node is not linked with the 
+            // associated kernel, the kernel has not started
+            if( (*it)->isOpenCLKernelEnqueue() /*&& (*it)->isEnter() && (*it)->getLink() == NULL*/ )
+            {
+              //UTILS_MSG(true, "[%"PRIu64"] Do not delete %s", p->getId(), 
+              //                getNodeInfo( *it ).c_str() );
+              continue;
+            }
+          }
+          
+          // do not delete OpenCL synchronization nodes
+          // \todo: why not?
+          if( (*it)->isOpenCLSync() )
+          {
+            continue;
+          }
+        }
+        ////////////////////// End: OpenCL /////////////////////
         
         //UTILS_MSG( true , 
         //  "[%"PRIu64"] Delete node %s", p->getId(), getNodeInfo(*it).c_str() );

@@ -33,6 +33,7 @@ namespace casita
    size_t      topX;
    string      predictionFilter;
    int         deviceIdle;
+   bool        linkKernels;
    bool        printCriticalPath;
    bool        cpaLoopCheck;
    bool        mergeActivities;

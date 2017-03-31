@@ -18,9 +18,6 @@
 #include "cuda/AnalysisParadigmCUDA.hpp"
 #include "AnalysisEngine.hpp"
 
-//#include "cuda/BlameKernelRule.hpp"
-//#include "cuda/BlameSyncRule.hpp"
-//#include "cuda/LateSyncRule.hpp"
 #include "cuda/SyncRule.hpp"
 #include "cuda/KernelExecutionRule.hpp"
 #include "cuda/EventLaunchRule.hpp"
@@ -713,4 +710,105 @@ void
 AnalysisParadigmCUDA::removeEventQuery( uint64_t eventId )
 {
   eventQueryMap.erase( eventId );
+}
+
+/**
+ * Create dependency edges from the given kernel enter to preceding kernels in
+ * other device streams.
+ * 
+ * @param kernelEnter
+ * @param prevKernelLeave
+ */
+void
+AnalysisParadigmCUDA::createKernelDependencies( GraphNode* kernelEnter ) const
+{
+  if( Parser::getInstance().getProgramOptions().linkKernels == false )
+  {
+    return;
+  }
+  
+  // if no kernel is given, assume a global device synchronization
+  if( kernelEnter == NULL )
+  {
+    const EventStreamGroup::EventStreamList& deviceStreams = 
+      commonAnalysis->getDeviceStreams();
+  
+    if( deviceStreams.size() == 0 )
+    {
+      UTILS_WARNING( "Cannot sync without device streams." );
+      return;
+    }
+
+    // find last kernel leave
+    EventStreamGroup::EventStreamList::const_iterator streamIt = deviceStreams.begin();
+    for( streamIt = deviceStreams.begin(); deviceStreams.end() != streamIt; ++streamIt )
+    {
+      GraphNode* lastKernelLeave = ( *streamIt )->getLastPendingKernel();
+      if( !kernelEnter || 
+         ( lastKernelLeave && Node::compareLess( kernelEnter, lastKernelLeave ) ) )
+      {
+        kernelEnter = lastKernelLeave;
+      }
+    }
+  }
+  
+  if( NULL == kernelEnter )
+  {
+    return;
+  }
+  else
+  {
+    kernelEnter = kernelEnter->getGraphPair().first;
+  }
+  
+  if( NULL == kernelEnter )
+  {
+    return;
+  }
+  
+  // kernel enter found ...
+  
+  //UTILS_MSG( true, "Create kernel dependency edges from %s", 
+  //                 commonAnalysis->getNodeInfo( kernelEnter ).c_str() );
+  
+  GraphNode* kernelLaunchEnter = ( GraphNode* ) kernelEnter->getLink();
+  //GraphNode* prevKernelEnter = NULL;
+  
+  while( true )
+  {
+    // get a preceding kernel via link left
+    GraphNode* prevKernelEnter = kernelEnter->getLinkLeft();
+    if( !prevKernelEnter )
+    {
+      // create edge to kernelLaunch if necessary
+      if( kernelEnter->getLink() != kernelLaunchEnter )
+      {
+        commonAnalysis->newEdge( kernelLaunchEnter, kernelEnter );
+      }
+
+      break;
+    }
+    
+    prevKernelEnter = kernelEnter->getLinkLeft()->getGraphPair().first;
+    if( !prevKernelEnter )
+    {
+      break;
+    }
+    
+    if( prevKernelEnter->getTime() > kernelLaunchEnter->getTime() )
+    {
+      // create dependency edge
+      //UTILS_WARNING( "Create edge between kernels: %s -> %s", 
+      //               commonAnalysis->getNodeInfo( prevKernelEnter->getGraphPair().second ).c_str(),
+      //               commonAnalysis->getNodeInfo( kernelEnter ).c_str());
+      commonAnalysis->newEdge( prevKernelEnter->getGraphPair().second, kernelEnter );
+    }
+    else
+    {
+      commonAnalysis->newEdge( kernelLaunchEnter, kernelEnter );
+      break;
+    }
+    
+    kernelEnter = prevKernelEnter;
+  }
 }

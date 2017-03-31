@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2014, 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -44,7 +44,7 @@ namespace casita
      }
 
      virtual
-     ~GraphNode( )
+     ~GraphNode()
      {
 
      }
@@ -79,7 +79,7 @@ namespace casita
      }
 
      virtual bool
-     hasPartner( ) const
+     hasPartner() const
      {
        return pair.first && pair.second;
      }
@@ -89,9 +89,9 @@ namespace casita
       * @return 
       */
      GraphNode*
-     getPartner( ) const
+     getPartner() const
      {
-       if ( isEnter( ) )
+       if ( isEnter() )
        {
          return pair.second;
        }
@@ -102,7 +102,7 @@ namespace casita
      }
 
      GraphNode*
-     getCaller( ) const
+     getCaller() const
      {
        return caller;
      }
@@ -114,7 +114,7 @@ namespace casita
      }
 
      GraphNodePair&
-     getGraphPair( ) 
+     getGraphPair() 
      {
        return pair;
      }
@@ -138,13 +138,13 @@ namespace casita
      }
 
      GraphNode*
-     getLinkLeft( )
+     getLinkLeft()
      {
        return linkLeft;
      }
 
      GraphNode*
-     getLinkRight( )
+     getLinkRight()
      {
        return linkRight;
      }
@@ -161,7 +161,7 @@ namespace casita
       * @return void pointer to node-type-specific data.
       */
      void*
-     getData( ) const
+     getData() const
      {
        return this->data;
      }
@@ -171,20 +171,20 @@ namespace casita
     findNode( const GraphNode* node, const std::vector< GraphNode* >& nodes )
     {
       // the vector is empty
-      if ( nodes.size( ) == 0 )
+      if ( nodes.size() == 0 )
       {
-        return nodes.rend( );
+        return nodes.rend();
       }
 
       // there is only one node in the vector
-      if ( nodes.size( ) == 1 )
+      if ( nodes.size() == 1 )
       {
-        return nodes.rbegin( );
+        return nodes.rbegin();
       }
 
       // set start boundaries for the search
       size_t indexMin = 0;
-      size_t indexMax = nodes.size( ) - 1;
+      size_t indexMax = nodes.size() - 1;
 
       size_t indexPrevMin = indexMin;
       size_t indexPrevMax = indexMax;
@@ -199,13 +199,13 @@ namespace casita
         indexPrev = indexPrevMax - ( indexPrevMax - indexPrevMin ) / 2;
         size_t index = indexMax - ( indexMax - indexMin ) / 2;
 
-        assert( index < nodes.size( ) ); //, "index %lu indexMax %lu indexMin %lu", index, indexMax, indexMin );
+        assert( index < nodes.size() ); //, "index %lu indexMax %lu indexMin %lu", index, indexMax, indexMin );
 
         // if we found the node at index ('middle' element)
         // for uneven elements, index points on the element after the half
         if ( nodes[index] == node )
         {
-          return nodes.rbegin( ) + ( nodes.size( ) - index - 1 );
+          return nodes.rbegin() + ( nodes.size() - index - 1 );
         }
 
         // indexMin == indexMax == index
@@ -214,27 +214,27 @@ namespace casita
         if ( indexMin == indexMax )
         {
           std::cerr << "Stream " << node->getStreamId() << " Looking for node " 
-                    << node->getUniqueName( ) << " - Wrong node found! Index (" 
+                    << node->getUniqueName() << " - Wrong node found! Index (" 
                     << index << ") node on break: "
-                    << nodes[index]->getUniqueName( ) << std::endl;
+                    << nodes[index]->getUniqueName() << std::endl;
 
           std::cerr << "Node sequence:" << std::endl;
           for(size_t i = index - 3; i < index + 4; i++)
           {
             if( nodes[i] )
-              std::cerr << nodes[i]->getUniqueName( ) << std::endl;
+              std::cerr << nodes[i]->getUniqueName() << std::endl;
           }
 
           std::cerr << " Previous compare node [" << indexPrevMin << ":" << indexPrevMax 
-                    << "]:" << nodes[indexPrev]->getUniqueName( )
+                    << "]:" << nodes[indexPrev]->getUniqueName()
                     << " with result: " << Node::compareLess( node, nodes[indexPrev] ) 
                     << std::endl;
 
-          std::cerr << " Pre-Previous compare node: " << nodes[indexPrev2]->getUniqueName( )
+          std::cerr << " Pre-Previous compare node: " << nodes[indexPrev2]->getUniqueName()
                     << " with result: " << Node::compareLess( node, nodes[indexPrev2] ) 
                     << std::endl;
-          //std::cerr << "return nodes.rbegin( ) = " << nodes.rbegin( ) << std::endl;
-          //std::cerr << "return nodes.rend( ) = " << nodes.rend( ) << std::endl;
+          //std::cerr << "return nodes.rbegin() = " << nodes.rbegin() << std::endl;
+          //std::cerr << "return nodes.rend() = " << nodes.rend() << std::endl;
 
           break;
         }
@@ -265,7 +265,7 @@ namespace casita
       while ( true );
 
       // return iterator to first element, if node could not be found
-      return nodes.rend( );
+      return nodes.rend();
     }
     
     /**
@@ -279,20 +279,20 @@ namespace casita
     findNode( uint64_t nodeId, const std::vector< GraphNode* >& nodes )
     {
       // the vector is empty
-      if ( nodes.size( ) == 0 )
+      if ( nodes.size() == 0 )
       {
         return NULL;
       }
 
       // there is only one node in the vector
-      if ( nodes.size( ) == 1 )
+      if ( nodes.size() == 1 )
       {
         return nodes.front();
       }
 
       // set start boundaries for the search
       size_t indexMin = 0;
-      size_t indexMax = nodes.size( ) - 1;
+      size_t indexMax = nodes.size() - 1;
 
       size_t indexPrevMin = indexMin;
       size_t indexPrevMax = indexMax;
@@ -307,7 +307,7 @@ namespace casita
         indexPrev = indexPrevMax - ( indexPrevMax - indexPrevMin ) / 2;
         size_t index = indexMax - ( indexMax - indexMin ) / 2;
 
-        assert( index < nodes.size( ) ); //, "index %lu indexMax %lu indexMin %lu", index, indexMax, indexMin );
+        assert( index < nodes.size() ); //, "index %lu indexMax %lu indexMin %lu", index, indexMax, indexMin );
 
         // if we found the node at index ('middle' element)
         // for uneven elements, index points on the element after the half
@@ -324,21 +324,21 @@ namespace casita
           std::cerr << "Looking for node ID " 
                     << nodeId << " - Wrong node found! Index (" 
                     << index << ") node on break: "
-                    << nodes[index]->getUniqueName( ) << std::endl;
+                    << nodes[index]->getUniqueName() << std::endl;
 
           std::cerr << "Node sequence:" << std::endl;
           for(size_t i = index - 3; i < index + 4; i++)
           {
             if( nodes[i] )
-              std::cerr << nodes[i]->getUniqueName( ) << std::endl;
+              std::cerr << nodes[i]->getUniqueName() << std::endl;
           }
 
           std::cerr << " Previous compare node [" << indexPrevMin << ":" << indexPrevMax 
-                    << "]:" << nodes[indexPrev]->getUniqueName( )
+                    << "]:" << nodes[indexPrev]->getUniqueName()
                     << " with result: " << ( nodeId < nodes[indexPrev]->getId() )
                     << std::endl;
 
-          std::cerr << " Pre-Previous compare node: " << nodes[indexPrev2]->getUniqueName( )
+          std::cerr << " Pre-Previous compare node: " << nodes[indexPrev2]->getUniqueName()
                     << " with result: " << ( nodeId < nodes[indexPrev2]->getId() )
                     << std::endl;
           break;
@@ -384,7 +384,7 @@ namespace casita
     search( const GraphNode* node, const std::list< GraphNode* >& nodes )
     {
       // the list is empty
-      if ( nodes.size( ) == 0 )
+      if ( nodes.size() == 0 )
       {
         return false;
       }
@@ -403,20 +403,20 @@ namespace casita
     findLastNodeBefore( uint64_t time, const std::vector< GraphNode* >& nodes )
     {
       // the vector is empty
-      if ( nodes.size( ) == 0 )
+      if ( nodes.size() == 0 )
       {
         return NULL;
       }
 
       // there is only one node in the vector
-      if ( nodes.size( ) == 1 )
+      if ( nodes.size() == 1 )
       {
         return nodes.front();
       }
 
       // set start boundaries for the search
       size_t indexMin = 0;
-      size_t indexMax = nodes.size( ) - 1;
+      size_t indexMax = nodes.size() - 1;
       
       // do a binary search
       do

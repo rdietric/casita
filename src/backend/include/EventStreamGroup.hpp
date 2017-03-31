@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2014, 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -55,9 +55,9 @@ namespace casita
 
       const EventStreamList&
       getDeviceStreams() const;
-     
-      void
-      getDeviceStreams( int deviceId, EventStreamList& newDeviceStreams ) const;
+      
+      const EventStreamList&
+      getDeviceStreams( int deviceId );
 
       void
       getAllDeviceStreams( EventStreamList& newDeviceStreams ) const;
@@ -85,7 +85,10 @@ namespace casita
      
       EventStream*    deviceNullStream;
       
-      std::map< int, EventStream* > deviceFirstStreamMap;      
+      std::map< int, EventStream* > deviceFirstStreamMap;  
+      
+      //<! collect all device streams per device Id
+      std::map< int, EventStreamList > deviceIdStreamsMap; 
  };
 
 }
