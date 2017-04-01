@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014-2016,
+ * Copyright (c) 2014-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -42,6 +42,8 @@ AnalysisParadigmOMP::AnalysisParadigmOMP( AnalysisEngine* analysisEngine ) :
     //addRule( new OMPTargetRule( 1 ) );        // libmpti is deprecated
     //addRule( new OMPTargetBarrierRule( 1 ) ); //libmpti is deprecated
   }
+  
+  nestingLevel = 0;
 }
 
 AnalysisParadigmOMP::~AnalysisParadigmOMP(){ }
@@ -317,6 +319,31 @@ AnalysisParadigmOMP::omptBarrierRule( GraphNode* syncLeave )
 }
 
 /**
+ * Get nesting level of parallel regions during trace reading.
+ * 
+ * @return nesting level of parallel regions
+ */
+size_t
+AnalysisParadigmOMP::getNestingLevel()
+{
+  return nestingLevel;
+}
+
+/**
+ * Handle enter nodes of the OpenMP paradigm during the trace read process.
+ * 
+ * @param ompEnter OpenMP leave node
+ */
+void
+AnalysisParadigmOMP::handlePostEnter( GraphNode* ompEnter )
+{
+  if ( ompEnter->isOMPForkJoinRegion() )
+  {
+    nestingLevel++;
+  }
+}
+
+/**
  * Handle leave nodes of the OpenMP paradigm during the trace read process.
  * 
  * @param ompLeave OpenMP leave node
@@ -324,13 +351,10 @@ AnalysisParadigmOMP::omptBarrierRule( GraphNode* syncLeave )
 void
 AnalysisParadigmOMP::handlePostLeave( GraphNode* ompLeave )
 {
-  // fork/join region on the target device
-  /*if ( ompLeave->isOMPForkJoinRegion() &&
-       ( commonAnalysis->getStream( ompLeave->getStreamId() )->getStreamType()
-         == EventStream::ES_DEVICE ) )
+  if ( ompLeave->isOMPForkJoinRegion() )
   {
-    popOmpTargetRegion( ompLeave );
-  }*/
+    nestingLevel--;
+  }
 
   if ( ompLeave->isOMPSync() )
   {
@@ -598,7 +622,7 @@ AnalysisParadigmOMP::pushFork( GraphNode* node )
  * @return the innermost fork-join node or NULL if stack is empty.
  */
 GraphNode*
-AnalysisParadigmOMP::popFork( )
+AnalysisParadigmOMP::popFork()
 {
   if( forkJoinStack.empty() )
   {
@@ -622,7 +646,7 @@ AnalysisParadigmOMP::popFork( )
 GraphNode*
 AnalysisParadigmOMP::getOmpCompute( uint64_t streamId )
 {
-  return ompComputeTrackMap[streamId];
+  return ompComputeTrackMap[ streamId ];
 }
 
 /**
@@ -634,7 +658,7 @@ AnalysisParadigmOMP::getOmpCompute( uint64_t streamId )
 void
 AnalysisParadigmOMP::setOmpCompute( GraphNode* node, uint64_t streamId )
 {
-  ompComputeTrackMap[streamId] = node;
+  ompComputeTrackMap[ streamId ] = node;
 }
 
 const GraphNode::GraphNodeList&
@@ -642,7 +666,7 @@ AnalysisParadigmOMP::getBarrierEventList( bool device, GraphNode* caller, int ma
 {
   if ( device )
   {
-    return ompBarrierListDevice[std::make_pair( 0, matchingId )];
+    return ompBarrierListDevice[ std::make_pair( 0, matchingId ) ];
   }
   else
   {
@@ -669,7 +693,7 @@ AnalysisParadigmOMP::addBarrierEventToList( GraphNode* node,
 
   if ( device )
   {
-    ompBarrierListDevice[std::make_pair( 0, matchingId )].push_back( node );
+    ompBarrierListDevice[ std::make_pair( 0, matchingId ) ].push_back( node );
   }
   else
   {
@@ -682,7 +706,7 @@ AnalysisParadigmOMP::clearBarrierEventList( bool device, GraphNode* caller, int 
 {
   if ( device )
   {
-    ompBarrierListDevice[std::make_pair( 0, matchingId )].clear( );
+    ompBarrierListDevice[ std::make_pair( 0, matchingId ) ].clear( );
   }
   else
   {

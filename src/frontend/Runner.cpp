@@ -218,12 +218,18 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   ////////////////////////////////////////////////////////
   // reading events, until the end of the trace is reached
   
-  // minimum number of graph nodes required to start analysis
-  
+  // get OpenMP analysis, if the paradigm is used in the trace file
+  omp::AnalysisParadigmOMP* ompAnalysis = NULL;
+  if( analysis.haveParadigm( PARADIGM_OMP ) )
+  {
+    ompAnalysis = 
+      (omp::AnalysisParadigmOMP*)analysis.getAnalysisParadigm( PARADIGM_OMP );
+  }
   
   bool events_available = false;
   bool otf2_def_written = false;
   
+  // minimum number of graph nodes required to start analysis
   uint64_t interval_node_id   = 0;
   uint32_t analysis_intervals = 0;
   uint64_t total_events_read  = 0;
@@ -231,7 +237,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   
   clock_t time_events_read   = 0;
   clock_t time_events_write  = 0;
-  clock_t time_events_flush   = 0;
+  clock_t time_events_flush  = 0;
   clock_t time_analysis_mpi  = 0;
   clock_t time_analysis_omp  = 0;
   clock_t time_analysis_cuda = 0;
@@ -257,14 +263,28 @@ Runner::processTrace( OTF2TraceReader* traceReader )
       time_tmp = clock();
       
       bool start_analysis = false;
-
-      // get the last node's ID
-      uint64_t last_node_id = analysis.getGraph().getNodes().back()->getId();
-      uint64_t current_pending_nodes = last_node_id - interval_node_id;
-      interval_node_id = last_node_id;
       
-      // \todo: this is expensive, because we add for every global collective an additional MPI_Allreduce
-      // gather maximum pending nodes on all processes
+      uint64_t last_node_id = 0;
+      uint64_t current_pending_nodes = 0;
+        
+      // if the global collective if within an OpenMP region and barriers are
+      // open we need to retain the MPI nodes and cannot start an intermediate 
+      // analysis
+      if( ompAnalysis && ompAnalysis->getNestingLevel() > 0 )
+      {
+        /*UTILS_MSG( true, "Found issue at barrier %s",
+                   ompAnalysis->getBarrierEventList( false ).back()->getUniqueName().c_str() );*/
+      }
+      else
+      {
+        // get the last node's ID
+        last_node_id = analysis.getGraph().getNodes().back()->getId();
+        
+        current_pending_nodes = last_node_id - interval_node_id;        
+      }
+      
+      // \todo: this is expensive, because we add for every global collective an
+      // additional MPI_Allreduce to gather the maximum pending nodes on all processes
       uint64_t maxNodes = 0;
       MPI_CHECK( MPI_Allreduce( &current_pending_nodes, &maxNodes, 1, 
                                 MPI_UINT64_T, MPI_MAX, MPI_COMM_WORLD ) );
@@ -272,6 +292,9 @@ Runner::processTrace( OTF2TraceReader* traceReader )
       if ( options.analysisInterval < maxNodes )
       {
         start_analysis = true;
+        
+        // set a new interval begin node ID
+        interval_node_id = last_node_id;
       }
       
       time_events_flush += clock() - time_tmp;

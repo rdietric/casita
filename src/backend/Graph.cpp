@@ -562,7 +562,7 @@ Graph::printPath( const GraphNode::GraphNodeList& path ) const
 void
 Graph::printInEdges( GraphNode* node ) const
 {
-  UTILS_MSG( true, "    In-edges for %s:", node->getUniqueName().c_str() );
+  UTILS_MSG( true, "  <- in-edges for %s:", node->getUniqueName().c_str() );
   const Graph::EdgeList& inEdges = getInEdges( node );
   for ( Graph::EdgeList::const_iterator eIter = inEdges.begin();
         eIter != inEdges.end(); ++eIter )
@@ -575,12 +575,11 @@ Graph::printInEdges( GraphNode* node ) const
 void
 Graph::printCircle( GraphNode* node, GraphNode::GraphNodeList& nodeList ) const
 {
-  UTILS_MSG( true, "Circular dependency in local critical path analysis!" );
-  UTILS_MSG( true, " %s", node->getUniqueName().c_str() );
+  UTILS_MSG( true, "Detected circular dependency in local critical path analysis"
+    " at %s. Print node list: " , node->getUniqueName().c_str() );
   for( GraphNode::GraphNodeList::const_iterator it = nodeList.begin();
        it != nodeList.end(); ++it )
   {
-    UTILS_MSG( true, "  <- %s", (*it)->getUniqueName().c_str() );
     printInEdges( *it );
     
     if( node == *it )
@@ -656,8 +655,8 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
         if( Parser::getInstance().getProgramOptions().cpaLoopCheck && 
             GraphNode::search( currentNode, path ) )
         {
-          UTILS_WARNING( "Circular loop detected in local critical path analysis at %s! ",
-                         currentNode->getUniqueName().c_str() );
+          //UTILS_WARNING( "Circular loop detected in local critical path analysis at %s! ",
+          //               currentNode->getUniqueName().c_str() );
           
           printCircle( currentNode, path );
           

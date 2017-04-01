@@ -52,15 +52,12 @@ namespace casita
         {
           return false;
         }
-
-        /*if(barrierEnter->isLeave())
-          assert(0);*/
         
         // save barrier enter events to BarrierEventList on the host
         analysis->addBarrierEventToList( barrierEnter, false );
 
         const EventStreamGroup::EventStreamList& streams =
-          commonAnalysis->getHostStreams( );
+          commonAnalysis->getHostStreams();
         
         // get list with all barrier enter events on the host
         const GraphNode::GraphNodeList& barrierList =

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014, 2016,
+ * Copyright (c) 2014, 2016, 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -48,10 +48,13 @@ namespace casita
       AnalysisParadigmOMP( AnalysisEngine* analysisEngine );
 
       virtual
-      ~AnalysisParadigmOMP( );
+      ~AnalysisParadigmOMP();
 
       Paradigm
-      getParadigm( );
+      getParadigm();
+      
+      void
+      handlePostEnter( GraphNode* node );
       
       void
       handlePostLeave( GraphNode* node );
@@ -67,13 +70,16 @@ namespace casita
                             GraphNode*        oldNode,
                             OTF2KeyValueList* list );
       
+      size_t
+      getNestingLevel();
+      
       /**
        * Get the innermost fork-join node (top node on the stack).
        * 
        * @return the innermost fork-join node or NULL if stack is empty.
        */
       GraphNode*
-      getInnerMostFork( );
+      getInnerMostFork();
 
       /**
        * Push fork operation (parallel begin) to the fork-join stack.
@@ -142,6 +148,10 @@ namespace casita
       findOmpTargetParentRegion( GraphNode* node, uint64_t parentRegionId );
 
     private:
+      
+      //<! nesting level while reading the trace
+      size_t nestingLevel;
+      
       //// OMPT related ////
       
       //<! key: parallel region ID, value: parallel enter node

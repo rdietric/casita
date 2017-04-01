@@ -51,6 +51,13 @@ namespace casita
        this->edgeDuration = duration;
        this->edgeWeight   = computeWeight( duration, isBlocking() );
        this->edgeParadigm = edgeParadigm;
+       
+       if( start->getId() == 5122 && end->getId() == 5112 )
+       {
+         UTILS_MSG( start->getId() == 5122 && end->getId() == 5112,
+                  "xxxxxxxxx Create edge %s", this->getName().c_str() );
+       }
+       
      }
 
      bool

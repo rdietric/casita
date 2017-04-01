@@ -491,26 +491,27 @@ AnalysisEngine::createIntermediateBegin()
       // delete all remaining nodes
       for (; it != nodes.end(); ++it )
       {
+        GraphNode* node = *it;
         ////////////////////// CUDA /////////////////////
         // do not remove CUDA nodes that might be required later
-        if( (*it)->isCUDA() )
+        if( node->isCUDA() )
         {
           if( havePendingKernels )
           {
             // incomplete (only enter exists) and unsynchronized kernels are not deleted
-            if( (*it)->isCUDAKernel() )
+            if( node->isCUDAKernel() )
             {
               // do not delete kernels that have not yet been synchronized
-              if( cudaAnalysis->isKernelPending( *it ) )
+              if( cudaAnalysis->isKernelPending( node ) )
               {
                 continue;
               }
               else
               {
                 // delete kernel launch leave nodes in kernel launch map
-                if( (*it)->isEnter() )
+                if( node->isEnter() )
                 {
-                  cudaAnalysis->removeKernelLaunch( *it );
+                  cudaAnalysis->removeKernelLaunch( node );
                 }
                 // kernel launch enter nodes are consumed from kernel launch map at kernel enter
               }
@@ -518,7 +519,7 @@ AnalysisEngine::createIntermediateBegin()
             else          
             // if the CUDA kernel launch enter node is not linked with the 
             // associated kernel, the kernel has not started
-            if( (*it)->isCUDAKernelLaunch() /*&& (*it)->isEnter() && (*it)->getLink() == NULL*/ )
+            if( node->isCUDAKernelLaunch() /*&& (*it)->isEnter() && (*it)->getLink() == NULL*/ )
             {
               //UTILS_MSG(true, "[%"PRIu64"] Do not delete %s", p->getId(), 
               //                getNodeInfo( *it ).c_str() );
@@ -528,14 +529,14 @@ AnalysisEngine::createIntermediateBegin()
           
           //else
           // if CUDA event record node has not yet been synchronized
-          if( (*it)->isCUDAEventLaunch() && (*it)->isLeave() && (*it)->getData() == NULL )
+          if( node->isCUDAEventLaunch() && node->isLeave() && node->getData() == NULL )
           {
             continue;
           }
           
           // do not delete CUDA synchronization nodes
           // \todo: why not?
-          if( (*it)->isCUDASync() )
+          if( node->isCUDASync() )
           {
             continue;
           }
@@ -544,24 +545,24 @@ AnalysisEngine::createIntermediateBegin()
         
         ////////////////////// OpenCL /////////////////////
         // do not remove OpenCL nodes that might be required later
-        if( (*it)->isOpenCL() )
+        if( node->isOpenCL() )
         {
           if( havePendingKernels )
           {
             // incomplete (only enter exists) and unsynchronized kernels are not deleted
-            if( (*it)->isOpenCLKernel() )
+            if( node->isOpenCLKernel() )
             {
               // do not delete kernels that have not yet been synchronized
-              if( oclAnalysis->isKernelPending( *it ) )
+              if( oclAnalysis->isKernelPending( node ) )
               {
                 continue;
               }
               else
               {
                 // delete kernel launch leave nodes in kernel launch map
-                if( (*it)->isEnter() )
+                if( node->isEnter() )
                 {
-                  oclAnalysis->removeKernelLaunch( *it );
+                  oclAnalysis->removeKernelLaunch( node );
                 }
                 // kernel launch enter nodes are consumed from kernel launch map at kernel enter
               }
@@ -569,7 +570,7 @@ AnalysisEngine::createIntermediateBegin()
             else          
             // if the CUDA kernel launch enter node is not linked with the 
             // associated kernel, the kernel has not started
-            if( (*it)->isOpenCLKernelEnqueue() /*&& (*it)->isEnter() && (*it)->getLink() == NULL*/ )
+            if( node->isOpenCLKernelEnqueue() /*&& (*it)->isEnter() && (*it)->getLink() == NULL*/ )
             {
               //UTILS_MSG(true, "[%"PRIu64"] Do not delete %s", p->getId(), 
               //                getNodeInfo( *it ).c_str() );
@@ -579,7 +580,7 @@ AnalysisEngine::createIntermediateBegin()
           
           // do not delete OpenCL synchronization nodes
           // \todo: why not?
-          if( (*it)->isOpenCLSync() )
+          if( node->isOpenCLSync() )
           {
             continue;
           }

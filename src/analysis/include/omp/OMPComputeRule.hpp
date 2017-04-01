@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,2016
+ * Copyright (c) 2013-2014,2016, 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -50,12 +50,12 @@ namespace casita
         }
 
         // if this is the first compute node (no compute region is set)
-        if ( analysis->getOmpCompute( node->getStreamId( ) ) == NULL )
+        if ( analysis->getOmpCompute( node->getStreamId() ) == NULL )
         {
           GraphNode* pForkJoin = analysis->getInnerMostFork();
 
           // create dependency edge to the innermost fork node
-          // if fork and node are on the same stream the dependency is implicit
+          // if fork and node are on the same stream the dependency is already created
           if ( pForkJoin && ( pForkJoin->getStreamId() != node->getStreamId() ) )
           {
             GraphNode* kernelEnter = node->getGraphPair().first;
@@ -68,6 +68,10 @@ namespace casita
                       analysis->getCommon()->getNodeInfo( pForkJoin ).c_str(),
                       analysis->getCommon()->getNodeInfo( node ).c_str() );*/
           }
+          /*else
+          {
+            UTILS_MSG( true, "Could not find edge!");
+          }*/
         }
         
         // set node as active OpenMP compute region
