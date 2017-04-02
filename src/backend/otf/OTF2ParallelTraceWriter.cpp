@@ -863,9 +863,9 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
   OTF2_ErrorCode otf2_error = OTF2_Reader_ReadGlobalEvents( 
     otf2Reader, otf2GlobalEventReader, eventsToRead, &events_read );
   
-  UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-                 "[0] Writer: Read %"PRIu64" / %"PRIu64" events", 
-                 events_read, eventsToRead );
+  UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() > VERBOSE_BASIC, 
+             "[0] Writer: Read %"PRIu64" / %"PRIu64" events", 
+             events_read, eventsToRead );
   
   if ( OTF2_SUCCESS != otf2_error )
   {

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2014, 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -137,18 +137,44 @@ namespace casita
     ErrorUtils::getInstance( ).throwError( fmt, ## __VA_ARGS__ ); \
   }
 
+#define UTILS_OUT( fmt, ... ) \
+   ErrorUtils::getInstance().outputMessage( fmt, ## __VA_ARGS__ );
+ 
 #define UTILS_MSG( cond, fmt, ... ) \
   if ( cond ) { \
-    ErrorUtils::getInstance( ).outputMessage( fmt, ## __VA_ARGS__ ); \
+    ErrorUtils::getInstance().outputMessage( fmt, ## __VA_ARGS__ ); \
   }
  
 #define UTILS_MSG_NOBR( cond, fmt, ... ) \
   if ( cond ) { \
-    ErrorUtils::getInstance( ).outputMessageNoLineBreak( fmt, ## __VA_ARGS__ ); \
+    ErrorUtils::getInstance().outputMessageNoLineBreak( fmt, ## __VA_ARGS__ ); \
   }
  
 #define UTILS_WARNING( fmt, ... ) \
-    ErrorUtils::getInstance( ).outputMessage( "Warning: " fmt, ## __VA_ARGS__ );
+    ErrorUtils::getInstance().outputMessage( "Warning: " fmt, ## __VA_ARGS__ );
+ 
+/**
+ * Emit a warning, but only on first occurrence.
+ * (Code snippet taken from Score-P)
+ */
+#define UTILS_WARN_ONCE( fmt, ... ) \
+  do { \
+    static int utils_warn_once_##__LINE__; \
+    if ( !utils_warn_once_##__LINE__ ) \
+    { \
+      utils_warn_once_##__LINE__ = 1; \
+      ErrorUtils::getInstance().outputMessage( "Warn once: " fmt, ## __VA_ARGS__ ); \
+    }\
+  } while ( 0 )
+ 
+#define UTILS_MSG_ONCE_OR( cond, fmt, ... ) \
+ if ( cond ) { \
+   UTILS_OUT( fmt, __VA_ARGS__ ); \
+ } \
+ else \
+ { \
+   UTILS_WARN_ONCE( fmt, __VA_ARGS__ ); \
+ }
 
 // debugging
 #if defined(DEBUG) && defined(DEBUG_LEVEL)

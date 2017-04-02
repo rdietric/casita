@@ -287,7 +287,7 @@ MPIAnalysis::reset()
   // 
   if( remoteNodeMap.size() > 0 ) 
   {
-    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+    UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC, 
                "[%"PRIu32"] Clear %lu remote nodes. Critical path analysis "
                "might fail otherwise.", mpiRank, remoteNodeMap.size() );
     
@@ -296,7 +296,7 @@ MPIAnalysis::reset()
       for( RemoteNodeMap::const_iterator it = remoteNodeMap.begin(); 
            it != remoteNodeMap.end(); ++it )
       {
-        UTILS_MSG( true, "[%"PRIu32"] Node %s has open remote node %"PRIu64
+        UTILS_OUT( "[%"PRIu32"] Node %s has open remote node %"PRIu64
                          " on stream %"PRIu64, 
                    mpiRank, it->first->getUniqueName().c_str(), 
                    it->second.nodeID, it->second.streamID );

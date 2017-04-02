@@ -1532,17 +1532,18 @@ EventStream::reset()
   mpiIsendPartner = std::numeric_limits< uint64_t >::max();
     
   // reset list of pending request IDs (non-blocking MPI)
-  if( !(pendingRequests.empty()) )
+  if( !( pendingRequests.empty() ) )
   {
-    UTILS_MSG( true, "[%"PRIu64"] Clear list of pending OTF2 requests (%lu)!", 
-                     this->id, this->pendingRequests.size() );
+    UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+                       "[%"PRIu64"] Clear list of pending OTF2 requests (%lu)!", 
+                       this->id, this->pendingRequests.size() );
     pendingRequests.clear();
   }
   
   // clear list of pending non-blocking MPI communication records
   if( !(mpiIcommRecords.empty()) )
   {
-    UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE, 
+    UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
                "[%"PRIu64"] Clear list of pending non-blocking MPI communication "
                "records (%lu)!", this->id, this->mpiIcommRecords.size() );
     

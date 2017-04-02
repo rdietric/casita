@@ -260,7 +260,7 @@ OTF2TraceReader::readEvents( uint64_t *events_read )
   }
 
   UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-             "[0] Read %" PRIu64 " events", *events_read );
+             "[0] ... %" PRIu64 " events read", *events_read );
 
   OTF2_Reader_CloseGlobalEvtReader( reader, global_evt_reader );
 
@@ -403,7 +403,7 @@ OTF2TraceReader::readDefinitions()
                                         &definitions_read );
 
   UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-             "[0] Read %" PRIu64 " definitions in Phase 1", definitions_read );
+             "  ... %" PRIu64 " OTF2 definitions read", definitions_read );
 
   close();  
   
@@ -417,9 +417,6 @@ OTF2TraceReader::readDefinitions()
   }
 
   open( baseFilename.c_str(), 10 );
-
-  UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-             "[0] Read %" PRIu64 " definitions in Phase 2", definitions_read );
 
   // add forkJoin "region" to support internal OMP-fork/join model
   // get a new string reference
@@ -570,12 +567,12 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
   
-  // group paradigm is MPI (MPI communication groups)
-  if( paradigm == OTF2_PARADIGM_MPI )
+  // not empty groups with paradigm MPI (MPI communication groups)
+  if( paradigm == OTF2_PARADIGM_MPI && numberOfMembers > 0 )
   {
     UTILS_MSG_NOBR( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC && 
                     name != OTF2_UNDEFINED_STRING, 
-                    "[0] Handle OTF2 MPI group definition %u: %s (",  
+                    "  [0] OTF2 MPI group definition %u: %s (",  
                     self, tr->stringRefMap[ name ].c_str() );
 
     // store group members
@@ -584,18 +581,18 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
     {
       myMembers[ i ] = members[ i ];
       UTILS_MSG_NOBR( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-                      " %llu", members[ i ] );
+                      " %" PRIu64, members[ i ] );
     }
     UTILS_MSG( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, " )" );
 
     OTF2Group myGroup;
-    myGroup.groupId          = self;
-    myGroup.members          = myMembers;
-    myGroup.numberOfMembers  = numberOfMembers;
-    myGroup.paradigm         = paradigm;
-    myGroup.stringRef        = name;
-    myGroup.groupType        = groupType;
-    myGroup.groupFlag        = groupFlags;
+    myGroup.groupId         = self;
+    myGroup.members         = myMembers;
+    myGroup.numberOfMembers = numberOfMembers;
+    myGroup.paradigm        = paradigm;
+    myGroup.stringRef       = name;
+    myGroup.groupType       = groupType;
+    myGroup.groupFlag       = groupFlags;
 
     // store the group in a map
     tr->groupMap[ self ] = myGroup;
@@ -607,12 +604,11 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
       if ( numberOfMembers <= tr->mpiRank )
       {
         throw RTException(
-            "Process group MPI_COMM_WORLD has no process for this MPI rank (%u)",
-            tr->mpiRank );
+          "Process group MPI_COMM_WORLD has no process for this MPI rank (%u)",
+          tr->mpiRank );
       }
 
       // set the trace reader's stream ID
-      //\todo: needed?
       tr->setMPIStreamId( members[ tr->mpiRank ] );
 
       // save all members of the global MPI group with their rank
@@ -655,19 +651,19 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Comm( void*          userData,
   CommGroupMap::iterator iter = tr->groupMap.find( group );
   
   // if group was not found, it is not of paradigm MPI
+  // \todo: not empty
   if( iter == tr->groupMap.end() )
   {
     return OTF2_CALLBACK_SUCCESS;
   }
-  //UTILS_ASSERT( iter != tr->groupMap.end(), 
-  //              "OTF2 definition reader: Group not found" );
+  
+  OTF2Group& myGroup = iter->second;
   
   UTILS_MSG( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC && 
              name != OTF2_UNDEFINED_STRING, 
-             "[0] Handle OTF2 communicator definition %u: %s",  
-             self, tr->stringRefMap[ name ].c_str() );
+             "  [0] OTF2 communicator definition %u: %s (group %u)",  
+             self, tr->stringRefMap[ name ].c_str(), myGroup.groupId );
   
-  OTF2Group& myGroup = iter->second;
   if ( myGroup.paradigm == OTF2_PARADIGM_MPI ) // only MPI is stored
   {
     // make sure that no other definition of MPI_COMM_WORLD is written

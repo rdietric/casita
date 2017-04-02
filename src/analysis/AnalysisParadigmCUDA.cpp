@@ -241,7 +241,7 @@ AnalysisParadigmCUDA::isKernelPending( GraphNode* kernelNode )
     // kernel leave has not yet been synchronized (compare BlameKernelRule)
     if( kernelNode->getGraphPair().second->getLink() == NULL )
     {
-      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+      UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC, 
                  "[%"PRIu64"] Do not delete unsynchronized kernel %s", 
                  kernelNode->getStreamId(), 
                  this->commonAnalysis->getNodeInfo( kernelNode ).c_str() );
@@ -251,7 +251,7 @@ AnalysisParadigmCUDA::isKernelPending( GraphNode* kernelNode )
   // enter kernel nodes without partner must NOT be deleted
   else if( kernelNode->isEnter() )
   {
-    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+    UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC, 
                "[%"PRIu64"] Do not delete incomplete kernel %s", 
                kernelNode->getStreamId(), 
                this->commonAnalysis->getNodeInfo( kernelNode ).c_str() );

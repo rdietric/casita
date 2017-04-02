@@ -438,7 +438,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     
     UTILS_MSG( options.verbose >= VERBOSE_TIME && analysis.haveParadigm( PARADIGM_OCL ), 
                "[0] OpenCL analysis took %f seconds.", 
-               ( (float) time_analysis_omp ) / CLOCKS_PER_SEC );
+               ( (float) time_analysis_ocl ) / CLOCKS_PER_SEC );
 
     UTILS_MSG( options.verbose >= VERBOSE_TIME && analysis.haveParadigm( PARADIGM_CUDA ), 
                "[0] CUDA analysis took %f seconds.", 
@@ -711,20 +711,24 @@ Runner::computeCriticalPath( const bool firstInterval, const bool lastInterval )
     }
     
     // perform MPI reverse replay using blocking edges; create a list of sections
-    UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+    UTILS_MSG_NOBR( mpiRank == 0 && options.verbose >= VERBOSE_BASIC,
                "Start critical-path detection for MPI ..." );
     detectCriticalPathMPIP2P( sectionsList, criticalNodes );
     
     if( sectionsList.size() > 0 )
     {
       // detect the critical path within all sections individually
-      UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-                 "Start critical-path detection for %llu sections ...",
+      UTILS_MSG( mpiRank == 0 && options.verbose >= VERBOSE_BASIC,
+                 " for %llu sections.",
                  sectionsList.size() );
       
       getCriticalLocalNodes( sectionsList, criticalNodes );
       
       sectionsList.clear();
+    }
+    else
+    {
+      UTILS_MSG( mpiRank == 0 && options.verbose >= VERBOSE_BASIC, "");
     }
   }
   else
@@ -744,8 +748,8 @@ Runner::computeCriticalPath( const bool firstInterval, const bool lastInterval )
   if ( criticalNodes.size() > 0 )
   {
     // compute the time-on-critical-path counter
-    UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-               "[0] Set time-on-critical-path for nodes" );
+    UTILS_MSG( options.verbose > VERBOSE_BASIC && mpiRank == 0,
+               "  Set time-on-critical-path for nodes" );
 
     // set all critical path counter to '1' for all critical nodes
     // AND find the timely first and the last critical node
@@ -1058,7 +1062,7 @@ Runner::getCriticalLocalNodes( MPIAnalysis::CriticalSectionsList& sections,
     else
     {
       UTILS_MSG( options.verbose > VERBOSE_ALL,
-                 "[%d] computing local critical path between MPI nodes [%s, %s]",
+                 "  [%d] computing local critical path between MPI nodes [%s, %s]",
                  mpiRank,
                  startNode->getUniqueName().c_str(),
                  endNode->getUniqueName().c_str() );
@@ -1082,7 +1086,7 @@ Runner::getCriticalLocalNodes( MPIAnalysis::CriticalSectionsList& sections,
          ( startLocalNode->getTime() >= endLocalNode->getTime() ) )
     {
       UTILS_MSG( options.verbose > VERBOSE_ALL && startLocalNode && endLocalNode,
-                 "[%d] No local path between MPI nodes %s (link right %p, %s) "
+                 "  [%d] No local path between MPI nodes %s (link right %p, %s) "
                  "and %s (link left %p, %s)", mpiRank,
                  startNode->getUniqueName().c_str(),
                  startLocalNode, startLocalNode->getUniqueName().c_str(),
@@ -1106,7 +1110,7 @@ Runner::getCriticalLocalNodes( MPIAnalysis::CriticalSectionsList& sections,
     }
 
     UTILS_MSG( options.verbose > VERBOSE_ALL,
-               "[%d] Computing local critical path for section (%s,%s): (%s,%s)",
+               "  [%d] Computing local critical path for section (%s,%s): (%s,%s)",
                mpiRank,
                startNode->getUniqueName().c_str(), 
                endNode->getUniqueName().c_str(),
@@ -1205,7 +1209,7 @@ Runner::findLastMpiNode( GraphNode** localLastMpiLeave )
     //(*localLastMpiLeave)->setCounter( CRITICAL_PATH, 1 );
 
     UTILS_DBG_MSG( DEBUG_CPA_MPI,
-                   "[%u] critical path reverse replay starts at node %s (%f)",
+                   "  [%u] critical path reverse replay starts at node %s (%f)",
                    mpiRank, myLastMpiNode->getUniqueName().c_str(),
                    analysis.getRealTime( myLastMpiNode->getTime() ) );
    

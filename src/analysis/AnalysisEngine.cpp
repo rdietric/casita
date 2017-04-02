@@ -458,16 +458,19 @@ AnalysisEngine::createIntermediateBegin()
         // do not delete the last node of a device stream, if it is an enter node
         if( nodes.back()->isEnter() )
         {
-          UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-                     "[%"PRIu64"] Do not delete incomplete kernel %s",
-                     p->getId(), getNodeInfo( nodes.back() ).c_str() );
+          UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC,
+            "[%"PRIu64"] Found incomplete kernel %s at intermediate analysis start.", 
+            p->getId(), getNodeInfo( nodes.back() ).c_str())
+          
           nodes.pop_back();
         }
         
         // check for pending kernels
         if( p->getLastPendingKernel() )
         {
-          UTILS_MSG( true, "[%"PRIu64"] There are pending kernels!" );
+          UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC, 
+            "Stream %"PRIu64" has pending kernels at intermediate analysis start.", 
+            p->getId() );
         }
         else
         {

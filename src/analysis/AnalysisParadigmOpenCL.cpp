@@ -110,7 +110,7 @@ AnalysisParadigmOpenCL::handleKeyValuesLeave( OTF2TraceReader* reader,
 void
 AnalysisParadigmOpenCL::setEventProcessId( uint64_t eventId, uint64_t streamId )
 {
-  eventProcessMap[eventId] = streamId;
+  eventProcessMap[ eventId ] = streamId;
 }
 
 uint64_t
@@ -135,7 +135,7 @@ AnalysisParadigmOpenCL::isKernelPending( GraphNode* kernelNode ) const
     // kernel leave has not yet been synchronized (compare BlameKernelRule)
     if( kernelNode->getGraphPair().second->getLink() == NULL )
     {
-      UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+      UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC, 
                  "[%"PRIu64"] Do not delete unsynchronized kernel %s", 
                  kernelNode->getStreamId(), 
                  this->commonAnalysis->getNodeInfo( kernelNode ).c_str() );
@@ -145,7 +145,7 @@ AnalysisParadigmOpenCL::isKernelPending( GraphNode* kernelNode ) const
   // enter kernel nodes without partner must NOT be deleted
   else if( kernelNode->isEnter() )
   {
-    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+    UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC, 
                "[%"PRIu64"] Do not delete incomplete kernel %s", 
                kernelNode->getStreamId(), 
                this->commonAnalysis->getNodeInfo( kernelNode ).c_str() );
@@ -164,8 +164,7 @@ void
 AnalysisParadigmOpenCL::addPendingKernelEnqueue( GraphNode* launch )
 {
   // append at tail (FIFO)
-  pendingKernelEnqueueMap[launch->getReferencedStreamId()].push_back(
-    launch );
+  pendingKernelEnqueueMap[ launch->getReferencedStreamId() ].push_back( launch );
 }
 
 /**
