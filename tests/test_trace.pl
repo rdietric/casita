@@ -28,9 +28,9 @@ sub test_trace
         $otf2_print = $ARGV[3];
     }
 
-    if (not ($full_trace_dir =~ /traces\/(\d+)_(\w+)\//))
+    if (not ($full_trace_dir =~ /traces\/(\d+)_([-\w]+)\//))
     {
-        print "Error: Could not match trace directory name\n";
+        print "Error: Could not match trace directory name for ${full_trace_dir}\n";
         return 1;
     }
 
