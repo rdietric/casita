@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016
+ * Copyright (c) 2013-2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -37,45 +37,45 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmCUDA* analysis, GraphNode* node )
+      apply( AnalysisParadigmCUDA* cudaAnalysis, GraphNode* node )
       {
-        if ( !node->isLeave( ) )
+        if ( !node->isLeave() )
         {
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon( );
+        AnalysisEngine* analysis = cudaAnalysis->getCommon();
 
         ////////////////////////////////////////////////////////////////////////
         // applied at streamWaitEvent leave
-        if ( node->isEventNode( ) && node->isCUDAStreamWaitEvent( ) )
+        if ( node->isEventNode() && node->isCUDAStreamWaitEvent() )
         {
-          uint64_t referencedDevWaitProc = node->getReferencedStreamId( );
+          uint64_t referencedDevWaitProc = node->getReferencedStreamId();
           if ( !referencedDevWaitProc )
           {
             throw RTException(
                     "Stream wait %s does not reference any device stream",
-                    node->getUniqueName( ).c_str( ) );
+                    node->getUniqueName().c_str() );
           }
 
           EventNode* swEventNode = (EventNode*)node;
-          swEventNode->setLink( analysis->getEventRecordLeave( 
-                                  swEventNode->getEventId( ) ) );
+          swEventNode->setLink( cudaAnalysis->getEventRecordLeave( 
+                                  swEventNode->getEventId() ) );
 
-          uint64_t eventProcessId = analysis->getEventProcessId(
-            swEventNode->getEventId( ) );
+          uint64_t eventProcessId = cudaAnalysis->getEventProcessId(
+            swEventNode->getEventId() );
           if ( !eventProcessId )
           {
             throw RTException(
                     "Could not find device stream ID for event %" PRIu64 " from %s",
-                    swEventNode->getEventId( ),
-                    swEventNode->getUniqueName( ).c_str( ) );
+                    swEventNode->getEventId(),
+                    swEventNode->getUniqueName().c_str() );
           }
 
-          if ( swEventNode->getLink( ) &&
+          if ( swEventNode->getLink() &&
                ( referencedDevWaitProc != eventProcessId ) )
           {
-            analysis->addStreamWaitEvent( referencedDevWaitProc, swEventNode );
+            cudaAnalysis->addStreamWaitEvent( referencedDevWaitProc, swEventNode );
           }
           else
           {
@@ -89,7 +89,7 @@ namespace casita
 
         ////////////////////////////////////////////////////////////////////////
         // applied at kernel leave
-        if ( node->isCUDAKernel( ) )
+        if ( node->isCUDAKernel() )
         {
           GraphNode* waitingKernelEnter = node->getGraphPair().first;
 
@@ -108,8 +108,8 @@ namespace casita
           {
             UTILS_MSG( true, "[%u] Applying StreamWaitRule failed. "
                              "Kernel %s has no matching kernel launch", 
-                             commonAnalysis->getMPIRank(),
-                             waitingKernelEnter->getUniqueName( ).c_str() );
+                             analysis->getMPIRank(),
+                             waitingKernelEnter->getUniqueName().c_str() );
             
             return false;
           }
@@ -120,7 +120,7 @@ namespace casita
           {
             // find the oldest streamWaitEvent that references this (waiting) device stream
             EventNode* streamWaitLeave = 
-                      analysis->getFirstStreamWaitEvent( node->getStreamId( ) );
+                      cudaAnalysis->getFirstStreamWaitEvent( node->getStreamId() );
             if ( !streamWaitLeave )
             {
               break;
@@ -135,7 +135,7 @@ namespace casita
             }
 
             // remove from queue
-            analysis->consumeFirstStreamWaitEvent( node->getStreamId() );
+            cudaAnalysis->consumeFirstStreamWaitEvent( node->getStreamId() );
 
             // find the eventLaunch for this event
             EventNode* eventLaunchLeave = (EventNode*)streamWaitLeave->getLink();
@@ -143,8 +143,8 @@ namespace casita
             {
               UTILS_MSG( true,  " * Ignoring stream wait event %s without "
                                 "matching event record for event %" PRIu64 " \n",
-                                streamWaitLeave->getUniqueName( ).c_str( ),
-                                streamWaitLeave->getEventId( ) );
+                                streamWaitLeave->getUniqueName().c_str(),
+                                streamWaitLeave->getEventId() );
               break;
             }
 
@@ -163,37 +163,37 @@ namespace casita
             }
 
             GraphNode* syncKernelEnter =
-              (GraphNode*)launchLeave->getGraphPair( ).first->getLink();
+              (GraphNode*)launchLeave->getGraphPair().first->getLink();
             if ( !syncKernelEnter )
             {
-              ErrorUtils::getInstance( ).throwError(
+              ErrorUtils::getInstance().throwError(
                 "Depending kernel %s (%f) started before kernel from %s (%f) started"
                 " (event id = %" PRIu64 ", recorded at %f, streamWaitEvent %s)",
-                node->getUniqueName( ).c_str( ),
-                commonAnalysis->getRealTime( node->getTime() ),
-                launchLeave->getUniqueName( ).c_str( ),
-                commonAnalysis->getRealTime( launchLeave->getTime() ),
-                streamWaitLeave->getEventId( ),
-                commonAnalysis->getRealTime( eventLaunchLeave->getTime() ),
-                streamWaitLeave->getUniqueName( ).c_str( ) );
+                node->getUniqueName().c_str(),
+                analysis->getRealTime( node->getTime() ),
+                launchLeave->getUniqueName().c_str(),
+                analysis->getRealTime( launchLeave->getTime() ),
+                streamWaitLeave->getEventId(),
+                analysis->getRealTime( eventLaunchLeave->getTime() ),
+                streamWaitLeave->getUniqueName().c_str() );
               return false;
             }
 
             GraphNode* syncKernelLeave = syncKernelEnter->getGraphPair().second;
             if ( !syncKernelLeave )
             {
-              ErrorUtils::getInstance( ).throwError(
+              ErrorUtils::getInstance().throwError(
                 "Depending kernel %s (%f) started before kernel from %s (%f) finished",
-                node->getUniqueName( ).c_str( ),
-                commonAnalysis->getRealTime( node->getTime( ) ),
-                launchLeave->getUniqueName( ).c_str( ),
-                commonAnalysis->getRealTime( launchLeave->getTime( ) ) );
+                node->getUniqueName().c_str(),
+                analysis->getRealTime( node->getTime() ),
+                launchLeave->getUniqueName().c_str(),
+                analysis->getRealTime( launchLeave->getTime() ) );
               return false;
             }
 
             // do not add multiple dependencies to the same (sync) kernel
             if ( processedSyncKernelLeaves.find( syncKernelLeave ) !=
-                 processedSyncKernelLeaves.end( ) )
+                 processedSyncKernelLeaves.end() )
             {
               break;
             }
@@ -201,7 +201,7 @@ namespace casita
             processedSyncKernelLeaves.insert( syncKernelLeave );
 
             // add dependency
-            commonAnalysis->newEdge( syncKernelLeave,
+            analysis->newEdge( syncKernelLeave,
                                      waitingKernelEnter );
 
             // insert wait state only if launch of next (waiting) kernel is 
@@ -230,27 +230,27 @@ namespace casita
           if ( insertWaitState )
           {
             /* get last leave node on this device stream */
-            EventStream* waitingDevProc = commonAnalysis->getStream(
-              node->getStreamId( ) );
+            EventStream* waitingDevProc = analysis->getStream(
+              node->getStreamId() );
             EventStream::SortedGraphNodeList& nodes = waitingDevProc->getNodes();
 
             GraphNode* lastLeaveNode  = NULL;
             for ( EventStream::SortedGraphNodeList::const_reverse_iterator
                   rIter
                     =
-                      nodes.rbegin( );
-                  rIter != nodes.rend( ); ++rIter )
+                      nodes.rbegin();
+                  rIter != nodes.rend(); ++rIter )
             {
               GraphNode* n = ( *rIter );
-              if ( n->isMPI( ) )
+              if ( n->isMPI() )
               {
                 continue;
               }
 
-              if ( n->getTime( ) <= node->getTime( ) && n != node &&
-                   n->isLeave( ) && n->isCUDAKernel( ) )
+              if ( n->getTime() <= node->getTime() && n != node &&
+                   n->isLeave() && n->isCUDAKernel() )
               {
-                uint64_t lastLeaveNodeTime = n->getTime( );
+                uint64_t lastLeaveNodeTime = n->getTime();
                 lastLeaveNode = n;
                 if ( lastLeaveNodeTime > waitStateEnterTime )
                 {
@@ -263,18 +263,19 @@ namespace casita
             /* add wait state if a preceeding leave node in this stream has
              * been found which ends earlier than the current kernel started */
             if ( lastLeaveNode &&
-                 ( waitStateEnterTime < waitingKernelEnter->getTime( ) ) )
+                 ( waitStateEnterTime < waitingKernelEnter->getTime() ) )
             {
-              Edge* kernelKernelEdge = commonAnalysis->getEdge(
-                lastLeaveNode, waitingKernelEnter );
+              Edge* kernelKernelEdge = 
+                analysis->getEdge( lastLeaveNode, waitingKernelEnter );
+              
               if ( !kernelKernelEdge )
               {
-                ErrorUtils::getInstance( ).throwError(
+                ErrorUtils::getInstance().throwError(
                   "Did not find expected edge [%s (p %u), %s (p %u)]",
-                  lastLeaveNode->getUniqueName( ).c_str( ),
-                  lastLeaveNode->getStreamId( ),
-                  waitingKernelEnter->getUniqueName( ).c_str( ),
-                  waitingKernelEnter->getStreamId( ) );
+                  lastLeaveNode->getUniqueName().c_str(),
+                  lastLeaveNode->getStreamId(),
+                  waitingKernelEnter->getUniqueName().c_str(),
+                  waitingKernelEnter->getStreamId() );
                 return false;
               }
 
@@ -283,22 +284,22 @@ namespace casita
               functionDesc.functionType = CUDA_WAITSTATE;
               functionDesc.recordType = RECORD_ENTER;
               
-              GraphNode* waitEnter = commonAnalysis->addNewGraphNode(
+              GraphNode* waitEnter = analysis->addNewGraphNode(
                 waitStateEnterTime,
                 waitingDevProc,
                 NAME_WAITSTATE,
                 &functionDesc );
               
               functionDesc.recordType = RECORD_LEAVE;
-              GraphNode* waitLeave = commonAnalysis->addNewGraphNode(
-                lastSyncKernelLeave->getTime( ),
+              GraphNode* waitLeave = analysis->addNewGraphNode(
+                lastSyncKernelLeave->getTime(),
                 waitingDevProc,
                 NAME_WAITSTATE,
                 &functionDesc);
 
-              commonAnalysis->newEdge( lastLeaveNode, waitEnter );
-              commonAnalysis->newEdge( waitEnter, waitLeave, EDGE_IS_BLOCKING );
-              commonAnalysis->newEdge( waitLeave, waitingKernelEnter );
+              analysis->newEdge( lastLeaveNode, waitEnter );
+              analysis->newEdge( waitEnter, waitLeave, EDGE_IS_BLOCKING );
+              analysis->newEdge( waitLeave, waitingKernelEnter );
 
               // set counters
               waitLeave->setCounter( WAITING_TIME, 1 );
@@ -306,11 +307,11 @@ namespace casita
               // add dependency to all sync kernel leave nodes
               // some dependencies can become reverse edges during optimization
               for ( std::set< GraphNode* >::const_iterator gIter =
-                      processedSyncKernelLeaves.begin( );
+                      processedSyncKernelLeaves.begin();
                     gIter != processedSyncKernelLeaves.end(); ++gIter )
               {
                 //\todo check if this should have EDGE_CAUSES_WAITSTATE property
-                commonAnalysis->newEdge( *gIter, waitLeave );
+                analysis->newEdge( *gIter, waitLeave );
               }
             }
           }

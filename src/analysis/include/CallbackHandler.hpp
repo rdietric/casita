@@ -41,6 +41,11 @@ namespace casita
      handleDefProcess( io::OTF2TraceReader* reader, uint64_t streamId, 
                        uint64_t parentId, const char* name,
                        io::OTF2KeyValueList* list, bool isGPU );
+     
+     static void
+     handleLocationProperty( OTF2TraceReader* reader, uint64_t streamId,
+                             const char* name, OTF2_Type type,
+                             OTF2_AttributeValue value );
 
      static void
      handleDefFunction( io::OTF2TraceReader* reader,

@@ -74,11 +74,6 @@ namespace casita
      bool
      haveAnalysisFeature( AnalysisFeature feature ) const;
 
-     static bool
-     getFunctionType( const char*         name,
-                      EventStream*        stream,
-                      FunctionDescriptor* descr );
-
      void
      addFunction( uint32_t funcId, const char* name );
 

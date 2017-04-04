@@ -41,6 +41,7 @@ OTF2TraceReader::OTF2TraceReader( void*    userData,
   handleEnter( NULL ),
   handleLeave( NULL ),
   handleDefProcess( NULL ),
+  handleLocationProperty( NULL ),
   handleDefFunction( NULL ),
   handleDefAttribute( NULL ),
   handleProcessMPIMapping( NULL ),
@@ -374,6 +375,11 @@ OTF2TraceReader::readDefinitions()
   
   OTF2_GlobalDefReaderCallbacks_SetLocationCallback(
     global_def_callbacks, &OTF2_GlobalDefReaderCallback_Location );
+  
+  // register for location properties, e.g. to detect CUDA null stream
+  OTF2_GlobalDefReaderCallbacks_SetLocationPropertyCallback(
+    global_def_callbacks, OTF2_GlobalDefReaderCallback_LocationProperty );
+  
 /*
   OTF2_GlobalDefReaderCallbacks_SetLocationGroupCallback(
     global_def_callbacks,
@@ -520,6 +526,30 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(
 
   return OTF2_CALLBACK_SUCCESS;
 }
+
+OTF2_CallbackCode
+OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationProperty( 
+                                                  void*               userData,
+                                                  OTF2_LocationRef    location,
+                                                  OTF2_StringRef      name,
+                                                  OTF2_Type           type,
+                                                  OTF2_AttributeValue value )
+{
+  OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+  
+  if( tr->stringRefMap.count( name ) > 0 )
+  {
+    UTILS_MSG( Parser::getInstance().getVerboseLevel() >= VERBOSE_BASIC, 
+               "[%"PRIu64"] Found location property %s", 
+               location, tr->stringRefMap[ name ].c_str() );
+    
+    tr->handleLocationProperty(
+      tr, location, tr->stringRefMap[ name ].c_str(), type, value );
+  }
+  
+  return OTF2_CALLBACK_SUCCESS;
+}
+
 /*
 OTF2_CallbackCode
 OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationGroup( 

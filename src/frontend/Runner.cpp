@@ -103,6 +103,7 @@ Runner::startAnalysisRun()
 
   // set the OTF2 callback handlers
   traceReader->handleDefProcess        = CallbackHandler::handleDefProcess;
+  traceReader->handleLocationProperty  = CallbackHandler::handleLocationProperty;
   traceReader->handleDefFunction       = CallbackHandler::handleDefFunction;
   traceReader->handleDefAttribute      = CallbackHandler::handleDefAttribute;
   traceReader->handleEnter             = CallbackHandler::handleEnter;
@@ -134,6 +135,8 @@ Runner::startAnalysisRun()
   if( analysis.haveParadigm( PARADIGM_CUDA ) )
   {
     analysis.addAnalysisParadigm( new cuda::AnalysisParadigmCUDA( &analysis ) );
+    
+    // setup CUDA analysis
   }
   else
   {

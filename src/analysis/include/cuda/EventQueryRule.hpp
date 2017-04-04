@@ -125,12 +125,17 @@ namespace casita
 
             GraphNode::GraphNodePair& prevQuery = prev->getGraphPair();
 
+            // if kernel is running during the query
             if ( kernelEnter->getTime() <= prevQuery.first->getTime() )
             {
               //\todo: why?
-              commonAnalysis->getEdge(
-                prevQuery.first, prevQuery.second )->makeBlocking();
-
+              // make query edge blocking
+              Edge* qEdge = commonAnalysis->getEdge( prevQuery.first, prevQuery.second);
+              if( qEdge )
+              {
+                qEdge->makeBlocking();
+              }
+              
               // set counters
               uint64_t waitingTime = 
                 prevQuery.second->getTime() - prevQuery.first->getTime();

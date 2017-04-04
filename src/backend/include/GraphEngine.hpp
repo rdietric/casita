@@ -90,6 +90,12 @@ namespace casita
      const EventStreamGroup::EventStreamList&
      getDeviceStreams() const;
      
+     size_t
+     getNumDeviceStreams() const;
+     
+     bool
+     haveDeviceNullStreamOnly() const;
+     
      const EventStreamGroup::EventStreamList&
      getDeviceStreams( int deviceId );
 

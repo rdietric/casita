@@ -40,24 +40,25 @@ namespace casita
 
  enum Paradigm
  {
-   PARADIGM_CPU           = ( 1 << 0 ),
-   PARADIGM_CUDA          = ( 1 << 1 ),
-   PARADIGM_OCL           = ( 1 << 2 ),
-   PARADIGM_MPI           = ( 1 << 3 ),
-   PARADIGM_OMP           = ( 1 << 4 ),
-   PARADIGM_OMPT          = ( 1 << 5 ),
-   PARADIGM_OMP_TARGET    = ( 1 << 6 ),
+   PARADIGM_CUDA          = ( 1 << 0 ),
+   PARADIGM_OCL           = ( 1 << 1 ),
+   PARADIGM_MPI           = ( 1 << 2 ),
+   PARADIGM_OMP           = ( 1 << 3 ),
+   PARADIGM_OMPT          = ( 1 << 4 ),
+   PARADIGM_OMP_TARGET    = ( 1 << 5 ),
+   
+   PARADIGM_CPU, // should not occur on a graph node, only used to mark CPU functions
 
    PARADIGM_COMPUTE_LOCAL = 
-           ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_OCL | PARADIGM_OMP | PARADIGM_OMPT ),
+           ( PARADIGM_CUDA | PARADIGM_OCL | PARADIGM_OMP | PARADIGM_OMPT ),
            
    PARADIGM_ALL           =
-     ( PARADIGM_CPU | PARADIGM_CUDA | PARADIGM_OCL | PARADIGM_MPI | 
+     ( PARADIGM_CUDA | PARADIGM_OCL | PARADIGM_MPI | 
        PARADIGM_OMP | PARADIGM_OMPT | PARADIGM_OMP_TARGET )
  };
 
- //\todo: we have only 5 real paradigms, check if 5 still works
- const size_t NODE_PARADIGM_COUNT   = 5; //8;
+ //we have only 4 real paradigms for graph nodes
+ const size_t NODE_PARADIGM_COUNT   = 4;
  const size_t NODE_PARADIGM_INVALID = ( 1 << NODE_PARADIGM_COUNT );
 
  enum NodeTypeMisc
@@ -78,7 +79,8 @@ namespace casita
    CUDA_EV_QUERY      = ( 1 << 8 ),
    CUDA_QUERY         = ( 1 << 9 ),
    CUDA_STREAMWAIT    = ( 1 << 10 ),
-   CUDA_BLOCKING_COMM = ( 1 << 11 )
+   CUDA_BLOCKING_COMM = ( 1 << 11 ),
+   CUDA_MEMCPY_ASYNC  = ( 1 << 12 )
  };
  
  enum NodeTypeOCL
@@ -227,12 +229,6 @@ namespace casita
      isAtomic() const
      {
        return recordType == RECORD_ATOMIC;
-     }
-
-     bool
-     isCPU() const
-     {
-       return paradigm & PARADIGM_CPU;
      }
 
      bool

@@ -116,10 +116,6 @@ GraphEngine::newEventStream( uint64_t                     id,
       // device ID has to be set to generate stream vectors per device
       streamGroup.addDeviceStream( p );
     }
-    else if ( streamType == EventStream::ES_DEVICE_NULL )
-    {
-      streamGroup.setNullStream( p );
-    }
   }
 
   // initialize CPU data for this stream (full reset is done in addCPUEvent() )
@@ -178,6 +174,12 @@ GraphEngine::getDeviceStreams() const
   return streamGroup.getDeviceStreams();
 }
 
+size_t
+GraphEngine::getNumDeviceStreams() const
+{
+  return streamGroup.getDeviceStreams().size();
+}
+
 const EventStreamGroup::EventStreamList&
 GraphEngine::getDeviceStreams( int deviceId )
 {
@@ -188,6 +190,12 @@ void
 GraphEngine::getAllDeviceStreams( EventStreamGroup::EventStreamList& deviceStreams ) const
 {
   streamGroup.getAllDeviceStreams( deviceStreams );
+}
+
+bool
+GraphEngine::haveDeviceNullStreamOnly() const
+{
+  return streamGroup.deviceWithNullStreamOnly();
 }
 
 bool
@@ -678,17 +686,19 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
     //std::cerr << "last node: ";
     //std::cerr << stream->getLastNode()->getUniqueName() << std::endl;
     // if the last node in the list is "less" than the current, 
-    // push it at the end of the vector
+    // push it at the end of the vector and get the paradigm predecessor nodes
     stream->addGraphNode( node, &predNodeMap );
   }
   else
   {
+    // this happens when additional nodes are added during the analysis (rules)
     stream->insertGraphNode( node, predNodeMap, nextNodeMap );
   }
 
   // to support nesting we use a stack to keep track of open activities
   GraphNode* stackNode = topGraphNodeStack( streamId );
 
+  // if we added a leave node its partner (enter) has to be on top of the stack
   if ( node->isLeave() )
   {
     if ( stackNode == NULL )
@@ -709,15 +719,16 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
       popGraphNodeStack( streamId );
 
-      // use the stack to get the caller/parent of this node
+      // use the stack to get the caller/parent of this node (might be NULL)
       node->setCaller( topGraphNodeStack( streamId ) );
     }
   }
   else if ( node->isEnter() )
   {
-    // use the stack to get the caller/parent of this node ( might be NULL)
+    // use the stack to get the caller/parent of this node (might be NULL)
     node->setCaller( stackNode );
 
+    // add the node to the stack as a region is opened
     pushGraphNodeStack( node, streamId );
   }
 
@@ -729,10 +740,11 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   // get direct predecessor and successor
   GraphNode* directPredecessor = NULL;
   GraphNode* directSuccessor   = NULL;
-  // \todo: check if this loop is really needed
-  for ( size_t p_index = 0; p_index < NODE_PARADIGM_COUNT; ++p_index )
+  
+  // iterate over paradigms
+  for ( size_t pIdx = 0; pIdx < NODE_PARADIGM_COUNT; ++pIdx )
   {
-    Paradigm paradigm = (Paradigm)( 1 << p_index );
+    Paradigm paradigm = (Paradigm)( 1 << pIdx );
     GraphNode::ParadigmNodeMap::const_iterator paradigmPredIter = 
       predNodeMap.find( paradigm );
     GraphNode::ParadigmNodeMap::const_iterator paradigmSuccessorIter = 
@@ -765,38 +777,53 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
   bool directPredLinked = false;
   bool directSuccLinked = false;
+  
+  // the direct predecessor is NULL, if no node of its paradigm is preceeding 
+  // in this stream, hence most nodes will execute the following block to create
+  // an edge to the predecessor of the same paradigm
+  Paradigm nodeParadigm = node->getParadigm();
   if ( directPredecessor )
   {
-    Paradigm nodeParadigm = node->getParadigm();
     Paradigm predParadigm = directPredecessor->getParadigm();
 
-    for ( size_t p_index = 0; p_index < NODE_PARADIGM_COUNT; ++p_index )
+    // paradigm predecessor edges are only needed for MPI, as these edges 
+    // are used to generate sub graphs
+    if( nodeParadigm == PARADIGM_MPI )
     {
-      // ignore paradigms that are different to the node's paradigm
-      Paradigm paradigm = (Paradigm)( 1 << p_index );
-      if ( ( paradigm & nodeParadigm ) != nodeParadigm )
+      // iterate over the paradigms
+      for ( size_t pIdx = 0; pIdx < NODE_PARADIGM_COUNT; ++pIdx )
       {
-        continue;
-      }
+        Paradigm paradigm = (Paradigm)( 1 << pIdx );
 
-      GraphNode::ParadigmNodeMap::const_iterator predPnmIter = predNodeMap.find(
-        paradigm );
-      // if we found a node for the node's paradigm
-      if ( predPnmIter != predNodeMap.end() )
-      {
+        // ignore paradigms that the node does not have (a node might have 
+        // multiple paradigms, e.g. PARADIGM_ALL)
+        if ( ( paradigm & nodeParadigm ) != nodeParadigm )
+        {
+          continue;
+        }
+
+        GraphNode::ParadigmNodeMap::const_iterator predPnmIter = 
+          predNodeMap.find( paradigm );
+
+        // if no predecessor for the current paradigm was found, continue ...
+        if ( predPnmIter == predNodeMap.end() )
+        {
+          continue;
+        }
+
+        // as we have a predecessor in the iteration's paradigm, we create an edge
+
         GraphNode* pred     = predPnmIter->second;
         int        edgeProp = EDGE_NONE;
 
-        // check if this leave node is the end of a blocking operation
-        if ( pred->isEnter() && node->isLeave() )
+        // make the edge blocking, if current node and predecessor are wait states
+        if ( pred->isEnter() && node->isLeave() && 
+             pred->isWaitstate() && node->isWaitstate() )
         {
-          if ( pred->isWaitstate() && node->isWaitstate() )
-          {
-            edgeProp |= EDGE_IS_BLOCKING;
-          }
+          edgeProp |= EDGE_IS_BLOCKING;
         }
 
-        // link to this predecessor (and create an intra-paradigm edge)
+        // create an intra-paradigm, intra-stream edge
         Edge* pEdge = newEdge( pred, node, edgeProp, &paradigm );
 
         UTILS_ASSERT( !( cpuData.numberOfEvents && ( cpuData.startTime > cpuData.endTime ) ),
@@ -804,10 +831,9 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
                       pEdge->getName().c_str() );
 
         pEdge->addCPUData( cpuData.numberOfEvents,
-                          //cpuData.startTime, cpuData.endTime,
                           cpuData.exclEvtRegTime );
 
-        /* check if this already is the direct predecessor */
+        // check if this already is the direct predecessor
         if ( directPredecessor == pred )
         {
           directPredLinked = true;
@@ -845,19 +871,18 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
       }
     }
     
+    // if the predecessor of the same paradigm is not the direct predecessor
     if ( !directPredLinked )
     {
       int edgeProp = EDGE_NONE;
 
-      if ( directPredecessor->isEnter() && node->isLeave() )
+      if ( directPredecessor->isEnter() && node->isLeave() && 
+           directPredecessor->isWaitstate() && node->isWaitstate() )
       {
-        if ( directPredecessor->isWaitstate() && node->isWaitstate() )
-        {
-          edgeProp |= EDGE_IS_BLOCKING;
-        }
+        edgeProp |= EDGE_IS_BLOCKING;
       }
 
-      // link to direct predecessor
+      // link to direct predecessor (other paradigm)
       Edge* temp = newEdge( directPredecessor, node, edgeProp, &predParadigm );
       //sanityCheckEdge( temp, stream->getId() );
 
@@ -866,7 +891,6 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
                     temp->getName().c_str() );
 
       temp->addCPUData( cpuData.numberOfEvents,
-                        //cpuData.startTime, cpuData.endTime,
                         cpuData.exclEvtRegTime );
     }
 
@@ -882,7 +906,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
           removeEdge( oldEdge );
         }
 
-        /* link to direct successor */
+        // link to direct successor 
         newEdge( node, directSuccessor, EDGE_NONE, &succParadigm );
         //sanityCheckEdge( temp, stream->getId() );
       }

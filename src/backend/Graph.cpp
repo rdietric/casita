@@ -645,7 +645,7 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
       }
       
       // if we found the shortest predecessor edge, set end node as next node
-      if( predecessorNode /*&& maxWeight != INFINITE*/ )
+      if( predecessorNode )
       {
         /*UTILS_MSG( startNode->getStreamId() == 0 && startNode->getId() >= 277 && 
                    endNode->getId() <= 360, "%s is on the CP to %s (weight: %llu)", 
@@ -673,7 +673,13 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
         {
           currentNode = predecessorNode;
           continue;
-        }  
+        }
+        else
+        {
+          UTILS_WARNING( "Stop critical path loop on %s which has an edge to itself", 
+                         currentNode->getUniqueName().c_str() );
+          break;
+        }
       }
     }
     
@@ -693,10 +699,9 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
     }
     
     UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-               "%s has no in edges. Use predecessor: %s <- %s", 
+               "%s has no in edges. Use predecessor: %s", 
                currentNode->getUniqueName().c_str(),
-               predecessorNode->getUniqueName().c_str(), 
-               currentNode->getUniqueName().c_str() );
+               predecessorNode->getUniqueName().c_str() );
     
     // add the current node to the critical nodes
     if( Parser::getInstance().getProgramOptions().cpaLoopCheck && 

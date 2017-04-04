@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013 - 2014, 2016 - 2017
+ * Copyright (c) 2013, 2014, 2016, 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -20,18 +20,9 @@
 using namespace casita;
 
 EventStreamGroup::EventStreamGroup() :
-  deviceNullStream( NULL )
+ deviceNullStreamOnly ( false )
 {
 
-}
-
-EventStreamGroup::EventStreamGroup( const EventStreamList& hostStreams,
-                                    const EventStreamList& deviceStreams,
-                                    EventStream*           nullStream )
-{
-  this->hostStreams.assign( hostStreams.begin(), hostStreams.end() );
-  this->deviceStreams.assign( deviceStreams.begin(), deviceStreams.end() );
-  this->deviceNullStream = nullStream;
 }
 
 EventStreamGroup::~EventStreamGroup()
@@ -70,52 +61,38 @@ EventStreamGroup::removeHostStream( EventStream* p )
   return hostStreams.end();
 }
 
+/**
+ * Set the given stream as null stream.
+ * 
+ * @param streamId ID of the event stream.
+ */
 void
-EventStreamGroup::setNullStream( EventStream* p )
+EventStreamGroup::setDeviceNullStream( EventStream* stream )
 {
-  deviceNullStream = p;
+  stream->setStreamType( EventStream::ES_DEVICE_NULL );
   
-  allStreams.push_back( deviceNullStream );
+  deviceNullStreamMap[ stream->getDeviceId() ] = stream;
+  
+  // this assumes that the location property is read after all location definitions
+  // and hence the total number of device streams is known here
+  if( getDeviceStreams().size() == 1 )
+  {
+    deviceNullStreamOnly = true;
+    
+    //UTILS_WARN_ONCE( "There is only one device stream, which is the null stream." );
+  }
+}
+
+bool
+EventStreamGroup::deviceWithNullStreamOnly() const
+{
+  return deviceNullStreamOnly;
 }
 
 const EventStreamGroup::EventStreamList&
 EventStreamGroup::getAllStreams() const
 {
   return allStreams;
-}
-
-void
-EventStreamGroup::getAllStreams( EventStreamList& streams,
-                                 Paradigm         paradigm ) const
-{
-  // clear stream list
-  streams.clear();
-  
-  // add all streams
-  streams.assign( hostStreams.begin(), hostStreams.end() );
-  if ( deviceNullStream )
-  {
-    streams.insert( streams.end(), deviceNullStream );
-  }
-  streams.insert( streams.end(), deviceStreams.begin(), deviceStreams.end() );
-
-  // iterate over streams
-  for ( EventStreamList::iterator iter = streams.begin(); iter != streams.end(); )
-  {
-    EventStream* p = *iter;
-    GraphNode*   lastGNode = p->getLastNode( paradigm );
-    
-    // if we did not find a last node OR the last node is atomic process or 
-    // intermediate node
-    if ( !lastGNode || lastGNode->isProcess() )
-    {
-      iter = streams.erase( iter );
-    }
-    else
-    {
-      ++iter;
-    }
-  }
 }
 
 const EventStreamGroup::EventStreamList&
@@ -147,44 +124,21 @@ EventStreamGroup::getAllDeviceStreams(
                      EventStreamGroup::EventStreamList& newDeviceStreams ) const
 {
   newDeviceStreams.clear();
-  if ( deviceNullStream )
-  {
-    newDeviceStreams.insert( newDeviceStreams.end(), deviceNullStream );
-  }
   newDeviceStreams.insert( newDeviceStreams.end(),
                            deviceStreams.begin(), deviceStreams.end() );
 }
 
+/**
+ * Return the null stream for the given device. If device id is left empty,
+ * only a single device is assumed to be present.
+ * 
+ * @param deviceId
+ * @return 
+ */
 EventStream*
-EventStreamGroup::getNullStream() const
+EventStreamGroup::getNullStream( int deviceId )
 {
-  return deviceNullStream;
-}
-
-size_t
-EventStreamGroup::getNumStreams() const
-{
-  //size_t numProcs = hostStreams.size() + deviceStreams.size();
-  size_t numProcs = allStreams.size();
-  
-  if ( deviceNullStream )
-  {
-    numProcs++;
-  }
-
-  return numProcs;
-}
-
-size_t
-EventStreamGroup::getNumHostStreams() const
-{
-  return hostStreams.size();
-}
-
-size_t
-EventStreamGroup::getNumDeviceStreams() const
-{
-  return deviceStreams.size();
+  return deviceNullStreamMap[ deviceId ];
 }
 
 EventStream*

@@ -103,9 +103,21 @@ namespace casita
             Edge* syncEdge = analysis->getEdge( syncEnter, syncLeave );
             
             // check for blocking edge to add statistics only once
-            if( syncEdge && !syncEdge->isBlocking() )
+            if( syncEdge )
             {
-              syncEdge->makeBlocking();
+              if( !syncEdge->isBlocking() )
+              {
+                syncEdge->makeBlocking();
+              
+                // early blocking wait statistics
+                analysis->getStatistics().addStatWithCount( 
+                  OFLD_STAT_EARLY_BLOCKING_WAIT, 
+                  syncLeave->getTime() - syncEnter->getTime() );
+              }
+            }
+            else
+            {
+              analysis->newEdge( syncEnter, syncLeave, EDGE_IS_BLOCKING );
               
               // early blocking wait statistics
               analysis->getStatistics().addStatWithCount( 

@@ -107,19 +107,6 @@ AnalysisEngine::haveAnalysisFeature( AnalysisFeature feature ) const
   return analysisFeature & feature;
 }
 
-bool
-AnalysisEngine::getFunctionType( const char*         name,
-                                 EventStream*        stream,
-                                 FunctionDescriptor* descr )
-{
-  assert( name );
-  assert( descr );
-  assert( stream );
-
-  return FunctionTable::getAPIFunctionType( name, descr, stream->isDeviceStream(),
-                                            stream->isDeviceNullStream() );
-}
-
 void
 AnalysisEngine::addFunction( uint32_t funcId, const char* name )
 {
@@ -285,12 +272,6 @@ AnalysisEngine::processDeferredNodes( Paradigm paradigm )
   
   // clear the deferred nodes after processing them
   deferredNodes.clear();
-}
-
-EventStream*
-AnalysisEngine::getNullStream() const
-{
-  return streamGroup.getNullStream();
 }
 
 void
@@ -652,12 +633,6 @@ AnalysisEngine::reset()
   {
     iter->second->reset();
   }
-}
-
-size_t
-AnalysisEngine::getNumAllDeviceStreams()
-{
-  return streamGroup.getNumStreams() - streamGroup.getNumHostStreams();
 }
 
 double

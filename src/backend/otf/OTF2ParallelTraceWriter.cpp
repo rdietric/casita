@@ -1424,7 +1424,8 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   // set event type to determine if an internal node is available
   eventDesc.recordType = event.type; 
   const bool mapsInternalNode = FunctionTable::getAPIFunctionType(
-    eventName, &eventDesc, currentStream->isDeviceStream(), false );  
+    eventName, &eventDesc, currentStream->isDeviceStream(), 
+    analysis->haveDeviceNullStreamOnly() );  
   
   // special handling for offloading API routines
   if( ( regionInfo.paradigm == OTF2_PARADIGM_CUDA ||

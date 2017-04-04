@@ -358,10 +358,12 @@ AnalysisParadigmOMP::handlePostLeave( GraphNode* ompLeave )
 
   if ( ompLeave->isOMPSync() )
   {
-    // get sync region edge
-    Edge *edge = commonAnalysis->getEdge( ompLeave->getGraphPair().first, ompLeave );
+    GraphNode* ompSyncEnter = ompLeave->getGraphPair().first;
     
-    // mark this barrier if it has no edge (outer sync)
+    // get barrier region edge, which is only available if no event is nested
+    Edge *edge = commonAnalysis->getEdge( ompSyncEnter, ompLeave );
+    
+    // mark this barrier if it has a synchronization/barrier nested within the region
     if ( !edge )
     {
       // used in streamWalkCallback in OMPRulesCommon.hpp

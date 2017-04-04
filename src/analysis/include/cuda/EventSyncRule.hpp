@@ -214,14 +214,27 @@ namespace casita
           if ( syncEnter && ( syncEnter->getTime() < kernelLeave->getTime() ) )
           {
             Edge* syncEdge = analysis->getEdge( syncEnter, syncLeave );
-            if( syncEdge && !syncEdge->isBlocking() )
+            
+            if( syncEdge )
             {
-              syncEdge->makeBlocking();
-              
-              // early blocking wait statistics
+              if( !syncEdge->isBlocking() )
+              {
+                syncEdge->makeBlocking();
+                
+                // early blocking wait statistics
                 analysis->getStatistics().addStatWithCount( 
                   OFLD_STAT_EARLY_BLOCKING_WAIT, 
                   syncLeave->getTime() - syncEnter->getTime() );
+              }
+            }
+            else
+            {
+              analysis->newEdge( syncEnter, syncLeave, EDGE_IS_BLOCKING );
+              
+              // early blocking wait statistics
+              analysis->getStatistics().addStatWithCount( 
+                OFLD_STAT_EARLY_BLOCKING_WAIT, 
+                syncLeave->getTime() - syncEnter->getTime() );
             }
             
             // determine real waiting time (overlap of kernel and sync)
@@ -241,6 +254,10 @@ namespace casita
 
           // add edge between kernel leave and syncLeave
           analysis->newEdge( kernelLeave, syncLeave );
+          //UTILS_WARNING( "Create edge between %lf -> %s",
+          //               analysis->getRealTime( kernelLeave->getTime() ),
+          //               analysis->getNodeInfo( syncLeave ).c_str() );
+          
           ruleResult = true;
           
           // create edges between previous kernels which are not on the same stream

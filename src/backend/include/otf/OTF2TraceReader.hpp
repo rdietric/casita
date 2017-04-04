@@ -44,6 +44,11 @@ namespace casita
   typedef void ( *HandleProcessMPIMapping )( OTF2TraceReader* reader,
                                              uint64_t      processId,
                                              uint32_t      mpiRank );
+  typedef void ( *HandleLocationProperty )( OTF2TraceReader*    reader,
+                                            uint64_t            streamId,
+                                            const char*         name,
+                                            OTF2_Type           type,
+                                            OTF2_AttributeValue value );
   typedef void ( *HandleDefFunction )( OTF2TraceReader* reader, 
                                        uint32_t functionId, const char* name,
                                        OTF2_Paradigm paradigm );
@@ -223,6 +228,7 @@ namespace casita
       HandleEnter             handleEnter;
       HandleLeave             handleLeave;
       HandleDefProcess        handleDefProcess;
+      HandleLocationProperty  handleLocationProperty;
       HandleDefFunction       handleDefFunction;
       HandleDefAttribute      handleDefAttribute;
       HandleProcessMPIMapping handleProcessMPIMapping;
@@ -376,6 +382,14 @@ namespace casita
                                              uint64_t          numberOfEvents,
                                              OTF2_LocationGroupRef
                                              locationGroup );
+      
+      static OTF2_CallbackCode
+      OTF2_GlobalDefReaderCallback_LocationProperty( 
+                                                  void*               userData,
+                                                  OTF2_LocationRef    location,
+                                                  OTF2_StringRef      name,
+                                                  OTF2_Type           type,
+                                                  OTF2_AttributeValue value );
 
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_Group( void*           userData,
@@ -549,7 +563,7 @@ namespace casita
       
       // stores an OTF2 string ref as key with the string as value
       TokenNameMap     stringRefMap;
-      CommGroupMap  groupMap;
+      CommGroupMap     groupMap;
 
       ProcessGroupMap  processGroupMap;
       uint64_t         ticksPerSecond;

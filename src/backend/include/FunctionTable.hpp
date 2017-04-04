@@ -95,6 +95,12 @@ namespace casita
 
    "cudaLaunch"
  };
+ 
+ static const char* FTABLE_CUDA_ASYNC_MEMCPY[] =
+ {
+   "cuMemcpyDtoHAsync_v2",
+   "cuMemcpyHtoDAsync_v2"
+ };
 
  static const char* FTABLE_CUDA_EVENT_QUERY[]  =
  {
@@ -233,7 +239,7 @@ namespace casita
    //"MPI_Bsend", "MPI_Cancel", "MPI_Probe"
  //};
 
- static const size_t      fTableEntriesCUDA = 10;
+ static const size_t      fTableEntriesCUDA = 11;
  static const FTableEntry fTableCUDA[fTableEntriesCUDA] =
  {
    { CUDA_COLLSYNC, 2, FTABLE_CUDA_COLL_SYNC },
@@ -245,7 +251,8 @@ namespace casita
    { CUDA_EV_LAUNCH, 1, FTABLE_CUDA_EVENT_LAUNCH },
    { CUDA_STREAMWAIT, 1, FTABLE_CUDA_STREAM_WAIT },
    { CUDA_WAITSTATE, 1, FTABLE_GPU_WAITSTATE },
-   { CUDA_BLOCKING_COMM, 5, FTABLE_CUDA_BLOCKING_COMM }
+   { CUDA_BLOCKING_COMM, 5, FTABLE_CUDA_BLOCKING_COMM },
+   { CUDA_MEMCPY_ASYNC, 2, FTABLE_CUDA_ASYNC_MEMCPY }
  };
  
  static const size_t      fTableEntriesOpenCL = 6;
@@ -313,16 +320,22 @@ namespace casita
       * This function determines the type of the event. The record type has to
       * be already set to get correct results (descr->recordType).
       * 
-      * @param name
+      * @param name name of the region
       * @param descr the function descriptor (the record type must be set)
-      * @param deviceStream
-      * @param deviceNullStream
-      * @return true, if it maps to an internal node
+      * @param deviceStream does the event occur on a device stream
+      * @param deviceNullStream do we have only the device null stream
+      * 
+      * @return true, if it maps to an internal node, otherwise false
       */
      static bool
      getAPIFunctionType( const char* name, FunctionDescriptor* descr,
-                         bool deviceStream, bool deviceNullStream )
+                         bool deviceStream, bool deviceNullStreamOnly )
      {
+       if( name == NULL || descr == NULL )
+       {
+         return false;
+       }
+       
        descr->paradigm     = PARADIGM_CPU;
        descr->functionType = 0;
 
@@ -453,13 +466,24 @@ namespace casita
              switch ( descr->functionType )
              {
                case CUDA_BLOCKING_COMM:
-                 descr->functionType = CUDA_COLLSYNC | CUDA_SYNC | CUDA_BLOCKING_COMM;
+                 descr->functionType |= CUDA_COLLSYNC | CUDA_SYNC;
                  return true;
                  
                case CUDA_COLLSYNC:
-                 descr->functionType = CUDA_COLLSYNC | CUDA_SYNC;
+                 descr->functionType |= CUDA_SYNC;
                  return true;
-
+                 
+               case CUDA_MEMCPY_ASYNC:
+                 if( deviceNullStreamOnly )
+                 {
+                   descr->functionType |= CUDA_COLLSYNC | CUDA_SYNC | CUDA_BLOCKING_COMM;
+                   return true;
+                 }
+                 else
+                 {
+                   return false;
+                 }
+                 
                case CUDA_SYNC:
                case CUDA_KERNEL_LAUNCH:
                case CUDA_EV_LAUNCH:
@@ -568,13 +592,6 @@ namespace casita
        /* not an OpenMP function */
 
        /* kernel ? */
-       if ( deviceNullStream )
-       {
-         descr->functionType = ( CUDA_KERNEL | CUDA_SYNC | CUDA_COLLSYNC );
-         descr->paradigm = PARADIGM_CUDA;
-         return true;
-       }
-
        if ( deviceStream )
        {
          // TODO: distinguish by function group:

@@ -26,9 +26,7 @@ namespace casita
       typedef std::vector< EventStream* > EventStreamList;
 
       EventStreamGroup();
-      EventStreamGroup( const EventStreamList& hostStreams,
-                        const EventStreamList& deviceProcs,
-                        EventStream*           nullStream );
+
       virtual
       ~EventStreamGroup();
 
@@ -42,7 +40,10 @@ namespace casita
       removeHostStream( EventStream* p );
 
       void
-      setNullStream( EventStream* p );
+      setDeviceNullStream( EventStream* p );
+      
+      bool
+      deviceWithNullStreamOnly() const;
      
       const EventStreamList&
       getAllStreams() const;
@@ -63,16 +64,10 @@ namespace casita
       getAllDeviceStreams( EventStreamList& newDeviceStreams ) const;
 
       EventStream*
-      getNullStream() const;
+      getNullStream( int deviceId = -1 );
 
       size_t
       getNumStreams() const;
-
-      size_t
-      getNumHostStreams() const;
-
-      size_t
-      getNumDeviceStreams() const;
       
       EventStream*
       getFirstDeviceStream( int deviceId );
@@ -82,10 +77,14 @@ namespace casita
       EventStreamList hostStreams;
       EventStreamList deviceStreams;
       EventStreamList allStreams;
-     
-      EventStream*    deviceNullStream;
       
-      std::map< int, EventStream* > deviceFirstStreamMap;  
+      //<! initially false, true if only one device stream that is the null stream exists
+      bool deviceNullStreamOnly;
+      
+      // associates device ID and corresponding null stream
+      std::map< int, EventStream* > deviceNullStreamMap;
+      
+      std::map< int, EventStream* > deviceFirstStreamMap;
       
       //<! collect all device streams per device Id
       std::map< int, EventStreamList > deviceIdStreamsMap; 

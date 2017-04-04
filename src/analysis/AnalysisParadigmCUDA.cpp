@@ -49,6 +49,8 @@ AnalysisParadigmCUDA::AnalysisParadigmCUDA( AnalysisEngine* analysisEngine ) :
   }
   
   addRule( new StreamWaitRule( 1 ) );
+  
+  // if only
 }
 
 AnalysisParadigmCUDA::~AnalysisParadigmCUDA()
@@ -559,11 +561,12 @@ AnalysisParadigmCUDA::clearKernelLaunches( uint64_t streamId )
 }
 
 void
-AnalysisParadigmCUDA::addStreamWaitEvent( uint64_t   deviceProcId,
+AnalysisParadigmCUDA::addStreamWaitEvent( uint64_t   streamId,
                                           EventNode* streamWaitLeave )
 {
-  EventStream* nullStream = commonAnalysis->getNullStream();
-  if ( nullStream && nullStream->getId() == deviceProcId )
+  const EventStream* nullStream = commonAnalysis->getStreamGroup().getNullStream( 
+    commonAnalysis->getStream( streamId )->getDeviceId() );
+  if ( nullStream && nullStream->getId() == streamId )
   {
     StreamWaitTagged* swTagged = new StreamWaitTagged();
     swTagged->node = streamWaitLeave;
@@ -574,7 +577,7 @@ AnalysisParadigmCUDA::addStreamWaitEvent( uint64_t   deviceProcId,
     // Remove any pending streamWaitEvent with the same event ID since
     // it is replaced by this new streamWaitLeave.
     EventNode::EventNodeList& eventNodeList =
-      streamWaitMap[deviceProcId];
+      streamWaitMap[ streamId ];
     for ( EventNode::EventNodeList::iterator iter = eventNodeList.begin();
           iter != eventNodeList.end(); ++iter )
     {
@@ -584,7 +587,7 @@ AnalysisParadigmCUDA::addStreamWaitEvent( uint64_t   deviceProcId,
         break;
       }
     }
-    streamWaitMap[deviceProcId].push_back( streamWaitLeave );
+    streamWaitMap[streamId].push_back( streamWaitLeave );
   }
 }
 
@@ -604,7 +607,7 @@ AnalysisParadigmCUDA::getFirstStreamWaitEvent( uint64_t deviceStreamId )
   if ( iter == streamWaitMap.end( ) )
   {
     // test if a streamWaitEvent on NULL is not tagged for this device stream
-    size_t numAllDevProcs = commonAnalysis->getNumAllDeviceStreams( );
+    size_t numAllDevProcs = commonAnalysis->getNumDeviceStreams( );
     for ( NullStreamWaitList::iterator nullIter = nullStreamWaits.begin( );
           nullIter != nullStreamWaits.end( ); )
     {
@@ -649,15 +652,15 @@ AnalysisParadigmCUDA::consumeFirstStreamWaitEvent( uint64_t deviceStreamId )
   {
     /* test if a streamWaitEvent on NULL is not tagged for this device
      * stream */
-    size_t numAllDevProcs = commonAnalysis->getNumAllDeviceStreams( );
-    for ( NullStreamWaitList::iterator nullIter = nullStreamWaits.begin( );
-          nullIter != nullStreamWaits.end( ); )
+    size_t numAllDevProcs = commonAnalysis->getNumDeviceStreams();
+    for ( NullStreamWaitList::iterator nullIter = nullStreamWaits.begin();
+          nullIter != nullStreamWaits.end(); )
     {
       NullStreamWaitList::iterator currentIter = nullIter;
       StreamWaitTagged* swTagged = *currentIter;
       /* remove streamWaitEvents that have been tagged by all device
        * streams */
-      if ( swTagged->tags.size( ) == numAllDevProcs )
+      if ( swTagged->tags.size() == numAllDevProcs )
       {
         delete( *nullIter );
         nullStreamWaits.erase( nullIter );

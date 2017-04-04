@@ -92,6 +92,12 @@ EventStream::getStreamType() const
   return streamType;
 }
 
+void
+EventStream::setStreamType( EventStream::EventStreamType type )
+{
+  streamType = type;
+}
+
 bool
 EventStream::isHostStream() const
 {
@@ -265,70 +271,81 @@ EventStream::getLastEventTime() const
   }
 }
 
+/**
+ * Add a node to the stream's vector of sorted graph nodes.
+ * Fill the paradigm predecessor node map.
+ * 
+ * @param node
+ * @param predNodes
+ */
 void
 EventStream::addGraphNode( GraphNode*                  node,
                            GraphNode::ParadigmNodeMap* predNodes )
 {
   // set changed flag
   nodesAdded = true;
-  
-  GraphNode* lastLocalNode = getLastNode();
-  
-  GraphNode* oldNode[NODE_PARADIGM_COUNT];
+
+  GraphNode* oldNode[ NODE_PARADIGM_COUNT ];
+
+  // iterate over paradigms
   for ( size_t i = 0; i < NODE_PARADIGM_COUNT; ++i )
-  {
-    oldNode[i] = NULL;
-  }
-  Paradigm nodeParadigm = node->getParadigm();
+  {    
+    // get paradigm type
+    Paradigm oparadigm = (Paradigm)( 1 << i );
 
-  for ( size_t o = 1; o < NODE_PARADIGM_INVALID; o *= 2 )
-  {
-    Paradigm oparadigm      = (Paradigm)o;
-    size_t   paradigm_index = (size_t)log2( oparadigm );
-
-    oldNode[paradigm_index] = getLastNode( oparadigm );
-    if ( predNodes && ( oldNode[paradigm_index] ) )
+    oldNode[ i ] = getLastParadigmNode( oparadigm );
+    
+    // if predecessor node map should be read and old node is not NULL
+    if ( predNodes && oldNode[ i ] )
     {
-      predNodes->insert( std::make_pair( oparadigm,
-                                         oldNode[paradigm_index] ) );
+      // insert current last node of the given paradigm
+      //predNodes->insert( std::make_pair( oparadigm, oldNode[ i ] ) );
+      ( *predNodes )[ oparadigm ] = oldNode[ i ];
     }
 
+    // if the node has the current iteration's paradigm
     if ( node->hasParadigm( oparadigm ) )
     {
-      if ( oldNode[paradigm_index] &&
-           Node::compareLess( node, oldNode[paradigm_index] ) )
+      // ensure node order
+      if ( oldNode[ i ] &&
+           Node::compareLess( node, oldNode[ i ] ) )
       {
         throw RTException(
                 "Can't add graph node (%s) before last graph node (%s)",
                 node->getUniqueName().c_str(),
-                oldNode[paradigm_index]->getUniqueName().c_str() );
+                oldNode[i]->getUniqueName().c_str() );
       }
 
-      if ( graphData[paradigm_index].firstNode == NULL )
+      // set the first node in the stream, if it was not set yet
+      if ( graphData[ i ].firstNode == NULL )
       {
-        graphData[paradigm_index].firstNode = node;
+        graphData[ i ].firstNode = node;
       }
 
-      graphData[paradigm_index].lastNode = node;
+      // set the last node for the current paradigm in this stream
+      graphData[ i ].lastNode = node;
     }
   }
 
+  // push the node to the internal vector
   addNodeInternal( nodes, node );
 
-  if ( nodeParadigm == PARADIGM_MPI )
+  // for MPI nodes
+  if ( node->getParadigm() == PARADIGM_MPI )
   {
-    // \todo: This was probably wrong. Therefore, took the last node before changing the graph data.
-    //GraphNode* lastLocalCompute = getLastNode();
-
+    GraphNode* lastLocalNode = getLastNode();
+    
     //std::cerr << "[" << this->id << "] " << node->getUniqueName() 
     //          << "setLinkLeft: " << lastLocalNode->getUniqueName() << std::endl;
+    
+    // set the left link to the last local node (for CPA)
     node->setLinkLeft( lastLocalNode );
     
     // save MPI nodes as they do not have a right link yet
     unlinkedMPINodes.push_back( node );
   }
 
-  
+  // set the right link of all MPI nodes in the unlinked list to the current node
   if ( node->isEnter() )
   {
     for ( SortedGraphNodeList::const_iterator iter =
@@ -347,6 +364,10 @@ EventStream::insertGraphNode( GraphNode*                  node,
                               GraphNode::ParadigmNodeMap& predNodes,
                               GraphNode::ParadigmNodeMap& nextNodes )
 {
+  UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
+             "Insert node %s on stream %"PRIu64, 
+             node->getUniqueName().c_str(), this->getId() );
+  
   // set changed flag
   nodesAdded = true;
   

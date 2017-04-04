@@ -92,12 +92,16 @@ namespace casita
             {
               Edge* barrierEdge = commonAnalysis->getEdge( barrier.first,
                                                            barrier.second );
-              UTILS_ASSERT( barrierEdge, "no edge %s, %s",
-                            barrier.first->getUniqueName().c_str(),
-                            barrier.second->getUniqueName().c_str() );
-
-              // make this barrier a blocking wait state
-              barrierEdge->makeBlocking();
+              
+              if( barrierEdge )
+              {
+                barrierEdge->makeBlocking();
+              }
+              else
+              {
+                commonAnalysis->newEdge( barrier.first, barrier.second,
+                                         EDGE_IS_BLOCKING );
+              }              
               
               uint64_t wtime = 
                 latestEnterNode->getTime() - barrier.first->getTime();

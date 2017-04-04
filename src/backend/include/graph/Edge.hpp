@@ -109,10 +109,6 @@ namespace casita
          {
            name << ",OMP";
          }
-         if ( edgeParadigm & PARADIGM_CPU )
-         {
-           name << ",CPU";
-         }
        }
 
        name << ") ";

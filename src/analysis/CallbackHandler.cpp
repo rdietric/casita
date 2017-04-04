@@ -144,17 +144,11 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
                                    OTF2KeyValueList* list,
                                    bool              isGPU )
 {
-  CallbackHandler* handler  =
-    (CallbackHandler*)( reader->getUserData() );
+  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
   AnalysisEngine&  analysis = handler->getAnalysis();
 
   EventStream::EventStreamType streamType = EventStream::ES_HOST;
 
-  /*if ( isGPUNull )
-  {
-    streamType = EventStream::ES_DEVICE_NULL;
-  }
-  else */
   if ( isGPU )
   {
       streamType = EventStream::ES_DEVICE;
@@ -177,6 +171,28 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
              analysis.getMPIRank(), name, streamId, streamType, parentId );
 
   analysis.newEventStream( streamId, parentId, name, streamType );
+}
+
+void
+CallbackHandler::handleLocationProperty( OTF2TraceReader*    reader,
+                                         uint64_t            streamId,
+                                         const char*         name,
+                                         OTF2_Type           type,
+                                         OTF2_AttributeValue value )
+{
+  CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
+  AnalysisEngine&  analysis = handler->getAnalysis();
+  
+  if( strcmp ( name, SCOREP_CUDA_NULL_STREAM ) == 0 )
+  {
+    //UTILS_MSG( Parser::getInstance().getVerboseLevel() >= VERBOSE_BASIC, 
+    //           "[%"PRIu64"] Found CUDA null stream", streamId );
+    if( strcmp ( reader->getStringRef( value.stringRef ).c_str(), "yes" ) == 0 )
+    {
+      //UTILS_MSG( true, "Found CUDA null stream == yes" );
+      analysis.getStreamGroup().setDeviceNullStream( analysis.getStream( streamId ) );
+    }
+  }
 }
 
 void
@@ -294,21 +310,24 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
 
   FunctionDescriptor functionDesc;
   functionDesc.recordType = RECORD_ENTER; // needed to determine correct function type
-  AnalysisEngine::getFunctionType( funcName, stream, &functionDesc );
-  
-  /* check for function with the OpenMP paradigm (move check to handle process definitions)
-  if ( functionDesc.paradigm == PARADIGM_OMP )
-  {
-    analysis.addDetectedParadigm( PARADIGM_OMP );
-  }*/
+  bool generateNode = FunctionTable::getAPIFunctionType( funcName, &functionDesc, 
+                                     stream->isDeviceStream(), 
+                                     analysis.haveDeviceNullStreamOnly() );
 
   // for CPU functions no graph node is created
   // only start time, end time and number of CPU events between nodes is stored
-  if ( functionDesc.paradigm == PARADIGM_CPU )
+  //if ( functionDesc.paradigm == PARADIGM_CPU )
+  if( !generateNode )
   {    
     //UTILS_MSG( true, "CPU event: %s", funcName );
     analysis.addCPUEvent( time, streamId, false );
     return;
+  }
+  
+  if ( functionDesc.paradigm == PARADIGM_CUDA && 
+       functionDesc.functionType == CUDA_MEMCPY_ASYNC )
+  {
+    
   }
 
   GraphNode* enterNode = NULL;
@@ -387,9 +406,12 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
 
   FunctionDescriptor functionType;
   functionType.recordType = RECORD_LEAVE; // needed to determine correct function type
-  AnalysisEngine::getFunctionType( funcName, stream, &functionType );
+  bool generateNode = FunctionTable::getAPIFunctionType( funcName, &functionType, 
+                                     stream->isDeviceStream(), 
+                                     analysis.haveDeviceNullStreamOnly() );
 
-  if ( functionType.paradigm == PARADIGM_CPU )
+  //if ( functionType.paradigm == PARADIGM_CPU )
+  if( !generateNode )
   {
     //std::cout << " skipping " << funcName << std::endl;
     analysis.addCPUEvent( time, streamId, true );

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2016,
+ * Copyright (c) 2016, 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -37,15 +37,15 @@ namespace casita
       {
 
         // applied at kernel leave
-        if ( !kernelLeave->isOpenCLKernel( ) || !kernelLeave->isLeave( ) )
+        if ( !kernelLeave->isOpenCLKernel() || !kernelLeave->isLeave() )
         {
           return false;
         }
 
-        AnalysisEngine* commonAnalysis  = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis  = analysis->getCommon();
 
         GraphNode* kernelEnter  = kernelLeave->getPartner();
-        uint64_t   kernelStrmId = kernelLeave->getStreamId( );
+        uint64_t   kernelStrmId = kernelLeave->getStreamId();
 
         // find the stream which launched this kernel and consume the launch event
         // the number of kernel launches and kernel executions has to be the same
@@ -54,12 +54,12 @@ namespace casita
 
         if ( !launchEnterEvent )
         {
-          //ErrorUtils::getInstance( ).throwError( 
+          //ErrorUtils::getInstance().throwError( 
           UTILS_MSG( true, 
             "[%u] Applying KernelExecutionRule failed. "
             "Found kernel %s without matching kernel launch.",
-            commonAnalysis->getMPIRank( ),
-            kernelLeave->getUniqueName( ).c_str( ) );
+            commonAnalysis->getMPIRank(),
+            kernelLeave->getUniqueName().c_str() );
           
           return false;
         }
@@ -78,30 +78,40 @@ namespace casita
           GraphNode* syncEvtLeave = ( GraphNode* )launchEnterEvent->getData();
           
           // if it is a CUDA event synchronize leave (compare EventSyncRule)
-          if ( syncEvtLeave->isOpenCLEventSync( ) && syncEvtLeave->isLeave( ) )
+          if ( syncEvtLeave->isOpenCLEventSync() && syncEvtLeave->isLeave() )
           {
             GraphNode* syncEvtEnter = syncEvtLeave->getPartner();
 
             UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME, 
                        "[%u] Process deferred node %s at %s",
-                       commonAnalysis->getMPIRank( ), 
-                       syncEvtLeave->getUniqueName( ).c_str( ),
+                       commonAnalysis->getMPIRank(), 
+                       syncEvtLeave->getUniqueName().c_str(),
                        kernelLeave->getUniqueName().c_str() );
 
-            if ( syncEvtEnter->getTime( ) < kernelLeave->getTime( ) )
+            if ( syncEvtEnter->getTime() < kernelLeave->getTime() )
             {
-              commonAnalysis->getEdge( syncEvtEnter, syncEvtLeave )->makeBlocking( );
+              // make edge of the synchronization blocking
+              Edge* sEdge = commonAnalysis->getEdge( syncEvtEnter, syncEvtLeave );
+              if( sEdge )
+              {
+                sEdge->makeBlocking();
+              }
+              else
+              {
+                commonAnalysis->newEdge( syncEvtEnter, syncEvtLeave, 
+                                         EDGE_IS_BLOCKING );
+              }
 
               // set counters
-              uint64_t value = syncEvtLeave->getTime( ) -
-                  std::max( syncEvtEnter->getTime( ), kernelEnter->getTime( ) );
+              uint64_t value = syncEvtLeave->getTime() -
+                  std::max( syncEvtEnter->getTime(), kernelEnter->getTime() );
               syncEvtLeave->incCounter( WAITING_TIME, value );
               kernelLeave->incCounter( BLAME, value );
             }
 
             commonAnalysis->newEdge( kernelLeave, syncEvtLeave );
             
-            //commonAnalysis->getStream( kernelStrmId )->consumePendingKernel( );
+            //commonAnalysis->getStream( kernelStrmId )->consumePendingKernel();
             // clear all pending kernels before that kernel
             commonAnalysis->getStream( kernelLeave->getStreamId() )
                                          ->consumePendingKernels( kernelLeave );

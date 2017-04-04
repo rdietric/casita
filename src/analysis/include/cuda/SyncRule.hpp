@@ -127,7 +127,18 @@ namespace casita
 
               // make edge between sync enter and leave blocking (early sync)
               Edge* syncEdge = analysis->getEdge( syncEnter, syncLeave );
-              if( syncEdge && !syncEdge->isBlocking() )
+              
+              // if the edge is not available, create a blocking edge
+              if( !syncEdge )
+              {
+                analysis->newEdge( syncEnter, syncLeave, EDGE_IS_BLOCKING );
+                
+                // early blocking wait statistics
+                analysis->getStatistics().addStatWithCount( 
+                  OFLD_STAT_EARLY_BLOCKING_WAIT, 
+                  syncLeave->getTime() - syncEnter->getTime() );
+              }
+              else if( !syncEdge->isBlocking() )
               {
                 syncEdge->makeBlocking();
                 
@@ -139,7 +150,6 @@ namespace casita
 
               GraphNode* kernelEnter = kernelLeave->getGraphPair().first;
 
-              
               uint64_t waitingTime = std::min( syncLeave->getTime(),
                                                kernelLeave->getTime() ) -
                                      std::max( syncEnter->getTime(),

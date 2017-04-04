@@ -134,6 +134,9 @@ namespace casita
      
      int
      getDeviceId( void ) const;
+     
+     void
+     setStreamType( EventStream::EventStreamType type );
 
      EventStream::EventStreamType
      getStreamType() const;
@@ -491,7 +494,7 @@ namespace casita
      uint64_t            lastEventTime;
      
      //<! first and last node of the analysis interval (for each paradigm)
-     GraphData           graphData[NODE_PARADIGM_COUNT];
+     GraphData           graphData[ NODE_PARADIGM_COUNT ];
      
      //!< list of nodes in this stream
      SortedGraphNodeList nodes;

@@ -100,7 +100,17 @@ namespace casita
 
             if ( syncEvtEnter->getTime() < kernelLeave->getTime() )
             {
-              commonAnalysis->getEdge( syncEvtEnter, syncEvtLeave )->makeBlocking();
+              // make edge of the synchronization blocking
+              Edge* sEdge = commonAnalysis->getEdge( syncEvtEnter, syncEvtLeave );
+              if( sEdge )
+              {
+                sEdge->makeBlocking();
+              }
+              else
+              {
+                commonAnalysis->newEdge( syncEvtEnter, syncEvtLeave, 
+                                         EDGE_IS_BLOCKING );
+              }
 
               // set counters
               uint64_t value = syncEvtLeave->getTime() -
