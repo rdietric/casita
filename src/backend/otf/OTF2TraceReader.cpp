@@ -543,8 +543,12 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationProperty(
                "[%"PRIu64"] Found location property %s", 
                location, tr->stringRefMap[ name ].c_str() );
     
-    tr->handleLocationProperty(
-      tr, location, tr->stringRefMap[ name ].c_str(), type, value );
+    // location strings are only stored for locations of this MPI rank
+    if( tr->locationStringRefMap.count( location ) > 0 )
+    {
+      tr->handleLocationProperty(
+        tr, location, tr->stringRefMap[ name ].c_str(), type, value );
+    }
   }
   
   return OTF2_CALLBACK_SUCCESS;

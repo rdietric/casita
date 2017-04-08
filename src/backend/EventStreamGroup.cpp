@@ -69,6 +69,12 @@ EventStreamGroup::removeHostStream( EventStream* p )
 void
 EventStreamGroup::setDeviceNullStream( EventStream* stream )
 {
+  if( stream == NULL )
+  {
+    UTILS_WARNING( "Cannot set null stream" );
+    return;
+  }
+  
   stream->setStreamType( EventStream::ES_DEVICE_NULL );
   
   deviceNullStreamMap[ stream->getDeviceId() ] = stream;

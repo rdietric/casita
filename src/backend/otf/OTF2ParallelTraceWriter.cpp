@@ -1503,8 +1503,25 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       if( currentNode->isCUDA() || currentNode->isOpenCL() )
       {
         OTF2_AttributeList_RemoveAllAttributes( attributeList );
+        
+        // at kernel launch leave when the device is compute idle
+        if( currentNode->isLeave() && deviceComputeRefCount == 0 &&
+            ( currentNode->isCUDAKernelLaunch() || currentNode->isOpenCLKernelEnqueue() ) )
+        {
+          GraphNode* launchEnter = currentNode->getGraphPair().first;
+          if( launchEnter && launchEnter->getLink() )
+          {
+            uint64_t knStartTime = launchEnter->getLink()->getTime();
+            
+            if( knStartTime > currentNode->getTime() )
+            {
+              analysis->getStatistics().addStatWithCount( OFLD_STAT_KERNEL_START_DELAY, 
+                knStartTime - currentNode->getTime() );
+            }
+          }
+        }
       }
-      
+      else
       // reset consecutive communication count at MPI leave nodes 
       // (assumes that offloading is used in between MPI operations) 
       if( currentNode->isMPI() && currentNode->isLeave() )

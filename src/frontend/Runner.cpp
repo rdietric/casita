@@ -1867,8 +1867,9 @@ Runner::printAllActivities()
     // print statistics
     Statistics& stats = analysis.getStatistics();
     printf( "\nPattern summary:\n"
-            " Overall:\n"
-            "  Total attributed waiting time: %lf sec\n",
+            " Total program runtime:         %lf s\n"
+            " Total attributed waiting time: %lf s\n",
+            analysis.getRealTime(  criticalPathEnd.second - criticalPathStart.second ),
             analysis.getRealTime( sumWaitingTime ) );
       
     //// MPI ////
@@ -1879,7 +1880,7 @@ Runner::printAllActivities()
                             stats.getStats()[ MPI_STAT_COLLECTIVE ];
     if( patternCount )
     {                      
-      printf( " MPI waiting time: %"PRIu64" (%lf s)\n",
+      printf( " MPI waiting time:        %"PRIu64" (%lf s)\n",
               patternCount,
               analysis.getRealTime( 
                 stats.getStats()[MPI_STAT_LATE_SENDER_WTIME] + 
@@ -1893,28 +1894,28 @@ Runner::printAllActivities()
     patternCount = stats.getStats()[MPI_STAT_LATE_SENDER];
     if( patternCount )
     {
-      printf( "  Late sender: %"PRIu64" (%lf s)\n", patternCount,
+      printf( "  Late sender:            %"PRIu64" (%lf s)\n", patternCount,
               analysis.getRealTime( stats.getStats()[MPI_STAT_LATE_SENDER_WTIME] ) );
     }
     
     patternCount = stats.getStats()[ MPI_STAT_LATE_RECEIVER ];
     if( patternCount )
     {
-      printf( "  Late receiver: %"PRIu64" (%lf s)\n", patternCount,
+      printf( "  Late receiver:          %"PRIu64" (%lf s)\n", patternCount,
               analysis.getRealTime( stats.getStats()[MPI_STAT_LATE_RECEIVER_WTIME] ) );
     }
     
     patternCount = stats.getStats()[MPI_STAT_SENDRECV];
     if( patternCount )
     {
-      printf( "  Wait in MPI_Sendrecv: %"PRIu64" (%lf s)\n", patternCount,
+      printf( "  Wait in MPI_Sendrecv:   %"PRIu64" (%lf s)\n", patternCount,
               analysis.getRealTime( stats.getStats()[MPI_STAT_SENDRECV_WTIME] ) );
     }
     
     patternCount = stats.getStats()[ MPI_STAT_WAITALL ];
     if( patternCount )
     {
-      printf( "  Wait in MPI_Waitall: %"PRIu64" (%lf s)\n", patternCount,
+      printf( "  Wait in MPI_Waitall:    %"PRIu64" (%lf s)\n", patternCount,
               analysis.getRealTime( stats.getStats()[MPI_STAT_WAITALL_WTIME] ) );
     }
     
@@ -1941,19 +1942,19 @@ Runner::printAllActivities()
     if( analysis.haveParadigm( PARADIGM_CUDA ) || analysis.haveParadigm( PARADIGM_OCL ) )
     {
       printf( " Offloading\n"
-              "  Idle device: %lf sec (%2.2lf%%)\n"
-              "  Compute idle device: %lf sec (%2.2lf%%)\n",
-        analysis.getRealTime( stats.getStats()[OFLD_STAT_IDLE_TIME] ),
+              "  Idle device:               %2.2lf%% (%lf s) \n"
+              "  Compute idle device:       %2.2lf%% (%lf s)\n",
         (double) stats.getStats()[OFLD_STAT_IDLE_TIME] / 
           (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100,
-        analysis.getRealTime( stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME]),
+        analysis.getRealTime( stats.getStats()[OFLD_STAT_IDLE_TIME] ),
         (double) stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME] / 
-          (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100 );
+          (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100,
+        analysis.getRealTime( stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME] ) );
 
       patternCount = stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WAIT];
       if( patternCount )
       {
-        printf( "  Early blocking wait: %"PRIu64" (%lf sec, on kernel: %lf)\n",
+        printf( "  Early blocking wait:       %"PRIu64" (%lf s, on kernel: %lf)\n",
           patternCount, 
           analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME] ),
           analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL] ) );
@@ -1969,15 +1970,23 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[OFLD_STAT_BLOCKING_COM];
       if( patternCount )
       {
-        printf( "  Blocking communication: %"PRIu64" (%lf sec)\n", patternCount,
+        printf( "  Blocking communication:    %"PRIu64" (%lf s)\n", patternCount,
           analysis.getRealTime( stats.getStats()[OFLD_STAT_BLOCKING_COM_TIME] ) );
       }
 
       patternCount = stats.getStats()[OFLD_STAT_MULTIPLE_COM];
       if( patternCount )
       {
-        printf( "  Consecutive communication: %"PRIu64" (%lf sec)\n\n", patternCount,
+        printf( "  Consecutive communication: %"PRIu64" (%lf s)\n", patternCount,
           analysis.getRealTime( stats.getStats()[OFLD_STAT_MULTIPLE_COM_TIME] ) );
+      }
+      
+      patternCount = stats.getStats()[OFLD_STAT_KERNEL_START_DELAY];
+      if( patternCount )
+      {
+        printf( "  Kernel Startup Delay:      %"PRIu64" (%lf s, %lf ms/kernel), \n\n", patternCount,
+          analysis.getRealTime( stats.getStats()[OFLD_STAT_KERNEL_START_DELAY_TIME] ),
+          analysis.getRealTime( stats.getStats()[OFLD_STAT_KERNEL_START_DELAY_TIME] ) / patternCount *1000 );
       }
     }
     

@@ -190,7 +190,8 @@ CallbackHandler::handleLocationProperty( OTF2TraceReader*    reader,
     if( strcmp ( reader->getStringRef( value.stringRef ).c_str(), "yes" ) == 0 )
     {
       //UTILS_MSG( true, "Found CUDA null stream == yes" );
-      analysis.getStreamGroup().setDeviceNullStream( analysis.getStream( streamId ) );
+      EventStream* stream = analysis.getStream( streamId );
+      analysis.getStreamGroup().setDeviceNullStream( stream );
     }
   }
 }
