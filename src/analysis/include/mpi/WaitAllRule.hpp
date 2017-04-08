@@ -46,9 +46,7 @@ namespace casita
         {
           EventStream::MPIIcommRequestList* requestList = 
             (EventStream::MPIIcommRequestList* ) waitAllLeave->getData();
-          
-          
-          
+
           // variables that are constant for every request
           AnalysisEngine* analysis = mpiAnalysis->getCommon();
           EventStream*    stream   = analysis->getStream( 
@@ -142,7 +140,7 @@ namespace casita
             
             // add waiting time statistics (MPI_STAT_WAITALL)
             analysis->getStatistics().addStatWithCount( 
-                MPI_STAT_WAITALL, wtime );
+                MPI_STAT_WAITALL_LATEPARTNER, wtime );
 
             waitAllLeave->setCounter( WAITING_TIME, wtime );
           }

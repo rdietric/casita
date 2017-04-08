@@ -1876,17 +1876,17 @@ Runner::printAllActivities()
     uint64_t patternCount = stats.getStats()[MPI_STAT_LATE_SENDER] + 
                             stats.getStats()[ MPI_STAT_LATE_RECEIVER ] +
                             stats.getStats()[MPI_STAT_SENDRECV] +
-                            stats.getStats()[ MPI_STAT_WAITALL ] +
+                            stats.getStats()[ MPI_STAT_WAITALL_LATEPARTNER ] +
                             stats.getStats()[ MPI_STAT_COLLECTIVE ];
     if( patternCount )
     {                      
-      printf( " MPI waiting time:        %"PRIu64" (%lf s)\n",
+      printf( " MPI wait patterns:         %"PRIu64" (%lf s)\n",
               patternCount,
               analysis.getRealTime( 
                 stats.getStats()[MPI_STAT_LATE_SENDER_WTIME] + 
                 stats.getStats()[MPI_STAT_LATE_RECEIVER_WTIME] +
                 stats.getStats()[MPI_STAT_SENDRECV_WTIME] +
-                stats.getStats()[MPI_STAT_WAITALL_WTIME] +
+                stats.getStats()[MPI_STAT_WAITALL_LATEPARTNER_WTIME] +
                 stats.getStats()[MPI_STAT_COLLECTIVE_WTIME]
               ) );
     }
@@ -1894,35 +1894,35 @@ Runner::printAllActivities()
     patternCount = stats.getStats()[MPI_STAT_LATE_SENDER];
     if( patternCount )
     {
-      printf( "  Late sender:            %"PRIu64" (%lf s)\n", patternCount,
+      printf( "  Late sender:              %"PRIu64" (%lf s)\n", patternCount,
               analysis.getRealTime( stats.getStats()[MPI_STAT_LATE_SENDER_WTIME] ) );
     }
     
     patternCount = stats.getStats()[ MPI_STAT_LATE_RECEIVER ];
     if( patternCount )
     {
-      printf( "  Late receiver:          %"PRIu64" (%lf s)\n", patternCount,
+      printf( "  Late receiver:            %"PRIu64" (%lf s)\n", patternCount,
               analysis.getRealTime( stats.getStats()[MPI_STAT_LATE_RECEIVER_WTIME] ) );
     }
     
     patternCount = stats.getStats()[MPI_STAT_SENDRECV];
     if( patternCount )
     {
-      printf( "  Wait in MPI_Sendrecv:   %"PRIu64" (%lf s)\n", patternCount,
+      printf( "  Wait in MPI_Sendrecv:     %"PRIu64" (%lf s)\n", patternCount,
               analysis.getRealTime( stats.getStats()[MPI_STAT_SENDRECV_WTIME] ) );
     }
     
-    patternCount = stats.getStats()[ MPI_STAT_WAITALL ];
+    patternCount = stats.getStats()[ MPI_STAT_WAITALL_LATEPARTNER ];
     if( patternCount )
     {
-      printf( "  Wait in MPI_Waitall:    %"PRIu64" (%lf s)\n", patternCount,
-              analysis.getRealTime( stats.getStats()[MPI_STAT_WAITALL_WTIME] ) );
+      printf( "  MPI_Waitall late partner: %"PRIu64" (%lf s)\n", patternCount,
+              analysis.getRealTime( stats.getStats()[MPI_STAT_WAITALL_LATEPARTNER_WTIME] ) );
     }
     
     patternCount = stats.getStats()[ MPI_STAT_COLLECTIVE ];
     if( patternCount )
     {
-      printf( "  Wait in MPI collective: %"PRIu64" (%lf s)\n", patternCount,
+      printf( "  Wait in MPI collective:   %"PRIu64" (%lf s)\n", patternCount,
               analysis.getRealTime( stats.getStats()[MPI_STAT_COLLECTIVE_WTIME] ) );
     }
     

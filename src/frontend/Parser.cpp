@@ -92,6 +92,7 @@ namespace casita
     cout << "      --idle=[0,1,2,3]    write device idle regions to output trace" << endl
          << "                          (0=no, 1=device idle(default), 2=compute idle, 3=both)" << endl;
     cout << "  -l  --link-kernels      create inter-stream kernel dependencies (default: off)" << endl;
+    cout << "      --nullstream=INT    use null stream semantic for the given stream" << endl;
     cout << "  -p [--path]             print critical paths" << endl;
     cout << "     [--cpa-loop-check]   detect circular loops in process-local critical path" << endl
          << "                          (default: off)" << endl;
@@ -287,6 +288,13 @@ namespace casita
       else if( opt.find( "--link-kernels" ) != string::npos )
       {
         options.linkKernels = true;
+      }
+      
+      // handle the given stream (by ID) as null stream
+      else if( opt.find( "--nullstream=" ) != string::npos )
+      {
+        options.nullStream = 
+          atoi( opt.erase( 0, string( "--nullstream=" ).length() ).c_str() );
       }
 
       // interval analysis
@@ -496,6 +504,7 @@ namespace casita
     options.predictionFilter = "";
     options.deviceIdle = 1;
     options.linkKernels =false;
+    options.nullStream = -1;
     options.ignoreAsyncMpi = false;
     options.ignoreCUDA = false;
     options.ignoreOCL = false;

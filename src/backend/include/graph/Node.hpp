@@ -66,6 +66,23 @@ namespace casita
    MISC_CPU     = ( 1 << 30 ),
    MISC_PROCESS = ( 1 << 31 )  //
  };
+ 
+ enum NodeTypeOFLD
+ {
+   OFLD_WAIT           = ( 1 << 1 ),
+   OFLD_WAIT_COLL      = ( 1 << 2 ),
+   OFLD_WAIT_EVT       = ( 1 << 3 ),
+   OFLD_WAITSTATE      = ( 1 << 4 ),
+   OFLD_TASK_KERNEL    = ( 1 << 5 ),
+   OFLD_TASK_DATA      = ( 1 << 6 ),
+   OFLD_ENQUEUE_KERNEL = ( 1 << 7 ),
+   OFLD_ENQUEUE_DATA   = ( 1 << 8 ),
+   OFLD_ENQUEUE_EVT    = ( 1 << 9 ),
+   OFLD_QUERY          = ( 1 << 10 ),
+   OFLD_QUERY_EVT      = ( 1 << 11 ),
+   OFLD_STREAMWAIT     = ( 1 << 12 ),
+   OFLD_BLOCKING_DATA  = ( 1 << 13 )
+ };
 
  enum NodeTypeCUDA
  {

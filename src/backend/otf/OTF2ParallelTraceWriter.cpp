@@ -1426,52 +1426,6 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   const bool mapsInternalNode = FunctionTable::getAPIFunctionType(
     eventName, &eventDesc, currentStream->isDeviceStream(), 
     analysis->haveDeviceNullStreamOnly() );  
-  
-  // special handling for offloading API routines
-  if( ( regionInfo.paradigm == OTF2_PARADIGM_CUDA ||
-        regionInfo.paradigm == OTF2_PARADIGM_OPENCL ) && mapsInternalNode )
-  {
-    // write enter event for device idle regions at first occurrence of any 
-    // offloading API routine
-    if( deviceRefCount < 0 )
-    {
-      deviceRefCount = 0;
-      deviceComputeRefCount = 0;
-
-      lastIdleStart = event.time;
-      lastComputeIdleStart = event.time;
-
-      // compute idle has to be written first (includes device idle)
-      if( Parser::getInstance().getProgramOptions().deviceIdle & (1 << 1) )
-      {
-        // write compute idle enter
-        //\todo: deviceId will be -1
-        int deviceId = analysis->getStream( event.location )->getDeviceId();
-        EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
-        OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
-                                          event.time, deviceComputeIdleRegRef ) );
-      }
-
-      // device idle
-      if( Parser::getInstance().getProgramOptions().deviceIdle & 1 )
-      {
-        // write OTF2 idle enter
-        int deviceId = analysis->getStream( event.location )->getDeviceId();
-        EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
-        OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
-                                          event.time, deviceIdleRegRef ) );
-      }
-      
-      firstOffloadApiEvtTime = event.time;
-    }
-    
-    // remember last event time for offloading API functions (not BUFFER_FLUSH)
-    // to write offloading idle leave events
-    if( regionInfo.role == OTF2_REGION_ROLE_WRAPPER )
-    {
-      lastOffloadApiEvtTime = event.time;
-    }
-  }
 
   //UTILS_MSG( mpiRank == 0, "Event name: '%s' (%d), maps internal: %d", 
   //           eventName.c_str(), event.type, (int)mapsInternalNode );
@@ -1499,10 +1453,52 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
     {
       GraphNode* currentNode = *currentNodeIter;
       
-      // do not write attributes from CUDA and OpenCL nodes
+      // special handling for offloading API routines
       if( currentNode->isCUDA() || currentNode->isOpenCL() )
       {
+        // do not write attributes from CUDA and OpenCL nodes
         OTF2_AttributeList_RemoveAllAttributes( attributeList );
+        
+        // write enter event for device idle regions at first occurrence of 
+        // a device task triggering or synchronizing offloading API routine
+        if( deviceRefCount < 0 )
+        {
+          deviceRefCount = 0;
+          deviceComputeRefCount = 0;
+
+          lastIdleStart = event.time;
+          lastComputeIdleStart = event.time;
+
+          // compute idle has to be written first (includes device idle)
+          if( Parser::getInstance().getProgramOptions().deviceIdle & (1 << 1) )
+          {
+            // write compute idle enter
+            //\todo: deviceId will be -1
+            int deviceId = analysis->getStream( event.location )->getDeviceId();
+            EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
+            OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
+                                              event.time, deviceComputeIdleRegRef ) );
+          }
+
+          // device idle
+          if( Parser::getInstance().getProgramOptions().deviceIdle & 1 )
+          {
+            // write OTF2 idle enter
+            int deviceId = analysis->getStream( event.location )->getDeviceId();
+            EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
+            OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
+                                              event.time, deviceIdleRegRef ) );
+          }
+
+          firstOffloadApiEvtTime = event.time;
+        }
+
+        // remember last event time for offloading API functions (not BUFFER_FLUSH)
+        // to write offloading idle leave events
+        if( regionInfo.role == OTF2_REGION_ROLE_WRAPPER )
+        {
+          lastOffloadApiEvtTime = event.time;
+        }
         
         // at kernel launch leave when the device is compute idle
         if( currentNode->isLeave() && deviceComputeRefCount == 0 &&

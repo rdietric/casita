@@ -34,6 +34,7 @@ namespace casita
    string      predictionFilter;
    int         deviceIdle;
    bool        linkKernels;
+   int         nullStream;
    bool        printCriticalPath;
    bool        cpaLoopCheck;
    bool        mergeActivities;

@@ -136,6 +136,12 @@ namespace casita
      getDeviceId( void ) const;
      
      void
+     setNativeStreamId( int streamId );
+     
+     int
+     getNativeStreamId( void ) const;
+     
+     void
      setStreamType( EventStream::EventStreamType type );
 
      EventStream::EventStreamType
@@ -477,6 +483,9 @@ namespace casita
      
      //!< device ID parsed from stream name, -1 if unknown
      int deviceId;
+     
+     //!< native stream ID (only CUDA)
+     int nativeStreamId;
      
      //!< first enter and last leave time
      std::pair< uint64_t, uint64_t > streamPeriod; 

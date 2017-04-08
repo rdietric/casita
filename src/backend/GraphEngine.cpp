@@ -97,6 +97,17 @@ GraphEngine::newEventStream( uint64_t                     id,
       else if( strstr( name.c_str(), "CUDA[" ) ) // CUDA streams
       {
         deviceId = atoi( name.c_str() + 5 );
+        
+        if( Parser::getInstance().getProgramOptions().nullStream != -1 )
+        {
+          const char* pch = strchr( name.c_str(),':' );
+
+          if( pch != NULL )
+          {
+            p->setNativeStreamId( atoi( pch + 1 ) );
+            //UTILS_WARNING( "Set stream %d as NULL stream", atoi( pch + 1 ) );
+          }
+        }
       }
       else if( strstr( name.c_str(), "MIC [" ) ) // deprecated (libmpti)
       {

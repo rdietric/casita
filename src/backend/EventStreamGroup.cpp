@@ -44,7 +44,18 @@ EventStreamGroup::addDeviceStream( EventStream* p )
   allStreams.push_back( p );
   
   // generate a map with per device streams
-  deviceIdStreamsMap[ p->getDeviceId() ].push_back( p );;
+  deviceIdStreamsMap[ p->getDeviceId() ].push_back( p );
+  
+  // if the user chose to set a specific null stream
+  if( Parser::getInstance().getProgramOptions().nullStream != -1 &&
+      p->getNativeStreamId() == Parser::getInstance().getProgramOptions().nullStream )
+  {
+    setDeviceNullStream( p );
+  }
+  else
+  {
+    deviceNullStreamOnly = false;
+  }
 }
 
 EventStreamGroup::EventStreamList::iterator

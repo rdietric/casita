@@ -36,6 +36,7 @@ EventStream::EventStream( uint64_t          id,
   streamType( eventStreamType ),
   nodesAdded( false ),
   deviceId ( -1 ),
+  nativeStreamId ( -1 ),
   hasFirstCriticalNode( false ),
   hasLastEvent( false ),
   lastNode( NULL ),
@@ -138,6 +139,18 @@ int
 EventStream::getDeviceId() const
 {
   return deviceId;
+}
+
+void
+EventStream::setNativeStreamId( int streamID )
+{
+  this->nativeStreamId = streamID;
+}
+
+int
+EventStream::getNativeStreamId() const
+{
+  return nativeStreamId;
 }
 
 /**

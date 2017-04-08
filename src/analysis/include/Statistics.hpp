@@ -44,8 +44,8 @@ enum StatMetric
    MPI_STAT_SENDRECV_WTIME = 19,
    MPI_STAT_COLLECTIVE = 20,       // number of (imbalanced) collectives
    MPI_STAT_COLLECTIVE_WTIME = 21, // waiting time in collectives
-   MPI_STAT_WAITALL = 22,
-   MPI_STAT_WAITALL_WTIME = 23,
+   MPI_STAT_WAITALL_LATEPARTNER = 22,
+   MPI_STAT_WAITALL_LATEPARTNER_WTIME = 23,
    
    //OpenMP
    OMP_STAT_BARRIER = 24,      // OpenMP barriers
@@ -73,9 +73,8 @@ namespace casita
       uint64_t avg_communication; //\todo: per type (size)
       
       // offloading
-      uint64_t stats[STATS_NUMBER];
-      //uint64_t launch_overhead;
-      //uint64_t launch_distance;      
+      uint64_t stats[ STATS_NUMBER ];
+      //uint64_t launch_overhead;    
       
       // OpenMP
       uint64_t fork_parallel_overhead;
@@ -104,7 +103,7 @@ namespace casita
         int i;
         for( i = 0; i < STATS_NUMBER; ++i )
         {
-          stats[ i ] += stats[ i ];
+          this->stats[ i ] += stats[ i ];
         }
       }
       
