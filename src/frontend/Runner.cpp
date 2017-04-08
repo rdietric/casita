@@ -559,6 +559,7 @@ Runner::mergeActivityGroups()
             groupIter->second.totalDurationOnCP += group->totalDurationOnCP;
             groupIter->second.fractionCP        += group->fractionCP;
             groupIter->second.blameOnCP         += group->blameOnCP;
+            groupIter->second.waitingTime       += group->waitingTime;
             groupIter->second.numUnifyStreams++;
           }
           else // create region and set region information
@@ -570,6 +571,7 @@ Runner::mergeActivityGroups()
             ( *activityGroupMap )[fId].totalDuration     = group->totalDuration;
             ( *activityGroupMap )[fId].totalDurationOnCP = group->totalDurationOnCP;
             ( *activityGroupMap )[fId].blameOnCP         = group->blameOnCP;
+            ( *activityGroupMap )[fId].waitingTime       = group->waitingTime;
             ( *activityGroupMap )[fId].numUnifyStreams   = group->numUnifyStreams;
           }
 
