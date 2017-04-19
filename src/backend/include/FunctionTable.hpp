@@ -240,30 +240,30 @@ namespace casita
  //};
 
  static const size_t      fTableEntriesCUDA = 11;
- static const FTableEntry fTableCUDA[fTableEntriesCUDA] =
+ static const FTableEntry fTableCUDA[ fTableEntriesCUDA ] =
  {
-   { CUDA_COLLSYNC, 2, FTABLE_CUDA_COLL_SYNC },
-   { CUDA_SYNC, 1, FTABLE_CUDA_SYNC },
-   { CUDA_QUERY, 1, FTABLE_CUDA_QUERY },
-   { CUDA_KERNEL_LAUNCH, 5, FTABLE_CUDA_LAUNCH },
-   { CUDA_EV_QUERY, 1, FTABLE_CUDA_EVENT_QUERY },
-   { CUDA_EV_SYNC, 1, FTABLE_CUDA_EVENT_SYNC },
-   { CUDA_EV_LAUNCH, 1, FTABLE_CUDA_EVENT_LAUNCH },
-   { CUDA_STREAMWAIT, 1, FTABLE_CUDA_STREAM_WAIT },
-   { CUDA_WAITSTATE, 1, FTABLE_GPU_WAITSTATE },
-   { CUDA_BLOCKING_COMM, 5, FTABLE_CUDA_BLOCKING_COMM },
-   { CUDA_MEMCPY_ASYNC, 2, FTABLE_CUDA_ASYNC_MEMCPY }
+   { OFLD_WAIT_COLL, 2, FTABLE_CUDA_COLL_SYNC },
+   { OFLD_WAIT, 1, FTABLE_CUDA_SYNC },
+   { OFLD_QUERY, 1, FTABLE_CUDA_QUERY },
+   { OFLD_ENQUEUE_KERNEL, 5, FTABLE_CUDA_LAUNCH },
+   { OFLD_QUERY_EVT, 1, FTABLE_CUDA_EVENT_QUERY },
+   { OFLD_WAIT_EVT, 1, FTABLE_CUDA_EVENT_SYNC },
+   { OFLD_ENQUEUE_EVT, 1, FTABLE_CUDA_EVENT_LAUNCH },
+   { OFLD_ENQUEUE_WAIT, 1, FTABLE_CUDA_STREAM_WAIT },
+   { OFLD_WAITSTATE, 1, FTABLE_GPU_WAITSTATE },
+   { OFLD_BLOCKING_DATA, 5, FTABLE_CUDA_BLOCKING_COMM },
+   { OFLD_ASYNC_DATA, 2, FTABLE_CUDA_ASYNC_MEMCPY }
  };
  
  static const size_t      fTableEntriesOpenCL = 6;
- static const FTableEntry fTableOpenCL[fTableEntriesOpenCL] =
+ static const FTableEntry fTableOpenCL[ fTableEntriesOpenCL ] =
  {
-   { OCL_SYNC_QUEUE, 1, FTABLE_OPENCL_QUEUE_SYNC },
-   { OCL_ENQUEUE_BUFFER, 2, FTABLE_OPENCL_ENQUEUE_BUFFER },
-   { OCL_ENQUEUE_KERNEL, 1, FTABLE_OPENCL_ENQUEUE },
-   { OCL_QUERY_EVENT, 1, FTABLE_OPENCL_EVENT_QUERY },
-   { OCL_SYNC_EVENT, 1, FTABLE_OPENCL_EVENT_SYNC },
-   { OCL_WAITSTATE, 1, FTABLE_GPU_WAITSTATE }
+   { OFLD_WAIT_QUEUE, 1, FTABLE_OPENCL_QUEUE_SYNC },
+   { OFLD_ENQUEUE_DATA, 2, FTABLE_OPENCL_ENQUEUE_BUFFER },
+   { OFLD_ENQUEUE_KERNEL, 1, FTABLE_OPENCL_ENQUEUE },
+   { OFLD_QUERY_EVT, 1, FTABLE_OPENCL_EVENT_QUERY },
+   { OFLD_WAIT_EVT, 1, FTABLE_OPENCL_EVENT_SYNC },
+   { OFLD_WAITSTATE, 1, FTABLE_GPU_WAITSTATE }
  };
 
  static const size_t      fTableEntriesMPI = 7;
@@ -465,18 +465,18 @@ namespace casita
            case PARADIGM_CUDA:
              switch ( descr->functionType )
              {
-               case CUDA_BLOCKING_COMM:
-                 descr->functionType |= CUDA_COLLSYNC | CUDA_SYNC;
+               case OFLD_BLOCKING_DATA:
+                 descr->functionType |= OFLD_WAIT_COLL | OFLD_WAIT;
                  return true;
                  
-               case CUDA_COLLSYNC:
-                 descr->functionType |= CUDA_SYNC;
+               case OFLD_WAIT_COLL:
+                 descr->functionType |= OFLD_WAIT;
                  return true;
                  
-               case CUDA_MEMCPY_ASYNC:
+               case OFLD_ASYNC_DATA:
                  if( deviceNullStreamOnly )
                  {
-                   descr->functionType |= CUDA_COLLSYNC | CUDA_SYNC | CUDA_BLOCKING_COMM;
+                   descr->functionType |= OFLD_WAIT_COLL | OFLD_WAIT | OFLD_BLOCKING_DATA;
                    return true;
                  }
                  else
@@ -484,25 +484,25 @@ namespace casita
                    return false;
                  }
                  
-               case CUDA_SYNC:
-               case CUDA_KERNEL_LAUNCH:
-               case CUDA_EV_LAUNCH:
-               case CUDA_EV_SYNC:
-               case CUDA_QUERY:
-               case CUDA_EV_QUERY:
-               case CUDA_STREAMWAIT:
+               case OFLD_WAIT:
+               case OFLD_ENQUEUE_KERNEL:
+               case OFLD_ENQUEUE_EVT:
+               case OFLD_WAIT_EVT:
+               case OFLD_QUERY:
+               case OFLD_QUERY_EVT:
+               case OFLD_ENQUEUE_WAIT:
                  return true;
              }
              
            case PARADIGM_OCL:
              switch ( descr->functionType )
              {
-               case OCL_SYNC_QUEUE:
-               case OCL_SYNC_EVENT:
-                 descr->functionType |= OCL_SYNC;
-               case OCL_QUERY_EVENT:
-               case OCL_ENQUEUE_KERNEL:
-               case OCL_ENQUEUE_BUFFER:
+               case OFLD_WAIT_QUEUE:
+               case OFLD_WAIT_EVT:
+                 descr->functionType |= OFLD_WAIT;
+               case OFLD_QUERY_EVT:
+               case OFLD_ENQUEUE_KERNEL:
+               case OFLD_ENQUEUE_DATA:
                  return true;
              }
 
@@ -596,15 +596,15 @@ namespace casita
        {
          // TODO: distinguish by function group:
          
+         descr->functionType = OFLD_TASK_KERNEL;
+         
          // if name starts with '$' it is an OpenCL kernel
          if( name[0] == '$' )
          {
-           descr->functionType = OCL_KERNEL;
            descr->paradigm     = PARADIGM_OCL;
          }
          else
          {
-           descr->functionType = CUDA_KERNEL;
            descr->paradigm     = PARADIGM_CUDA;
          }
          return true;

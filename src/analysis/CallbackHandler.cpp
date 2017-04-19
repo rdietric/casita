@@ -326,7 +326,7 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   }
   
   if ( functionDesc.paradigm == PARADIGM_CUDA && 
-       functionDesc.functionType == CUDA_MEMCPY_ASYNC )
+       functionDesc.functionType == OFLD_ASYNC_DATA )
   {
     
   }
@@ -433,7 +433,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
     EventNode::FunctionResultType fResult = EventNode::FR_UNKNOWN;
     
     // get the function result cuEventQuery
-    if( functionType.functionType & CUDA_EV_QUERY )
+    if( functionType.functionType & OFLD_QUERY_EVT )
     {
       uint32_t cuResult = readAttributeUint32( reader, SCOREP_CUDA_CURESULT, list );
       if ( cuResult == CUDA_SUCCESS )
@@ -467,7 +467,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   analysis.handlePostLeave( leaveNode );
   
   // statistics on blocking CUDA communication
-  if( ( functionType.functionType & CUDA_BLOCKING_COMM ) && 
+  if( ( functionType.functionType & OFLD_BLOCKING_DATA ) && 
       functionType.paradigm == PARADIGM_CUDA )
   {
     analysis.getStatistics().addStatWithCount( OFLD_STAT_BLOCKING_COM, 

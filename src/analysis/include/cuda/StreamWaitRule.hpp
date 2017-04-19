@@ -281,7 +281,7 @@ namespace casita
 
               FunctionDescriptor functionDesc;
               functionDesc.paradigm = PARADIGM_CUDA;
-              functionDesc.functionType = CUDA_WAITSTATE;
+              functionDesc.functionType = OFLD_WAITSTATE;
               functionDesc.recordType = RECORD_ENTER;
               
               GraphNode* waitEnter = analysis->addNewGraphNode(
