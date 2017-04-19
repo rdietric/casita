@@ -30,7 +30,8 @@ using namespace casita::cuda;
 using namespace casita::io;
 
 AnalysisParadigmCUDA::AnalysisParadigmCUDA( AnalysisEngine* analysisEngine ) :
-  IAnalysisParadigm( analysisEngine )
+  IAnalysisParadigm( analysisEngine ),
+  pendingKernels ( 0 )
 {
   addRule( new KernelExecutionRule( 9 ) );
   
@@ -165,6 +166,10 @@ AnalysisParadigmCUDA::handlePostEnter( GraphNode* node )
      */
     addPendingKernelLaunch( node );
   }
+  else if( node->isCUDAKernel() )
+  {
+    pendingKernels++;
+  }
 }
 
 void
@@ -175,6 +180,10 @@ AnalysisParadigmCUDA::handlePostLeave( GraphNode* node )
     /* std::cout << "[" << commonAnalysis->getMPIRank() << "] add LEAVE launch: " << node->getUniqueName() << std::endl;
      **/
     addPendingKernelLaunch( node );
+  }
+  else if( node->isCUDAKernel() )
+  {
+    pendingKernels--;
   }
 }
 
@@ -228,6 +237,12 @@ AnalysisParadigmCUDA::handleKeyValuesLeave( OTF2TraceReader*  reader,
     leaveNode->setReferencedStreamId( refValue );
     enterNode->setReferencedStreamId( refValue );
   }
+}
+
+size_t
+AnalysisParadigmCUDA::getPendingKernelCount() const
+{
+  return pendingKernels;
 }
 
 

@@ -20,7 +20,8 @@ using namespace casita::opencl;
 using namespace casita::io;
 
 AnalysisParadigmOpenCL::AnalysisParadigmOpenCL( AnalysisEngine* analysisEngine ) :
-  IAnalysisParadigm( analysisEngine )
+  IAnalysisParadigm( analysisEngine ),
+  pendingKernels ( 0 )
 {
   addRule( new KernelExecutionRule( 9 ) );
   addRule( new SyncRule( 2 ) ); // triggered on clFinish
@@ -44,6 +45,10 @@ AnalysisParadigmOpenCL::handlePostEnter( GraphNode* node )
   {
     addPendingKernelEnqueue( node );
   }
+  else if( node->isOpenCLKernel() )
+  {
+    pendingKernels++;
+  }
 }
 
 void
@@ -53,7 +58,13 @@ AnalysisParadigmOpenCL::handlePostLeave( GraphNode* node )
   {
     addPendingKernelEnqueue( node );
   }
+  else if( node->isOpenCLKernel() )
+  {
+    pendingKernels--;
+  }
 }
+
+
 
 void
 AnalysisParadigmOpenCL::handleKeyValuesEnter( OTF2TraceReader* reader,
@@ -103,6 +114,11 @@ AnalysisParadigmOpenCL::handleKeyValuesLeave( OTF2TraceReader* reader,
   }
 }
 
+size_t
+AnalysisParadigmOpenCL::getPendingKernelCount() const
+{
+  return pendingKernels;
+}
 
 //////////////////////////////////////////////////////////////
 ////////////// OpenCL rules support functions //////////////////

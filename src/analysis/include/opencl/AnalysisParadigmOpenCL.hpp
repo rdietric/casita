@@ -53,6 +53,9 @@ namespace casita
                             GraphNode*        node,
                             GraphNode*        oldNode,
                             OTF2KeyValueList* list );
+      
+      size_t
+      getPendingKernelCount( void ) const;
 
       void
       setEventProcessId( uint64_t eventId, uint64_t streamId );
@@ -79,6 +82,9 @@ namespace casita
       clearKernelEnqueues( uint64_t streamId );
 
     private:
+      // number of pending kernels during trace reading
+      size_t pendingKernels;
+      
       //!< maps event ID to (device) stream ID
       IdIdMap            eventProcessMap;
       

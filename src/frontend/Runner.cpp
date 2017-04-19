@@ -226,7 +226,23 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   if( analysis.haveParadigm( PARADIGM_OMP ) )
   {
     ompAnalysis = 
-      (omp::AnalysisParadigmOMP*)analysis.getAnalysisParadigm( PARADIGM_OMP );
+      ( omp::AnalysisParadigmOMP* )analysis.getAnalysisParadigm( PARADIGM_OMP );
+  }
+  
+  // get OpenMP analysis, if the paradigm is used in the trace file
+  cuda::AnalysisParadigmCUDA* cudaAnalysis = NULL;
+  if( analysis.haveParadigm( PARADIGM_CUDA ) )
+  {
+    cudaAnalysis = 
+      ( cuda::AnalysisParadigmCUDA* )analysis.getAnalysisParadigm( PARADIGM_CUDA );
+  }
+  
+  // get OpenMP analysis, if the paradigm is used in the trace file
+  opencl::AnalysisParadigmOpenCL* oclAnalysis = NULL;
+  if( analysis.haveParadigm( PARADIGM_OCL ) )
+  {
+    oclAnalysis = 
+      ( opencl::AnalysisParadigmOpenCL* )analysis.getAnalysisParadigm( PARADIGM_OCL );
   }
   
   bool events_available = false;
@@ -273,10 +289,11 @@ Runner::processTrace( OTF2TraceReader* traceReader )
       // if the global collective if within an OpenMP region and barriers are
       // open we need to retain the MPI nodes and cannot start an intermediate 
       // analysis
-      if( ompAnalysis && ompAnalysis->getNestingLevel() > 0 )
+      if( ( ompAnalysis && ompAnalysis->getNestingLevel() > 0 ) ||
+          ( cudaAnalysis && cudaAnalysis->getPendingKernelCount() > 0 ) ||
+          ( oclAnalysis && oclAnalysis->getPendingKernelCount() > 0 ) )
       {
-        /*UTILS_MSG( true, "Found issue at barrier %s",
-                   ompAnalysis->getBarrierEventList( false ).back()->getUniqueName().c_str() );*/
+        //UTILS_MSG( true, "Found pending local region" );
       }
       else
       {
@@ -1986,7 +2003,7 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[OFLD_STAT_KERNEL_START_DELAY];
       if( patternCount )
       {
-        printf( "  Kernel Startup Delay:      %"PRIu64" (%lf s, %lf ms/kernel), \n\n", patternCount,
+        printf( "  Kernel Startup Delay:      %"PRIu64" (%lf s, %lf ms/kernel) \n\n", patternCount,
           analysis.getRealTime( stats.getStats()[OFLD_STAT_KERNEL_START_DELAY_TIME] ),
           analysis.getRealTime( stats.getStats()[OFLD_STAT_KERNEL_START_DELAY_TIME] ) / patternCount *1000 );
       }
