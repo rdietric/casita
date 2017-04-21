@@ -21,8 +21,9 @@
 #include "graph/EventNode.hpp"
 
 #include "MPIAnalysis.hpp"
-#include "cuda/AnalysisParadigmCUDA.hpp"
-#include "opencl/AnalysisParadigmOpenCL.hpp"
+//#include "cuda/AnalysisParadigmCUDA.hpp"
+//#include "opencl/AnalysisParadigmOpenCL.hpp"
+#include "offload/AnalysisParadigmOffload.hpp"
 #include "omp/AnalysisParadigmOMP.hpp"
 
 #include "Statistics.hpp"
@@ -78,7 +79,7 @@ namespace casita
      addFunction( uint32_t funcId, const char* name );
 
      void
-     setWaitStateRegion( );
+     setWaitStateRegion();
 
      const char*
      getFunctionName( uint32_t id );
@@ -101,13 +102,13 @@ namespace casita
      applyRules( GraphNode* node, Paradigm paradigm, bool verbose );
 
      void
-     addAnalysisParadigm( IAnalysisParadigm* paradigm );
+     addAnalysis( IAnalysisParadigm* paradigm );
 
      IAnalysisParadigm*
-     getAnalysisParadigm( Paradigm paradigm );
+     getAnalysis( Paradigm paradigm );
      
      void
-     createIntermediateBegin( );
+     createIntermediateBegin();
 
      void
      handlePostEnter( GraphNode* node );
@@ -127,7 +128,7 @@ namespace casita
                            OTF2KeyValueList* list );
 
      EventStream*
-     getNullStream( ) const;
+     getNullStream() const;
 
      size_t
      getNumAllDeviceStreams();

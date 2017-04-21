@@ -12,20 +12,20 @@
 
 #pragma once
 
-#include "ICUDARule.hpp"
-#include "AnalysisParadigmCUDA.hpp"
+#include "../IOffloadRule.hpp"
+#include "../AnalysisParadigmOffload.hpp"
 
 namespace casita
 {
- namespace cuda
+ namespace offload
  {
   class EventSyncRule :
-    public ICUDARule
+    public IOffloadRule
   {
     public:
 
       EventSyncRule( int priority ) :
-        ICUDARule( "EventSyncRule", priority )
+        IOffloadRule( "EventSyncRule", priority )
       {
 
       }
@@ -51,7 +51,7 @@ namespace casita
        * @return true, if the rule could be applied, otherwise false
        */
       bool
-      apply( AnalysisParadigmCUDA* cudaAnalysis, GraphNode* syncLeave )
+      apply( AnalysisParadigmOffload* ofldAnalysis, GraphNode* syncLeave )
       {
 
         if ( !syncLeave->isCUDAEventSync() || !syncLeave->isLeave() )
@@ -59,10 +59,10 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* analysis = cudaAnalysis->getCommon();
+        AnalysisEngine* analysis = ofldAnalysis->getCommon();
 
         // use the CUDA event ID to get cuEventRecord leave node
-        EventNode* eventRecordLeave = cudaAnalysis->getEventRecordLeave(
+        EventNode* eventRecordLeave = ofldAnalysis->getEventRecordLeave(
           ( (EventNode*)syncLeave )->getEventId() );
 
         // the event record might have been deleted in intermediate flush
@@ -128,7 +128,7 @@ namespace casita
           // get last kernel launch leave node of the given device stream 
           // that started before event record enter time
           uint64_t strmId = ( *iter )->getId();
-          GraphNode* kernelLaunchLeave = cudaAnalysis->getLastKernelLaunchLeave(
+          GraphNode* kernelLaunchLeave = ofldAnalysis->getLastKernelLaunchLeave(
                   eventRecordEnterTime, strmId );
           
           // if the stream has no kernel launch leave, the kernel has already 
@@ -261,7 +261,7 @@ namespace casita
           ruleResult = true;
           
           // create edges between previous kernels which are not on the same stream
-          cudaAnalysis->createKernelDependencies( kernelEnter );
+          ofldAnalysis->createKernelDependencies( kernelEnter );
           
           // consume a pending kernel
           //commonAnalysis->getStream( kernelEnter->getStreamId() )->consumePendingKernel();

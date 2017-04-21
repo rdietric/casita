@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2016, 2017
+ * Copyright (c) 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -12,15 +12,15 @@
 
 #pragma once
 
-#include "ICUDARule.hpp"
-#include "AnalysisParadigmCUDA.hpp"
+#include "IOffloadRule.hpp"
+#include "AnalysisParadigmOffload.hpp"
 
 namespace casita
 {
- namespace cuda
+ namespace offload
  {
   class SyncRule :
-    public ICUDARule
+    public IOffloadRule
   {
     public:
 
@@ -39,7 +39,7 @@ namespace casita
        * @param priority
        */
       SyncRule( int priority ) :
-        ICUDARule( "SyncRule", priority )
+        IOffloadRule( "SyncRule", priority )
       {
 
       }
@@ -47,15 +47,15 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmCUDA* cudaAnalysis, GraphNode* syncLeave )
+      apply( AnalysisParadigmOffload* ofldAnalysis, GraphNode* syncLeave )
       {
         // applied at sync
-        if ( !syncLeave->isCUDASync() || !syncLeave->isLeave() )
+        if ( !syncLeave->isOffloadWait() || !syncLeave->isLeave() )
         {
           return false;
         }
         
-        AnalysisEngine* analysis = cudaAnalysis->getCommon();
+        AnalysisEngine* analysis = ofldAnalysis->getCommon();
 
         GraphNode* syncEnter = syncLeave->getGraphPair().first;
         
@@ -63,12 +63,12 @@ namespace casita
         EventStreamGroup::EventStreamList deviceStreams;
         
         // add all device streams for collective CUDA synchronization, e.g. cudaDeviceSynchronize
-        if( syncLeave->isCUDACollSync() )
+        if( syncLeave->isOffloadWaitAll() )
         {
           analysis->getAllDeviceStreams( deviceStreams );
           
           // create dependencies between all pending kernels (no lower bound)
-          cudaAnalysis->createKernelDependencies( NULL );
+          ofldAnalysis->createKernelDependencies( NULL );
         }
         else
         {
@@ -85,7 +85,7 @@ namespace casita
           
           GraphNode* kernelLeave = 
             analysis->getStream( refStreamId )->getLastPendingKernel();
-          cudaAnalysis->createKernelDependencies( kernelLeave );
+          ofldAnalysis->createKernelDependencies( kernelLeave );
         }
         
         // if no stream has a pending kernel for early synchronization, 

@@ -40,7 +40,7 @@ namespace casita
       bool
       applyRule( AnalysisEngine* analysis, GraphNode* node )
       {
-        return apply( (AnalysisParadigmOMP*)analysis->getAnalysisParadigm(
+        return apply( (AnalysisParadigmOMP*)analysis->getAnalysis(
                         PARADIGM_OMP ), node );
       }
 

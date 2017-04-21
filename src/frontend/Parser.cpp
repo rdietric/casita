@@ -81,26 +81,25 @@ namespace casita
   Parser::printHelp()
   {
     cout << "Usage: casita <otf2-file> [options]\n" << endl;
-    cout << "  -h [--help]             print help message" << endl;
-    cout << "  -i [--input=]NAME       input OTF2 file" << endl;
-    cout << "  -o [--output=]NAME      output OTF2 file" << endl;
-    cout << "  -r [--replace]          replace CASITA trace and summary file" << endl;
-    cout << "  -v [--verbose=]INTEGER  verbosity level" << endl;
-    cout << "  -s [--summary]          create summary CSV file" << endl;
-    cout << "  -t  --top=INTEGER       print top optimization candidates" << endl;
-    cout << "  -f  --filter=List       filter regions (ignored in analysis and output trace)" << endl;
-    cout << "      --idle=[0,1,2,3]    write device idle regions to output trace" << endl
+    cout << " -h [--help]              print help message" << endl;
+    cout << " -i [--input=]NAME        input OTF2 file" << endl;
+    cout << " -o [--output=]NAME       output OTF2 file" << endl;
+    cout << " -r [--replace]           replace CASITA trace and summary file" << endl;
+    cout << " -v [--verbose=]INTEGER   verbosity level" << endl;
+    cout << " -s [--summary]           create summary CSV file" << endl;
+    cout << " -t  --top=INTEGER        print top optimization candidates" << endl;
+    cout << " -f  --filter=List        filter regions (ignored in analysis and output trace)" << endl;
+    cout << "     --idle=[0,1,2,3]     write device idle regions to output trace" << endl
          << "                          (0=no, 1=device idle(default), 2=compute idle, 3=both)" << endl;
-    cout << "  -l  --link-kernels      create inter-stream kernel dependencies (default: off)" << endl;
-    cout << "      --nullstream=INT    use null stream semantic for the given stream" << endl;
-    cout << "  -p [--path]             print critical paths" << endl;
-    cout << "     [--cpa-loop-check]   detect circular loops in process-local critical path" << endl
+    cout << " -l  --link-kernels       create inter-stream kernel dependencies (default: off)" << endl;
+    cout << "     --nullstream=INT     use null stream semantic for the given stream" << endl;
+    cout << " -p [--path]              print critical paths" << endl;
+    cout << "    [--cpa-loop-check]    detect circular loops in process-local critical path" << endl
          << "                          (default: off)" << endl;
-    cout << "     [--no-errors]        ignore non-fatal errors" << endl;
-    cout << "     [--ignore-impi]      handle non-blocking MPI functions as CPU functions" << endl;
-    cout << "     [--ignore-cuda]      handle CUDA functions as CPU functions" << endl;
-    cout << "     [--ignore-opencl]    handle OpenCL functions as CPU functions" << endl;
-    cout << "  -c [--interval-analysis=]UINT  Run analysis in intervals (between global MPI" << endl
+    cout << "    [--no-errors]         ignore non-fatal errors" << endl;
+    cout << "    [--ignore-impi]       handle non-blocking MPI functions as CPU functions" << endl;
+    cout << "    [--ignore-offloading] handle CUDA/OpenCL functions as CPU functions" << endl;
+    cout << " -c [--interval-analysis=]UINT  Run analysis in intervals (between global MPI" << endl
          << "                          collectives) to reduce memory footprint. The value" << endl
          << "                          (default: 64) sets the number of pending graph nodes" << endl
          << "                          before an analysis run is started." << endl;
@@ -268,15 +267,9 @@ namespace casita
       }
       
       // do not run CUDA analysis
-      else if( opt.find( "--ignore-cuda" ) != string::npos )
+      else if( opt.find( "--ignore-offloading" ) != string::npos )
       {
-        options.ignoreCUDA = true;
-      }
-      
-      // do not run OpenCL analysis
-      else if( opt.find( "--ignore-opencl" ) != string::npos )
-      {
-        options.ignoreOCL = true;
+        options.ignoreOffload = true;
       }
       
       // create dependencies between kernels from different streams
@@ -506,8 +499,7 @@ namespace casita
     options.linkKernels =false;
     options.nullStream = -1;
     options.ignoreAsyncMpi = false;
-    options.ignoreCUDA = false;
-    options.ignoreOCL = false;
+    options.ignoreOffload = false;
     options.createRatingCSV = true;
   }
 

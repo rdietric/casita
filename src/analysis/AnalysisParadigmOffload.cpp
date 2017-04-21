@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014, 2016, 2017
+ * Copyright (c) 2017
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -9,37 +9,35 @@
  * directory for details.
  *
  * What this file does:
- * - perform analysis with CUDA-specific rules
+ * - perform analysis with Offload-specific rules
  * - add kernels as pending, consume pending kernels
  * - Callbacks for KeyValue, postEnter/leave
  *
  */
 
-#include "cuda/AnalysisParadigmCUDA.hpp"
+#include "offload/AnalysisParadigmOffload.hpp"
 #include "AnalysisEngine.hpp"
 
-#include "cuda/SyncRule.hpp"
-#include "cuda/KernelExecutionRule.hpp"
-#include "cuda/EventLaunchRule.hpp"
-#include "cuda/EventSyncRule.hpp"
-#include "cuda/EventQueryRule.hpp"
-#include "cuda/StreamWaitRule.hpp"
+#include "offload/SyncRule.hpp"
+#include "offload/KernelExecutionRule.hpp"
+#include "offload/cuda/EventLaunchRule.hpp"
+#include "offload/cuda/EventSyncRule.hpp"
+#include "offload/cuda/EventQueryRule.hpp"
+#include "offload/cuda/StreamWaitRule.hpp"
 
 using namespace casita;
-using namespace casita::cuda;
+using namespace casita::offload;
 using namespace casita::io;
 
-AnalysisParadigmCUDA::AnalysisParadigmCUDA( AnalysisEngine* analysisEngine ) :
+AnalysisParadigmOffload::AnalysisParadigmOffload( AnalysisEngine* analysisEngine ) :
   IAnalysisParadigm( analysisEngine ),
   pendingKernels ( 0 )
 {
+  // triggered on offload kernel leave
   addRule( new KernelExecutionRule( 9 ) );
   
-  // they all clear the list of pending kernels when finished
-  //addRule( new BlameKernelRule( 1 ) ); // triggered on cudaSync
-  //addRule( new BlameSyncRule( 1 ) );   // triggered on cudaSync
-  //addRule( new LateSyncRule( 2 ) );    // triggered on cudaSync
-  addRule( new SyncRule( 1 ) ); // triggered on cudaSync
+  // note: rule clears the list of pending kernels when finished
+  addRule( new SyncRule( 1 ) ); // triggered on cudaSync and clFinish
   
   // add rules that are related to CUDA events only if necessary
   if( analysisEngine->haveAnalysisFeature( CUDA_EVENTS ) )
@@ -49,21 +47,23 @@ AnalysisParadigmCUDA::AnalysisParadigmCUDA( AnalysisEngine* analysisEngine ) :
     addRule( new EventQueryRule( 1 ) );
   }
   
-  addRule( new StreamWaitRule( 1 ) );
-  
-  // if only
+  // CUDA only rules
+  if( analysisEngine->haveParadigm( PARADIGM_CUDA ) )
+  {
+    addRule( new StreamWaitRule( 1 ) );
+  }
 }
 
-AnalysisParadigmCUDA::~AnalysisParadigmCUDA()
+AnalysisParadigmOffload::~AnalysisParadigmOffload()
 {
   reset();
 }
 
 void
-AnalysisParadigmCUDA::reset()
+AnalysisParadigmOffload::reset()
 {  
   UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
-             "Cleanup CUDA support structures" );
+             "Cleanup Offload support structures" );
   
   /* clean up pending kernel launches
   if( pendingKernelLaunchMap.size() )
@@ -151,57 +151,61 @@ AnalysisParadigmCUDA::reset()
 }
 
 Paradigm
-AnalysisParadigmCUDA::getParadigm()
+AnalysisParadigmOffload::getParadigm()
 {
-  return PARADIGM_CUDA;
+  return PARADIGM_OFFLOAD;
 }
 
 void
-AnalysisParadigmCUDA::handlePostEnter( GraphNode* node )
+AnalysisParadigmOffload::handlePostEnter( GraphNode* node )
 {
-  if ( node->isCUDAKernelLaunch() )
+  if ( node->isOffloadEnqueueKernel() )
   {
-    /* std::cout << "[" << commonAnalysis->getMPIRank() << "] add ENTER launch: "
-                 << node->getUniqueName() << std::endl;
-     */
     addPendingKernelLaunch( node );
   }
-  else if( node->isCUDAKernel() )
+  else if( node->isOffloadKernel() )
   {
     pendingKernels++;
   }
 }
 
 void
-AnalysisParadigmCUDA::handlePostLeave( GraphNode* node )
+AnalysisParadigmOffload::handlePostLeave( GraphNode* node )
 {
-  if ( node->isCUDAKernelLaunch() )
+  if ( node->isOffloadEnqueueKernel() )
   {
-    /* std::cout << "[" << commonAnalysis->getMPIRank() << "] add LEAVE launch: " << node->getUniqueName() << std::endl;
-     **/
     addPendingKernelLaunch( node );
   }
-  else if( node->isCUDAKernel() )
+  else if( node->isOffloadKernel() )
   {
     pendingKernels--;
   }
 }
 
 void
-AnalysisParadigmCUDA::handleKeyValuesEnter( OTF2TraceReader*  reader,
-                                            GraphNode*        enterNode,
-                                            OTF2KeyValueList* list )
+AnalysisParadigmOffload::handleKeyValuesEnter( OTF2TraceReader*  reader,
+                                               GraphNode*        enterNode,
+                                               OTF2KeyValueList* list )
 {
-  uint64_t refValue     = 0;
-  int32_t  streamRefKey = reader->getFirstKey( SCOREP_CUDA_STREAMREF );
+  uint64_t refValue       = 0;
+  int32_t  locationRefKey = -1;
+  
+  if( enterNode->isCUDA() )
+  {
+    locationRefKey = reader->getFirstKey( SCOREP_CUDA_STREAMREF );
+  }
+  else if( enterNode->isOpenCL() )
+  {
+    locationRefKey = reader->getFirstKey( SCOREP_OPENCL_QUEUEREF );
+  }
 
-//  if( streamRefKey > -1 && list->getLocationRef( (uint32_t)streamRefKey,
-//                             &refValue ) != OTF2KeyValueList::KV_SUCCESS ){
-//    std::cerr << "CUDA::handleKeyValuesEnter streamRefKey: " << streamRefKey << std::endl;
-//  }
+  /*if( locationRefKey > -1 && list->getLocationRef( (uint32_t)locationRefKey,
+                             &refValue ) != OTF2KeyValueList::KV_SUCCESS ){
+    std::cerr << "Offload::handleKeyValuesEnter locationRefKey: " << locationRefKey << std::endl;
+  }*/
 
-  if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
-       list->getLocationRef( (uint32_t)streamRefKey,
+  if ( locationRefKey > -1 && list && list->getSize( ) > 0 &&
+       list->getLocationRef( (uint32_t)locationRefKey,
                              &refValue ) == OTF2KeyValueList::KV_SUCCESS )
   {
     enterNode->setReferencedStreamId( refValue );
@@ -217,41 +221,52 @@ AnalysisParadigmCUDA::handleKeyValuesEnter( OTF2TraceReader*  reader,
  * @param list
  */
 void
-AnalysisParadigmCUDA::handleKeyValuesLeave( OTF2TraceReader*  reader,
-                                            GraphNode*        leaveNode,
-                                            GraphNode*        enterNode,
-                                            OTF2KeyValueList* list )
+AnalysisParadigmOffload::handleKeyValuesLeave( OTF2TraceReader*  reader,
+                                               GraphNode*        leaveNode,
+                                               GraphNode*        enterNode,
+                                               OTF2KeyValueList* list )
 {
   uint64_t refValue     = 0;
-  int32_t  streamRefKey = reader->getFirstKey( SCOREP_CUDA_STREAMREF );
+  int32_t  locationRefKey = -1;
   
-//  if( streamRefKey > -1 && list->getLocationRef( (uint32_t)streamRefKey,
-//                             &refValue ) != OTF2KeyValueList::KV_SUCCESS ){
-//    std::cerr << "CUDA::handleKeyValuesLeave streamRefKey: " << streamRefKey << std::endl;
-//  }
+  if( enterNode->isCUDA() )
+  {
+    locationRefKey = reader->getFirstKey( SCOREP_CUDA_STREAMREF );
+  }
+  else if( enterNode->isOpenCL() )
+  {
+    locationRefKey = reader->getFirstKey( SCOREP_OPENCL_QUEUEREF );
+  }
+  
+  /*if( locationRefKey > -1 && list->getLocationRef( (uint32_t)locationRefKey,
+                             &refValue ) != OTF2KeyValueList::KV_SUCCESS ){
+    std::cerr << "Offload::handleKeyValuesLeave locationRefKey: " << locationRefKey << std::endl;
+  }*/
 
-  if ( streamRefKey > -1 && list && list->getSize( ) > 0 &&
-       list->getLocationRef( (uint32_t)streamRefKey,
+  if ( locationRefKey > -1 && list && list->getSize( ) > 0 &&
+       list->getLocationRef( (uint32_t)locationRefKey,
                              &refValue ) == OTF2KeyValueList::KV_SUCCESS )
   {
+    // the device synchronization leave nodes should reference a stream
+    //UTILS_WARNING( "%s references %llu", leaveNode->getUniqueName().c_str(), refValue );
     leaveNode->setReferencedStreamId( refValue );
     enterNode->setReferencedStreamId( refValue );
   }
 }
 
 size_t
-AnalysisParadigmCUDA::getPendingKernelCount() const
+AnalysisParadigmOffload::getPendingKernelCount() const
 {
   return pendingKernels;
 }
 
 
 //////////////////////////////////////////////////////////////
-////////////// CUDA rules support functions //////////////////
+////////////// Offload rules support functions //////////////////
 
 // \todo: could be static
 bool
-AnalysisParadigmCUDA::isKernelPending( GraphNode* kernelNode )
+AnalysisParadigmOffload::isKernelPending( GraphNode* kernelNode )
 {
   if( kernelNode->hasPartner() )
   {
@@ -279,13 +294,13 @@ AnalysisParadigmCUDA::isKernelPending( GraphNode* kernelNode )
 }
 
 void
-AnalysisParadigmCUDA::setLastEventLaunch( EventNode* eventLaunchLeave )
+AnalysisParadigmOffload::setLastEventLaunch( EventNode* eventLaunchLeave )
 {
   eventLaunchMap[eventLaunchLeave->getEventId()] = eventLaunchLeave;
 }
 
 EventNode*
-AnalysisParadigmCUDA::consumeLastEventLaunchLeave( uint64_t eventId )
+AnalysisParadigmOffload::consumeLastEventLaunchLeave( uint64_t eventId )
 {
   IdEventNodeMap::iterator iter = eventLaunchMap.find( eventId );
   if ( iter != eventLaunchMap.end( ) )
@@ -301,7 +316,7 @@ AnalysisParadigmCUDA::consumeLastEventLaunchLeave( uint64_t eventId )
 }
 
 EventNode*
-AnalysisParadigmCUDA::getEventRecordLeave( uint64_t eventId ) const
+AnalysisParadigmOffload::getEventRecordLeave( uint64_t eventId ) const
 {
   IdEventNodeMap::const_iterator iter = eventLaunchMap.find( eventId );
   if ( iter != eventLaunchMap.end( ) )
@@ -315,7 +330,7 @@ AnalysisParadigmCUDA::getEventRecordLeave( uint64_t eventId ) const
 }
 
 void
-AnalysisParadigmCUDA::printKernelLaunchMap()
+AnalysisParadigmOffload::printKernelLaunchMap()
 {
   uint64_t pendingKernelLaunchCount = 0;
   for ( IdNodeListMap::const_iterator mapIter =
@@ -354,7 +369,7 @@ AnalysisParadigmCUDA::printKernelLaunchMap()
 }
 
 void
-AnalysisParadigmCUDA::printDebugInformation( uint64_t eventId )
+AnalysisParadigmOffload::printDebugInformation( uint64_t eventId )
 {
   UTILS_MSG( true, "Passed event id: %llu", eventId );
   
@@ -373,13 +388,13 @@ AnalysisParadigmCUDA::printDebugInformation( uint64_t eventId )
 }
 
 void
-AnalysisParadigmCUDA::setEventProcessId( uint64_t eventId, uint64_t streamId )
+AnalysisParadigmOffload::setEventProcessId( uint64_t eventId, uint64_t streamId )
 {
   eventProcessMap[eventId] = streamId;
 }
 
 uint64_t
-AnalysisParadigmCUDA::getEventProcessId( uint64_t eventId ) const
+AnalysisParadigmOffload::getEventProcessId( uint64_t eventId ) const
 {
   IdIdMap::const_iterator iter = eventProcessMap.find( eventId );
   if ( iter != eventProcessMap.end( ) )
@@ -398,12 +413,12 @@ AnalysisParadigmCUDA::getEventProcessId( uint64_t eventId ) const
  * @param launch a kernel launch leave or enter node
  */
 void
-AnalysisParadigmCUDA::addPendingKernelLaunch( GraphNode* launch )
+AnalysisParadigmOffload::addPendingKernelLaunch( GraphNode* launch )
 {
   // append at tail (FIFO)
   if( launch )
   {
-    pendingKernelLaunchMap[launch->getGraphPair().first->getReferencedStreamId()].push_back( launch );
+    pendingKernelLaunchMap[ launch->getGraphPair().first->getReferencedStreamId() ].push_back( launch );
   }
   else
   {
@@ -420,7 +435,7 @@ AnalysisParadigmCUDA::addPendingKernelLaunch( GraphNode* launch )
  * @param kernelStreamId stream ID where the kernel is executed
  */
 GraphNode*
-AnalysisParadigmCUDA::consumeFirstPendingKernelLaunchEnter( uint64_t kernelStreamId )
+AnalysisParadigmOffload::consumeFirstPendingKernelLaunchEnter( uint64_t kernelStreamId )
 {
   IdNodeListMap::iterator mapIter = 
     pendingKernelLaunchMap.find( kernelStreamId );
@@ -474,7 +489,7 @@ AnalysisParadigmCUDA::consumeFirstPendingKernelLaunchEnter( uint64_t kernelStrea
  * @return
  */
 GraphNode*
-AnalysisParadigmCUDA::getLastKernelLaunchLeave( uint64_t timestamp,
+AnalysisParadigmOffload::getLastKernelLaunchLeave( uint64_t timestamp,
                                                 uint64_t deviceStreamId ) const
 {
   GraphNode* lastLaunchLeave = NULL;
@@ -525,7 +540,7 @@ AnalysisParadigmCUDA::getLastKernelLaunchLeave( uint64_t timestamp,
  * @param kernel kernel enter node
  */
 void
-AnalysisParadigmCUDA::removeKernelLaunch( GraphNode* kernel )
+AnalysisParadigmOffload::removeKernelLaunch( GraphNode* kernel )
 {
   GraphNode* kernelLaunchEnter = ( GraphNode* )kernel->getLink();
   
@@ -543,23 +558,24 @@ AnalysisParadigmCUDA::removeKernelLaunch( GraphNode* kernel )
       GraphNode* kernelLaunchLeave = kernelLaunchEnter->getGraphPair().second;
       pendingKernelLaunchMap[ streamId ].remove( kernelLaunchLeave );
 
-      UTILS_WARNING( "[%"PRIu32"] Removed %s referencing %"PRIu64" from kernel "
-                     "launch map (new list size %llu)", 
-                     commonAnalysis->getMPIRank(),
-                     commonAnalysis->getNodeInfo( kernelLaunchLeave ).c_str(),
-                     streamId,
-                     pendingKernelLaunchMap[ streamId ].size() );
+      UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_TIME, 
+                 "[%"PRIu32"] Removed %s referencing %"PRIu64" from kernel "
+                 "launch map (new list size %llu)", 
+                 commonAnalysis->getMPIRank(),
+                 commonAnalysis->getNodeInfo( kernelLaunchLeave ).c_str(),
+                 streamId,
+                 pendingKernelLaunchMap[ streamId ].size() );
     }
   }
 }
 
 /**
- * Clear the list of pending CUDA kernel launches for a give stream ID.
+ * Clear the list of pending Offload kernel launches for a give stream ID.
  * 
  * @param streamId
  */
 void
-AnalysisParadigmCUDA::clearKernelLaunches( uint64_t streamId )
+AnalysisParadigmOffload::clearKernelEnqueues( uint64_t streamId )
 {
   if( pendingKernelLaunchMap.count( streamId ) > 0 )
   {  
@@ -576,7 +592,7 @@ AnalysisParadigmCUDA::clearKernelLaunches( uint64_t streamId )
 }
 
 void
-AnalysisParadigmCUDA::addStreamWaitEvent( uint64_t   streamId,
+AnalysisParadigmOffload::addStreamWaitEvent( uint64_t   streamId,
                                           EventNode* streamWaitLeave )
 {
   const EventStream* nullStream = commonAnalysis->getStreamGroup().getNullStream( 
@@ -614,7 +630,7 @@ AnalysisParadigmCUDA::addStreamWaitEvent( uint64_t   streamId,
  * @return 
  */
 EventNode*
-AnalysisParadigmCUDA::getFirstStreamWaitEvent( uint64_t deviceStreamId )
+AnalysisParadigmOffload::getFirstStreamWaitEvent( uint64_t deviceStreamId )
 {
   IdEventsListMap::iterator iter = streamWaitMap.find( deviceStreamId );
   
@@ -657,7 +673,7 @@ AnalysisParadigmCUDA::getFirstStreamWaitEvent( uint64_t deviceStreamId )
 }
 
 EventNode*
-AnalysisParadigmCUDA::consumeFirstStreamWaitEvent( uint64_t deviceStreamId )
+AnalysisParadigmOffload::consumeFirstStreamWaitEvent( uint64_t deviceStreamId )
 {
   IdEventsListMap::iterator iter = streamWaitMap.find(
     deviceStreamId );
@@ -709,7 +725,7 @@ AnalysisParadigmCUDA::consumeFirstStreamWaitEvent( uint64_t deviceStreamId )
 }
 
 void
-AnalysisParadigmCUDA::linkEventQuery( EventNode* eventQueryLeave )
+AnalysisParadigmOffload::linkEventQuery( EventNode* eventQueryLeave )
 {
   EventNode* lastEventQueryLeave = NULL;
 
@@ -725,7 +741,7 @@ AnalysisParadigmCUDA::linkEventQuery( EventNode* eventQueryLeave )
 }
 
 void
-AnalysisParadigmCUDA::removeEventQuery( uint64_t eventId )
+AnalysisParadigmOffload::removeEventQuery( uint64_t eventId )
 {
   eventQueryMap.erase( eventId );
 }
@@ -738,7 +754,7 @@ AnalysisParadigmCUDA::removeEventQuery( uint64_t eventId )
  * @param prevKernelLeave
  */
 void
-AnalysisParadigmCUDA::createKernelDependencies( GraphNode* kernelEnter ) const
+AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelEnter ) const
 {
   if( Parser::getInstance().getProgramOptions().linkKernels == false )
   {

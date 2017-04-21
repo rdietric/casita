@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.5)
 
 PROJECT(casita)
 
-SET(PROJECT_VERSION 1.7)
+SET(PROJECT_VERSION 1.8)
 ADD_DEFINITIONS(-DCASITA_VERSION="${PROJECT_VERSION}")
 
 # SET helper paths to find libraries and packages

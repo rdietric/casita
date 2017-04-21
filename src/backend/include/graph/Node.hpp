@@ -73,7 +73,7 @@ namespace casita
  {
    OFLD_WAIT           = ( 1 << 1 ),
    OFLD_WAIT_QUEUE     = ( 1 << 2 ),
-   OFLD_WAIT_COLL      = ( 1 << 3 ),
+   OFLD_WAIT_ALL      = ( 1 << 3 ),
    OFLD_WAIT_EVT       = ( 1 << 4 ),
    OFLD_WAITSTATE      = ( 1 << 5 ),
    OFLD_TASK_KERNEL    = ( 1 << 6 ),
@@ -147,7 +147,7 @@ namespace casita
  {
    { OFLD_WAIT, "offload_wait" },
    { OFLD_WAIT_QUEUE, "offload_wait_queue" },
-   { OFLD_WAIT_COLL, "offload_wait_collective" },
+   { OFLD_WAIT_ALL, "offload_wait_collective" },
    { OFLD_WAIT_EVT, "offload_wait_event" },
    { OFLD_WAITSTATE, "offload_waitstate" },
    { OFLD_TASK_KERNEL, "offload_task_kernel" },
@@ -243,6 +243,41 @@ namespace casita
      }
      
      bool
+     isOffloadWait() const
+     {
+
+       return isOffload() && ( nodeType & OFLD_WAIT );
+     }
+     
+     bool
+     isOffloadWaitAll() const
+     {
+
+       return isOffload() && ( nodeType & OFLD_WAIT_ALL );
+     }
+     
+     bool
+     isOffloadEnqueueKernel() const
+     {
+
+       return isOffload() && ( nodeType & OFLD_ENQUEUE_KERNEL );
+     }
+     
+     bool
+     isOffloadKernel() const
+     {
+
+       return isOffload() && ( nodeType & OFLD_TASK_KERNEL );
+     }
+     
+     bool
+     isOffloadWaitEvent() const
+     {
+
+       return isOffload() && ( nodeType & OFLD_WAIT_EVT );
+     }
+     
+     bool
      isOpenCLQueueSync() const
      {
 
@@ -314,7 +349,7 @@ namespace casita
      isCUDACollSync() const
      {
 
-       return isCUDA() && ( nodeType & OFLD_WAIT_COLL );
+       return isCUDA() && ( nodeType & OFLD_WAIT_ALL );
      }
 
      bool

@@ -27,7 +27,6 @@
 #include <vector>       /* clock_t, clock, CLOCKS_PER_SEC */
 
 #include "Runner.hpp"
-//#include "../analysis/include/mpi/MPIRulesCommon.hpp"
 
 using namespace casita;
 using namespace casita::io;
@@ -130,33 +129,24 @@ Runner::startAnalysisRun()
     throw RTException( "Error while reading definitions!" );
   }
   
-  // OTF2 definitions have been checked for existence of CUDA and OpenCL
-  // OpenMP is currently checked during event reading and MPI not at all
-  if( analysis.haveParadigm( PARADIGM_CUDA ) )
-  {
-    analysis.addAnalysisParadigm( new cuda::AnalysisParadigmCUDA( &analysis ) );
-    
-    // setup CUDA analysis
-  }
-  else
-  {
-    // avoid the generation of CUDA graph nodes
-    Parser::getInstance().getProgramOptions().ignoreCUDA = true;
-  }
+  // OTF2 definitions have been checked for existence of CUDA. OpenCL, and OpenMP
+  // MPI currently is not checked and assumed to be available
   
-  if( analysis.haveParadigm( PARADIGM_OCL ) )
+  if( ( analysis.haveParadigm( PARADIGM_CUDA ) || 
+        analysis.haveParadigm( PARADIGM_OCL ) ) && 
+        Parser::getInstance().getProgramOptions().ignoreOffload == false )
   {
-    analysis.addAnalysisParadigm( new opencl::AnalysisParadigmOpenCL( &analysis ) );
+    analysis.addAnalysis( new offload::AnalysisParadigmOffload( &analysis ) );
   }
   else
   {
-    // avoid the generation of OpenCL graph nodes
-    Parser::getInstance().getProgramOptions().ignoreOCL = true;
+    // avoid the generation of CUDA/OpenCL graph nodes
+    Parser::getInstance().getProgramOptions().ignoreOffload = true;
   }
   
   if( analysis.haveParadigm( PARADIGM_OMP ) )
   {
-    analysis.addAnalysisParadigm( new omp::AnalysisParadigmOMP( &analysis ) );
+    analysis.addAnalysis( new omp::AnalysisParadigmOMP( &analysis ) );
   }
   
   // create MPI communicators according to the OTF2 trace definitions
@@ -226,23 +216,17 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   if( analysis.haveParadigm( PARADIGM_OMP ) )
   {
     ompAnalysis = 
-      ( omp::AnalysisParadigmOMP* )analysis.getAnalysisParadigm( PARADIGM_OMP );
+      ( omp::AnalysisParadigmOMP* )analysis.getAnalysis( PARADIGM_OMP );
   }
   
-  // get OpenMP analysis, if the paradigm is used in the trace file
-  cuda::AnalysisParadigmCUDA* cudaAnalysis = NULL;
-  if( analysis.haveParadigm( PARADIGM_CUDA ) )
+  // get offload analysis, if the paradigm is used in the trace file
+  offload::AnalysisParadigmOffload* ofldAnalysis = NULL;
+  if( ( analysis.haveParadigm( PARADIGM_OCL ) || 
+        analysis.haveParadigm( PARADIGM_CUDA ) ) && 
+        Parser::getInstance().getProgramOptions().ignoreOffload == false )
   {
-    cudaAnalysis = 
-      ( cuda::AnalysisParadigmCUDA* )analysis.getAnalysisParadigm( PARADIGM_CUDA );
-  }
-  
-  // get OpenMP analysis, if the paradigm is used in the trace file
-  opencl::AnalysisParadigmOpenCL* oclAnalysis = NULL;
-  if( analysis.haveParadigm( PARADIGM_OCL ) )
-  {
-    oclAnalysis = 
-      ( opencl::AnalysisParadigmOpenCL* )analysis.getAnalysisParadigm( PARADIGM_OCL );
+    ofldAnalysis = 
+      ( offload::AnalysisParadigmOffload* )analysis.getAnalysis( PARADIGM_OFFLOAD );
   }
   
   bool events_available = false;
@@ -259,8 +243,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   clock_t time_events_flush  = 0;
   clock_t time_analysis_mpi  = 0;
   clock_t time_analysis_omp  = 0;
-  clock_t time_analysis_cuda = 0;
-  clock_t time_analysis_ocl  = 0;
+  clock_t time_analysis_ofld = 0;
   clock_t time_analysis_cp   = 0;
   do
   {
@@ -290,8 +273,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
       // open we need to retain the MPI nodes and cannot start an intermediate 
       // analysis
       if( ( ompAnalysis && ompAnalysis->getNestingLevel() > 0 ) ||
-          ( cudaAnalysis && cudaAnalysis->getPendingKernelCount() > 0 ) ||
-          ( oclAnalysis && oclAnalysis->getPendingKernelCount() > 0 ) )
+          ( ofldAnalysis && ofldAnalysis->getPendingKernelCount() > 0 ) )
       {
         //UTILS_MSG( true, "Found pending local region" );
       }
@@ -340,23 +322,14 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     // apply analysis to all nodes of a certain paradigm
     // availability of a certain paradigm is checked when the trace is read
     // analysis creates dependency edges, identifies wait states, distributes blame
-    if ( analysis.haveParadigm( PARADIGM_CUDA ) && 
-         Parser::getInstance().getProgramOptions().ignoreCUDA == false )
+    if ( ofldAnalysis )
     {
       time_tmp = clock();
-      runAnalysis( PARADIGM_CUDA, allNodes );
-      time_analysis_cuda += clock() - time_tmp;
+      runAnalysis( PARADIGM_OFFLOAD, allNodes );
+      time_analysis_ofld += clock() - time_tmp;
     }
     
-    if ( analysis.haveParadigm( PARADIGM_OCL ) && 
-         Parser::getInstance().getProgramOptions().ignoreOCL == false )
-    {
-      time_tmp = clock();
-      runAnalysis( PARADIGM_OCL, allNodes );
-      time_analysis_ocl += clock() - time_tmp;
-    }
-    
-    if ( analysis.haveParadigm( PARADIGM_OMP ) )
+    if ( ompAnalysis )
     {
       time_tmp = clock();
       runAnalysis( PARADIGM_OMP, allNodes );
@@ -458,11 +431,11 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     
     UTILS_MSG( options.verbose >= VERBOSE_TIME && analysis.haveParadigm( PARADIGM_OCL ), 
                "[0] OpenCL analysis took %f seconds.", 
-               ( (float) time_analysis_ocl ) / CLOCKS_PER_SEC );
+               ( (float) time_analysis_ofld ) / CLOCKS_PER_SEC );
 
     UTILS_MSG( options.verbose >= VERBOSE_TIME && analysis.haveParadigm( PARADIGM_CUDA ), 
                "[0] CUDA analysis took %f seconds.", 
-               ( (float) time_analysis_cuda ) / CLOCKS_PER_SEC );
+               ( (float) time_analysis_ofld ) / CLOCKS_PER_SEC );
 
     UTILS_MSG( options.verbose >= VERBOSE_TIME, 
                "[0] Critical-path analysis took %f seconds.", 
@@ -1685,12 +1658,8 @@ Runner::runAnalysis( Paradigm                          paradigm,
   {
     switch ( paradigm )
     {
-      case PARADIGM_CUDA:
-        UTILS_MSG( true, "Running analysis: CUDA" );
-        break;
-        
-      case PARADIGM_OCL:
-        UTILS_MSG( true, "Running analysis: OpenCL" );
+      case PARADIGM_OFFLOAD:
+        UTILS_MSG( true, "Running analysis: CUDA/OpenCL" );
         break;
 
       case PARADIGM_MPI:
@@ -1730,7 +1699,7 @@ Runner::runAnalysis( Paradigm                          paradigm,
          ( ctr - last_ctr > num_nodes / 20 ) )
     {
       UTILS_MSG( true, "[0] %lu%% ",
-                 (size_t)( 100.0 * (double)ctr / (double)num_nodes ) );
+                 ( size_t )( 100.0 * (double)ctr / (double)num_nodes ) );
       fflush( NULL );
       last_ctr = ctr;
     }

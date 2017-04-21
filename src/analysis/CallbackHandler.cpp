@@ -324,12 +324,6 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
     analysis.addCPUEvent( time, streamId, false );
     return;
   }
-  
-  if ( functionDesc.paradigm == PARADIGM_CUDA && 
-       functionDesc.functionType == OFLD_ASYNC_DATA )
-  {
-    
-  }
 
   GraphNode* enterNode = NULL;
   if ( Node::isCUDAEventType( functionDesc.paradigm, functionDesc.functionType ) )
@@ -466,9 +460,9 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   // additional handling for special nodes (e.g. MPI communication and OpenMP)
   analysis.handlePostLeave( leaveNode );
   
-  // statistics on blocking CUDA communication
+  // statistics on blocking CUDA/OpenCL communication
   if( ( functionType.functionType & OFLD_BLOCKING_DATA ) && 
-      functionType.paradigm == PARADIGM_CUDA )
+      functionType.paradigm & PARADIGM_OFFLOAD )
   {
     analysis.getStatistics().addStatWithCount( OFLD_STAT_BLOCKING_COM, 
       leaveNode->getTime() - enterNode->getTime() );

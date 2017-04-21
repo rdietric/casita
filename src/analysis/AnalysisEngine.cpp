@@ -28,7 +28,7 @@
 
 #include "mpi/AnalysisParadigmMPI.hpp"
 #include "omp/AnalysisParadigmOMP.hpp"
-#include "cuda/AnalysisParadigmCUDA.hpp"
+#include "offload/AnalysisParadigmOffload.hpp"
 
 using namespace casita;
 using namespace casita::io;
@@ -46,7 +46,7 @@ AnalysisEngine::AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize ) :
   // add analysis paradigms
   // \todo: Where deleted?
   //addAnalysisParadigm( new omp::AnalysisParadigmOMP( this ) );
-  addAnalysisParadigm( new mpi::AnalysisParadigmMPI( this, mpiRank, mpiSize ) );
+  addAnalysis( new mpi::AnalysisParadigmMPI( this, mpiRank, mpiSize ) );
 }
 
 AnalysisEngine::~AnalysisEngine()
@@ -168,17 +168,14 @@ AnalysisEngine::applyRules( GraphNode* node, Paradigm paradigm, bool verbose )
 }
 
 void
-AnalysisEngine::addAnalysisParadigm( IAnalysisParadigm* paradigm )
+AnalysisEngine::addAnalysis( IAnalysisParadigm* paradigm )
 {
   assert( paradigm );
-  if ( paradigm )
-  {
-    analysisParadigms[ paradigm->getParadigm() ] = paradigm;
-  }
+  analysisParadigms[ paradigm->getParadigm() ] = paradigm;
 }
 
 IAnalysisParadigm*
-AnalysisEngine::getAnalysisParadigm( Paradigm paradigm )
+AnalysisEngine::getAnalysis( Paradigm paradigm )
 {
   AnalysisParadigmsMap::iterator iter = analysisParadigms.find( paradigm );
   if ( iter == analysisParadigms.end() )
@@ -194,6 +191,12 @@ AnalysisEngine::getAnalysisParadigm( Paradigm paradigm )
 void
 AnalysisEngine::handlePostEnter( GraphNode* node )
 {
+  if( node->isOffload() && analysisParadigms.count( PARADIGM_OFFLOAD ) > 0 )
+  {
+    analysisParadigms[ PARADIGM_OFFLOAD ]->handlePostEnter( node );
+    return;
+  }
+  
   AnalysisParadigmsMap::iterator iter = analysisParadigms.find( node->getParadigm() );
   if ( iter != analysisParadigms.end() )
   {
@@ -210,6 +213,12 @@ AnalysisEngine::handlePostEnter( GraphNode* node )
 void
 AnalysisEngine::handlePostLeave( GraphNode* node )
 {
+  if( node->isOffload() && analysisParadigms.count( PARADIGM_OFFLOAD ) > 0 )
+  {
+    analysisParadigms[ PARADIGM_OFFLOAD ]->handlePostLeave( node );
+    return;
+  }
+  
   AnalysisParadigmsMap::iterator iter = analysisParadigms.find( node->getParadigm() );
   if ( iter != analysisParadigms.end() )
   {
@@ -228,11 +237,24 @@ AnalysisEngine::handleKeyValuesEnter( OTF2TraceReader*  reader,
                                       GraphNode*        node,
                                       OTF2KeyValueList* list )
 {
-  for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
-        iter != analysisParadigms.end(); ++iter )
+  if( node->isOffload() && analysisParadigms.count( PARADIGM_OFFLOAD ) > 0 )
+  {
+    analysisParadigms[ PARADIGM_OFFLOAD ]->handleKeyValuesEnter( 
+      reader, node, list );
+    return;
+  }
+  
+  AnalysisParadigmsMap::iterator iter = analysisParadigms.find( node->getParadigm() );
+  if ( iter != analysisParadigms.end() )
   {
     iter->second->handleKeyValuesEnter( reader, node, list );
   }
+  
+  /*for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
+        iter != analysisParadigms.end(); ++iter )
+  {
+    iter->second->handleKeyValuesEnter( reader, node, list );
+  }*/
 }
 
 void
@@ -241,11 +263,24 @@ AnalysisEngine::handleKeyValuesLeave( OTF2TraceReader*  reader,
                                       GraphNode*        oldNode,
                                       OTF2KeyValueList* list )
 {
-  for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
-        iter != analysisParadigms.end(); ++iter )
+  if( node->isOffload() && analysisParadigms.count( PARADIGM_OFFLOAD ) > 0 )
+  {
+    analysisParadigms[ PARADIGM_OFFLOAD ]->handleKeyValuesLeave( 
+      reader, node, oldNode, list );
+    return;
+  }
+  
+  AnalysisParadigmsMap::iterator iter = analysisParadigms.find( node->getParadigm() );
+  if ( iter != analysisParadigms.end() )
   {
     iter->second->handleKeyValuesLeave( reader, node, oldNode, list );
   }
+  
+  /*for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
+        iter != analysisParadigms.end(); ++iter )
+  {
+    iter->second->handleKeyValuesLeave( reader, node, oldNode, list );
+  }*/
 }
 
 void
@@ -391,19 +426,11 @@ AnalysisEngine::createIntermediateBegin()
 
   const EventStreamGroup::EventStreamList streams = getStreams();
   
-  cuda::AnalysisParadigmCUDA* cudaAnalysis = NULL;
-  if( haveParadigm( PARADIGM_CUDA ) )
+  offload::AnalysisParadigmOffload* ofldAnalysis = NULL;
+  if( haveParadigm( PARADIGM_OFFLOAD ) )
   {
-    cudaAnalysis = 
-      (cuda::AnalysisParadigmCUDA*)this->getAnalysisParadigm( PARADIGM_CUDA );
-    //cudaAnalysis->printKernelLaunchMap();
-  }
-  
-  opencl::AnalysisParadigmOpenCL* oclAnalysis = NULL;
-  if( haveParadigm( PARADIGM_OCL ) )
-  {
-    oclAnalysis = 
-      (opencl::AnalysisParadigmOpenCL*)this->getAnalysisParadigm( PARADIGM_OCL );
+    ofldAnalysis = 
+      (offload::AnalysisParadigmOffload*)this->getAnalysis( PARADIGM_OFFLOAD );
   }
   
   for ( EventStreamGroup::EventStreamList::const_iterator iter = streams.begin();
@@ -459,15 +486,9 @@ AnalysisEngine::createIntermediateBegin()
           // hence kernels and kernel launches can be removed
           havePendingKernels = false;
           
-          // clear pending kernel launches for this stream
-          if( cudaAnalysis )
+          if( ofldAnalysis )
           {
-            cudaAnalysis->clearKernelLaunches( p->getId() );
-          }
-          
-          if( oclAnalysis )
-          {
-            oclAnalysis->clearKernelEnqueues( p->getId() );
+            ofldAnalysis->clearKernelEnqueues( p->getId() );
           }
         }
       }
@@ -476,17 +497,18 @@ AnalysisEngine::createIntermediateBegin()
       for (; it != nodes.end(); ++it )
       {
         GraphNode* node = *it;
-        ////////////////////// CUDA /////////////////////
-        // do not remove CUDA nodes that might be required later
-        if( node->isCUDA() )
+        
+        ////////////////////// Offload /////////////////////
+        // do not remove offload nodes that might be required later
+        if( node->isOffload() )
         {
           if( havePendingKernels )
           {
             // incomplete (only enter exists) and unsynchronized kernels are not deleted
-            if( node->isCUDAKernel() )
+            if( node->isOffloadKernel() )
             {
               // do not delete kernels that have not yet been synchronized
-              if( cudaAnalysis->isKernelPending( node ) )
+              if( ofldAnalysis->isKernelPending( node ) )
               {
                 continue;
               }
@@ -495,7 +517,7 @@ AnalysisEngine::createIntermediateBegin()
                 // delete kernel launch leave nodes in kernel launch map
                 if( node->isEnter() )
                 {
-                  cudaAnalysis->removeKernelLaunch( node );
+                  ofldAnalysis->removeKernelLaunch( node );
                 }
                 // kernel launch enter nodes are consumed from kernel launch map at kernel enter
               }
@@ -503,7 +525,7 @@ AnalysisEngine::createIntermediateBegin()
             else          
             // if the CUDA kernel launch enter node is not linked with the 
             // associated kernel, the kernel has not started
-            if( node->isCUDAKernelLaunch() /*&& (*it)->isEnter() && (*it)->getLink() == NULL*/ )
+            if( node->isOffloadEnqueueKernel() /*&& (*it)->isEnter() && (*it)->getLink() == NULL*/ )
             {
               //UTILS_MSG(true, "[%"PRIu64"] Do not delete %s", p->getId(), 
               //                getNodeInfo( *it ).c_str() );
@@ -518,58 +540,14 @@ AnalysisEngine::createIntermediateBegin()
             continue;
           }
           
-          // do not delete CUDA synchronization nodes
+          // do not delete Offload synchronization nodes
           // \todo: why not?
-          if( node->isCUDASync() )
+          if( node->isOffloadWait() )
           {
             continue;
           }
         }
-        ////////////////////// End: CUDA /////////////////////
-        
-        ////////////////////// OpenCL /////////////////////
-        // do not remove OpenCL nodes that might be required later
-        if( node->isOpenCL() )
-        {
-          if( havePendingKernels )
-          {
-            // incomplete (only enter exists) and unsynchronized kernels are not deleted
-            if( node->isOpenCLKernel() )
-            {
-              // do not delete kernels that have not yet been synchronized
-              if( oclAnalysis->isKernelPending( node ) )
-              {
-                continue;
-              }
-              else
-              {
-                // delete kernel launch leave nodes in kernel launch map
-                if( node->isEnter() )
-                {
-                  oclAnalysis->removeKernelLaunch( node );
-                }
-                // kernel launch enter nodes are consumed from kernel launch map at kernel enter
-              }
-            }
-            else          
-            // if the CUDA kernel launch enter node is not linked with the 
-            // associated kernel, the kernel has not started
-            if( node->isOpenCLKernelEnqueue() /*&& (*it)->isEnter() && (*it)->getLink() == NULL*/ )
-            {
-              //UTILS_MSG(true, "[%"PRIu64"] Do not delete %s", p->getId(), 
-              //                getNodeInfo( *it ).c_str() );
-              continue;
-            }
-          }
-          
-          // do not delete OpenCL synchronization nodes
-          // \todo: why not?
-          if( node->isOpenCLSync() )
-          {
-            continue;
-          }
-        }
-        ////////////////////// End: OpenCL /////////////////////
+        ////////////////////// End: Offload /////////////////////
         
         //UTILS_MSG( true , 
         //  "[%"PRIu64"] Delete node %s", p->getId(), getNodeInfo(*it).c_str() );

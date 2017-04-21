@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014-2017,
+ * Copyright (c) 2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -22,9 +22,9 @@ using namespace casita::io;
 
 namespace casita
 {
- namespace cuda
+ namespace offload
  { 
-  class AnalysisParadigmCUDA :
+  class AnalysisParadigmOffload :
     public IAnalysisParadigm
   {
     public:
@@ -37,10 +37,10 @@ namespace casita
 
       typedef std::list< StreamWaitTagged* > NullStreamWaitList;
 
-      AnalysisParadigmCUDA( AnalysisEngine* analysisEngine );
+      AnalysisParadigmOffload( AnalysisEngine* analysisEngine );
 
       virtual
-      ~AnalysisParadigmCUDA();
+      ~AnalysisParadigmOffload();
       
       void 
       reset();
@@ -114,7 +114,7 @@ namespace casita
       removeKernelLaunch( GraphNode* kernel );
       
       void
-      clearKernelLaunches( uint64_t streamId );
+      clearKernelEnqueues( uint64_t streamId );
       
       void
       createKernelDependencies( GraphNode* kernelEnter ) const;

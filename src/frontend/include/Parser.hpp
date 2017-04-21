@@ -40,8 +40,7 @@ namespace casita
    bool        mergeActivities;
    bool        noErrors;
    bool        ignoreAsyncMpi;
-   bool        ignoreCUDA;
-   bool        ignoreOCL;
+   bool        ignoreOffload;
    uint32_t    analysisInterval;
    int         verbose;
    int         eventsProcessed;

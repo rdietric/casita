@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014, 2016,
+ * Copyright (c) 2014, 2016, 2017, 
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -45,22 +45,22 @@ namespace casita
      }
 
      virtual
-     ~IAnalysisParadigm( )
+     ~IAnalysisParadigm()
      {
-       removeRules( );
+       removeRules();
      }
 
      virtual Paradigm
-     getParadigm( ) = 0;
+     getParadigm() = 0;
 
      AnalysisEngine*
-     getCommon( )
+     getCommon()
      {
        return commonAnalysis;
      }
 
      virtual void
-     reset( )
+     reset()
      {
      }
 
@@ -68,8 +68,8 @@ namespace casita
      applyRules( GraphNode* node, bool verbose )
      {
        bool ruleResult = false;
-       for ( std::vector< AbstractRule* >::iterator iter = rules.begin( );
-             iter != rules.end( ); ++iter )
+       for ( std::vector< AbstractRule* >::iterator iter = rules.begin();
+             iter != rules.end(); ++iter )
        {
          if ( ( *iter )->applyRule( commonAnalysis, node ) )
          {
@@ -112,25 +112,25 @@ namespace casita
      rulePriorityCompare( AbstractRule* r1, AbstractRule* r2 )
      {
        // sort in descending order
-       return r2->getPriority( ) < r1->getPriority( );
+       return r2->getPriority() < r1->getPriority();
      }
 
      void
      addRule( AbstractRule* rule )
      {
        rules.push_back( rule );
-       std::sort( rules.begin( ), rules.end( ), rulePriorityCompare );
+       std::sort( rules.begin(), rules.end(), rulePriorityCompare );
      }
 
      void
-     removeRules( )
+     removeRules()
      {
-       for ( std::vector< AbstractRule* >::iterator iter = rules.begin( );
-             iter != rules.end( ); ++iter )
+       for ( std::vector< AbstractRule* >::iterator iter = rules.begin();
+             iter != rules.end(); ++iter )
        {
          delete( *iter );
        }
-       rules.clear( );
+       rules.clear();
      }
  };
 }

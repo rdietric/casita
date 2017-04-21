@@ -242,7 +242,7 @@ namespace casita
  static const size_t      fTableEntriesCUDA = 11;
  static const FTableEntry fTableCUDA[ fTableEntriesCUDA ] =
  {
-   { OFLD_WAIT_COLL, 2, FTABLE_CUDA_COLL_SYNC },
+   { OFLD_WAIT_ALL, 2, FTABLE_CUDA_COLL_SYNC },
    { OFLD_WAIT, 1, FTABLE_CUDA_SYNC },
    { OFLD_QUERY, 1, FTABLE_CUDA_QUERY },
    { OFLD_ENQUEUE_KERNEL, 5, FTABLE_CUDA_LAUNCH },
@@ -394,7 +394,7 @@ namespace casita
            // if we found a CUDA function
            if ( strcmp( entry.table[j], name ) == 0 )
            {
-             if ( Parser::getInstance().getProgramOptions().ignoreCUDA )
+             if ( Parser::getInstance().getProgramOptions().ignoreOffload )
              {
                descr->paradigm     = PARADIGM_CPU;
                descr->functionType = MISC_CPU;
@@ -430,7 +430,7 @@ namespace casita
          {
            if ( strcmp( entry.table[j], name ) == 0 )
            {
-             if ( Parser::getInstance().getProgramOptions().ignoreOCL )
+             if ( Parser::getInstance().getProgramOptions().ignoreOffload )
              {
                descr->paradigm     = PARADIGM_CPU;
                descr->functionType = MISC_CPU;
@@ -463,20 +463,24 @@ namespace casita
          switch ( descr->paradigm )
          {
            case PARADIGM_CUDA:
+             
+             // change the paradigm to offload
+             //descr->paradigm = PARADIGM_OFFLOAD;
+             
              switch ( descr->functionType )
              {
                case OFLD_BLOCKING_DATA:
-                 descr->functionType |= OFLD_WAIT_COLL | OFLD_WAIT;
+                 descr->functionType |= OFLD_WAIT_ALL | OFLD_WAIT;
                  return true;
                  
-               case OFLD_WAIT_COLL:
+               case OFLD_WAIT_ALL:
                  descr->functionType |= OFLD_WAIT;
                  return true;
                  
                case OFLD_ASYNC_DATA:
                  if( deviceNullStreamOnly )
                  {
-                   descr->functionType |= OFLD_WAIT_COLL | OFLD_WAIT | OFLD_BLOCKING_DATA;
+                   descr->functionType |= OFLD_WAIT_ALL | OFLD_WAIT | OFLD_BLOCKING_DATA;
                    return true;
                  }
                  else
@@ -494,7 +498,13 @@ namespace casita
                  return true;
              }
              
+             break;
+             
            case PARADIGM_OCL:
+             
+             // change the paradigm to offload
+             //descr->paradigm = PARADIGM_OFFLOAD;
+             
              switch ( descr->functionType )
              {
                case OFLD_WAIT_QUEUE:
@@ -505,6 +515,8 @@ namespace casita
                case OFLD_ENQUEUE_DATA:
                  return true;
              }
+             
+             break;
 
            // only blocking MPI (non-blocking is handled separately)
            case PARADIGM_MPI:
@@ -524,6 +536,8 @@ namespace casita
                case MPI_MISC:
                  return true;
              }
+             
+             break;
 
            default:
              break;
@@ -601,16 +615,16 @@ namespace casita
          // if name starts with '$' it is an OpenCL kernel
          if( name[0] == '$' )
          {
-           descr->paradigm     = PARADIGM_OCL;
+           descr->paradigm = PARADIGM_OCL;
          }
          else
          {
-           descr->paradigm     = PARADIGM_CUDA;
+           descr->paradigm = PARADIGM_CUDA;
          }
          return true;
        }
 
-       /* anything else */
+       // anything else
        descr->paradigm     = PARADIGM_CPU;
        descr->functionType = MISC_CPU;
        return false;

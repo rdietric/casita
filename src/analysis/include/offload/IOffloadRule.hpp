@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014,
+ * Copyright (c) 2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -17,35 +17,35 @@
 
 namespace casita
 {
- namespace cuda
+ namespace offload
  {
-  class AnalysisParadigmCUDA;
+  class AnalysisParadigmOffload;
 
-  class ICUDARule :
+  class IOffloadRule :
     public AbstractRule
   {
     public:
-      ICUDARule( const char* name, int priority ) :
+      IOffloadRule( const char* name, int priority ) :
         AbstractRule( name, priority )
       {
 
       }
 
       virtual
-      ~ICUDARule( )
+      ~IOffloadRule()
       {
       }
 
       bool
       applyRule( AnalysisEngine* analysis, GraphNode* node )
       {
-        return apply( (AnalysisParadigmCUDA*)analysis->getAnalysisParadigm(
-                        PARADIGM_CUDA ), node );
+        return apply( (AnalysisParadigmOffload*)analysis->getAnalysis(
+                      PARADIGM_OFFLOAD ), node );
       }
 
     protected:
       virtual bool
-      apply( AnalysisParadigmCUDA* analysis, GraphNode* node ) = 0;
+      apply( AnalysisParadigmOffload* ofldAnalysis, GraphNode* node ) = 0;
 
   };
  }

@@ -12,15 +12,15 @@
 
 #pragma once
 
-#include "ICUDARule.hpp"
-#include "AnalysisParadigmCUDA.hpp"
+#include "../IOffloadRule.hpp"
+#include "../AnalysisParadigmOffload.hpp"
 
 namespace casita
 {
- namespace cuda
+ namespace offload
  {
   class StreamWaitRule :
-    public ICUDARule
+    public IOffloadRule
   {
     public:
 
@@ -29,7 +29,7 @@ namespace casita
        * @param priority
        */
       StreamWaitRule( int priority ) :
-        ICUDARule( "StreamWaitRule", priority )
+        IOffloadRule( "StreamWaitRule", priority )
       {
 
       }
@@ -37,14 +37,14 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmCUDA* cudaAnalysis, GraphNode* node )
+      apply( AnalysisParadigmOffload* ofldAnalysis, GraphNode* node )
       {
         if ( !node->isLeave() )
         {
           return false;
         }
 
-        AnalysisEngine* analysis = cudaAnalysis->getCommon();
+        AnalysisEngine* analysis = ofldAnalysis->getCommon();
 
         ////////////////////////////////////////////////////////////////////////
         // applied at streamWaitEvent leave
@@ -59,10 +59,10 @@ namespace casita
           }
 
           EventNode* swEventNode = (EventNode*)node;
-          swEventNode->setLink( cudaAnalysis->getEventRecordLeave( 
+          swEventNode->setLink( ofldAnalysis->getEventRecordLeave( 
                                   swEventNode->getEventId() ) );
 
-          uint64_t eventProcessId = cudaAnalysis->getEventProcessId(
+          uint64_t eventProcessId = ofldAnalysis->getEventProcessId(
             swEventNode->getEventId() );
           if ( !eventProcessId )
           {
@@ -75,7 +75,7 @@ namespace casita
           if ( swEventNode->getLink() &&
                ( referencedDevWaitProc != eventProcessId ) )
           {
-            cudaAnalysis->addStreamWaitEvent( referencedDevWaitProc, swEventNode );
+            ofldAnalysis->addStreamWaitEvent( referencedDevWaitProc, swEventNode );
           }
           else
           {
@@ -120,7 +120,7 @@ namespace casita
           {
             // find the oldest streamWaitEvent that references this (waiting) device stream
             EventNode* streamWaitLeave = 
-                      cudaAnalysis->getFirstStreamWaitEvent( node->getStreamId() );
+                      ofldAnalysis->getFirstStreamWaitEvent( node->getStreamId() );
             if ( !streamWaitLeave )
             {
               break;
@@ -135,7 +135,7 @@ namespace casita
             }
 
             // remove from queue
-            cudaAnalysis->consumeFirstStreamWaitEvent( node->getStreamId() );
+            ofldAnalysis->consumeFirstStreamWaitEvent( node->getStreamId() );
 
             // find the eventLaunch for this event
             EventNode* eventLaunchLeave = (EventNode*)streamWaitLeave->getLink();

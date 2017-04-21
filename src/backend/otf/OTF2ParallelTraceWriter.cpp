@@ -172,7 +172,7 @@ OTF2ParallelTraceWriter::open()
     
     writeAnalysisMetricDefinitions();
     
-    //\todo: only for CUDA traces
+    //\todo: only for CUDA/OpenCL traces
     writeDeviceIdleDefinitions();
   }
 
@@ -457,13 +457,14 @@ OTF2ParallelTraceWriter::writeDeviceIdleDefinitions()
 {
   // get compute region references (needed by all processes)
   deviceIdleRegRef = getNewRegionRef( "deviceIdle", OTF2_PARADIGM_UNKNOWN );
-  deviceComputeIdleRegRef = getNewRegionRef( "deviceComputeIdle", OTF2_PARADIGM_UNKNOWN );
+  deviceComputeIdleRegRef = 
+    getNewRegionRef( "deviceComputeIdle", OTF2_PARADIGM_UNKNOWN );
   
   if ( mpiRank == 0 )
-  {
+  {  
     if( Parser::getInstance().getProgramOptions().deviceIdle & 1 )
     {
-      uint32_t newStringRef  = getNewStringRef( "deviceIdle" );
+      uint32_t newStringRef = getNewStringRef( "deviceIdle" );
       
       OTF2_CHECK( OTF2_GlobalDefWriter_WriteString( otf2GlobalDefWriter,
                                                     newStringRef,
@@ -475,7 +476,8 @@ OTF2ParallelTraceWriter::writeDeviceIdleDefinitions()
                                       newStringRef,
                                       OTF2_UNDEFINED_STRING,
                                       OTF2_REGION_ROLE_ARTIFICIAL,
-                                      OTF2_PARADIGM_CUDA,
+                                      analysis->haveParadigm( PARADIGM_OCL ) ? 
+                                        OTF2_PARADIGM_OPENCL : OTF2_PARADIGM_CUDA,
                                       OTF2_REGION_FLAG_NONE,
                                       OTF2_UNDEFINED_STRING,
                                       0, 0 ) );
@@ -495,7 +497,8 @@ OTF2ParallelTraceWriter::writeDeviceIdleDefinitions()
                                       newStringRef,
                                       OTF2_UNDEFINED_STRING,
                                       OTF2_REGION_ROLE_ARTIFICIAL,
-                                      OTF2_PARADIGM_CUDA,
+                                      analysis->haveParadigm( PARADIGM_OCL ) ? 
+                                        OTF2_PARADIGM_OPENCL : OTF2_PARADIGM_CUDA,
                                       OTF2_REGION_FLAG_NONE,
                                       OTF2_UNDEFINED_STRING,
                                       0, 0 ) );
@@ -1297,11 +1300,12 @@ OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time,
     {
       // add device idle time to statistics
       analysis->getStatistics().addStatValue( OFLD_STAT_COMPUTE_IDLE_TIME, 
-                                                       time - lastComputeIdleStart );
+                                              time - lastComputeIdleStart );
 
       deviceComputeRefCount = 1;
       
-      if( writeToFile && Parser::getInstance().getProgramOptions().deviceIdle  & (1 << 1) )
+      if( writeToFile && Parser::getInstance().getProgramOptions().deviceIdle  
+          & (1 << 1) )
       {
         // something is happening on the device again, leave idle region
         int deviceId = analysis->getStream( location )->getDeviceId();
@@ -1348,7 +1352,8 @@ OTF2ParallelTraceWriter::handleDeviceTaskLeave( uint64_t time,
       //save time
       lastComputeIdleStart = time;
       
-      if( writeToFile && Parser::getInstance().getProgramOptions().deviceIdle  & (1 << 1) )
+      if( writeToFile && Parser::getInstance().getProgramOptions().deviceIdle  
+          & (1 << 1) )
       {
         // write OTF2 device compute idle region
         int deviceId = analysis->getStream( location )->getDeviceId();
@@ -1454,7 +1459,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       GraphNode* currentNode = *currentNodeIter;
       
       // special handling for offloading API routines
-      if( currentNode->isCUDA() || currentNode->isOpenCL() )
+      if( currentNode->isOffload() )
       {
         // do not write attributes from CUDA and OpenCL nodes
         OTF2_AttributeList_RemoveAllAttributes( attributeList );
@@ -1502,7 +1507,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         
         // at kernel launch leave when the device is compute idle
         if( currentNode->isLeave() && deviceComputeRefCount == 0 &&
-            ( currentNode->isCUDAKernelLaunch() || currentNode->isOpenCLKernelEnqueue() ) )
+            currentNode->isOffloadEnqueueKernel() )
         {
           GraphNode* launchEnter = currentNode->getGraphPair().first;
           if( launchEnter && launchEnter->getLink() )
@@ -2029,7 +2034,8 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Attribute(
     // do not write the attribute definitions that have only been written for CASITA
     if ( strcmp(tw->stringRefMap[ name ], SCOREP_CUDA_STREAMREF ) != 0 &&
          strcmp(tw->stringRefMap[ name ], SCOREP_CUDA_EVENTREF ) != 0 &&
-         strcmp(tw->stringRefMap[ name ], SCOREP_CUDA_CURESULT ) != 0 /* &&
+         strcmp(tw->stringRefMap[ name ], SCOREP_CUDA_CURESULT ) != 0 &&
+         strcmp(tw->stringRefMap[ name ], SCOREP_OPENCL_QUEUEREF ) != 0 /* &&
          strcmp(tw->idStringMap[ name ], SCOREP_OMP_TARGET_LOCATIONREF ) != 0 &&
          strcmp(tw->idStringMap[ name ], SCOREP_OMP_TARGET_REGION_ID ) != 0 &&
          strcmp(tw->idStringMap[ name ], SCOREP_OMP_TARGET_PARENT_REGION_ID ) != 0*/ )

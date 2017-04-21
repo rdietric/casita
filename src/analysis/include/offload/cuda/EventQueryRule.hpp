@@ -12,15 +12,15 @@
 
 #pragma once
 
-#include "ICUDARule.hpp"
-#include "AnalysisParadigmCUDA.hpp"
+#include "../IOffloadRule.hpp"
+#include "../AnalysisParadigmOffload.hpp"
 
 namespace casita
 {
- namespace cuda
+ namespace offload
  {
   class EventQueryRule :
-    public ICUDARule
+    public IOffloadRule
   {
     public:
 
@@ -30,7 +30,7 @@ namespace casita
        * @param priority
        */
       EventQueryRule( int priority ) :
-        ICUDARule( "EventQueryRule", priority )
+        IOffloadRule( "EventQueryRule", priority )
       {
 
       }
@@ -38,7 +38,7 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmCUDA* analysis, GraphNode* queryLeave )
+      apply( AnalysisParadigmOffload* analysis, GraphNode* queryLeave )
       {
 
         if ( !queryLeave->isCUDAEventQuery() || !queryLeave->isLeave() )

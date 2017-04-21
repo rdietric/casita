@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2015, 2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -12,15 +12,15 @@
 
 #pragma once
 
-#include "ICUDARule.hpp"
-#include "AnalysisParadigmCUDA.hpp"
+#include "../IOffloadRule.hpp"
+#include "../AnalysisParadigmOffload.hpp"
 
 namespace casita
 {
- namespace cuda
+ namespace offload
  {
   class EventLaunchRule :
-    public ICUDARule
+    public IOffloadRule
   {
     public:
 
@@ -30,7 +30,7 @@ namespace casita
        * @param priority
        */
       EventLaunchRule( int priority ) :
-        ICUDARule( "EventLaunchRule", priority )
+        IOffloadRule( "EventLaunchRule", priority )
       {
 
       }
@@ -38,7 +38,7 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmCUDA* analysis, GraphNode* evtRecLeave )
+      apply( AnalysisParadigmOffload* analysis, GraphNode* evtRecLeave )
       {
         if ( !evtRecLeave->isCUDAEventLaunch() || !evtRecLeave->isLeave() )
         {
