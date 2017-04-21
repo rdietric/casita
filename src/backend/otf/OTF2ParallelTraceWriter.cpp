@@ -766,7 +766,7 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
 
     // check the first nodes on host processes. They might be some artificial 
     // atomic nodes (e.g. global source node or interval start node)
-    if ( stream->isHostMasterStream() )
+    if ( stream->isMpiStream() )
     {
       // the following node is for MPI streams the atomic node of the MPI
       // collective (previously the leave node), which we do not want to write
@@ -1268,7 +1268,7 @@ OTF2ParallelTraceWriter::writeCounterMetrics( OTF2Event event,
  */
 void
 OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time, 
-                                                OTF2_LocationRef location, 
+                                                DeviceStream* devStream, 
                                                 bool isCompute, bool isH2D )
 {
   if( deviceRefCount == 0 )
@@ -1282,7 +1282,7 @@ OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time,
     if( writeToFile && Parser::getInstance().getProgramOptions().deviceIdle & 1 )
     {
       // something is happening on the device again, leave idle region
-      int deviceId = analysis->getStream( location )->getDeviceId();
+      int deviceId = devStream->getDeviceId();
       EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
       OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writerMap[ stream->getId() ], NULL, 
                                         time, deviceIdleRegRef ) );
@@ -1308,7 +1308,7 @@ OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time,
           & (1 << 1) )
       {
         // something is happening on the device again, leave idle region
-        int deviceId = analysis->getStream( location )->getDeviceId();
+        int deviceId = devStream->getDeviceId();
         EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
         OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writerMap[ stream->getId() ], NULL, 
                                           time, deviceComputeIdleRegRef ) );
@@ -1339,7 +1339,7 @@ OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time,
  */
 void
 OTF2ParallelTraceWriter::handleDeviceTaskLeave( uint64_t time, 
-                                                OTF2_LocationRef location, 
+                                                DeviceStream* devStream, 
                                                 bool isCompute )
 {
   // write the compute idle enter first
@@ -1356,7 +1356,7 @@ OTF2ParallelTraceWriter::handleDeviceTaskLeave( uint64_t time,
           & (1 << 1) )
       {
         // write OTF2 device compute idle region
-        int deviceId = analysis->getStream( location )->getDeviceId();
+        int deviceId = devStream->getDeviceId();
         EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
         OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
                                           time, deviceComputeIdleRegRef ) );
@@ -1396,7 +1396,7 @@ OTF2ParallelTraceWriter::handleDeviceTaskLeave( uint64_t time,
     if( writeToFile && Parser::getInstance().getProgramOptions().deviceIdle & 1 )
     {
       // write OTF2 idle enter
-      int deviceId = analysis->getStream( location )->getDeviceId();
+      int deviceId = devStream->getDeviceId();
       EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
       OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
                                         time, deviceIdleRegRef ) );
@@ -1430,7 +1430,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   eventDesc.recordType = event.type; 
   const bool mapsInternalNode = FunctionTable::getAPIFunctionType(
     eventName, &eventDesc, currentStream->isDeviceStream(), 
-    analysis->haveDeviceNullStreamOnly() );  
+    analysis->getStreamGroup().deviceWithNullStreamOnly() );  
 
   //UTILS_MSG( mpiRank == 0, "Event name: '%s' (%d), maps internal: %d", 
   //           eventName.c_str(), event.type, (int)mapsInternalNode );
@@ -1479,7 +1479,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
           {
             // write compute idle enter
             //\todo: deviceId will be -1
-            int deviceId = analysis->getStream( event.location )->getDeviceId();
+            int deviceId = -1; //analysis->getStream( event.location )->getDeviceId();
             EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
             OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
                                               event.time, deviceComputeIdleRegRef ) );
@@ -1489,7 +1489,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
           if( Parser::getInstance().getProgramOptions().deviceIdle & 1 )
           {
             // write OTF2 idle enter
-            int deviceId = analysis->getStream( event.location )->getDeviceId();
+            int deviceId = -1;//analysis->getStream( event.location )->getDeviceId();
             EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
             OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
                                               event.time, deviceIdleRegRef ) );
@@ -1738,7 +1738,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   // write idle leave before the device task enter
   if( currentStream->isDeviceStream() && event.type == RECORD_ENTER )
   {
-    handleDeviceTaskEnter( event.time, event.location, true );
+    handleDeviceTaskEnter( event.time, ( DeviceStream* )currentStream, true );
   }
   
   // write event with counters
@@ -1751,7 +1751,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   // write idle enter after the device task leave
   if( currentStream->isDeviceStream() && event.type == RECORD_LEAVE )
   {
-    handleDeviceTaskLeave( event.time, event.location, true );
+    handleDeviceTaskLeave( event.time, ( DeviceStream* )currentStream, true );
   }
 
   // update values in activityGroupMap
@@ -2269,7 +2269,7 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaPut( OTF2_LocationRef location,
   if( stream->isDeviceStream() )
   {
     // device communication task device-to-host
-    tw->handleDeviceTaskEnter( time, location, false, false );
+    tw->handleDeviceTaskEnter( time, ( DeviceStream* )stream, false, false );
   }
 
   if ( tw->writeToFile )
@@ -2304,7 +2304,7 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaOpCompleteBlocking(
   // communication task on device streams ends
   if( stream->isDeviceStream() )
   {
-    tw->handleDeviceTaskLeave( time, location, false );
+    tw->handleDeviceTaskLeave( time, ( DeviceStream* )stream, false );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -2329,7 +2329,7 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaGet( OTF2_LocationRef location,
   if( stream->isDeviceStream() )
   {
     // device communication task host-to-device
-    tw->handleDeviceTaskEnter( time, location, false, true );
+    tw->handleDeviceTaskEnter( time, ( DeviceStream* )stream, false, true );
   }
   
   if ( tw->writeToFile )

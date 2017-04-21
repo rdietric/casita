@@ -45,60 +45,13 @@ namespace casita
      //!< keep numbers to the power of two, as required by stream type identification
      enum EventStreamType
      {
-       ES_HOST        = ( 1 << 0 ), 
-       ES_HOST_MASTER = ( 1 << 1 ), 
-       ES_DEVICE      = ( 1 << 2 ), 
-       ES_DEVICE_NULL = ( 1 << 3 )
+       ES_OPENMP      = ( 1 << 0 ),
+       ES_MPI         = ( 1 << 1 ),
+       ES_DEVICE      = ( 1 << 2 ),
+       ES_DEVICE_NULL = ( 1 << 3 ),
+       
+       ES_HOST = ( ES_OPENMP | ES_MPI )
      };
-
-     //!< Types for blocking MPI communication
-     enum MPIType
-     {
-       MPI_SEND, MPI_RECV, MPI_COLLECTIVE, MPI_SENDRECV/*, MPI_ONEANDALL*/
-     };
-
-     typedef struct
-     {
-       MPIType  mpiType;
-       uint32_t rootId;    //!< root process ID (collectives) or communicator (P2P)
-       uint64_t partnerId; //!< process or process group (communicator)
-       uint32_t tag;       //!< MPI communication tag
-     } MPICommRecord;
-     
-     typedef struct
-     {
-       uint32_t communicator; //!< MPI communicator 
-       uint64_t partnerId;    //!< communication partner process ID
-       uint32_t tag;          //!< MPI communication tag
-     } MpiBlockingP2pRecord;
-     
-     typedef struct
-     {
-       uint32_t comRef;        //!< MPI communicator OTF2 reference
-       uint32_t sendPartnerId; //!< communication partner process ID
-       uint32_t recvPartnerId; //!< communication partner process ID
-       uint32_t sendTag;       //!< MPI communication tag
-       uint32_t recvTag;       //!< MPI communication tag
-     } MpiBlockingCommData;
-     
-     typedef std::vector< MPICommRecord > MPICommRecordList;
-
-     //!< list of request IDs
-     typedef std::vector< uint64_t > MPIIcommRequestList;
-     
-     typedef struct
-     {
-       uint32_t    comRef;      //!< MPI communicator  OTF2 reference
-       uint32_t    msgTag;      //!< MPI communication tag
-       uint64_t    requestId;   //!< OTF2 request ID
-       MPI_Request requests[2]; //!< internel MPI_Isend and MPI_Irecv request
-       uint64_t    sendBuffer[CASITA_MPI_P2P_BUF_SIZE]; //!< MPI_Isend buffer
-       uint64_t    recvBuffer[CASITA_MPI_P2P_BUF_SIZE]; //!< MPI_Irecv buffer
-       GraphNode*  leaveNode;   //!< pointer to associated MPI_I[send|recv] node
-     } MPIIcommRecord;
-     
-     //!< Map of OTF2 request IDs (key) and the corresponding record data
-     typedef std::map< uint64_t, MPIIcommRecord > MPIIcommRecordMap;
 
      typedef std::vector< GraphNode* > SortedGraphNodeList;
 
@@ -128,19 +81,7 @@ namespace casita
 
      const char*
      getName() const;
-     
-     void
-     setDeviceId( int deviceId );
-     
-     int
-     getDeviceId( void ) const;
-     
-     void
-     setNativeStreamId( int streamId );
-     
-     int
-     getNativeStreamId( void ) const;
-     
+
      void
      setStreamType( EventStream::EventStreamType type );
 
@@ -151,7 +92,7 @@ namespace casita
      isHostStream() const;
      
      bool
-     isHostMasterStream() const;
+     isMpiStream() const;
 
      bool
      isDeviceStream() const;
@@ -254,209 +195,6 @@ namespace casita
      uint64_t&
      getPredictionOffset();
 
-     void
-     addPendingKernel( GraphNode* kernelLeave );
-
-     GraphNode*
-     getLastPendingKernel();
-
-     GraphNode*
-     consumeLastPendingKernel();
-     
-     /**
-      * Consume all pending kernels before the given node.
-      */
-     void
-     consumePendingKernels( GraphNode* kernelEnter );
-     
-     void
-     setPendingKernelsSyncLink( GraphNode* syncLeave );
-
-     void
-     clearPendingKernels();
-
-     void
-     setPendingMPIRecord( MPIType mpiType, uint32_t partnerId, 
-                          uint32_t root_comm_id, uint32_t tag );
-
-     /**
-      * Consume the pending (blocking) MPI records an retrieve a copy of the list.
-      * The list should be cleared, when it is not needed any more.
-      * 
-      * @return a copy of all pending (blocking) MPI records
-      */
-     EventStream::MPICommRecordList
-     getPendingMPIRecords();
-     
-     MpiBlockingCommData&
-     getPendingMpiCommRecord();
-     
-     /**
-      * Temporarily save the MPI_Irecv request ID. The following MPI_Irecv function 
-      * leave record will consume and invalidate it. 
-      * See {@link #addPendingMPIIrecvNode(GraphNode* node)}.
-      * 
-      * @param requestId OTF2 MPI_Irecv request ID
-      */
-     void
-     saveMPIIrecvRequest( uint64_t request );
-     
-     /**
-      * Temporarily save the MPI_Isend request that is consumed by MPI_Wait leave.
-      * See {@link #setMPIWaitNodeData(GraphNode* node)}.
-      * 
-      * @param request OTF2 MPI_Isend request ID
-      */
-     void
-     saveMPIIsendRequest( uint64_t request );
-     
-     /**
-      * Store the MPI_Irecv leave node together with the MPI_Request handle. The 
-      * MPI_Irecv record provides the communication partner ID and the MPI_request to 
-      * put it all together. 
-      * See {@link #setMPIIrecvPartnerStreamId(uint64_t requestId, uint64_t partnerId)}.
-      * 
-      * @param node the graph node of the MPI_Irecv leave record
-      */
-     void
-     addPendingMPIIrecvNode( GraphNode* node );
-     
-     /**
-      * Set partner stream ID for the given MPI_Irecv request ID.
-      * The node is identified by the given request ID.
-      * It saves the request ID to be consumed by the following MPI_Wait leave node. 
-      * Triggered by the MPI_Irecv record (between MPI_Wait enter and leave).
-      * 
-      * @param requestId OTF2 MPI_Irecv request ID 
-      * @param partnerId stream ID of the communication partner
-      */
-     void
-     handleMPIIrecvEventData ( uint64_t requestId, uint64_t partnerId, 
-                               OTF2_CommRef comm, uint32_t tag );
-     
-     /**
-      * Temporarily store the request that is consumed by MPI_Isend leave event.
-      * Triggered by MPI_Isend communication record, between MPI_Isend enter/leave.
-      * 
-      * @param partnerId stream ID of the communication partner
-      * @param requestId OTF2 MPI_Isend request ID 
-      */
-     void
-     handleMPIIsendEventData( uint64_t requestId, uint64_t partnerId,
-                              OTF2_CommRef comm, uint32_t tag );
-
-     /**
-      * Adds MPI_Isend request to a map and sets node-specific data. 
-      * Consumes the pending OTF2 request ID and the MPI_Isend communication partner ID.
-      * 
-      * @param node the graph node of the MPI_Isend leave record
-      */
-     void
-     setMPIIsendNodeData( GraphNode* node );
-
-     /**
-      * Sets node-specific data for the given MPI_Wait leave node.
-      * Consumes the pending OTF2 request ID.
-      * 
-      * @param node the graph node of the MPI_Wait leave record
-      */
-     void
-     setMPIWaitNodeData( GraphNode* node );
-     
-     /**
-      * Consumes the pending OTF2 request IDs and sets the given node as 
-      * associated operation.
-      * 
-      * @param node the graph node of the MPI_Waitall leave record
-      */
-     void
-     setMPIWaitallNodeData( GraphNode* node );
-     
-     /**
-      * Consumes the pending OTF2 request ID and remove the corresponding record, as 
-      * MPI_Test does not influence the critical path. If it completes a non-blocking
-      * communication it is not even waiting time. In an OTF2 trace, completed 
-      * communication operations are between ENTER and LEAVE of MPI_Wait[all],
-      * MPI_Test[all].
-      * 
-      * If there are no pending request, no communication operation has completed 
-      * here.
-      * 
-      * @param node the graph node of the MPI_Test leave record
-      */
-     void
-     handleMPITest( GraphNode* node );
-     
-     /**
-      * Consumes the pending OTF2 request IDs and removes the associated 
-      * communication records.
-      * 
-      * @param node the graph node of the MPI_Testall leave record
-      */
-     void
-     handleMPITestall( GraphNode* node );
-     
-     /**
-      * Return whether we have pending MPI requests or not.
-      * 
-      * @return true, if we have pending MPI requests in the list.
-      */
-     bool
-     havePendingMPIRequests();
-
-     /**
-      * Safely complete MPI request that are associated with the request ID.
-      * (Only if the request ID is the pending map.)
-      * 
-      * @param requestId OTF2 request for replayed non-blocking communication to be completed.
-      * 
-      * @return true, if the handle was found, otherwise false
-      */
-     bool
-     waitForPendingMPIRequest( uint64_t requestId );
-     
-     MPIIcommRecord*
-     getPendingMPIIcommRecord( uint64_t requestId );
-     
-     /**
-      * Remove an MPI request form the map, when it has been processed (e.g. 
-      * successful MPI_Test or MPI_Wait).
-      * 
-      * @param requestId OTF2 request ID for replayed non-blocking communication to be completed.
-      * 
-      * @return true, if the handle was found, otherwise false
-      */
-     void
-     removePendingMPIRequest( uint64_t requestId );
-
-     /**
-      * Wait for all pending MPI requests that are associated with the given node.
-      * 
-      * @param node the MPI_Waitall leave node
-      * 
-      * @return true, if the handle was found, otherwise false
-      */
-     void
-     waitForPendingMPIRequests( GraphNode* node );
-     
-     /**
-      * Analysis rules for non-blocking MPI communication:
-      * 
-      * Wait for open MPI_Request handles. Should be called before MPI_Finalize().
-      */
-     void
-     waitForAllPendingMPIRequests();
-     
-     /**
-      * Analysis rules for non-blocking MPI communication:
-      * 
-      * Test for completed MPI_Request handles. Can be used to decrease the number of 
-      * open MPI request handles, e.g. at blocking collective operations.
-      * This might improve the performance of the MPI implementation. 
-      */
-     void
-     testAllPendingMPIRequests();
-
      bool
      walkBackward( GraphNode* node, StreamWalkCallback callback, void* userData );
 
@@ -471,79 +209,56 @@ namespace casita
      bool
      hasNewNodes();
      
-     void
+     virtual void
      reset();
+     
+    protected:
+      uint64_t id;
 
-   private:
-     uint64_t            id;
-     uint64_t            parentId;
-     const std::string   name;
-     EventStreamType     streamType;
-     bool                nodesAdded; //!< has the stream new nodes?
+    private:
      
-     //!< device ID parsed from stream name, -1 if unknown
-     int deviceId;
-     
-     //!< native stream ID (only CUDA)
-     int nativeStreamId;
-     
-     //!< first enter and last leave time
-     std::pair< uint64_t, uint64_t > streamPeriod; 
-     
-     //!< Does this stream contain the first (global) critical path node?
-     bool                hasFirstCriticalNode;
-     
-     //! Does this stream contain the last global event of the trace?
-     bool                hasLastEvent;
+      uint64_t            parentId;
+      const std::string   name;
+      EventStreamType     streamType;
+      bool                nodesAdded; //!< has the stream new nodes?
 
-     //!< pointer to the last node (paradigm independent) of the analysis interval
-     GraphNode*          lastNode;
-     
-     //! time stamp of the last read event for this stream (e.g. RMA win destroy)
-     uint64_t            lastEventTime;
-     
-     //<! first and last node of the analysis interval (for each paradigm)
-     GraphData           graphData[ NODE_PARADIGM_COUNT ];
-     
-     //!< list of nodes in this stream
-     SortedGraphNodeList nodes;
-     
-     bool                isFiltering;
-     
-     //!< time stamp when the filter has been enabled
-     uint64_t            filterStartTime;
-     
-     //!< time offset due to removal of regions
-     uint64_t            predictionOffset;
+      //!< first enter and last leave time
+      std::pair< uint64_t, uint64_t > streamPeriod; 
 
-     //!< list of unsynchronized CUDA kernels (leave nodes only)
-     SortedGraphNodeList pendingKernels;
+      //!< Does this stream contain the first (global) critical path node?
+      bool                hasFirstCriticalNode;
 
-     //////////////// MPI-related /////////////////
-     
-     //!< MPI nodes that have not yet been linked
-     SortedGraphNodeList unlinkedMPINodes;
+      //! Does this stream contain the last global event of the trace?
+      bool                hasLastEvent;
 
-     //!< pending blocking MPI communcation records
-     MPICommRecordList   mpiCommRecords;
-     
-     MpiBlockingCommData pendingMpiComm;
-     
-     //!< pending OTF2 request ID to be consumned by MPI_Isend, MPI_Irecv or MPI_Wait leave node
-     uint64_t            pendingMPIRequestId;
-     uint64_t            mpiIsendPartner; /**< partner ID of the MPI_Isend */
-     
-     //!< Pending OTF2 request IDs (not yet associated to a MPI_Wait[all] leave node
-     MPIIcommRequestList pendingRequests;
-     
-     //!< pending non-blocking MPI communication records
-     MPIIcommRecordMap   mpiIcommRecords;
+      //!< pointer to the last node (paradigm independent) of the analysis interval
+      GraphNode*          lastNode;
 
-     EventStream::SortedGraphNodeList::const_reverse_iterator
-     findNode( GraphNode* node ) const;
+      //! time stamp of the last read event for this stream (e.g. RMA win destroy)
+      uint64_t            lastEventTime;
 
-     void
-     addNodeInternal( SortedGraphNodeList& nodes, GraphNode* node );
+      //<! first and last node of the analysis interval (for each paradigm)
+      GraphData           graphData[ NODE_PARADIGM_COUNT ];
+
+      //!< list of nodes in this stream
+      SortedGraphNodeList nodes;
+
+      bool                isFiltering;
+
+      //!< time stamp when the filter has been enabled
+      uint64_t            filterStartTime;
+
+      //!< time offset due to removal of regions
+      uint64_t            predictionOffset;
+      
+      //!< MPI nodes that have not yet been linked
+      SortedGraphNodeList unlinkedMPINodes;
+
+      EventStream::SortedGraphNodeList::const_reverse_iterator
+      findNode( GraphNode* node ) const;
+
+      void
+      addNodeInternal( SortedGraphNodeList& nodes, GraphNode* node );
  };
 
 }

@@ -44,26 +44,26 @@ namespace casita
         
         if( waitAllLeave->getData() )
         {
-          EventStream::MPIIcommRequestList* requestList = 
-            (EventStream::MPIIcommRequestList* ) waitAllLeave->getData();
+          MpiStream::MPIIcommRequestList* requestList = 
+            (MpiStream::MPIIcommRequestList* ) waitAllLeave->getData();
 
           // variables that are constant for every request
           AnalysisEngine* analysis = mpiAnalysis->getCommon();
-          EventStream*    stream   = analysis->getStream( 
-                                                  waitAllLeave->getStreamId() );
+          MpiStream*    stream   = 
+            analysis->getStreamGroup().getMpiStream( waitAllLeave->getStreamId() );
           GraphNode* waitAllEnter  = waitAllLeave->getGraphPair().first;
           uint64_t   waitStartTime = waitAllEnter->getTime();
           
           // MPI_Wait[all] on remote process can only start after end of MPI_I*
           // determine the last MPI_I[recv|send]
           uint64_t latestCommPartnerStopTime = waitStartTime;
-          EventStream::MPIIcommRecord* latestRecord = NULL;
+          MpiStream::MPIIcommRecord* latestRecord = NULL;
           
           // iterate over all associated requests
-          EventStream::MPIIcommRequestList::const_iterator it = requestList->begin();
+          MpiStream::MPIIcommRequestList::const_iterator it = requestList->begin();
           for( ; it != requestList->end(); ++it )
           {
-            EventStream::MPIIcommRecord* record = 
+            MpiStream::MPIIcommRecord* record = 
               stream->getPendingMPIIcommRecord( *it );
             
             // wait for MPI_Irecv or MPI_Isend

@@ -41,7 +41,7 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmMPI* analysis, GraphNode* colLeave )
+      apply( AnalysisParadigmMPI* mAnalysis, GraphNode* colLeave )
       {
         // applied at MPI collective leave
         if ( !colLeave->isMPICollective() || !colLeave->isLeave() )
@@ -49,20 +49,19 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon();
+        AnalysisEngine* analysis = mAnalysis->getCommon();
         
         // test for pending non-blocking MPI communication (to close open requests)
         if ( !colLeave->isMPIInit() )
         {
-          analysis->getCommon()->getStream( colLeave->getStreamId() )
-                               ->testAllPendingMPIRequests();
+          analysis->getStreamGroup().getMpiStream( colLeave->getStreamId() )->testAllPendingMPIRequests();
         }
         
         GraphNode* colEnter = colLeave->getGraphPair().first;
         
         uint32_t mpiGroupId = colLeave->getReferencedStreamId();
         const MPIAnalysis::MPICommGroup& mpiCommGroup =
-          commonAnalysis->getMPIAnalysis().getMPICommGroup( mpiGroupId ); 
+          analysis->getMPIAnalysis().getMPICommGroup( mpiGroupId ); 
 
         if ( mpiCommGroup.comm == MPI_COMM_SELF )
         {
@@ -121,14 +120,14 @@ namespace casita
         // this is not the last -> blocking + remoteEdge to lastEnter
         if ( lastEnterProcessId != colLeave->getStreamId() ) // collStartTime < lastEnterTime )
         {
-          Edge* collRecordEdge = commonAnalysis->getEdge( colEnter, colLeave );
+          Edge* collRecordEdge = analysis->getEdge( colEnter, colLeave );
           
           if ( collRecordEdge )
           {
             collRecordEdge->makeBlocking();
             
             // add remote edge as this activity is blocking (needed in CPA)
-            commonAnalysis->getMPIAnalysis().addRemoteMPIEdge(
+            analysis->getMPIAnalysis().addRemoteMPIEdge(
               colLeave, // local leave node
               lastEnterRemoteNodeId, // remote leave node ID
               lastEnterProcessId );
@@ -139,7 +138,7 @@ namespace casita
                            "found. CPA might fail!", colLeave->getStreamId() );
           }
           
-          commonAnalysis->getStatistics().addStatWithCount( 
+          analysis->getStatistics().addStatWithCount( 
             MPI_STAT_COLLECTIVE, lastEnterTime - collStartTime );
           
           // set the wait state counter for this blocking region
@@ -156,7 +155,7 @@ namespace casita
             total_blame += lastEnterTime - recvBuffer[i]; 
           }
 
-          distributeBlame( commonAnalysis,
+          distributeBlame( analysis,
                            colEnter,
                            total_blame,
                            streamWalkCallback );

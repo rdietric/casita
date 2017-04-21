@@ -74,7 +74,8 @@ namespace casita
         kernelEnter->setLink( launchEnterEvent );
         
         // add pending kernel
-        analysis->getStream( kernelStrmId )->addPendingKernel( kernelLeave );
+        analysis->getStreamGroup().getDeviceStream( kernelStrmId )
+          ->addPendingKernel( kernelLeave );
         
         // add dependency
         analysis->newEdge( launchEnterEvent, kernelEnter );
@@ -124,7 +125,7 @@ namespace casita
             
             //commonAnalysis->getStream( kernelStrmId )->consumePendingKernel();
             // clear all pending kernels before that kernel
-            analysis->getStream( kernelLeave->getStreamId() )
+            analysis->getStreamGroup().getDeviceStream( kernelLeave->getStreamId() )
                                          ->consumePendingKernels( kernelLeave );
           }
         }

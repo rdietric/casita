@@ -60,12 +60,12 @@ namespace casita
         GraphNode* syncEnter = syncLeave->getGraphPair().first;
         
         // find all referenced (device) streams of this synchronization
-        EventStreamGroup::EventStreamList deviceStreams;
+        EventStreamGroup::DeviceStreamList deviceStreams;
         
         // add all device streams for collective CUDA synchronization, e.g. cudaDeviceSynchronize
         if( syncLeave->isOffloadWaitAll() )
         {
-          analysis->getAllDeviceStreams( deviceStreams );
+          analysis->getDeviceStreams( deviceStreams );
           
           // create dependencies between all pending kernels (no lower bound)
           ofldAnalysis->createKernelDependencies( NULL );
@@ -81,10 +81,11 @@ namespace casita
             return false;
           }
           
-          deviceStreams.push_back( analysis->getStream( refStreamId ) );
+          deviceStreams.push_back( analysis->getStreamGroup().
+            getDeviceStream( refStreamId ) );
           
           GraphNode* kernelLeave = 
-            analysis->getStream( refStreamId )->getLastPendingKernel();
+            analysis->getStreamGroup().getDeviceStream( refStreamId )->getLastPendingKernel();
           ofldAnalysis->createKernelDependencies( kernelLeave );
         }
         
@@ -93,11 +94,10 @@ namespace casita
         bool isLateSync = true; 
         
         // iterate over streams and try to find an early synchronization
-        for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-                deviceStreams.begin();
-              pIter != deviceStreams.end(); ++pIter )
+        for ( EventStreamGroup::DeviceStreamList::const_iterator pIter =
+                deviceStreams.begin(); pIter != deviceStreams.end(); ++pIter )
         {
-          EventStream* deviceStream = *pIter;
+          DeviceStream* deviceStream = *pIter;
         
           // test that there is a pending kernel (leave)
           bool isLastKernel = true;
@@ -190,11 +190,10 @@ namespace casita
           //                 analysis->getMPIRank(),
           //                analysis->getNodeInfo(syncLeave).c_str() );
               
-          for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-                deviceStreams.begin();
-              pIter != deviceStreams.end(); ++pIter )
+          for ( EventStreamGroup::DeviceStreamList::const_iterator pIter =
+                deviceStreams.begin(); pIter != deviceStreams.end(); ++pIter )
           {
-            EventStream* deviceStream = *pIter;
+            DeviceStream* deviceStream = *pIter;
             // set link to sync leave node (mark kernel as synchronized)
             deviceStream->setPendingKernelsSyncLink( syncLeave );
             deviceStream->clearPendingKernels();

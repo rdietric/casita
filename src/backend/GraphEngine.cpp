@@ -52,87 +52,75 @@ GraphEngine::~GraphEngine()
   }*/
 }
 
-EventStream*
+void
 GraphEngine::newEventStream( uint64_t                     id,
                              uint64_t                     parentId,
                              const std::string            name,
                              EventStream::EventStreamType streamType )
 {
-  //\todo: check whether that is always true
-  if( id == parentId )
+  if( streamType & EventStream::ES_MPI )
   {
-    streamType = EventStream::ES_HOST_MASTER;
+    MpiStream* p = new MpiStream( id, parentId, name );
+    streamGroup.addHostStream( p );
+
+    GraphNode* startNode = newGraphNode( 0, id, name, PARADIGM_ALL,
+                                         RECORD_ATOMIC, MISC_PROCESS );
+
+    p->addGraphNode( startNode, NULL );
+
+    newEdge( globalSourceNode, startNode );
   }
-  
-  EventStream* p = new EventStream( id,
-                                    parentId,
-                                    name,
-                                    streamType );
-  streamsMap[id] = p;
-
-  if ( p->isHostStream() )
+  else if( streamType & EventStream::ES_OPENMP )
   {
-    if( p->isHostMasterStream() )
-    {
-      GraphNode* startNode = newGraphNode( 0, id, name, PARADIGM_ALL,
-                                           RECORD_ATOMIC, MISC_PROCESS );
-      p->addGraphNode( startNode, NULL );
-      newEdge( globalSourceNode, startNode );
-    }
-
+    EventStream* p = new EventStream( id, parentId, name, streamType );
     streamGroup.addHostStream( p );
   }
-  else
+  else if ( streamType == EventStream::ES_DEVICE )
   {
-    /* e->setWeight(e->getWeight() - 1); */
+    DeviceStream* p = new DeviceStream( id, parentId, name );
 
-    if ( streamType == EventStream::ES_DEVICE )
+    // try to figure out the device ID for OpenMP target threads
+    int deviceId = -1;
+    if( strstr( name.c_str(), "OMP target thread [" ) )
     {
-      // try to figure out the device ID for OpenMP target threads
-      int deviceId = -1;
-      if( strstr( name.c_str(), "OMP target thread [" ) )
-      {
-        deviceId = atoi( name.c_str() + 19 );
-      }
-      else if( strstr( name.c_str(), "CUDA[" ) ) // CUDA streams
-      {
-        deviceId = atoi( name.c_str() + 5 );
-        
-        if( Parser::getInstance().getProgramOptions().nullStream != -1 )
-        {
-          const char* pch = strchr( name.c_str(),':' );
-
-          if( pch != NULL )
-          {
-            p->setNativeStreamId( atoi( pch + 1 ) );
-            //UTILS_WARNING( "Set stream %d as NULL stream", atoi( pch + 1 ) );
-          }
-        }
-      }
-      else if( strstr( name.c_str(), "MIC [" ) ) // deprecated (libmpti)
-      {
-        deviceId = atoi( name.c_str() + 5 );
-      }
-      else // OpenCL devices
-      {
-        size_t pos = name.find_last_of( "[" );
-        if( pos !=  string::npos )
-        {
-          deviceId = atoi( name.c_str() + pos + 1 );
-        }
-      }
-      
-      p->setDeviceId( deviceId );
-      
-      // device ID has to be set to generate stream vectors per device
-      streamGroup.addDeviceStream( p );
+      deviceId = atoi( name.c_str() + 19 );
     }
+    else if( strstr( name.c_str(), "CUDA[" ) ) // CUDA streams
+    {
+      deviceId = atoi( name.c_str() + 5 );
+
+      if( Parser::getInstance().getProgramOptions().nullStream != -1 )
+      {
+        const char* pch = strchr( name.c_str(),':' );
+
+        if( pch != NULL )
+        {
+          p->setNativeStreamId( atoi( pch + 1 ) );
+          //UTILS_WARNING( "Set stream %d as NULL stream", atoi( pch + 1 ) );
+        }
+      }
+    }
+    else if( strstr( name.c_str(), "MIC [" ) ) // deprecated (libmpti)
+    {
+      deviceId = atoi( name.c_str() + 5 );
+    }
+    else // OpenCL devices
+    {
+      size_t pos = name.find_last_of( "[" );
+      if( pos !=  string::npos )
+      {
+        deviceId = atoi( name.c_str() + pos + 1 );
+      }
+    }
+
+    p->setDeviceId( deviceId );
+
+    // device ID has to be set to generate stream vectors per device
+    streamGroup.addDeviceStream( p );
   }
 
   // initialize CPU data for this stream (full reset is done in addCPUEvent() )
   cpuDataPerProcess[id].numberOfEvents = 0;
-  
-  return p;
 }
 
 Graph&
@@ -147,24 +135,16 @@ GraphEngine::getGraph( Paradigm p )
   return graph.getSubGraph( p );
 }
 
-EventStream*
-GraphEngine::getStream( uint64_t id ) const
-{
-  EventStreamMap::const_iterator iter = streamsMap.find( id );
-  if ( iter != streamsMap.end() )
-  {
-    return iter->second;
-  }
-  else
-  {
-    return NULL;
-  }
-}
-
 EventStreamGroup&
 GraphEngine::getStreamGroup()
 {
   return streamGroup;
+}
+
+EventStream*
+GraphEngine::getStream( uint64_t id ) const
+{
+  return streamGroup.getStream( id );
 }
 
 const EventStreamGroup::EventStreamList&
@@ -179,34 +159,28 @@ GraphEngine::getHostStreams() const
   return streamGroup.getHostStreams();
 }
 
-const EventStreamGroup::EventStreamList&
+const EventStreamGroup::DeviceStreamList&
 GraphEngine::getDeviceStreams() const
 {
   return streamGroup.getDeviceStreams();
+}
+
+void
+GraphEngine::getDeviceStreams( EventStreamGroup::DeviceStreamList& deviceStreams ) const
+{
+  streamGroup.getDeviceStreams( deviceStreams );
+}
+
+const EventStreamGroup::DeviceStreamList&
+GraphEngine::getDeviceStreams( int deviceId )
+{
+  return streamGroup.getDeviceStreams( deviceId );
 }
 
 size_t
 GraphEngine::getNumDeviceStreams() const
 {
   return streamGroup.getDeviceStreams().size();
-}
-
-const EventStreamGroup::EventStreamList&
-GraphEngine::getDeviceStreams( int deviceId )
-{
-  return streamGroup.getDeviceStreams( deviceId );
-}
-
-void
-GraphEngine::getAllDeviceStreams( EventStreamGroup::EventStreamList& deviceStreams ) const
-{
-  streamGroup.getAllDeviceStreams( deviceStreams );
-}
-
-bool
-GraphEngine::haveDeviceNullStreamOnly() const
-{
-  return streamGroup.deviceWithNullStreamOnly();
 }
 
 bool
@@ -939,15 +913,23 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
       // set it as direct predecessor if no closer one on another stream is found
       directPredKernel = directPredecessor;
     }
+    
+    if( !stream->isDeviceStream() )
+    {
+      UTILS_WARNING( "Kernels have to be on a device stream!" );
+      return;
+    }
+    
+    DeviceStream* dStrm = ( DeviceStream* ) stream;
 
     // look for later leave nodes on other device streams
-    const EventStreamGroup::EventStreamList& devStreams = 
-      streamGroup.getDeviceStreams( stream->getDeviceId() );
+    const EventStreamGroup::DeviceStreamList& devStreams = 
+      streamGroup.getDeviceStreams( dStrm->getDeviceId() );
     
-    for ( EventStreamGroup::EventStreamList::const_iterator it = devStreams.begin(); 
+    for ( EventStreamGroup::DeviceStreamList::const_iterator it = devStreams.begin(); 
           it != devStreams.end(); ++it )
     {
-      EventStream* devStream = *it;
+      DeviceStream* devStream = *it;
       
       // ignore kernels on the same stream
       if( devStream->getId() == streamId )

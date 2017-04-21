@@ -146,8 +146,18 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
 {
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
   AnalysisEngine&  analysis = handler->getAnalysis();
-
+  
   EventStream::EventStreamType streamType = EventStream::ES_HOST;
+  
+  //\todo: check whether that is always true
+  if( streamId == parentId )
+  {
+    streamType = EventStream::ES_MPI;
+  }
+  else
+  {
+    streamType = EventStream::ES_OPENMP;
+  }
 
   if ( isGPU )
   {
@@ -190,7 +200,8 @@ CallbackHandler::handleLocationProperty( OTF2TraceReader*    reader,
     if( strcmp ( reader->getStringRef( value.stringRef ).c_str(), "yes" ) == 0 )
     {
       //UTILS_MSG( true, "Found CUDA null stream == yes" );
-      EventStream* stream = analysis.getStream( streamId );
+      DeviceStream* stream = 
+        analysis.getStreamGroup().getDeviceStream( streamId );
       analysis.getStreamGroup().setDeviceNullStream( stream );
     }
   }
@@ -312,8 +323,7 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   FunctionDescriptor functionDesc;
   functionDesc.recordType = RECORD_ENTER; // needed to determine correct function type
   bool generateNode = FunctionTable::getAPIFunctionType( funcName, &functionDesc, 
-                                     stream->isDeviceStream(), 
-                                     analysis.haveDeviceNullStreamOnly() );
+    stream->isDeviceStream(), analysis.getStreamGroup().deviceWithNullStreamOnly() );
 
   // for CPU functions no graph node is created
   // only start time, end time and number of CPU events between nodes is stored
@@ -402,8 +412,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   FunctionDescriptor functionType;
   functionType.recordType = RECORD_LEAVE; // needed to determine correct function type
   bool generateNode = FunctionTable::getAPIFunctionType( funcName, &functionType, 
-                                     stream->isDeviceStream(), 
-                                     analysis.haveDeviceNullStreamOnly() );
+    stream->isDeviceStream(), analysis.getStreamGroup().deviceWithNullStreamOnly() );
 
   //if ( functionType.paradigm == PARADIGM_CPU )
   if( !generateNode )
@@ -585,24 +594,24 @@ CallbackHandler::handleMPIComm( OTF2TraceReader* reader,
 {
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
   AnalysisEngine&  analysis = handler->getAnalysis();
-  EventStream*     stream   = analysis.getStream( streamId );
+  MpiStream*       stream   = analysis.getStreamGroup().getMpiStream( streamId );
 
-  EventStream::MPIType pMPIType;
+  MpiStream::MPIType pMPIType;
 
   switch ( mpiType )
   {
     case io::MPI_COLLECTIVE:
-      pMPIType = EventStream::MPI_COLLECTIVE;
+      pMPIType = MpiStream::MPI_COLLECTIVE;
       break;
     case io::MPI_RECV:
-      pMPIType = EventStream::MPI_RECV;
+      pMPIType = MpiStream::MPI_RECV;
       break;
     case io::MPI_SEND:
-      pMPIType = EventStream::MPI_SEND;
+      pMPIType = MpiStream::MPI_SEND;
       break;
     case io::MPI_ONEANDALL:
       //pMPIType = EventStream::MPI_ONEANDALL;
-      pMPIType = EventStream::MPI_COLLECTIVE;
+      pMPIType = MpiStream::MPI_COLLECTIVE;
       break;
     default: throw RTException( "Unknown io::MPIType %u", mpiType );
   }
@@ -652,8 +661,8 @@ CallbackHandler::handleMPIIsend( OTF2TraceReader* reader,
                                  uint64_t         requestId )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
-  AnalysisEngine&  analysis = handler->getAnalysis();
-  EventStream*     stream   = analysis.getStream( streamId );
+  MpiStream*       stream  = 
+    handler->getAnalysis().getStreamGroup().getMpiStream( streamId );
   
   stream->handleMPIIsendEventData( requestId, receiver, communicator, msgTag );
 }
@@ -680,7 +689,8 @@ CallbackHandler::handleMPIIrecv( OTF2TraceReader* reader,
                                  uint64_t         requestId )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
-  EventStream*     stream   = handler->getAnalysis().getStream( streamId );
+  MpiStream*       stream  = 
+    handler->getAnalysis().getStreamGroup().getMpiStream( streamId );
   
   stream->handleMPIIrecvEventData( requestId, sender, communicator, msgTag );
 }
@@ -701,7 +711,8 @@ CallbackHandler::handleMPIIrecvRequest( OTF2TraceReader* reader,
                                         uint64_t requestId )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
-  EventStream*     stream  = handler->getAnalysis().getStream(streamId);
+  MpiStream*       stream  = 
+    handler->getAnalysis().getStreamGroup().getMpiStream( streamId );
   
   stream->saveMPIIrecvRequest( requestId );
 }
@@ -712,8 +723,8 @@ CallbackHandler::handleMPIIsendComplete( OTF2TraceReader* reader,
                                          uint64_t requestId )
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
-  AnalysisEngine&  analysis = handler->getAnalysis();
-  EventStream*     stream   = analysis.getStream( streamId );
+  MpiStream*       stream  = 
+    handler->getAnalysis().getStreamGroup().getMpiStream( streamId );
   
   stream->saveMPIIsendRequest( requestId );
 }

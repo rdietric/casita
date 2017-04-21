@@ -79,7 +79,7 @@ namespace casita
         eventRecordLeave->setLink( NULL );
         
         // get the event stream of the associated CUDA event
-        EventStream* refProcess = analysis->getStream(
+        DeviceStream* refProcess = analysis->getStreamGroup().getDeviceStream(
           eventRecordLeave->getReferencedStreamId() );
         
         if( refProcess == NULL )
@@ -95,12 +95,12 @@ namespace casita
           return false;
         }
         
-        EventStreamGroup::EventStreamList deviceProcs;
+        EventStreamGroup::DeviceStreamList deviceProcs;
 
         // put all device streams in the list, if we are synchronizing with the NULL stream
         if ( refProcess->isDeviceNullStream() )
         {
-          analysis->getAllDeviceStreams( deviceProcs );
+          analysis->getStreamGroup().getDeviceStreams( deviceProcs );
         }
         else
         {
@@ -122,7 +122,7 @@ namespace casita
         GraphNode* syncEnter = syncLeave->getGraphPair().first;
         
         // iterate over device streams (typically only one)
-        for ( EventStreamGroup::EventStreamList::const_iterator iter =
+        for ( EventStreamGroup::DeviceStreamList::const_iterator iter =
                 deviceProcs.begin(); iter != deviceProcs.end(); ++iter )
         {
           // get last kernel launch leave node of the given device stream 
@@ -267,8 +267,8 @@ namespace casita
           //commonAnalysis->getStream( kernelEnter->getStreamId() )->consumePendingKernel();
           
           // clear all pending kernels before this kernel (including this kernel)
-          EventStream *kernelLeaveStream = 
-            analysis->getStream( kernelLeave->getStreamId() );
+          DeviceStream *kernelLeaveStream = 
+            analysis->getStreamGroup().getDeviceStream( kernelLeave->getStreamId() );
           if( kernelLeaveStream )
           {
             kernelLeaveStream->consumePendingKernels( kernelLeave );

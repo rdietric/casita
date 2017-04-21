@@ -105,12 +105,17 @@ namespace casita
 
           GraphNode* kernelLeave = kernelEnter->getGraphPair().second;
 
+          UTILS_ASSERT( kernelLeave, "EventQueryRule: No kernel leave!" );
+
           if ( queryLeave->getTime() < kernelLeave->getTime() )
           {
             throw RTException( "Incorrect timing between %s and %s\n",
                                queryLeave->getUniqueName().c_str(),
                                kernelLeave->getUniqueName().c_str() );
           }
+          
+          DeviceStream* devStrm = 
+            ( DeviceStream* )commonAnalysis->getStream( kernelLeave->getStreamId() );
 
           // process all event query nodes and make blocking if they depend on 
           // the kernel
@@ -160,8 +165,7 @@ namespace casita
           
           //commonAnalysis->getStream( kernelEnter->getStreamId() )->consumePendingKernel();
           // consume all pending kernels before this kernel
-          commonAnalysis->getStream( kernelLeave->getStreamId() )
-                                         ->consumePendingKernels( kernelLeave );
+          devStrm->consumePendingKernels( kernelLeave );
         }
         else 
         // if no kernel launch leave was found (e.g. associated kernel already synchronized)

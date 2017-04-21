@@ -262,11 +262,11 @@ namespace casita
       //////////////////////////////////////////////////////////////
 
       void
-      handleDeviceTaskEnter( uint64_t time, OTF2_LocationRef location, 
+      handleDeviceTaskEnter( uint64_t time, DeviceStream* devStream, 
                              bool isCompute = false, bool isH2D = false );
 
       void
-      handleDeviceTaskLeave( uint64_t time, OTF2_LocationRef location, 
+      handleDeviceTaskLeave( uint64_t time, DeviceStream* devStream, 
                              bool isCompute = false  );
      
       void

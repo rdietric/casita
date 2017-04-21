@@ -33,7 +33,7 @@ namespace casita
  typedef std::map< uint64_t, GraphNode::GraphNodeList > IdNodeListMap;
  typedef std::map< std::pair< uint64_t, uint64_t >, GraphNode::GraphNodeList > IdPairNodeListMap;
 
- class AnalysisEngine;
+ //class AnalysisEngine;
 
  class IAnalysisParadigm
  {

@@ -44,10 +44,12 @@ namespace casita
 
         if( waitLeave->getData() )
         {
-          EventStream::MPIIcommRecord* record = 
-                          (EventStream::MPIIcommRecord* ) waitLeave->getData(); 
+          MpiStream::MPIIcommRecord* record = 
+            (MpiStream::MPIIcommRecord* ) waitLeave->getData(); 
           
           AnalysisEngine* analysis = mpiAnalysis->getCommon();
+          
+          uint64_t streamId = waitLeave->getStreamId();
           
           if( !record->leaveNode )
           {
@@ -58,7 +60,7 @@ namespace casita
           if( !(record->leaveNode->isMPI_Irecv() || record->leaveNode->isMPI_Isend()) )
           {
             UTILS_MSG( true, "[%"PRIu64"] WaitRule: Only MPI_Isend and MPI_Irecv"
-                       " are supported! (%s)", waitLeave->getStreamId(), 
+                       " are supported! (%s)", streamId, 
                        record->leaveNode->getUniqueName().c_str() );
             return false;
           }
@@ -113,8 +115,9 @@ namespace casita
             }
             else
             {
-              UTILS_MSG( true, "[%"PRIu64"] MPI_Wait rule: Activity edge not found.", 
-                               waitLeave->getStreamId() );
+              UTILS_MSG( true, 
+                         "[%"PRIu64"] MPI_Wait rule: Activity edge not found.", 
+                         streamId );
             }
             
             uint64_t wtime = p2pPartnerTime - waitEnter->getTime();
@@ -142,7 +145,7 @@ namespace casita
           }
           
           // remove the pending MPI request
-          analysis->getStream( waitLeave->getStreamId() )
+          analysis->getStreamGroup().getMpiStream( streamId )
                   ->removePendingMPIRequest( record->requestId );
         }
         else

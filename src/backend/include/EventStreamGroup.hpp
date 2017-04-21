@@ -15,6 +15,8 @@
 #include <vector>
 #include <cstddef>
 #include "EventStream.hpp"
+#include "DeviceStream.hpp"
+#include "MpiStream.hpp"
 
 namespace casita
 {
@@ -24,6 +26,8 @@ namespace casita
     public:
 
       typedef std::vector< EventStream* > EventStreamList;
+      typedef std::vector< DeviceStream* > DeviceStreamList;
+      typedef std::map< uint64_t, EventStream* > EventStreamMap;
 
       EventStreamGroup();
 
@@ -34,16 +38,22 @@ namespace casita
       addHostStream( EventStream* p );
 
       void
-      addDeviceStream( EventStream* p );
+      addDeviceStream( DeviceStream* p );
 
       EventStreamList::iterator
       removeHostStream( EventStream* p );
 
       void
-      setDeviceNullStream( EventStream* p );
+      setDeviceNullStream( DeviceStream* p );
+      
+      DeviceStream*
+      getDeviceNullStream( int deviceId = -1 );
       
       bool
       deviceWithNullStreamOnly() const;
+      
+      EventStream*
+      getStream( uint64_t id ) const;
      
       const EventStreamList&
       getAllStreams() const;
@@ -51,43 +61,48 @@ namespace casita
       void
       getAllStreams( EventStreamList& streams, Paradigm paradigm ) const;
 
-      const EventStreamList&
-      getHostStreams() const;
-
-      const EventStreamList&
-      getDeviceStreams() const;
+      MpiStream*
+      getMpiStream( uint64_t id ) const;
       
       const EventStreamList&
+      getHostStreams() const;
+      
+      DeviceStream*
+      getDeviceStream( uint64_t id ) const;
+
+      const DeviceStreamList&
+      getDeviceStreams() const;
+      
+      const DeviceStreamList&
       getDeviceStreams( int deviceId );
 
       void
-      getAllDeviceStreams( EventStreamList& newDeviceStreams ) const;
-
-      EventStream*
-      getNullStream( int deviceId = -1 );
+      getDeviceStreams( DeviceStreamList& newDeviceStreams ) const;
 
       size_t
       getNumStreams() const;
       
-      EventStream*
+      DeviceStream*
       getFirstDeviceStream( int deviceId );
 
     private:
+      //<! stores stream IDs together with a pointer to the object
+      EventStreamMap streamsMap;
      
-      EventStreamList hostStreams;
-      EventStreamList deviceStreams;
-      EventStreamList allStreams;
+      EventStreamList  hostStreams;
+      DeviceStreamList deviceStreams;
+      EventStreamList  allStreams;
       
       //<! initially false, true if only one device stream that is the null stream exists
       bool deviceNullStreamOnly;
       
       // associates device ID and corresponding null stream
-      std::map< int, EventStream* > deviceNullStreamMap;
+      std::map< int, DeviceStream* > deviceNullStreamMap;
       
-      std::map< int, EventStream* > deviceFirstStreamMap;
+      std::map< int, DeviceStream* > deviceFirstStreamMap;
       
       //<! collect all device streams per device Id
-      std::map< int, EventStreamList > deviceIdStreamsMap; 
+      std::map< int, DeviceStreamList > deviceIdStreamsMap; 
  };
 
 }

@@ -457,7 +457,7 @@ AnalysisEngine::createIntermediateBegin()
       bool havePendingKernels = true; 
       
       // keep the first node (stream begin node) for MPI processes
-      if( p->isHostMasterStream() )
+      if( p->isMpiStream() )
       {
         ++it;
       }
@@ -474,7 +474,7 @@ AnalysisEngine::createIntermediateBegin()
         }
         
         // check for pending kernels
-        if( p->getLastPendingKernel() )
+        if( ( ( DeviceStream* ) p )->getLastPendingKernel() )
         {
           UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC, 
             "Stream %"PRIu64" has pending kernels at intermediate analysis start.", 
@@ -666,11 +666,13 @@ AnalysisEngine::checkPendingMPIRequests()
   for ( EventStreamGroup::EventStreamList::const_iterator pIter =
               streams.begin(); pIter != streams.end(); ++pIter )
   {
-    if( (*pIter)->havePendingMPIRequests() )
+    EventStream* stream = *pIter;
+    
+    if( stream->isMpiStream() && ( ( MpiStream* ) stream )->havePendingMPIRequests() )
     {
       UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE, 
                  "[%"PRIu32"] There are pending MPI requests on stream %"PRIu64" (%s)!", 
-                 getMPIRank(), (*pIter)->getId(), (*pIter)->getName() );
+                 getMPIRank(), stream->getId(), stream->getName() );
     }
   }
 }

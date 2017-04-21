@@ -52,8 +52,8 @@ namespace casita
 
         AnalysisEngine* commonAnalysis = analysis->getCommon();
 
-        EventStream::MPIIcommRecord* record = 
-                (EventStream::MPIIcommRecord* ) isendLeave->getData();
+        MpiStream::MPIIcommRecord* record = 
+                (MpiStream::MPIIcommRecord* ) isendLeave->getData();
         
         // check if the record has been invalidated/deleted
         if( NULL == record )

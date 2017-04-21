@@ -43,7 +43,6 @@ namespace casita
      std::map< uint64_t, EdgeCPUData > cpuDataPerProcess;
 
    public:
-     typedef std::map< uint64_t, EventStream* > EventStreamMap;
      typedef std::stack< GraphNode* > GraphNodeStack;
      typedef std::map< uint64_t, GraphNodeStack > GraphNodeStackMap;
 
@@ -87,23 +86,20 @@ namespace casita
      const EventStreamGroup::EventStreamList&
      getHostStreams() const;
 
-     const EventStreamGroup::EventStreamList&
+     const EventStreamGroup::DeviceStreamList&
      getDeviceStreams() const;
      
      size_t
      getNumDeviceStreams() const;
      
-     bool
-     haveDeviceNullStreamOnly() const;
-     
-     const EventStreamGroup::EventStreamList&
+     const EventStreamGroup::DeviceStreamList&
      getDeviceStreams( int deviceId );
 
      void
-     getAllDeviceStreams( EventStreamGroup::EventStreamList& deviceStreams ) const;
+     getDeviceStreams( EventStreamGroup::DeviceStreamList& deviceStreams ) const;
 
      /* allocators */
-     EventStream*
+     void
      newEventStream( uint64_t                     id,
                      uint64_t                     parentId,
                      const std::string            name,
@@ -187,8 +183,6 @@ namespace casita
      Graph graph;
      GraphNode* globalSourceNode;
      GraphNodeStackMap pendingGraphNodeStackMap;
-
-     EventStreamMap streamsMap;
 
      // create the only instance of AnalysisMetric
      AnalysisMetric ctrTable;

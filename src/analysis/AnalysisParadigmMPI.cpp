@@ -76,11 +76,12 @@ AnalysisParadigmMPI::getParadigm()
 void
 AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
 {
-  EventStream* stream = commonAnalysis->getStream( node->getStreamId() );
+  MpiStream* stream = 
+    commonAnalysis->getStreamGroup().getMpiStream( node->getStreamId() );
 
   if( node->isMPIBlocking() ) // handle blocking MPI communication events
   {
-    EventStream::MpiBlockingCommData& commData = stream->getPendingMpiCommRecord();
+    MpiStream::MpiBlockingCommData& commData = stream->getPendingMpiCommRecord();
 
     if( node->isMPISendRecv() )
     {

@@ -65,7 +65,7 @@ namespace casita
               
               // get corresponding target enter
               GraphNode* targetEnter = 
-                ompAnalysis->getTargetEnter( nodeStream->getDeviceId() );
+                ompAnalysis->getTargetEnter( ( ( DeviceStream* ) nodeStream )->getDeviceId() );
               
               if( targetEnter )
               {
@@ -97,16 +97,16 @@ namespace casita
               deviceId = targetEnter->getReferencedStreamId();
             }
             
-            const EventStreamGroup::EventStreamList& deviceStreams =
+            const EventStreamGroup::DeviceStreamList& deviceStreams =
               analysis->getDeviceStreams( deviceId );
 
             GraphNode* firstTargetOffloadNode = NULL;
             GraphNode* lastTargetOffloadNode = NULL;
             // get last node on the device before target leave
-            for ( EventStreamGroup::EventStreamList::const_iterator pIter =
+            for ( EventStreamGroup::DeviceStreamList::const_iterator pIter =
                   deviceStreams.begin(); pIter != deviceStreams.end(); ++pIter )
             {
-              EventStream* deviceStream = *pIter;
+              DeviceStream* deviceStream = *pIter;
               
               // find stream local last offload node
               GraphNode* lastOffloadNode = 

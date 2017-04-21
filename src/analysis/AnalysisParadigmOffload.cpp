@@ -593,10 +593,19 @@ AnalysisParadigmOffload::clearKernelEnqueues( uint64_t streamId )
 
 void
 AnalysisParadigmOffload::addStreamWaitEvent( uint64_t   streamId,
-                                          EventNode* streamWaitLeave )
+                                             EventNode* streamWaitLeave )
 {
-  const EventStream* nullStream = commonAnalysis->getStreamGroup().getNullStream( 
-    commonAnalysis->getStream( streamId )->getDeviceId() );
+  const DeviceStream* strm = 
+    commonAnalysis->getStreamGroup().getDeviceStream( streamId );
+  
+  if( !strm )
+  {
+    return;
+  }
+  
+  const DeviceStream* nullStream = 
+    commonAnalysis->getStreamGroup().getDeviceNullStream( strm->getDeviceId() );
+  
   if ( nullStream && nullStream->getId() == streamId )
   {
     StreamWaitTagged* swTagged = new StreamWaitTagged();
@@ -764,7 +773,7 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelEnter ) cons
   // if no kernel is given, assume a global device synchronization
   if( kernelEnter == NULL )
   {
-    const EventStreamGroup::EventStreamList& deviceStreams = 
+    const EventStreamGroup::DeviceStreamList& deviceStreams = 
       commonAnalysis->getDeviceStreams();
   
     if( deviceStreams.size() == 0 )
@@ -774,10 +783,11 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelEnter ) cons
     }
 
     // find last kernel leave
-    EventStreamGroup::EventStreamList::const_iterator streamIt = deviceStreams.begin();
+    EventStreamGroup::DeviceStreamList::const_iterator streamIt = deviceStreams.begin();
     for( streamIt = deviceStreams.begin(); deviceStreams.end() != streamIt; ++streamIt )
     {
-      GraphNode* lastKernelLeave = ( *streamIt )->getLastPendingKernel();
+      DeviceStream* devStrm = *streamIt;
+      GraphNode* lastKernelLeave = devStrm->getLastPendingKernel();
       if( !kernelEnter || 
          ( lastKernelLeave && Node::compareLess( kernelEnter, lastKernelLeave ) ) )
       {
