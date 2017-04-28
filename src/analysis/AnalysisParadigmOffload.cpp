@@ -31,7 +31,7 @@ using namespace casita::io;
 
 AnalysisParadigmOffload::AnalysisParadigmOffload( AnalysisEngine* analysisEngine ) :
   IAnalysisParadigm( analysisEngine ),
-  pendingKernels ( 0 )
+  activeKernels ( 0 )
 {
   // triggered on offload kernel leave
   addRule( new KernelExecutionRule( 9 ) );
@@ -165,7 +165,7 @@ AnalysisParadigmOffload::handlePostEnter( GraphNode* node )
   }
   else if( node->isOffloadKernel() )
   {
-    pendingKernels++;
+    activeKernels++;
   }
 }
 
@@ -178,7 +178,7 @@ AnalysisParadigmOffload::handlePostLeave( GraphNode* node )
   }
   else if( node->isOffloadKernel() )
   {
-    pendingKernels--;
+    activeKernels--;
   }
 }
 
@@ -255,9 +255,9 @@ AnalysisParadigmOffload::handleKeyValuesLeave( OTF2TraceReader*  reader,
 }
 
 size_t
-AnalysisParadigmOffload::getPendingKernelCount() const
+AnalysisParadigmOffload::getActiveKernelCount() const
 {
-  return pendingKernels;
+  return activeKernels;
 }
 
 

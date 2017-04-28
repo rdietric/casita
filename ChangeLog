@@ -1,3 +1,28 @@
+---------------------------------- CASITA 1.8 ----------------------------------
+
+MPI
+- added support for custom MPI communicators
+- fixed MPI_Sendrecv rule
+- start local critical path analysis during waiting time in the detection of
+  critical MPI nodes
+
+Offloading (CUDA/OpenCL)
+- share analysis rules between CUDA and OpenCL (avoid code duplication)
+- optionally write device idle and/or compute idle events to the output trace
+- added dependencies between non-overlapping kernels on different device streams
+  (improved critical path detection on a device)
+- avoid intermediate analysis start when OpenMP parallel regions or offload
+  kernels are active
+- added handling of CUDA null stream
+
+MISC
+- added summary output on inefficiency patterns for MPI, OpenMP, and offloading
+- reduced CASITA's memory overhead (less edges are created, different stream
+  objects for MPI, OpenMP, and device streams, etc.)
+- added function filter for trace output
+- improved verbose output
+
+
 ---------------------------------- CASITA 1.7 ----------------------------------
 
 MPI

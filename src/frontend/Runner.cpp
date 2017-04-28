@@ -273,7 +273,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
       // open we need to retain the MPI nodes and cannot start an intermediate 
       // analysis
       if( ( ompAnalysis && ompAnalysis->getNestingLevel() > 0 ) ||
-          ( ofldAnalysis && ofldAnalysis->getPendingKernelCount() > 0 ) )
+          ( ofldAnalysis && ofldAnalysis->getActiveKernelCount() > 0 ) )
       {
         //UTILS_MSG( true, "Found pending local region" );
       }
@@ -707,17 +707,17 @@ Runner::computeCriticalPath( const bool firstInterval, const bool lastInterval )
     
     // perform MPI reverse replay using blocking edges; create a list of sections
     UTILS_MSG_NOBR( mpiRank == 0 && options.verbose >= VERBOSE_BASIC,
-               "Start critical-path detection for MPI ..." );
+                    "Start critical-path detection for MPI ..." );
     detectCriticalPathMPIP2P( sectionsList, criticalNodes );
     
     if( sectionsList.size() > 0 )
     {
       // detect the critical path within all sections individually
       UTILS_MSG( mpiRank == 0 && options.verbose >= VERBOSE_BASIC,
-                 " for %llu sections.",
-                 sectionsList.size() );
+                 " for %llu sections.", sectionsList.size() );
       
-      getCriticalLocalNodes( sectionsList, criticalNodes );
+      //getCriticalLocalNodes( sectionsList, criticalNodes );
+      processSectionsParallel( sectionsList, criticalNodes );
       
       sectionsList.clear();
     }
@@ -1016,6 +1016,98 @@ Runner::getCriticalPathIntern( GraphNode*                        start,
   }
 }
 
+void
+Runner::getCriticalLocalNodes( MPIAnalysis::CriticalPathSection* section,
+                               EventStream::SortedGraphNodeList& criticalNodes )
+{
+  GraphNode* startNode = section->startNode;
+  GraphNode* endNode   = section->endNode;
+
+  if ( !startNode || !endNode )
+  {
+    throw RTException( "[%d] Did not find local nodes!",
+                       mpiRank );
+  }
+  else
+  {
+    UTILS_MSG( options.verbose > VERBOSE_ALL,
+               "  [%d] computing local critical path between MPI nodes [%s, %s]",
+               mpiRank,
+               startNode->getUniqueName().c_str(),
+               endNode->getUniqueName().c_str() );
+  }
+
+  if ( startNode->isEnter() )
+  {
+    startNode = startNode->getPartner();
+  }
+
+  if ( endNode->isLeave() )
+  {
+    endNode = endNode->getPartner();
+  }
+
+  //\todo: replace left and right link with edges
+  GraphNode* startLocalNode = startNode->getLinkRight();
+  GraphNode* endLocalNode   = endNode->getLinkLeft();
+
+  if ( ( !startLocalNode || !endLocalNode ) ||
+       ( startLocalNode->getTime() >= endLocalNode->getTime() ) )
+  {
+    UTILS_MSG( options.verbose > VERBOSE_ALL && startLocalNode && endLocalNode,
+               "  [%d] No local path between MPI nodes %s (link right %p, %s) "
+               "and %s (link left %p, %s)", mpiRank,
+               startNode->getUniqueName().c_str(),
+               startLocalNode, startLocalNode->getUniqueName().c_str(),
+               endNode->getUniqueName().c_str(),
+               endLocalNode, endLocalNode->getUniqueName().c_str() );
+
+    // add the critical section nodes (start leave, end enter and leave)
+    #pragma omp critical
+    {
+      criticalNodes.push_back( startNode );
+      criticalNodes.push_back( endNode );
+
+      // for enter end nodes (not atomic!) also add the leave node
+      if( endNode->isEnter() )
+      {
+        criticalNodes.push_back( endNode->getPartner() );
+      }
+    }
+
+    return;
+  }
+
+  UTILS_MSG( options.verbose > VERBOSE_ALL,
+             "  [%d] Computing local critical path for section (%s,%s): (%s,%s)",
+             mpiRank,
+             startNode->getUniqueName().c_str(), 
+             endNode->getUniqueName().c_str(),
+             startLocalNode->getUniqueName().c_str(), 
+             endLocalNode->getUniqueName().c_str() );
+
+  EventStream::SortedGraphNodeList sectionLocalNodes;
+  sectionLocalNodes.push_back( startNode );
+
+  getCriticalPathIntern( startLocalNode, endLocalNode,
+                         sectionLocalNodes );
+
+  // add the endNode, which is an enter node
+  sectionLocalNodes.push_back( endNode );
+
+  // for enter end nodes (not atomic!) also add the leave node
+  if ( /*endNode->isMPIFinalize() &&*/ endNode->isEnter() )
+  {
+    sectionLocalNodes.push_back( endNode->getPartner() );
+  }
+
+  #pragma omp critical
+  {
+    criticalNodes.insert( criticalNodes.end(),
+                          sectionLocalNodes.begin(), sectionLocalNodes.end() );
+  }
+}
+
 /**
  * Compute critical path for nodes between two critical MPI nodes on the
  * same process. Do this for the given critical sections and insert nodes on 
@@ -1027,126 +1119,17 @@ Runner::getCriticalPathIntern( GraphNode*                        start,
  * @param criticalNodes - list of local critical nodes
  */
 void
-Runner::getCriticalLocalNodes( MPIAnalysis::CriticalSectionsList& sections,
-                               EventStream::SortedGraphNodeList& criticalNodes )
+Runner::processSectionsParallel( MPIAnalysis::CriticalSectionsList& sections,
+                                 EventStream::SortedGraphNodeList& criticalNodes )
 {
-  if( sections.size() == 0 )
-  {
-    return;
-  }
-  
-  // What's the difference to analysis.getGraph()?
-  // --> compare the number of nodes
-  //Graph*     subGraph   = analysis.getGraph( PARADIGM_ALL ); 
-  uint32_t lastSecCtr = 0;
-
   // compute all MPI-local critical sections in parallel
   #pragma omp parallel for
   for ( uint32_t i = 0; i < sections.size(); ++i )
   {
     MPIAnalysis::CriticalPathSection* section = &( sections[i] );
     
-    GraphNode* startNode = section->startNode;
-    GraphNode* endNode   = section->endNode;
-
-    if ( !startNode || !endNode )
-    {
-      throw RTException( "[%d] Did not find local nodes!",
-                         mpiRank );
-    }
-    else
-    {
-      UTILS_MSG( options.verbose > VERBOSE_ALL,
-                 "  [%d] computing local critical path between MPI nodes [%s, %s]",
-                 mpiRank,
-                 startNode->getUniqueName().c_str(),
-                 endNode->getUniqueName().c_str() );
-    }
-    
-    if ( startNode->isEnter() )
-    {
-      startNode = startNode->getPartner();
-    }
-
-    if ( endNode->isLeave() )
-    {
-      endNode = endNode->getPartner();
-    }
-
-    //\todo: replace left and right link with edges
-    GraphNode* startLocalNode = startNode->getLinkRight();
-    GraphNode* endLocalNode   = endNode->getLinkLeft();
-
-    if ( ( !startLocalNode || !endLocalNode ) ||
-         ( startLocalNode->getTime() >= endLocalNode->getTime() ) )
-    {
-      UTILS_MSG( options.verbose > VERBOSE_ALL && startLocalNode && endLocalNode,
-                 "  [%d] No local path between MPI nodes %s (link right %p, %s) "
-                 "and %s (link left %p, %s)", mpiRank,
-                 startNode->getUniqueName().c_str(),
-                 startLocalNode, startLocalNode->getUniqueName().c_str(),
-                 endNode->getUniqueName().c_str(),
-                 endLocalNode, endLocalNode->getUniqueName().c_str() );
-      
-      // add the critical section nodes (start leave, end enter and leave)
-      #pragma omp critical
-      {
-        criticalNodes.push_back( startNode );
-        criticalNodes.push_back( endNode );
-        
-        // for enter end nodes (not atomic!) also add the leave node
-        if( endNode->isEnter() )
-        {
-          criticalNodes.push_back( endNode->getPartner() );
-        }
-      }
-
-      continue;
-    }
-
-    UTILS_MSG( options.verbose > VERBOSE_ALL,
-               "  [%d] Computing local critical path for section (%s,%s): (%s,%s)",
-               mpiRank,
-               startNode->getUniqueName().c_str(), 
-               endNode->getUniqueName().c_str(),
-               startLocalNode->getUniqueName().c_str(), 
-               endLocalNode->getUniqueName().c_str() );
-
-    EventStream::SortedGraphNodeList sectionLocalNodes;
-    sectionLocalNodes.push_back( startNode );
-
-    getCriticalPathIntern( startLocalNode, endLocalNode,
-                           sectionLocalNodes );
-
-    // add the endNode, which is an enter node
-    sectionLocalNodes.push_back( endNode );
-    
-    // for enter end nodes (not atomic!) also add the leave node
-    if ( /*endNode->isMPIFinalize() &&*/ endNode->isEnter() )
-    {
-      sectionLocalNodes.push_back( endNode->getPartner() );
-    }
-
-    #pragma omp critical
-    {
-      criticalNodes.insert( criticalNodes.end(),
-                            sectionLocalNodes.begin(), sectionLocalNodes.end() );
-    }
-
-    if ( options.verbose >= VERBOSE_BASIC && !options.analysisInterval &&
-        mpiRank == 0 && omp_get_thread_num() == 0 &&
-        ( i - lastSecCtr > sections.size() / 10 ) )
-    {
-      UTILS_MSG( true, "[0] %lu%% ",
-                 (size_t)( 100.0 * (double)i / (double)(sections.size()) ) );
-      
-      fflush( NULL );
-      lastSecCtr = i;
-    }
+    getCriticalLocalNodes( section, criticalNodes );
   }
-
-  UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0 && !options.analysisInterval,
-             "[0] 100%%" );
 }
 
 /**
@@ -1227,7 +1210,7 @@ Runner::findLastMpiNode( GraphNode** localLastMpiLeave )
  *                      waiting for the master
  */
 void
-Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsList,
+Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList,
                                   EventStream::SortedGraphNodeList& criticalNodes)
 {
   const uint32_t NO_MSG         = 0;
@@ -1356,7 +1339,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
             UTILS_DBG_MSG( DEBUG_CPA_MPI, "[%d] Push critical section [%s,%s]", 
                            mpiRank, currentNode->getUniqueName().c_str(), 
                            sectionEndNode->getUniqueName().c_str());
-            sectionsList.push_back( section );
+            sectionList.push_back( section );
 
             // the leave node is still on the critical path
             currentNode->setCounter( CRITICAL_PATH, 1 );
@@ -1452,7 +1435,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
                            "[%d] Push critical section [%s,%s] (MPI_Init/atomic)", 
                            mpiRank, currentNode->getUniqueName().c_str(), 
                            sectionEndNode->getUniqueName().c_str());
-            sectionsList.push_back( section );
+            sectionList.push_back( section );
           }
           else if ( currentNode->isMPIInit() )
           {
@@ -1538,15 +1521,26 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionsLis
       MPI_Status status;
       MPI_CHECK( MPI_Test( &request_recv, &finished, &status ) );
 
-      if( !finished )
+      // if we have to wait for the master, start the local CPA for sections
+      while( !finished )
       {
-        if( sectionsList.size() > 0 )
+        if( sectionList.size() > 0 )
         {
-          //\todo: compute the last local critical section, which is the last element in the vector
-          //getCriticalLocalNodes( sectionsList, criticalNodes );
-        }
+          // compute last local critical section (last element in the vector)
+          getCriticalLocalNodes( &(sectionList.back()), criticalNodes );
+          sectionList.pop_back();
           
-        MPI_CHECK( MPI_Wait( &request_recv, &status ) );
+          // check if the receive is now finished
+          MPI_CHECK( MPI_Test( &request_recv, &finished, &status ) );
+        }
+        else
+        {
+          // if no more sections are available: 
+          // wait for the MPI_Irecv and leave the loop
+          MPI_CHECK( MPI_Wait( &request_recv, &status ) );
+          finished = 1;
+          break;
+        }
       }
       
       // if the master send "found message" we can leave the while loop

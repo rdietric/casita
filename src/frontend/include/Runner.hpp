@@ -99,8 +99,12 @@ namespace casita
                             EventStream::SortedGraphNodeList& cpNodes );
      
      void
-     getCriticalLocalNodes( MPIAnalysis::CriticalSectionsList& sections,
+     getCriticalLocalNodes( MPIAnalysis::CriticalPathSection* section,
                             EventStream::SortedGraphNodeList& localNodes );
+     
+     void
+     processSectionsParallel( MPIAnalysis::CriticalSectionsList& sections,
+                              EventStream::SortedGraphNodeList& localNodes );
      
      /*void
      findGlobalLengthCP();*/
