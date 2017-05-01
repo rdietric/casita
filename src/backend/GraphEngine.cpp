@@ -427,6 +427,11 @@ GraphEngine::getLastGraphNode( Paradigm paradigm ) const
   return lastNode;
 }
 
+/**
+ * Return a sorted list of nodes from all local event streams.
+ * 
+ * @param allNodes sorted list of nodes
+ */
 void
 GraphEngine::getAllNodes( EventStream::SortedGraphNodeList& allNodes ) const
 {

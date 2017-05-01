@@ -48,7 +48,7 @@ namespace casita
      writeTrace();
 
      void
-     runAnalysis( Paradigm paradigm, EventStream::SortedGraphNodeList& allNodes );
+     runAnalysis( EventStream::SortedGraphNodeList& allNodes );
 
      ProgramOptions&
      getOptions();

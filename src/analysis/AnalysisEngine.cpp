@@ -45,8 +45,11 @@ AnalysisEngine::AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize ) :
 {
   // add analysis paradigms
   // \todo: Where deleted?
-  //addAnalysisParadigm( new omp::AnalysisParadigmOMP( this ) );
-  addAnalysis( new mpi::AnalysisParadigmMPI( this, mpiRank, mpiSize ) );
+  
+  if( mpiSize > 1 )
+  {
+    addAnalysis( new mpi::AnalysisParadigmMPI( this, mpiRank, mpiSize ) );
+  }
 }
 
 AnalysisEngine::~AnalysisEngine()
@@ -154,8 +157,20 @@ AnalysisEngine::isFunctionFiltered( uint32_t funcId )
 }
 
 bool
-AnalysisEngine::applyRules( GraphNode* node, Paradigm paradigm, bool verbose )
+AnalysisEngine::applyRules( GraphNode* node )
 {
+  Paradigm paradigm;
+    
+  // handle PARADIGM_CUDA and PARADIGM_OCL nodes with offload analysis paradigm
+  if ( node->getParadigm() & PARADIGM_OFFLOAD )
+  {
+    paradigm = PARADIGM_OFFLOAD;
+  }
+  else
+  {
+    paradigm = node->getParadigm();
+  }
+  
   AnalysisParadigmsMap::const_iterator iter = analysisParadigms.find( paradigm );
   if ( iter == analysisParadigms.end() )
   {
@@ -163,7 +178,7 @@ AnalysisEngine::applyRules( GraphNode* node, Paradigm paradigm, bool verbose )
   }
   else
   {
-    return iter->second->applyRules( node, verbose );
+    return iter->second->applyRules( node );
   }
 }
 
@@ -188,6 +203,67 @@ AnalysisEngine::getAnalysis( Paradigm paradigm )
   }
 }
 
+/**
+ * Apply analysis rules to all nodes.
+ */
+void
+AnalysisEngine::runAnalysis()
+{
+  EventStream::SortedGraphNodeList allNodes;
+  getAllNodes( allNodes );
+  
+  bool printStatus = mpiAnalysis.getMPIRank() == 0  
+                  && Parser::getVerboseLevel() >= VERBOSE_BASIC 
+                  && !Parser::getInstance().getProgramOptions().analysisInterval;
+  
+  size_t ctr       = 0, last_ctr = 0;
+  size_t num_nodes = allNodes.size();
+
+  // apply paradigm specific rules
+  for ( EventStream::SortedGraphNodeList::const_iterator nIter = allNodes.begin();
+        nIter != allNodes.end(); ++nIter )
+  {
+    GraphNode* node = *nIter;
+    ctr++;
+
+    applyRules( node );
+
+    // print process every 5 percent (TODO: depending on number of events per paradigm)
+    if ( printStatus && ( ctr - last_ctr > num_nodes / 20 ) )
+    {
+      UTILS_MSG( true, "[0] %lu%% ",
+                 ( size_t )( 100.0 * (double)ctr / (double)num_nodes ) );
+      fflush( NULL );
+      last_ctr = ctr;
+    }
+  }
+
+  UTILS_MSG( printStatus, "[0] 100%%" );
+  
+  // apply rules on pending nodes
+  //analysis.processDeferredNodes( paradigm );
+
+#ifdef DEBUG
+  clock_t time_sanity_check = clock();
+  
+  runSanityCheck( mpiAnalysis.getMPIRank() );
+  
+  UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME && 
+             mpiAnalysis.getMPIRank() == 0 && 
+             !Parser::getInstance().getProgramOptions().analysisInterval,
+             "[0] Sanity check: %f sec", 
+             ( (float) ( clock() - time_sanity_check ) ) / CLOCKS_PER_SEC );
+#endif
+  
+  allNodes.clear();
+}
+
+void
+AnalysisEngine::clearNodes()
+{
+  allNodes.clear();
+}
+
 void
 AnalysisEngine::handlePostEnter( GraphNode* node )
 {
@@ -202,12 +278,6 @@ AnalysisEngine::handlePostEnter( GraphNode* node )
   {
     iter->second->handlePostEnter( node );
   }
-  
-  /*for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
-        iter != analysisParadigms.end(); ++iter )
-  {
-    iter->second->handlePostEnter( node );
-  }*/
 }
 
 void
@@ -224,12 +294,6 @@ AnalysisEngine::handlePostLeave( GraphNode* node )
   {
     iter->second->handlePostLeave( node );
   }
-  
-  /*for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
-        iter != analysisParadigms.end(); ++iter )
-  {
-    iter->second->handlePostLeave( node );
-  }*/
 }
 
 void
@@ -249,12 +313,6 @@ AnalysisEngine::handleKeyValuesEnter( OTF2TraceReader*  reader,
   {
     iter->second->handleKeyValuesEnter( reader, node, list );
   }
-  
-  /*for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
-        iter != analysisParadigms.end(); ++iter )
-  {
-    iter->second->handleKeyValuesEnter( reader, node, list );
-  }*/
 }
 
 void
@@ -275,12 +333,6 @@ AnalysisEngine::handleKeyValuesLeave( OTF2TraceReader*  reader,
   {
     iter->second->handleKeyValuesLeave( reader, node, oldNode, list );
   }
-  
-  /*for ( AnalysisParadigmsMap::const_iterator iter = analysisParadigms.begin();
-        iter != analysisParadigms.end(); ++iter )
-  {
-    iter->second->handleKeyValuesLeave( reader, node, oldNode, list );
-  }*/
 }
 
 void
@@ -290,7 +342,7 @@ AnalysisEngine::addDeferredNode( GraphNode* node )
 }
 
 void
-AnalysisEngine::processDeferredNodes( Paradigm paradigm )
+AnalysisEngine::processDeferredNodes()
 {
   if( deferredNodes.size() == 0 )
     return;
@@ -302,7 +354,7 @@ AnalysisEngine::processDeferredNodes( Paradigm paradigm )
   for ( EventStream::SortedGraphNodeList::const_iterator nIter = 
           deferredNodes.begin(); nIter != deferredNodes.end(); ++nIter )
   {
-    applyRules( *nIter, paradigm, false );
+    applyRules( *nIter );
   }
   
   // clear the deferred nodes after processing them

@@ -99,7 +99,7 @@ namespace casita
                       FunctionDescriptor* funcDesc );
 
      bool
-     applyRules( GraphNode* node, Paradigm paradigm, bool verbose );
+     applyRules( GraphNode* node );
 
      void
      addAnalysis( IAnalysisParadigm* paradigm );
@@ -158,8 +158,10 @@ namespace casita
      getElapsedTime( uint64_t t );
 
      void
-     runAnalysis( Paradigm paradigm, EventStream::SortedGraphNodeList& allNodes, 
-                  bool verbose );
+     runAnalysis();
+     
+     void
+     clearNodes();
      
      /**
       * Add a node to the deferred nodes list that could not be processed.
@@ -173,7 +175,7 @@ namespace casita
       * Process all nodes in the deferred nodes list. 
       */
      void
-     processDeferredNodes( Paradigm paradigm );
+     processDeferredNodes();
      
      Statistics&
      getStatistics( void );
@@ -185,7 +187,11 @@ namespace casita
 
      // map of analysis paradigms
      typedef std::map< Paradigm, IAnalysisParadigm* > AnalysisParadigmsMap;
+     
+     // map of paradigms and the according analysis
      AnalysisParadigmsMap analysisParadigms;
+     
+     EventStream::SortedGraphNodeList allNodes;
      
      //!< defer nodes that could not be processed
      EventStream::SortedGraphNodeList deferredNodes;

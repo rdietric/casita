@@ -241,9 +241,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   clock_t time_events_read   = 0;
   clock_t time_events_write  = 0;
   clock_t time_events_flush  = 0;
-  clock_t time_analysis_mpi  = 0;
-  clock_t time_analysis_omp  = 0;
-  clock_t time_analysis_ofld = 0;
+  clock_t time_analysis      = 0;
   clock_t time_analysis_cp   = 0;
   do
   {
@@ -312,37 +310,10 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     }
 
     // perform analysis for these events
-    
-    // create a sorted list of nodes
-    EventStream::SortedGraphNodeList allNodes;
-    
-    // add sorted nodes from all streams to the list
-    analysis.getAllNodes( allNodes );
-    
-    // apply analysis to all nodes of a certain paradigm
-    // availability of a certain paradigm is checked when the trace is read
-    // analysis creates dependency edges, identifies wait states, distributes blame
-    if ( ofldAnalysis )
-    {
-      time_tmp = clock();
-      runAnalysis( PARADIGM_OFFLOAD, allNodes );
-      time_analysis_ofld += clock() - time_tmp;
-    }
-    
-    if ( ompAnalysis )
-    {
-      time_tmp = clock();
-      runAnalysis( PARADIGM_OMP, allNodes );
-      time_analysis_omp += clock() - time_tmp;
-    }
-
-    //\todo: implement check for MPI paradigm
-    if ( mpiSize > 1 )
-    {
-      time_tmp = clock();
-      runAnalysis( PARADIGM_MPI,  allNodes );
-      time_analysis_mpi += clock() - time_tmp;
-    }
+    time_tmp = clock();
+    //runAnalysis( allNodes );
+    analysis.runAnalysis();
+    time_analysis += clock() - time_tmp;
       
     // \todo: to run the CPA we need all nodes on all processes to be analyzed?
     MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
@@ -395,9 +366,6 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     
     time_events_write += clock() - time_tmp;
     
-    // clear the sorted graph node list
-    allNodes.clear();
-    
     // deletes all previous nodes and create an intermediate start point
     if( events_available )
     {
@@ -414,41 +382,25 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   // write the last device idle leave events
   writer->handleFinalDeviceIdleLeave();
   
-  if( mpiRank == 0 )
+  if( mpiRank == 0 && options.verbose >= VERBOSE_TIME )
   {
     // Time consumption output for individual analysis steps
-    UTILS_MSG( options.verbose >= VERBOSE_TIME, 
-               "[0] Trace reading (and graph construction) took %f seconds.", 
+    UTILS_OUT( "Trace reading (and graph construction) took %f seconds.", 
                ( (float) time_events_read ) / CLOCKS_PER_SEC );
 
-    UTILS_MSG( options.verbose >= VERBOSE_TIME && mpiSize > 1, 
-               "[0] MPI analysis took %f seconds.", 
-               ( (float) time_analysis_mpi ) / CLOCKS_PER_SEC );
+    UTILS_OUT( "Applying analysis rules took %f seconds.", 
+               ( (float) time_analysis ) / CLOCKS_PER_SEC );
 
-    UTILS_MSG( options.verbose >= VERBOSE_TIME && analysis.haveParadigm( PARADIGM_OMP ), 
-               "[0] OpenMP analysis took %f seconds.", 
-               ( (float) time_analysis_omp ) / CLOCKS_PER_SEC );
-    
-    UTILS_MSG( options.verbose >= VERBOSE_TIME && analysis.haveParadigm( PARADIGM_OCL ), 
-               "[0] OpenCL analysis took %f seconds.", 
-               ( (float) time_analysis_ofld ) / CLOCKS_PER_SEC );
-
-    UTILS_MSG( options.verbose >= VERBOSE_TIME && analysis.haveParadigm( PARADIGM_CUDA ), 
-               "[0] CUDA analysis took %f seconds.", 
-               ( (float) time_analysis_ofld ) / CLOCKS_PER_SEC );
-
-    UTILS_MSG( options.verbose >= VERBOSE_TIME, 
-               "[0] Critical-path analysis took %f seconds.", 
+    UTILS_OUT( "Critical-path analysis took %f seconds.", 
                ( (float) time_analysis_cp ) / CLOCKS_PER_SEC );
     
-    UTILS_MSG( options.verbose >= VERBOSE_TIME, 
-               "[0] Trace writing (and CPU blame assignment) took %f seconds.", 
+    UTILS_OUT( "Trace writing (and CPU blame assignment) took %f seconds.", 
                ( (float) time_events_write ) / CLOCKS_PER_SEC );
-
-    UTILS_MSG( options.analysisInterval,
-               "Number of analysis intervals: %"PRIu32" (Cleanup nodes took %f seconds)", 
-               ++analysis_intervals, ( (float) time_events_flush ) / CLOCKS_PER_SEC );
   }
+
+  UTILS_MSG( mpiRank == 0 && options.analysisInterval,
+             "Number of analysis intervals: %"PRIu32" (Cleanup nodes took %f seconds)", 
+             ++analysis_intervals, ( (float) time_events_flush ) / CLOCKS_PER_SEC );
   
   UTILS_MSG( options.verbose >= VERBOSE_SOME, 
                "[%u] Total number of processed events: %"PRIu64, 
@@ -1636,84 +1588,6 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
 
   // make sure that every process is leaving
   MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
-}
-
-/**
- * Apply all paradigm-specific rules to all nodes of the given paradigm.
- *
- * @param paradigm the paradigm (see Node.hpp)
- * @param allNodes
- */
-void
-Runner::runAnalysis( Paradigm                          paradigm,
-                     EventStream::SortedGraphNodeList& allNodes )
-{
-  if ( !options.analysisInterval && mpiRank == 0 )
-  {
-    switch ( paradigm )
-    {
-      case PARADIGM_OFFLOAD:
-        UTILS_MSG( true, "Running analysis: CUDA/OpenCL" );
-        break;
-
-      case PARADIGM_MPI:
-        UTILS_MSG( true, "Running analysis: MPI" );
-        break;
-
-      case PARADIGM_OMP:
-        UTILS_MSG( true, "Running analysis: OMP" );
-        break;
-
-      default:
-        UTILS_MSG( true, "No analysis for unknown paradigm %d", paradigm );
-        return;
-    }
-  }
-
-  size_t ctr       = 0, last_ctr = 0;
-  size_t num_nodes = allNodes.size();
-
-  // apply paradigm specific rules
-  for ( EventStream::SortedGraphNodeList::const_iterator nIter = allNodes.begin();
-        nIter != allNodes.end(); ++nIter )
-  {
-    GraphNode* node = *nIter;
-    ctr++;
-
-    // ignore non-paradigm rules
-    if ( !( node->getParadigm() & paradigm ) )
-    {
-      continue;
-    }
-
-    analysis.applyRules( node, paradigm, options.verbose >= VERBOSE_BASIC );
-
-    // print process every 5 percent (TODO: depending on number of events per paradigm)
-    if ( mpiRank == 0 && options.verbose >= VERBOSE_BASIC && !options.analysisInterval &&
-         ( ctr - last_ctr > num_nodes / 20 ) )
-    {
-      UTILS_MSG( true, "[0] %lu%% ",
-                 ( size_t )( 100.0 * (double)ctr / (double)num_nodes ) );
-      fflush( NULL );
-      last_ctr = ctr;
-    }
-  }
-
-  UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0 && !options.analysisInterval, 
-             "[0] 100%%" );
-  
-  // apply rules on pending nodes
-  //analysis.processDeferredNodes( paradigm );
-
-#ifdef DEBUG
-  clock_t time_sanity_check = clock();
-  
-  analysis.runSanityCheck( mpiRank );
-  
-  UTILS_MSG( options.verbose >= VERBOSE_TIME && mpiRank == 0 && !options.analysisInterval,
-             "[0] Sanity check: %f sec", 
-             ( (float) ( clock() - time_sanity_check ) ) / CLOCKS_PER_SEC );
-#endif
 }
 
 /**

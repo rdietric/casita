@@ -65,7 +65,7 @@ namespace casita
      }
 
      bool
-     applyRules( GraphNode* node, bool verbose )
+     applyRules( GraphNode* node )
      {
        bool ruleResult = false;
        for ( std::vector< AbstractRule* >::iterator iter = rules.begin();
