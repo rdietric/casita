@@ -50,6 +50,10 @@ AnalysisEngine::AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize ) :
   {
     addAnalysis( new mpi::AnalysisParadigmMPI( this, mpiRank, mpiSize ) );
   }
+  else
+  {
+    Parser::getInstance().getProgramOptions().ignoreAsyncMpi = true;
+  }
 }
 
 AnalysisEngine::~AnalysisEngine()

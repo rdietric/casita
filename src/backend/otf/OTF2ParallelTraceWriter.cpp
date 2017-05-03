@@ -1417,7 +1417,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
                                            OTF2_AttributeList* attributeList )
 {  
   RegionInfo& regionInfo = getRegionInfo( event.regionRef );  
-  const char* eventName = regionInfo.name;
+  const char* eventName  = regionInfo.name;
   
   UTILS_ASSERT( streamStatusMap.count( event.location ) > 0, 
                 "Could not find stream status!" );
@@ -1428,9 +1428,10 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   FunctionDescriptor eventDesc;
   // set event type to determine if an internal node is available
   eventDesc.recordType = event.type; 
-  const bool mapsInternalNode = FunctionTable::getAPIFunctionType(
+  bool mapsInternalNode = FunctionTable::getAPIFunctionType(
     eventName, &eventDesc, currentStream->isDeviceStream(), 
-    analysis->getStreamGroup().deviceWithNullStreamOnly() );  
+    analysis->getStreamGroup().deviceWithNullStreamOnly(), 
+    analysis->getMPISize() == 1 );
 
   //UTILS_MSG( mpiRank == 0, "Event name: '%s' (%d), maps internal: %d", 
   //           eventName.c_str(), event.type, (int)mapsInternalNode );

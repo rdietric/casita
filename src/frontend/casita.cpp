@@ -68,7 +68,7 @@ main( int argc, char** argv )
     Runner* runner = new Runner( mpiRank, mpiSize );
     
     // start the analysis run (read OTF2, generate graph, run paradigm analysis and CPA)
-    runner->startAnalysisRun();
+    runner->prepareAnalysis();
     
     // if selected as parameter, the summary statistics are merged and printed
     if ( options.mergeActivities )

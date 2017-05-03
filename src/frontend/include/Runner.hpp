@@ -42,7 +42,7 @@ namespace casita
      ~Runner();
      
      void
-     startAnalysisRun();
+     prepareAnalysis();
      
      void
      writeTrace();

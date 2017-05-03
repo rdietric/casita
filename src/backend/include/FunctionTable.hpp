@@ -329,7 +329,8 @@ namespace casita
       */
      static bool
      getAPIFunctionType( const char* name, FunctionDescriptor* descr,
-                         bool deviceStream, bool deviceNullStreamOnly )
+                         bool deviceStream, bool deviceNullStreamOnly,
+                         bool ignoreMPI )
      {
        if( name == NULL || descr == NULL )
        {
@@ -350,7 +351,8 @@ namespace casita
            // if we found a non-blocking MPI event
            if ( strcmp( entry.table[j], name ) == 0 )
            {
-             if ( Parser::getInstance().getProgramOptions().ignoreAsyncMpi )
+             if ( Parser::getInstance().getProgramOptions().ignoreAsyncMpi || 
+                  ignoreMPI )
              {
                descr->paradigm     = PARADIGM_CPU;
                descr->functionType = MISC_CPU;
@@ -451,6 +453,13 @@ namespace casita
          {
            if ( strcmp( entry.table[j], name ) == 0 )
            {
+             if( ignoreMPI )
+             {
+               descr->paradigm     = PARADIGM_CPU;
+               descr->functionType = MISC_CPU;
+               return false;
+             }
+             
              descr->paradigm     = PARADIGM_MPI;
              descr->functionType = entry.type;
              set = true;

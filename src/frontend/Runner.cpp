@@ -87,7 +87,7 @@ Runner::getAnalysis()
 }
 
 void
-Runner::startAnalysisRun()
+Runner::prepareAnalysis()
 {
   OTF2TraceReader* traceReader = NULL;
 

@@ -54,7 +54,7 @@ namespace casita
         
         uint32_t* data        = (uint32_t*)( sendLeave->getData() );
         uint32_t mpiTag       = data[ 0 ];
-        uint32_t comRef       = data[1];
+        uint32_t comRef       = data[ 1 ];
         MPI_Comm communicator = mpiAnalysis.getMPICommGroup( comRef ).comm;
         
         // delete data field allocated in class AnalysisParadigmMPI

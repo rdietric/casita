@@ -323,13 +323,13 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   FunctionDescriptor functionDesc;
   functionDesc.recordType = RECORD_ENTER; // needed to determine correct function type
   bool generateNode = FunctionTable::getAPIFunctionType( funcName, &functionDesc, 
-    stream->isDeviceStream(), analysis.getStreamGroup().deviceWithNullStreamOnly() );
+    stream->isDeviceStream(), analysis.getStreamGroup().deviceWithNullStreamOnly(), 
+    analysis.getMPISize() == 1 );
 
   // for CPU functions no graph node is created
   // only start time, end time and number of CPU events between nodes is stored
   // do not create nodes for CPU events and MPI events in 1-Process-Programs
-  if( !generateNode || 
-      ( analysis.getMPISize() == 1 && functionDesc.paradigm == PARADIGM_MPI ) )
+  if( !generateNode )
   {    
     //UTILS_MSG( true, "CPU event: %s", funcName );
     analysis.addCPUEvent( time, streamId, false );
@@ -413,11 +413,11 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   FunctionDescriptor functionType;
   functionType.recordType = RECORD_LEAVE; // needed to determine correct function type
   bool generateNode = FunctionTable::getAPIFunctionType( funcName, &functionType, 
-    stream->isDeviceStream(), analysis.getStreamGroup().deviceWithNullStreamOnly() );
+    stream->isDeviceStream(), analysis.getStreamGroup().deviceWithNullStreamOnly(),
+    analysis.getMPISize() == 1);
 
   // do not create nodes for CPU events and MPI events in 1-Process-Programs
-  if( !generateNode  || 
-      ( analysis.getMPISize() == 1 && functionType.paradigm == PARADIGM_MPI ) )
+  if( !generateNode )
   {
     //std::cout << " skipping " << funcName << std::endl;
     analysis.addCPUEvent( time, streamId, true );

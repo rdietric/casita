@@ -188,12 +188,17 @@ OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
   OTF2_GlobalEvtReaderCallbacks_SetLeaveCallback( event_callbacks,
                                                   &otf2CallbackLeave );
   
-  OTF2_GlobalEvtReaderCallbacks_SetMpiCollectiveEndCallback(
+  // if only a single process is used, MPI events can be ignored
+  if( mpiSize > 1 )
+  {
+    OTF2_GlobalEvtReaderCallbacks_SetMpiCollectiveEndCallback(
     event_callbacks,&otf2Callback_MpiCollectiveEnd );
-  OTF2_GlobalEvtReaderCallbacks_SetMpiRecvCallback( event_callbacks,
-                                                    &otf2Callback_MpiRecv );
-  OTF2_GlobalEvtReaderCallbacks_SetMpiSendCallback( event_callbacks,
-                                                    &otf2Callback_MpiSend );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiRecvCallback( event_callbacks,
+                                                      &otf2Callback_MpiRecv );
+    OTF2_GlobalEvtReaderCallbacks_SetMpiSendCallback( event_callbacks,
+                                                      &otf2Callback_MpiSend );
+  }
+  
   OTF2_GlobalEvtReaderCallbacks_SetThreadForkCallback(
     event_callbacks, &OTF2_GlobalEvtReaderCallback_ThreadFork );
   OTF2_GlobalEvtReaderCallbacks_SetThreadJoinCallback(

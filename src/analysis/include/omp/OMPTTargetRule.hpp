@@ -88,7 +88,8 @@ namespace casita
           // on target leave nodes
           if( node->isOMPTarget() )
           {
-            //\todo: this does not work for deprecated libmpti traces
+            //\todo: this does not work for deprecated libmpti traces, as target
+            // enter events do not carry the device id
             // for libmpti use all device streams
             GraphNode* targetEnter = node->getGraphPair().first;
             int deviceId = -1;
@@ -173,7 +174,7 @@ namespace casita
             }
             else
             {
-              UTILS_WARNING( "No device streams?" );
+              UTILS_WARNING( "No device streams? (%llu)", deviceStreams.size() );
             }
           }
           /* if it is a device enter node
