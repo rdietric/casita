@@ -320,15 +320,18 @@ namespace casita
       * This function determines the type of the event. The record type has to
       * be already set to get correct results (descr->recordType).
       * 
-      * @param name name of the region
       * @param descr the function descriptor (the record type must be set)
+      * @param name name of the region
+      * @param paradigm the OTF2 paradigm
       * @param deviceStream does the event occur on a device stream
       * @param deviceNullStream do we have only the device null stream
+      * @param ignoreMPI ignore MPI events
       * 
       * @return true, if it maps to an internal node, otherwise false
       */
      static bool
-     getAPIFunctionType( const char* name, FunctionDescriptor* descr,
+     getAPIFunctionType( FunctionDescriptor* descr, const char* name, 
+                         OTF2_Paradigm paradigm,
                          bool deviceStream, bool deviceNullStreamOnly,
                          bool ignoreMPI )
      {
@@ -339,6 +342,15 @@ namespace casita
        
        descr->paradigm     = PARADIGM_CPU;
        descr->functionType = 0;
+       
+       // do not check function type for user and compiler instrumented regions
+       // but keep offloading kernels
+       if( !deviceStream && ( paradigm == OTF2_PARADIGM_USER || 
+                              paradigm == OTF2_PARADIGM_COMPILER ) )
+       {
+         descr->functionType = MISC_CPU;
+         return false;
+       }
 
        bool set = false; // remember if paradigm and function type has been set
 
@@ -510,7 +522,6 @@ namespace casita
              break;
              
            case PARADIGM_OCL:
-             
              // change the paradigm to offload
              //descr->paradigm = PARADIGM_OFFLOAD;
              

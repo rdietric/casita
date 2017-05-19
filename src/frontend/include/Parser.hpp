@@ -53,11 +53,17 @@ namespace casita
      static Parser&
      getInstance();
      
+     static ProgramOptions&
+     getOptions();
+     
      static int 
      getVerboseLevel();
      
      static vector < string >&
      getPredictionFilter();
+     
+     static bool 
+     haveOffload();
 
      bool
      init( int mpiRank, int argc, char** argv ) throw ( std::runtime_error );

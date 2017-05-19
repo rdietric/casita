@@ -42,7 +42,7 @@ namespace casita
       listAndWaitTime->list.push_back( node );
 
       // return false, if we found a process start node or a blocking MPI leave node
-      if ( node->isProcess( ) || ( node->isMPIBlocking( ) && node->isLeave( ) ) )
+      if ( node->isProcess() || ( node->isMPIBlocking() && node->isLeave() ) )
       {
         return false;
       }

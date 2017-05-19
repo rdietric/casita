@@ -24,6 +24,7 @@
 #include <limits>
 
 #include "common.hpp"
+
 #include "otf/OTF2TraceReader.hpp"
 #include "utils/ErrorUtils.hpp"
 
@@ -35,9 +36,10 @@
 
 using namespace casita::io;
 
-OTF2TraceReader::OTF2TraceReader( void*    userData,
-                                  uint32_t mpiRank,
-                                  uint32_t mpiSize ) :
+OTF2TraceReader::OTF2TraceReader( void*                  userData,
+                                  OTF2DefinitionHandler* defHandler,
+                                  uint32_t               mpiRank,
+                                  uint32_t               mpiSize ) :
   handleEnter( NULL ),
   handleLeave( NULL ),
   handleDefProcess( NULL ),
@@ -52,6 +54,7 @@ OTF2TraceReader::OTF2TraceReader( void*    userData,
   handleMPIIsendComplete( NULL ),
   handleRmaWinDestroy( NULL ),
   userData( userData ),
+  defHandler( defHandler ),
   mpiRank( mpiRank ),
   mpiSize( mpiSize ),
   mpiProcessId( 1 ),
@@ -428,29 +431,11 @@ OTF2TraceReader::readDefinitions()
   }
 
   open( baseFilename.c_str(), 10 );
-
-  // add forkJoin "region" to support internal OMP-fork/join model
-  // get a new string reference
-  uint32_t newStringRef = 1;
-  if( !stringRefMap.empty() )
-  {
-    // get the largest string reference and add '1'
-    newStringRef += stringRefMap.rbegin()->first;
-  }
-  stringRefMap[ newStringRef ] = OTF2_OMP_FORKJOIN_INTERNAL;
   
-  // get a new OTF2 region reference for the internal forkjoin node
-  ompForkJoinRef = 1;
-  if( !regionRefMap.empty() )
-  {
-    // get the largest string reference and add '1'
-    ompForkJoinRef += regionRefMap.rbegin()->first;
-  }
-  regionRefMap[ ompForkJoinRef ] = newStringRef;
+  // add forkJoin "region" internally to support OMP-fork/join model  
+  // and create wait state region
+  defHandler->setInternalRegions();
 
-  this->handleDefFunction( this, ompForkJoinRef, OTF2_OMP_FORKJOIN_INTERNAL, 
-                           OTF2_PARADIGM_OPENMP );
-  
   /* check OTF2 location reference, MPI rank map 
   if( mpiRank == 0 && mpiSize > 1 )
   {
@@ -461,7 +446,6 @@ OTF2TraceReader::readDefinitions()
                  iter->first, iter->second );
     }
   }*/
-    
   
   return true;
 }
@@ -510,7 +494,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(
     if ( tr->handleDefProcess )
     {
       tr->handleDefProcess( tr, self, locationGroup, 
-                            tr->getStringRef( name ).c_str(), NULL, 
+                            tr->defHandler->getName( name ), NULL, 
                             locationType == OTF2_LOCATION_TYPE_GPU ? true : false );
     }
   }
@@ -542,17 +526,17 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationProperty(
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
   
-  if( tr->stringRefMap.count( name ) > 0 )
+  if( tr->defHandler->haveStringRef( name ) )
   {
     UTILS_MSG( Parser::getInstance().getVerboseLevel() >= VERBOSE_BASIC, 
                "[%"PRIu64"] Found location property %s", 
-               location, tr->stringRefMap[ name ].c_str() );
+               location, tr->defHandler->getName( name ) );
     
     // location strings are only stored for locations of this MPI rank
     if( tr->locationStringRefMap.count( location ) > 0 )
     {
       tr->handleLocationProperty(
-        tr, location, tr->stringRefMap[ name ].c_str(), type, value );
+        tr, location, tr->defHandler->getName( name ), type, value );
     }
   }
   
@@ -612,7 +596,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
     UTILS_MSG_NOBR( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC && 
                     name != OTF2_UNDEFINED_STRING, 
                     "  [0] OTF2 MPI group definition %u: %s (",  
-                    self, tr->stringRefMap[ name ].c_str() );
+                    self, tr->defHandler->getName( name ) );
 
     // store group members
     uint32_t* myMembers = new uint32_t[ numberOfMembers ];
@@ -698,10 +682,10 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Comm( void*          userData,
   
   OTF2Group& myGroup = iter->second;
   
-  UTILS_MSG( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC && 
+  UTILS_MSG( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_NONE && 
              name != OTF2_UNDEFINED_STRING, 
-             "  [0] OTF2 communicator definition %u: %s (group %u)",  
-             self, tr->stringRefMap[ name ].c_str(), myGroup.groupId );
+             "  [0] OTF2 communicator definition %u: %s (%u) (group %u)",  
+             self, tr->defHandler->getName( name ), name, myGroup.groupId );
   
   if ( myGroup.paradigm == OTF2_PARADIGM_MPI ) // only MPI is stored
   {
@@ -725,13 +709,15 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Comm( void*          userData,
 OTF2_CallbackCode
 OTF2TraceReader::OTF2_GlobalDefReaderCallback_String( void*          userData,
                                                       OTF2_StringRef self,
-                                                      const char*    string )
+                                                      const char*    name )
 {
 
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
-  uint32_t max_length = 1000;
-  std::string str( string, strnlen( string, max_length ) );
-  tr->stringRefMap[ self ] = str;
+  
+  tr->defHandler->storeString( self, name );
+  
+  //UTILS_MSG( tr->mpiRank == 0, "Read string definition for %s (%u)", 
+  //           name, self );
 
   return OTF2_CALLBACK_SUCCESS;
 }
@@ -751,13 +737,12 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Region( void*          userData,
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
-  // locations are processes
-  tr->regionRefMap[self] = name;
+  tr->defHandler->addRegion( self, paradigm, regionRole, name );
 
   if ( tr->handleDefFunction )
   {
-    tr->handleDefFunction( tr, self, tr->getFunctionName( self ).c_str(), 
-                           paradigm );
+    tr->handleDefFunction( tr, self, tr->defHandler->getRegionName( self ), 
+                           paradigm, regionRole );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -771,7 +756,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Attribute( void*             userD
                                                          OTF2_Type         type )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
-  std::string      s  = tr->getStringRef( name );
+  std::string      s  = tr->defHandler->getName( name );
   tr->getNameKeysMap().insert( std::make_pair( s, self ) );
   tr->getKeyNameMap().insert( std::make_pair( self, s ) );
 
@@ -1036,7 +1021,7 @@ OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadFork(
   //\todo: handle numberOfRequestedThreads
   return OTF2TraceReader::otf2CallbackEnter( locationID, time, userData,
                                              attributeList,
-                                             tr->getOmpForkJoinRef() );
+                                             tr->defHandler->getForkJoinRegionId() );
 }
 
 OTF2_CallbackCode
@@ -1052,7 +1037,7 @@ OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadJoin( OTF2_LocationRef locat
 
   return OTF2TraceReader::otf2CallbackLeave( locationID, time, userData,
                                              attributeList,
-                                             tr->getOmpForkJoinRef() );
+                                             tr->defHandler->getForkJoinRegionId() );
 }
 
 OTF2_CallbackCode
@@ -1170,73 +1155,11 @@ OTF2TraceReader::setTraceLength( uint64_t length )
   this->traceLength = length;
 }
 
-uint32_t
-OTF2TraceReader::getOmpForkJoinRef()
-{
-  return ompForkJoinRef;
-}
-
-uint32_t
-OTF2TraceReader::getMPIRank()
-{
-  return mpiRank;
-}
-
-uint32_t
-OTF2TraceReader::getMPISize()
-{
-  return mpiSize;
-}
-
-/**
- * Translate the OTF2 string reference to a string object.
- * 
- * @param id OTF2 string reference
- * @return string object the OTF2 string reference refers to
- */
-std::string
-OTF2TraceReader::getStringRef( uint32_t id )
-{
-  TokenNameMap& nm = stringRefMap;
-  TokenNameMap::iterator iter = nm.find( id );
-  if ( iter != nm.end() )
-  {
-    return iter->second;
-  }
-  else
-  {
-    UTILS_MSG( true, "Could not translate OTF2 string reference %u to string "
-                     "object!", id );
-    
-    return "(unknown)";
-  }
-}
-
-/**
-* Get the name of the function by its OTF2 region id (reference).
-* 
-* @param id OTF2 region ID (reference)
-* @return string object containing the name of the function
-*/
-std::string
-OTF2TraceReader::getFunctionName( uint32_t id )
-{
-  // use the OTF2 region reference/ID to get the OTF2 string reference and 
-  // translate it to a string with getKeyName  
-  return getStringRef( regionRefMap[id] );
-}
-
 OTF2TraceReader::ProcessGroupMap&
 OTF2TraceReader::getProcGoupMap()
 {
   return processGroupMap;
 }
-
-/*std::string
-OTF2TraceReader::getProcessName( uint64_t id )
-{
-  return getKeyName( id );
-}*/
 
 std::vector< uint32_t >
 OTF2TraceReader::getKeys( const std::string keyName )

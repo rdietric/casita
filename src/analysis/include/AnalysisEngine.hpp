@@ -28,6 +28,7 @@
 
 #include "Statistics.hpp"
 
+#include "otf/OTF2DefinitionHandler.hpp"
 #include "otf/OTF2TraceReader.hpp"
 
 using namespace casita::io;
@@ -61,6 +62,9 @@ namespace casita
      getMPIAnalysis();
      
      void
+     setDefinitionHandler( OTF2DefinitionHandler* defHandler );
+     
+     void
      checkPendingMPIRequests();
      
      bool 
@@ -75,17 +79,12 @@ namespace casita
      bool
      haveAnalysisFeature( AnalysisFeature feature ) const;
 
+     
      void
-     addFunction( uint32_t funcId, const char* name );
-
-     void
-     setWaitStateRegion();
-
-     const char*
-     getFunctionName( uint32_t id );
+     addFilteredRegion( uint32_t regionId );
 
      bool
-     isFunctionFiltered( uint32_t funcId );
+     isRegionFiltered( uint32_t regionId );
 
      GraphNode*
      newGraphNode( uint64_t time, uint64_t streamId,
@@ -181,6 +180,8 @@ namespace casita
      getStatistics( void );
 
    private:
+     OTF2DefinitionHandler* defHandler;
+     
      MPIAnalysis mpiAnalysis;
      
      Statistics statistics;
@@ -196,10 +197,6 @@ namespace casita
      //!< defer nodes that could not be processed
      EventStream::SortedGraphNodeList deferredNodes;
      
-     std::map< uint32_t, std::string > functionMap;
-     uint32_t maxFunctionId;
-     uint32_t waitStateFuncId;
-     
      std::set< uint32_t > filteredFunctions;
      
      // maximum metric class and member IDs that has been read by the event reader
@@ -214,6 +211,9 @@ namespace casita
      
      // available analysis features (set by parsing the OTF2 definitions)
      int analysisFeature;
+     
+     //
+     size_t offloadTasksActive;
  };
 
 }

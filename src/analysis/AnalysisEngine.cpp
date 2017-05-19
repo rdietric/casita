@@ -35,8 +35,6 @@ using namespace casita::io;
 
 AnalysisEngine::AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize ) :
   mpiAnalysis( mpiRank, mpiSize ),
-  maxFunctionId( 0 ),
-  waitStateFuncId( 0 ),
   maxMetricClassId( 0 ),
   maxMetricMemberId( 0 ),
   maxAttributeId( 0 ),
@@ -83,6 +81,12 @@ AnalysisEngine::getMPIAnalysis()
   return mpiAnalysis;
 }
 
+void
+AnalysisEngine::setDefinitionHandler( OTF2DefinitionHandler* defHandler )
+{
+  this->defHandler = defHandler;
+}
+
 //\todo: not implemented for MPI
 void 
 AnalysisEngine::addDetectedParadigm( Paradigm paradigm )
@@ -114,48 +118,16 @@ AnalysisEngine::haveAnalysisFeature( AnalysisFeature feature ) const
   return analysisFeature & feature;
 }
 
-void
-AnalysisEngine::addFunction( uint32_t funcId, const char* name )
-{
-  functionMap[ funcId ] = name;
-  
-  if( 0 == strcmp(Parser::getInstance().getProgramOptions().predictionFilter.c_str(), name ) )
-  {
-    UTILS_WARNING( "Found definition of filtered function: %s", name );
-    filteredFunctions.insert( funcId );
-  }
-}
+
 
 void
-AnalysisEngine::setWaitStateRegion()
+AnalysisEngine::addFilteredRegion( uint32_t regionId )
 {
-  uint32_t newRegionRef = 1;
-  if( !functionMap.empty() )
-  {
-    // get the largest function id (region reference) and add '1'
-    newRegionRef += functionMap.rbegin()->first;
-  }
-  
-  functionMap[ newRegionRef ] = "WaitState";
-}
-
-const char*
-AnalysisEngine::getFunctionName( uint32_t id )
-{
-  std::map< uint32_t, std::string >::const_iterator iter =
-    functionMap.find( id );
-  if ( iter != functionMap.end() )
-  {
-    return iter->second.c_str();
-  }
-  else
-  {
-    return NULL;
-  }
+  filteredFunctions.insert( regionId );
 }
 
 bool
-AnalysisEngine::isFunctionFiltered( uint32_t funcId )
+AnalysisEngine::isRegionFiltered( uint32_t funcId )
 {
   return ( filteredFunctions.count( funcId ) > 0 );
 }
@@ -442,7 +414,7 @@ AnalysisEngine::newGraphNode( uint64_t          time,
 
   if ( node->isWaitstate() )
   {
-    node->setFunctionId( waitStateFuncId );
+    node->setFunctionId( defHandler->getWaitStateRegionId() );
   }
 
   return node;
@@ -461,7 +433,7 @@ AnalysisEngine::addNewGraphNode( uint64_t            time,
 
   if ( node->isWaitstate() )
   {
-    node->setFunctionId( waitStateFuncId );
+    node->setFunctionId( defHandler->getWaitStateRegionId() );
   }
 
   return node;

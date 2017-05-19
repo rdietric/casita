@@ -19,6 +19,7 @@
 #include <list>
 #include <string>
 
+#include "OTF2DefinitionHandler.hpp"
 #include "AnalysisEngine.hpp"
 #include "AnalysisMetric.hpp"
 
@@ -26,14 +27,6 @@ namespace casita
 {
  namespace io
  {
-  typedef struct
-  {
-    //OTF2_StringRef stringRef;
-    const char*     name;
-    OTF2_Paradigm   paradigm;
-    OTF2_RegionRole role;
-  }RegionInfo;
-      
   typedef struct
   {
     uint64_t         time;
@@ -111,7 +104,8 @@ namespace casita
         }
       } ActivityGroupCompare;
 
-      OTF2ParallelTraceWriter( AnalysisEngine* analysis );
+      OTF2ParallelTraceWriter( AnalysisEngine*        analysis, 
+                               OTF2DefinitionHandler* defHandler );
       
       virtual
       ~OTF2ParallelTraceWriter();
@@ -158,6 +152,8 @@ namespace casita
       
       AnalysisEngine* analysis;
       
+      OTF2DefinitionHandler* defHandler;
+      
       uint32_t mpiRank, mpiSize;
 
       MPI_Comm commGroup;
@@ -187,34 +183,11 @@ namespace casita
       OTF2_GlobalEvtReader* otf2GlobalEventReader;
       //OTF2_AttributeList*   attributes;
 
-      //!< maps OTF2 region IDs (references) to region information
-      std::map< uint32_t, RegionInfo > regionInfoMap;
-
-      //!< maps OTF2 IDs to strings (global definitions), maps are ordered by key
-      std::map< uint32_t, const char* > stringRefMap;
-      
-      //!< maps OTF2 region IDs to OTF2 string reference
-      //std::map< uint32_t, OTF2_StringRef > regionRefMap;
-      
-      //!< region reference for internal Fork/Join
-      uint32_t ompForkJoinRef;
-      
       //!< region reference for device idle
-      uint32_t deviceIdleRegRef;
+      uint32_t devIdleRegRef;
       
       //!< region reference for device compute idle
-      uint32_t deviceComputeIdleRegRef;
-      
-      //!< get a new OTF2 string reference
-      uint32_t
-      getNewStringRef( const char* string );
-      
-      //!< get a new OTF2 region reference
-      uint32_t
-      getNewRegionRef( const char* string, OTF2_Paradigm paradigm );
-      
-      RegionInfo&
-      getRegionInfo( const OTF2_RegionRef regionRef );
+      uint32_t devComputeIdleRegRef;
 
       void
       copyGlobalDefinitions();

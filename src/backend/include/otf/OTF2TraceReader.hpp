@@ -18,6 +18,7 @@
 #include <set>
 #include <list>
 
+#include "OTF2DefinitionHandler.hpp"
 #include "OTF2KeyValueList.hpp"
 
 namespace casita
@@ -51,7 +52,8 @@ namespace casita
                                             OTF2_AttributeValue value );
   typedef void ( *HandleDefFunction )( OTF2TraceReader* reader, 
                                        uint32_t functionId, const char* name,
-                                       OTF2_Paradigm paradigm );
+                                       OTF2_Paradigm paradigm,
+                                       OTF2_RegionRole role );
   typedef void ( *HandleDefAttribute )( OTF2TraceReader* reader, uint64_t streamId,
                                         uint32_t key, const char* name );
   typedef void ( *HandleMPIComm )( OTF2TraceReader* reader, MPIType mpiType,
@@ -126,17 +128,14 @@ namespace casita
       typedef std::map< uint32_t, OTF2Group > CommGroupMap;
       typedef std::map< uint32_t, uint64_t > RankStreamIdMap;
       typedef std::map< uint64_t, uint32_t > LocationStringRefMap;
+      typedef std::map< OTF2_StringRef, const char* > StringRefNameMap;
 
       typedef std::map< Token, ProcessGroup* > ProcessGroupMap;
 
-      OTF2TraceReader( void* userData, uint32_t mpiRank, uint32_t mpiSize );
-      ~OTF2TraceReader( );
-
-      uint32_t
-      getMPIRank();
-
-      uint32_t
-      getMPISize();
+      OTF2TraceReader( void* userData, OTF2DefinitionHandler* defHandler,
+                       uint32_t mpiRank, uint32_t mpiSize );
+      
+      ~OTF2TraceReader();
 
       uint64_t
       getMPIProcessId();
@@ -183,18 +182,6 @@ namespace casita
       OTF2KeyValueList&
       getKVList();
 
-      std::string
-      getStringRef( uint32_t id );
-
-      /**
-       * Get the name of the function by its OTF2 region id (reference).
-       * 
-       * @param id OTF2 region ID (reference)
-       * @return string object containing the name of the function
-       */
-      std::string
-      getFunctionName( uint32_t id );
-
       std::vector< uint32_t >
       getKeys( const std::string keyName );
 
@@ -218,9 +205,6 @@ namespace casita
 
       void
       setTraceLength( uint64_t length );
-
-      uint32_t
-      getOmpForkJoinRef();
       
       void*
       getUserData();
@@ -533,6 +517,9 @@ namespace casita
       
       
       void*            userData;
+      
+      //<! handler for OTF2 definitions
+      OTF2DefinitionHandler* defHandler;
 
       //<! MPI rank of the analysis process
       uint32_t         mpiRank;
@@ -557,12 +544,7 @@ namespace casita
       
       //!< maps OTF2 location references to OTF2 string references
       LocationStringRefMap locationStringRefMap;
-      
-      // stores the OTF2 region ref as key with the OTF2 string ref as value
-      TokenTokenMap    regionRefMap; 
-      
-      // stores an OTF2 string ref as key with the string as value
-      TokenNameMap     stringRefMap;
+
       CommGroupMap     groupMap;
 
       ProcessGroupMap  processGroupMap;

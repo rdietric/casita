@@ -64,6 +64,12 @@ namespace casita
     static Parser instance;
     return instance;
   }
+  
+  ProgramOptions&
+  Parser::getOptions()
+  {
+    return Parser::getInstance().options;
+  }
 
   int
   Parser::getVerboseLevel()
@@ -75,6 +81,12 @@ namespace casita
   Parser::getPredictionFilter()
   {
     return Parser::getInstance().predictionFilter;
+  }
+  
+  bool
+  Parser::haveOffload()
+  {
+    return Parser::getInstance().options.ignoreOffload;
   }
 
   void

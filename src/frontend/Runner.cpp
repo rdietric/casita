@@ -26,7 +26,10 @@
 #include <time.h>
 #include <vector>       /* clock_t, clock, CLOCKS_PER_SEC */
 
+#include "otf/OTF2DefinitionHandler.hpp"
+
 #include "Runner.hpp"
+
 
 using namespace casita;
 using namespace casita::io;
@@ -34,8 +37,8 @@ using namespace casita::io;
 Runner::Runner( int mpiRank, int mpiSize ) :
   mpiRank( mpiRank ),
   mpiSize( mpiSize ),
-  analysis( mpiRank, mpiSize ),
   options( Parser::getInstance().getProgramOptions() ),
+  analysis( mpiRank, mpiSize ),
   callbacks( analysis ), // construct the CallbackHandler
   writer ( NULL ),
   globalLengthCP( 0 )
@@ -89,11 +92,13 @@ Runner::getAnalysis()
 void
 Runner::prepareAnalysis()
 {
-  OTF2TraceReader* traceReader = NULL;
+  //OTF2DefinitionHandler* defHandler = new OTF2DefinitionHandler();
+  callbacks.setDefinitionHandler( &definitions );
 
   UTILS_MSG( mpiRank == 0, "Reading %s", options.filename.c_str() );
 
-  traceReader = new OTF2TraceReader( &callbacks, mpiRank, mpiSize );
+  OTF2TraceReader* traceReader = 
+    new OTF2TraceReader( &callbacks, &definitions, mpiRank, mpiSize );
 
   if ( !traceReader )
   {
@@ -103,7 +108,7 @@ Runner::prepareAnalysis()
   // set the OTF2 callback handlers
   traceReader->handleDefProcess        = CallbackHandler::handleDefProcess;
   traceReader->handleLocationProperty  = CallbackHandler::handleLocationProperty;
-  traceReader->handleDefFunction       = CallbackHandler::handleDefFunction;
+  traceReader->handleDefFunction       = CallbackHandler::handleDefRegion;
   traceReader->handleDefAttribute      = CallbackHandler::handleDefAttribute;
   traceReader->handleEnter             = CallbackHandler::handleEnter;
   traceReader->handleLeave             = CallbackHandler::handleLeave;
@@ -128,7 +133,7 @@ Runner::prepareAnalysis()
   {
     throw RTException( "Error while reading definitions!" );
   }
-  
+
   // OTF2 definitions have been checked for existence of CUDA. OpenCL, and OpenMP
   // MPI currently is not checked and assumed to be available
   
@@ -151,9 +156,6 @@ Runner::prepareAnalysis()
   
   // create MPI communicators according to the OTF2 trace definitions
   analysis.getMPIAnalysis().createMPICommunicatorsFromMap();
-  
-  // set wait state function (requires definitions to be read)
-  analysis.setWaitStateRegion();
 
   // set the timer resolution in the analysis engine
   uint64_t timerResolution = traceReader->getTimerResolution();
@@ -170,6 +172,9 @@ Runner::prepareAnalysis()
 
   // setup reading events
   traceReader->setupEventReader( options.ignoreAsyncMpi );
+  
+  // initialize the OTF2 trace writer
+  writer = new OTF2ParallelTraceWriter( &analysis, &definitions );
   
   // read events from the trace, build a graph and do the analysis
   processTrace( traceReader );
@@ -344,9 +349,6 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     // write OTF2 definitions for this MPI rank (only once), not thread safe!
     if( !otf2_def_written )
     {
-      // write the OTF2 output trace definitions and setup the OTF2 trace writer
-      writer = new OTF2ParallelTraceWriter( &analysis );
-      
       UTILS_MSG( mpiRank == 0, "[0] Writing result to %s", 
                  Parser::getInstance().getPathToFile().c_str() );
 
@@ -856,7 +858,8 @@ Runner::findCriticalPathStart()
   }
   
   //if critical path starts on a local stream,
-  if( firstTime[0] == globalFirstCriticalTime )
+  if( firstTime[0] == globalFirstCriticalTime && 
+      analysis.getStream( criticalPathStart.first ) )
   {
     analysis.getStream( criticalPathStart.first )->isFirstCritical() = true;
   }
@@ -1179,14 +1182,15 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
   GraphNode* lastNode       = NULL;
   GraphNode* sectionEndNode = NULL;
   
-  bool isMaster  = false;
+  bool isMaster = false;
   
   // this assumes that the last MPI node is a collective and the collective rule
   // created blocking edges for all MPI activities but the last entering one
   currentNode = analysis.getLastGraphNode( PARADIGM_MPI );
   if( !currentNode->isLeave() )
   {
-    UTILS_WARNING( "[%u] Last MPI node should be a leave!", mpiRank );
+    UTILS_WARNING( "[%u] Last MPI node should be a leave! %s", mpiRank,
+                   analysis.getNodeInfo( currentNode ).c_str() );
   }
   else
   {
@@ -1269,7 +1273,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
         if( !activityEdge )
         {
           UTILS_WARNING( "[%u] CPA master: No activity edge found for %s. Abort CPA.", 
-                         mpiRank, currentNode->getUniqueName().c_str() );
+                         mpiRank, analysis.getNodeInfo( currentNode ).c_str() );
           
           // savely abort CPA
           // the first MPI node should be an intermediate start node or MPI_Init 
@@ -1681,7 +1685,7 @@ Runner::printAllActivities()
         sumFractionBlame += iter->fractionBlame;
 
         printf( "%50.50s %10u %11f %11f %6.2f %8.4f %6.6f %11.6f\n",
-                analysis.getFunctionName( iter->functionId ),
+                definitions.getRegionName( iter->functionId ),
                 iter->numInstances,
                 analysis.getRealTime( iter->totalDuration ),
                 analysis.getRealTime( iter->totalDurationOnCP ),
@@ -1696,7 +1700,7 @@ Runner::printAllActivities()
       if( options.createRatingCSV )
       {
         fprintf( summaryFile, "%s;%u;%lf;%lf;%lf;%lf;%lf;%lf\n",
-                 analysis.getFunctionName( iter->functionId ),
+                 definitions.getRegionName( iter->functionId ),
                  iter->numInstances,
                  analysis.getRealTime( iter->totalDuration ),
                  analysis.getRealTime( iter->totalDurationOnCP ),

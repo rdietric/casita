@@ -23,6 +23,7 @@
 #include "Parser.hpp"
 #include "AnalysisEngine.hpp"
 #include "CallbackHandler.hpp"
+#include "otf/OTF2DefinitionHandler.hpp"
 #include "otf/OTF2TraceReader.hpp"
 #include "otf/OTF2ParallelTraceWriter.hpp"
 
@@ -68,10 +69,20 @@ namespace casita
    private:
      int mpiRank;
      int mpiSize;
-     AnalysisEngine analysis;
+     
+     //<! stores all program options
      ProgramOptions& options;
+     
+     //<! handle all OTF2 definition data
+     io::OTF2DefinitionHandler definitions;
+     
+     //<! the one and only analysis engine
+     AnalysisEngine analysis;
+     
+     //<! handle event callbacks (and still also definition callbacks)
      CallbackHandler callbacks;
      
+     //<! summarizes and writes the analysis results
      io::OTF2ParallelTraceWriter* writer;
      
      //!< members to determine the critical path length

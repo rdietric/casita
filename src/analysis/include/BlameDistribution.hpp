@@ -84,8 +84,8 @@ namespace casita
     }
 
     // total time interval for blame distribution
-    const uint64_t totalWalkTime = walkList.front()->getTime()
-      - walkList.back()->getTime();
+    const uint64_t totalWalkTime = 
+      walkList.front()->getTime() - walkList.back()->getTime();
 
     // time within the interval that is a wait state itself
     const uint64_t waitTime = walkListInfo.waitStateTime;
@@ -102,8 +102,8 @@ namespace casita
                 analysis->getMPIRank(), analysis->getNodeInfo(node).c_str(),
                 totalBlame, analysis->getRealTime( totalBlame ) );
     
-      for ( GraphNode::GraphNodeList::const_iterator iter = ++(walkList.begin( ));
-          iter != walkList.end( ); ++iter )
+      for( GraphNode::GraphNodeList::const_iterator iter = ++(walkList.begin());
+           iter != walkList.end(); ++iter )
       {
         GraphNode* currentWalkNode = *iter;
        

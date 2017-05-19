@@ -190,10 +190,10 @@ MpiStream::addPendingMPIIrecvNode( GraphNode* node )
     //           this->id, node->getUniqueName().c_str(), pendingMPIRequestId );
     
     // add new record to map
-    mpiIcommRecords[pendingMPIRequestId] = record;
+    mpiIcommRecords[ pendingMPIRequestId ] = record;
     
     // set node-specific data to a pointer to the record in the map
-    node->setData( &mpiIcommRecords[pendingMPIRequestId] );
+    node->setData( &mpiIcommRecords[ pendingMPIRequestId ] );
 
     //invalidate request ID variable
     pendingMPIRequestId = std::numeric_limits< uint64_t >::max();
@@ -211,7 +211,7 @@ MpiStream::addPendingMPIIrecvNode( GraphNode* node )
  */
 void
 MpiStream::handleMPIIrecvEventData( uint64_t requestId, uint64_t partnerId,
-                                      OTF2_CommRef comm, uint32_t tag )
+                                    OTF2_CommRef comm, uint32_t tag )
 {
   //UTILS_MSG( true, "[%"PRIu64"] MPIIrecv: mpiWaitRequest = %"PRIu64, 
   //                 this->id, requestId );

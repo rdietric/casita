@@ -34,6 +34,12 @@ CallbackHandler::getAnalysis()
 }
 
 void
+CallbackHandler::setDefinitionHandler( OTF2DefinitionHandler* defHandler )
+{
+  this->defHandler = defHandler;
+}
+
+void
 CallbackHandler::printNode( GraphNode* node, EventStream* stream )
 {
   if ( ( Parser::getInstance().getVerboseLevel() >= VERBOSE_ALL ) ||
@@ -197,7 +203,7 @@ CallbackHandler::handleLocationProperty( OTF2TraceReader*    reader,
   {
     //UTILS_MSG( Parser::getInstance().getVerboseLevel() >= VERBOSE_BASIC, 
     //           "[%"PRIu64"] Found CUDA null stream", streamId );
-    if( strcmp ( reader->getStringRef( value.stringRef ).c_str(), "yes" ) == 0 )
+    if( strcmp ( handler->defHandler->getName( value.stringRef ), "yes" ) == 0 )
     {
       //UTILS_MSG( true, "Found CUDA null stream == yes" );
       DeviceStream* stream = 
@@ -208,23 +214,30 @@ CallbackHandler::handleLocationProperty( OTF2TraceReader*    reader,
 }
 
 void
-CallbackHandler::handleDefFunction( OTF2TraceReader* reader,
-                                    uint32_t         functionId,
-                                    const char*      name,
-                                    OTF2_Paradigm    paradigm )
+CallbackHandler::handleDefRegion( OTF2TraceReader* reader,
+                                  uint32_t         regionId,
+                                  const char*      name,
+                                  OTF2_Paradigm    paradigm,
+                                  OTF2_RegionRole  regionRole )
 {
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
   AnalysisEngine&  analysis = handler->getAnalysis();
   
-  analysis.addFunction( functionId, name );
-  
   // add 
-  if( strcmp( name, "cuEventRecord" ) == 0 )
+  if( strcmp( name, "cuEventRecord" ) == 0 && paradigm == OTF2_PARADIGM_CUDA )
   {
     analysis.addAnalysisFeature( CUDA_EVENTS );
   }
+  else if( 0 == strcmp(
+          Parser::getInstance().getProgramOptions().predictionFilter.c_str(), 
+                                                            name ) )
+  {
+    UTILS_WARNING( "Found definition of filtered function: %s", name );
+    analysis.addFilteredRegion( regionId );
+  }
   
   //\todo: check for MPI paradigm
+  //if( paradigm == OTF2_PARADIGM_MPI )
 }
 
 void
@@ -291,9 +304,8 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
     stream->getPeriod().second = time;
   }
 
-  const char* funcName = analysis.getFunctionName( functionId );
-  //std::string funcStr = reader->getFunctionName( functionId );
-  //const char* funcName = funcStr.c_str(); //analysis.getFunctionName( functionId );
+  RegionInfo& regionInfo = handler->defHandler->getRegionInfo( functionId );
+  const char* funcName   = regionInfo.name;
   
   if( stream->isFilterOn() )
   {
@@ -302,7 +314,7 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
     return;
   }
   
-  if( analysis.isFunctionFiltered( functionId ) )
+  if( analysis.isRegionFiltered( functionId ) )
   {
     if( stream->isFilterOn() )
     {
@@ -322,7 +334,8 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
 
   FunctionDescriptor functionDesc;
   functionDesc.recordType = RECORD_ENTER; // needed to determine correct function type
-  bool generateNode = FunctionTable::getAPIFunctionType( funcName, &functionDesc, 
+  bool generateNode = 
+    FunctionTable::getAPIFunctionType( &functionDesc, funcName, regionInfo.paradigm,
     stream->isDeviceStream(), analysis.getStreamGroup().deviceWithNullStreamOnly(), 
     analysis.getMPISize() == 1 );
 
@@ -394,11 +407,10 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
     stream->getPeriod().second = time;
   }
 
-  const char* funcName = analysis.getFunctionName( functionId );
-  //std::string funcStr = reader->getFunctionName( functionId );
-  //const char* funcName = funcStr.c_str();
+  RegionInfo& regionInfo = handler->defHandler->getRegionInfo( functionId );
+  const char* funcName   = regionInfo.name;
   
-  if( analysis.isFunctionFiltered( functionId ) )
+  if( analysis.isRegionFiltered( functionId ) )
   {
     UTILS_MSG(true, "Disable filter for %s", funcName );
 
@@ -410,11 +422,12 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
     return false;
   }
 
-  FunctionDescriptor functionType;
-  functionType.recordType = RECORD_LEAVE; // needed to determine correct function type
-  bool generateNode = FunctionTable::getAPIFunctionType( funcName, &functionType, 
+  FunctionDescriptor regionDesc;
+  regionDesc.recordType = RECORD_LEAVE; // needed to determine correct function type
+  bool generateNode = 
+    FunctionTable::getAPIFunctionType( &regionDesc, funcName, regionInfo.paradigm,
     stream->isDeviceStream(), analysis.getStreamGroup().deviceWithNullStreamOnly(),
-    analysis.getMPISize() == 1);
+    analysis.getMPISize() == 1 );
 
   // do not create nodes for CPU events and MPI events in 1-Process-Programs
   if( !generateNode )
@@ -425,7 +438,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   }
 
   GraphNode* leaveNode = NULL;
-  if ( Node::isCUDAEventType( functionType.paradigm, functionType.functionType ) )
+  if ( Node::isCUDAEventType( regionDesc.paradigm, regionDesc.functionType ) )
   {
     uint64_t eventId = readAttributeUint64( reader, SCOREP_CUDA_EVENTREF, list );
     
@@ -438,7 +451,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
     EventNode::FunctionResultType fResult = EventNode::FR_UNKNOWN;
     
     // get the function result cuEventQuery
-    if( functionType.functionType & OFLD_QUERY_EVT )
+    if( regionDesc.functionType & OFLD_QUERY_EVT )
     {
       uint32_t cuResult = readAttributeUint32( reader, SCOREP_CUDA_CURESULT, list );
       if ( cuResult == CUDA_SUCCESS )
@@ -452,14 +465,14 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
                                                         fResult,
                                                         stream,
                                                         funcName,
-                                                        &functionType );
+                                                        &regionDesc );
   }
   else
   {
     leaveNode = analysis.addNewGraphNode( time,
                                           stream,
                                           funcName,
-                                          &functionType );
+                                          &regionDesc );
   }
 
   leaveNode->setFunctionId( functionId );
@@ -472,8 +485,8 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   analysis.handlePostLeave( leaveNode );
   
   // statistics on blocking CUDA/OpenCL communication
-  if( ( functionType.functionType & OFLD_BLOCKING_DATA ) && 
-      functionType.paradigm & PARADIGM_OFFLOAD )
+  if( ( regionDesc.functionType & OFLD_BLOCKING_DATA ) && 
+      regionDesc.paradigm & PARADIGM_OFFLOAD )
   {
     analysis.getStatistics().addStatWithCount( OFLD_STAT_BLOCKING_COM, 
       leaveNode->getTime() - enterNode->getTime() );

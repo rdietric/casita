@@ -132,11 +132,12 @@ namespace casita
             }
             else
             {
-              UTILS_MSG( true, "[%"PRIu64"] MPI_Waitall rule: Activity edge "
-                               "not found.", waitAllLeave->getStreamId() );
+              UTILS_OUT("[%"PRIu64"] MPI_Waitall rule: Activity edge "
+                        "not found.", waitAllLeave->getStreamId() );
             }
             
-            uint64_t wtime = latestCommPartnerStopTime - waitAllEnter->getTime();
+            uint64_t wtime = 
+              latestCommPartnerStopTime - waitAllEnter->getTime();
             
             // add waiting time statistics (MPI_STAT_WAITALL)
             analysis->getStatistics().addStatWithCount( 

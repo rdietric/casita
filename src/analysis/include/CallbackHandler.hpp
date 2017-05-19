@@ -15,7 +15,10 @@
 #include "Parser.hpp"
 #include "AnalysisEngine.hpp"
 
+#include "otf/OTF2DefinitionHandler.hpp"
 #include "otf/OTF2TraceReader.hpp"
+
+using namespace casita::io;
 
 namespace casita
 {
@@ -28,6 +31,9 @@ namespace casita
 
      AnalysisEngine&
      getAnalysis();
+     
+     void
+     setDefinitionHandler( OTF2DefinitionHandler* defHandler);
 
      void
      printNode( GraphNode* node, EventStream* stream );
@@ -48,10 +54,11 @@ namespace casita
                              OTF2_AttributeValue value );
 
      static void
-     handleDefFunction( io::OTF2TraceReader* reader,
+     handleDefRegion( io::OTF2TraceReader* reader,
                         uint32_t             functionId,
                         const char*          name,
-                        OTF2_Paradigm        paradigm );
+                        OTF2_Paradigm        paradigm,
+                        OTF2_RegionRole      role );
      
      static void
      handleDefAttribute( io::OTF2TraceReader* reader,
@@ -131,6 +138,8 @@ namespace casita
 
    private:
      AnalysisEngine& analysis;
+     OTF2DefinitionHandler* defHandler;
+     
      int mpiRank;
 
      /**
