@@ -28,6 +28,15 @@
 
 #include <map>
 
+/* following adjustments necessary to use MPI_Collectives with OTF2 */
+#if MPI_VERSION < 3
+#define OTF2_MPI_UINT64_T MPI_UNSIGNED_LONG
+#define OTF2_MPI_INT64_T MPI_LONG
+#else
+#define OTF2_MPI_UINT64_T MPI_UINT64_T
+#define OTF2_MPI_INT64_T MPI_INT64_T
+#endif
+
 #include "otf/OTF2ParallelTraceWriter.hpp"
 #include <otf2/OTF2_MPI_Collectives.h>
 
@@ -37,12 +46,6 @@
 
 using namespace casita;
 using namespace casita::io;
-
-/* following adjustments necessary to use MPI_Collectives with OTF2 */
-#if MPI_VERSION < 3
-#define OTF2_MPI_UINT64_T MPI_UNSIGNED_LONG_LONG
-#define OTF2_MPI_INT64_T MPI_LONG_LONG
-#endif
 
 #define OTF2_CHECK( cmd ) \
   { \
@@ -1473,7 +1476,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
                     " [%u] RegionRef doesn't fit for event %"PRIu64":%s:%d:%" PRIu64 ":%lf"
                     " and internal node %s:%lf, %u != %" PRIu64, mpiRank, 
                     event.location, eventName, event.type, event.time, getRealTime(event.time),
-                    currentNode->getUniqueName(),
+                    currentNode->getUniqueName().c_str(),
                     (double)currentNode->getTime() / (double)timerResolution,
                     event.regionRef, currentNode->getFunctionId() );
 
