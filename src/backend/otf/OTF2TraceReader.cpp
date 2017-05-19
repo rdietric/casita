@@ -591,7 +591,8 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
   
   // not empty groups with paradigm MPI (MPI communication groups)
-  if( paradigm == OTF2_PARADIGM_MPI && numberOfMembers > 0 )
+  // also store empty groups which seem to be used in some rare cases
+  if( paradigm == OTF2_PARADIGM_MPI /*&& numberOfMembers > 0*/ )
   {
     UTILS_MSG_NOBR( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC && 
                     name != OTF2_UNDEFINED_STRING, 
