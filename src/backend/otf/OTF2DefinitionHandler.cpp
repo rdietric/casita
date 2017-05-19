@@ -152,13 +152,13 @@ OTF2DefinitionHandler::setInternalRegions()
   waitStateFuncId = createNewRegion( "WaitState", OTF2_PARADIGM_UNKNOWN );
 }
 
-const uint32_t
+uint32_t
 OTF2DefinitionHandler::getWaitStateRegionId() const
 {
   return waitStateFuncId;
 }
 
-const uint32_t
+uint32_t
 OTF2DefinitionHandler::getForkJoinRegionId() const
 {
   return ompForkJoinRef;

@@ -39,8 +39,10 @@ using namespace casita;
 using namespace casita::io;
 
 /* following adjustments necessary to use MPI_Collectives with OTF2 */
-#define OTF2_MPI_UINT64_T MPI_UINT64_T
-#define OTF2_MPI_INT64_T MPI_INT64_T
+#if MPI_VERSION < 3
+#define OTF2_MPI_UINT64_T MPI_UNSIGNED_LONG_LONG
+#define OTF2_MPI_INT64_T MPI_LONG_LONG
+#endif
 
 #define OTF2_CHECK( cmd ) \
   { \

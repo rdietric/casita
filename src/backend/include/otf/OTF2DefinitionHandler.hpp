@@ -67,10 +67,10 @@ namespace casita
         void
         setInternalRegions();
         
-        const uint32_t
+        uint32_t
         getWaitStateRegionId() const;
 
-        const uint32_t
+        uint32_t
         getForkJoinRegionId() const;
         
       private:

@@ -33,7 +33,11 @@
 #define CASITA_MPI_P2P_BUF_LAST 4
 
 /** MPI type of buffer elements */
+#if MPI_VERSION < 3
+#define CASITA_MPI_P2P_ELEMENT_TYPE MPI_UNSIGNED_LONG_LONG
+#else
 #define CASITA_MPI_P2P_ELEMENT_TYPE MPI_UINT64_T
+#endif
 
 namespace casita
 {
