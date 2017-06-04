@@ -441,7 +441,7 @@ AnalysisEngine::addNewGraphNode( uint64_t            time,
 
 void 
 AnalysisEngine::createIntermediateBegin()
-{
+{  
   // clean all lists in the graph and delete edges, 
   // node objects are deleted via the streams
   graph.cleanup( true );
@@ -604,8 +604,8 @@ AnalysisEngine::createIntermediateBegin()
       p->clearNodes();
       
       // add node to event stream
-      //p->addGraphNode( startNode, NULL );
       p->addGraphNode( lastNode, NULL );
+      //addNewGraphNodeInternal( lastNode, p );
       
       // add the stream's start node and previously end node to the empty graph
       //graph.addNode(startNode);
@@ -695,12 +695,18 @@ AnalysisEngine::checkPendingMPIRequests()
               streams.begin(); pIter != streams.end(); ++pIter )
   {
     EventStream* stream = *pIter;
-    
-    if( stream->isMpiStream() && ( ( MpiStream* ) stream )->havePendingMPIRequests() )
+
+    if( stream->isMpiStream() )
     {
-      UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_NONE, 
-                 "[%"PRIu32"] There are pending MPI requests on stream %"PRIu64" (%s)!", 
-                 getMPIRank(), stream->getId(), stream->getName() );
+      size_t pendingRequests = 
+        ( ( MpiStream* ) stream )->havePendingMPIRequests();
+
+      if( pendingRequests > 0 )
+      {
+        UTILS_WARN_ONCE( "[%"PRIu32"] There are %lu pending MPI requests on "
+                         "stream %"PRIu64" (%s)!", getMPIRank(), 
+                         pendingRequests, stream->getId(), stream->getName() );
+      }
     }
   }
 }

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2015-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -51,12 +51,12 @@ namespace casita
  
  typedef struct
  {
-   MetricType  type;
-   const char* name;
-   const char* description;
-   MetricMode  metricMode;
-   bool        isInternal;
-   uint32_t    otf2DefId;
+   MetricType  type;        //!< metric type
+   const char* name;        //!< name of the metric
+   const char* description; //!< description of the metric
+   MetricMode  metricMode;  //!< write mode of the metric (e.g. next, last, etc.)
+   OTF2_Type   valueType;   //!< OTF2 value type (uint64_t, float, etc.)
+   bool        isInternal;  //!< internal metrics are not written to the trace
  } MetricEntry;
  
  // Definition of metrics and attributes:
@@ -81,13 +81,13 @@ namespace casita
  {
    { BLAME,         "Blame",         
                     "Amount of caused waiting time", 
-                    COUNTER_ABSOLUT_LAST, false },
+                    COUNTER_ABSOLUT_LAST, OTF2_TYPE_UINT64, false },
    { WAITING_TIME,  "Waiting Time",  
                     "Time in a wait state",          
-                    ATTRIBUTE, false },
+                    ATTRIBUTE, OTF2_TYPE_UINT64, false },
    { CRITICAL_PATH, "Critical Path", 
                     "On the critical path boolean",  
-                    COUNTER_ABSOLUT_NEXT, false },
+                    COUNTER_ABSOLUT_NEXT, OTF2_TYPE_UINT64, false },
                     
    // correctness
    { OMP_BARRIER_ERROR,   "MUST correctness check", 
@@ -96,11 +96,11 @@ namespace casita
                     
    // internal metrics
    { OMPT_REGION_ID,       "OMPT Region ID",         
-                           "", METRIC_MODE_UNKNOWN, true },
+                           "", METRIC_MODE_UNKNOWN, OTF2_TYPE_UINT64, true },
    { OMP_PARENT_REGION_ID, "OpenMP Target Parent Region ID",  
-                           "", METRIC_MODE_UNKNOWN, true },
+                           "", METRIC_MODE_UNKNOWN, OTF2_TYPE_UINT64, true },
    { OMP_IGNORE_BARRIER,   "OpenMP Target Collapsed Barrier", 
-                           "", METRIC_MODE_UNKNOWN, true }
+                           "", METRIC_MODE_UNKNOWN, OTF2_TYPE_UINT8, true }
  };
 
  class AnalysisMetric
@@ -127,7 +127,7 @@ namespace casita
       const MetricEntry*
       getMetric( MetricType metricId ) const
       {
-        return &(METRIC_TABLE[metricId]);
+        return &(METRIC_TABLE[ metricId ]);
       }
       
       /**
@@ -139,7 +139,7 @@ namespace casita
       static const char*
       getMetricName( MetricType metricId )
       {
-        return METRIC_TABLE[metricId].name;
+        return METRIC_TABLE[ metricId ].name;
       }
       
       /**
@@ -151,7 +151,13 @@ namespace casita
       static const char*
       getMetricDescription( MetricType metricId )
       {
-        return METRIC_TABLE[metricId].description;
+        return METRIC_TABLE[ metricId ].description;
+      }
+      
+      static const OTF2_Type*
+      getMetricValueType( MetricType metricId )
+      {
+        return &( METRIC_TABLE[ metricId ].valueType );
       }
      
       /**
@@ -224,7 +230,7 @@ namespace casita
         {          
           maxAttrId++;
           
-          otf2Ids[metricId] = maxAttrId;
+          otf2Ids[ metricId ] = maxAttrId;
           
           //attributeIds.insert( metricId );
           metricIds.insert( metricId );
@@ -235,7 +241,7 @@ namespace casita
         {
           maxMetricClassId++;
           
-          otf2Ids[metricId] = maxMetricClassId;
+          otf2Ids[ metricId ] = maxMetricClassId;
           
           ctrIDs.insert( metricId );
           metricIds.insert( metricId );

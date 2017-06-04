@@ -88,8 +88,16 @@ namespace casita
      getName( ) const
      {
        std::stringstream name;
-       name << "[" << pair.first->getUniqueName() << ", " <<
-       pair.second->getUniqueName() << ", (";
+       
+       if( pair.first != NULL )
+       {
+         name << "[" << pair.first->getUniqueName() << ", ";
+       }
+       
+       if( pair.second != NULL )
+       {
+         name << pair.second->getUniqueName() << ", (";
+       }
 
        if ( edgeParadigm == PARADIGM_ALL )
        {

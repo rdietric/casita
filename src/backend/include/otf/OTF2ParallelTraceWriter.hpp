@@ -120,6 +120,9 @@ namespace casita
       reset();
       
       void
+      clearOpenEdges();
+      
+      void
       handleFinalDeviceIdleLeave();
       
       void
@@ -244,9 +247,6 @@ namespace casita
      
       void
       processNextEvent( OTF2Event event, OTF2_AttributeList* attributes );
-      
-      void
-      clearOpenEdges();
 
       // needed to get out edges for blame distribution
       Graph* graph;

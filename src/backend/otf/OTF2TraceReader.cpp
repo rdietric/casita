@@ -590,8 +590,8 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
   
-  // not empty groups with paradigm MPI (MPI communication groups)
-  // also store empty groups which seem to be used in some rare cases
+  // store groups with paradigm MPI (MPI communication groups)
+  // also store empty groups which seem to be used in some rare cases (e.g. ug4)
   if( paradigm == OTF2_PARADIGM_MPI /*&& numberOfMembers > 0*/ )
   {
     UTILS_MSG_NOBR( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC && 
@@ -683,7 +683,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Comm( void*          userData,
   
   OTF2Group& myGroup = iter->second;
   
-  UTILS_MSG( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_NONE && 
+  UTILS_MSG( tr->mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC && 
              name != OTF2_UNDEFINED_STRING, 
              "  [0] OTF2 communicator definition %u: %s (%u) (group %u)",  
              self, tr->defHandler->getName( name ), name, myGroup.groupId );

@@ -327,8 +327,11 @@ Runner::processTrace( OTF2TraceReader* traceReader )
                "[0] Computing the critical path" );
     
     // check for pending non-blocking MPI!
-    analysis.checkPendingMPIRequests();
-
+    if( Parser::getVerboseLevel() >= VERBOSE_BASIC )
+    {
+      analysis.checkPendingMPIRequests();
+    }
+    
     time_tmp = clock();
 
     // initiate the detection of the critical path
@@ -373,6 +376,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     {
       // create intermediate graph (reset and clear graph objects)
       time_tmp = clock();
+      //writer->clearOpenEdges(); // debugging
       analysis.createIntermediateBegin();
       time_events_flush += clock() - time_tmp;
     }
@@ -1195,7 +1199,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
   else
   {
     Edge* lastMPIEdge = 
-      analysis.getEdge( currentNode->getGraphPair().first ,currentNode );
+      analysis.getEdge( currentNode->getGraphPair().first, currentNode );
     
     // this is the master (critical path end) if the last MPI edge is not blocking
     if( lastMPIEdge )
@@ -1683,9 +1687,18 @@ Runner::printAllActivities()
         sumBlameOnCP     += iter->blameOnCP;
         sumFractionCP    += iter->fractionCP;
         sumFractionBlame += iter->fractionBlame;
+        
+        const char* regName = definitions.getRegionName( iter->functionId );
+        size_t regNameLen = strlen( regName );
+        size_t regShift = 0;
+        
+        if( regNameLen > 50 && regNameLen < 100 )
+        {
+          regShift = regNameLen - 50;
+        }
 
         printf( "%50.50s %10u %11f %11f %6.2f %8.4f %6.6f %11.6f\n",
-                definitions.getRegionName( iter->functionId ),
+                regName + regShift,
                 iter->numInstances,
                 analysis.getRealTime( iter->totalDuration ),
                 analysis.getRealTime( iter->totalDurationOnCP ),

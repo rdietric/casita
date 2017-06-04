@@ -482,14 +482,14 @@ MpiStream::handleMPITestall( GraphNode* node )
 }
 
 /**
- * Return whether we have pending MPI requests or not.
+ * Return the number of pending MPI requests.
  * 
- * @return true, if we have pending MPI requests in the list.
+ * @return the number of pending MPI requests
  */
-bool
+size_t
 MpiStream::havePendingMPIRequests()
 {
-  return !(mpiIcommRecords.empty());
+  return mpiIcommRecords.size();
 }
 
 /**
