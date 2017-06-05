@@ -81,7 +81,7 @@ namespace casita
  {
    { BLAME,         "Blame",         
                     "Amount of caused waiting time", 
-                    COUNTER_ABSOLUT_LAST, OTF2_TYPE_UINT64, false },
+                    COUNTER_ABSOLUT_LAST, OTF2_TYPE_DOUBLE, false },
    { WAITING_TIME,  "Waiting Time",  
                     "Time in a wait state",          
                     ATTRIBUTE, OTF2_TYPE_UINT64, false },

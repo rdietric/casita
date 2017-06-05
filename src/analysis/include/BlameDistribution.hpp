@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2017,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -70,7 +70,6 @@ namespace casita
       }
     }
     
-    
     UTILS_ASSERT( walkList.size() > 1,
                   "Walk list has %lu entries. Can't walk list back from %s",
                   walkList.size(), analysis->getNodeInfo( node ).c_str() );
@@ -90,7 +89,8 @@ namespace casita
     // time within the interval that is a wait state itself
     const uint64_t waitTime = walkListInfo.waitStateTime;
 
-    // total time for blame distribution (wait states in the interval are subtracted)
+    // total time for blame distribution 
+    // (wait states in the interval are subtracted)
     const uint64_t totalTimeToBlame = totalWalkTime - waitTime;
     
     // debug walk list
@@ -128,66 +128,29 @@ namespace casita
     GraphNode* lastWalkNode = walkList.front();
 
     // iterate (backwards in time) over the walk list which contains enter and leave events
-    for ( GraphNode::GraphNodeList::const_iterator iter = (++walkList.begin());
+    // (ignore the first node, as we work on edges)
+    for ( GraphNode::GraphNodeList::const_iterator iter = ( ++walkList.begin() );
           iter != walkList.end(); ++iter )
     {
       GraphNode* currentWalkNode = *iter;
 
-      Edge* edge = analysis->getEdge(currentWalkNode, lastWalkNode);
+      // get (forward) edge (from timely last to earliest)
+      Edge* edge = analysis->getEdge( currentWalkNode, lastWalkNode );
 
-      UTILS_ASSERT(edge, "[%u] No edge found between %s and %s",
-                   analysis->getMPIRank(),
-                   currentWalkNode->getUniqueName().c_str(),
-                   lastWalkNode->getUniqueName().c_str());
+      UTILS_ASSERT( edge, "[%u] No edge found between %s and %s",
+                    analysis->getMPIRank(),
+                    currentWalkNode->getUniqueName().c_str(),
+                    lastWalkNode->getUniqueName().c_str());
       
       //UTILS_MSG( currentWalkNode->getId() == 19, "Current walk node: %s",
       //           currentWalkNode->getUniqueName().c_str() );
       
-      // blame distribution depends on the edge type
-      // if edge is from enter to leave node of a region (represents a region)
-      if ( edge->isRegion() ) 
-      {
-        uint64_t edgeCPURegionTime  = edge->getCPUNodesExclTime();
-        uint64_t edgeNodeRegionTime = edge->getDuration() - edgeCPURegionTime;
-        
-        if( edgeNodeRegionTime > 0 )
-        {
-          //\todo: accuracy gets lost here, store result into double
-          uint64_t ratioBlame = (double) totalBlame
-                              * (double) edgeNodeRegionTime
-                              / (double) totalTimeToBlame;
-          
-          // check for zero to avoid unnecessary find in incCounter()
-          if ( ratioBlame > 0 )
-          {
-            lastWalkNode->incCounter(BLAME, ratioBlame);
-          }
-        }
+      // add partial blame to current edge
+      double blame = (double) totalBlame
+                   * (double) edge->getDuration()
+                   / (double) totalTimeToBlame;
 
-        if( edge->getCPUNodesExclTime() )
-        {
-          double cpuBlame = (double) totalBlame
-                          * (double) edgeCPURegionTime
-                          / (double) totalTimeToBlame;
-          
-          edge->addCPUBlame( cpuBlame );
-        }
-      }
-      else
-      {
-        // all blame on the edge, if it is not a region
-        double cpuBlame = (double) totalBlame
-          * (double) edge->getDuration()
-          / (double) totalTimeToBlame;
-
-        if( cpuBlame > 0 )
-        {
-          edge->addCPUBlame(cpuBlame);
-          
-          // enter node of following paradigm region
-          //lastWalkNode->incCounter(BLAME, cpuBlame);
-        }
-      }
+      edge->addBlame( blame );
 
       lastWalkNode = currentWalkNode;
     }

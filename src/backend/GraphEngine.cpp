@@ -821,7 +821,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
                       pEdge->getName().c_str() );
 
         pEdge->addCPUData( cpuData.numberOfEvents,
-                          cpuData.exclEvtRegTime );
+                           cpuData.exclEvtRegTime );
 
         // check if this already is the direct predecessor
         if ( directPredecessor == pred )
@@ -909,7 +909,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   
   // create edges from device kernel enter nodes to previous nodes on the device
   if( Parser::getInstance().getProgramOptions().linkKernels &&
-      node->isEnter() && ( node->isCUDAKernel() || node->isOpenCLKernel() ) )
+      node->isEnter() && node->isOffloadKernel() )
   {
     GraphNode* directPredKernel = NULL;
     // direct predecessor (on the same stream) should be a leave

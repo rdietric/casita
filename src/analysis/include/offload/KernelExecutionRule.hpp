@@ -59,10 +59,10 @@ namespace casita
 
         if ( !launchEnterEvent )
         {
-          UTILS_MSG( true, "[%"PRIu32"] Applying KernelExecutionRule failed. "
-                           "Found kernel %s without matching kernel launch.",
-                           analysis->getMPIRank(),
-                           kernelLeave->getUniqueName().c_str() );
+          UTILS_OUT( "[%"PRIu32"] Applying KernelExecutionRule failed. "
+                     "Found kernel %s without matching kernel launch.",
+                     analysis->getMPIRank(),
+                     analysis->getNodeInfo( kernelLeave ).c_str() );
           
           return false;
         }
@@ -114,13 +114,29 @@ namespace casita
                                          EDGE_IS_BLOCKING );
               }
 
-              // set counters
-              uint64_t value = syncEvtLeave->getTime() -
+              // compute waiting time
+              uint64_t waitingTime = syncEvtLeave->getTime() -
                   std::max( syncEvtEnter->getTime(), kernelEnter->getTime() );
-              syncEvtLeave->incCounter( WAITING_TIME, value );
-              kernelLeave->incCounter( BLAME, value );
+              
+              // attribute waiting time to the sync event leave node
+              syncEvtLeave->incCounter( WAITING_TIME, waitingTime );
+              //kernelLeave->incCounter( BLAME, value );
+              
+              // blame the kernel
+              Edge* kernelEdge = analysis->getEdge( kernelEnter, kernelLeave );
+              if( kernelEdge )
+              {
+                kernelEdge->addBlame( waitingTime );
+              }
+              else
+              {
+                UTILS_WARNING( "Could not find kernel edge %s -> %s",
+                               analysis->getNodeInfo( kernelEnter ).c_str(),
+                               analysis->getNodeInfo( kernelLeave ).c_str() );
+              }
             }
 
+            // create edge between kernel end and synchonization end
             analysis->newEdge( kernelLeave, syncEvtLeave );
             
             //commonAnalysis->getStream( kernelStrmId )->consumePendingKernel();

@@ -204,12 +204,23 @@ namespace casita
       void
       updateActivityGroupMap( OTF2Event event, CounterMap& counters );
 
-      uint64_t
-      computeCPUEventBlame( OTF2Event event );
+      double
+      computeBlame( OTF2Event event );
+      
+      void
+      writeEventsWithWaitingTime( OTF2Event event, 
+                                  OTF2_AttributeList* attributes, 
+                                  uint64_t waitingTime );
       
       void
       writeEventsWithAttributes( OTF2Event event, OTF2_AttributeList* attributes, 
                                  CounterMap& counters );
+      
+      void
+      writeCriticalPathMetric( OTF2Event event, bool graphNodesAvailable );
+      
+      void
+      writeBlameMetric( OTF2Event event, double blame );
       
       void
       writeCounterMetrics( OTF2Event event, CounterMap& counters );

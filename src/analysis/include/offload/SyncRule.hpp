@@ -76,8 +76,8 @@ namespace casita
           uint64_t refStreamId = syncEnter->getReferencedStreamId();
           if( refStreamId == 0 )
           {
-            UTILS_MSG( true, "Sync %s does not reference a device stream!", 
-                         analysis->getNodeInfo(syncLeave).c_str() );
+            UTILS_OUT( "Sync %s does not reference a device stream!", 
+                       analysis->getNodeInfo(syncLeave).c_str() );
             return false;
           }
           
@@ -159,9 +159,22 @@ namespace casita
               analysis->getStatistics().addStatValue( 
                 OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL, waitingTime );
             
-              // set counters
+              // attribute waiting time to sync leave node
               syncLeave->incCounter( WAITING_TIME, waitingTime );
-              kernelLeave->incCounter( BLAME, waitingTime );
+              //kernelLeave->incCounter( BLAME, waitingTime );
+              
+              // blame the kernel
+              Edge* kernelEdge = analysis->getEdge( kernelEnter, kernelLeave );
+              if( kernelEdge )
+              {
+                kernelEdge->addBlame( waitingTime );
+              }
+              else
+              {
+                UTILS_WARNING( "Offload SyncRule: Could not find kernel edge %s -> %s",
+                               analysis->getNodeInfo( kernelEnter ).c_str(),
+                               analysis->getNodeInfo( kernelLeave ).c_str() );
+              }
 
               // set link to sync leave node (mark kernel as synchronized)
               kernelLeave->setLink( syncLeave );
@@ -202,8 +215,22 @@ namespace casita
           // set counters
           uint64_t waitingTime = syncLeave->getTime() - syncEnter->getTime();
 
-          syncLeave->incCounter( BLAME, waitingTime );
+          // attribute waiting time to sync leave node
           syncLeave->setCounter( WAITING_TIME, waitingTime );
+          //syncLeave->incCounter( BLAME, waitingTime );
+          
+          // blame the synchronization for being useless
+          Edge* syncEdge = analysis->getEdge( syncEnter, syncLeave );
+          if( syncEdge )
+          {
+            syncEdge->addBlame( waitingTime );
+          }
+          else
+          {
+            UTILS_WARNING( "Offload SyncRule: Could not find sync edge %s -> %s",
+                           analysis->getNodeInfo( syncEnter ).c_str(),
+                           analysis->getNodeInfo( syncLeave ).c_str() );
+          }
         }
         
         deviceStreams.clear();

@@ -139,7 +139,7 @@ Runner::prepareAnalysis()
   
   if( ( analysis.haveParadigm( PARADIGM_CUDA ) || 
         analysis.haveParadigm( PARADIGM_OCL ) ) && 
-        Parser::getInstance().getProgramOptions().ignoreOffload == false )
+        Parser::ignoreOffload() == false )
   {
     analysis.addAnalysis( new offload::AnalysisParadigmOffload( &analysis ) );
   }
@@ -228,7 +228,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   offload::AnalysisParadigmOffload* ofldAnalysis = NULL;
   if( ( analysis.haveParadigm( PARADIGM_OCL ) || 
         analysis.haveParadigm( PARADIGM_CUDA ) ) && 
-        Parser::getInstance().getProgramOptions().ignoreOffload == false )
+        Parser::ignoreOffload() == false )
   {
     ofldAnalysis = 
       ( offload::AnalysisParadigmOffload* )analysis.getAnalysis( PARADIGM_OFFLOAD );

@@ -84,7 +84,7 @@ namespace casita
   }
   
   bool
-  Parser::haveOffload()
+  Parser::ignoreOffload()
   {
     return Parser::getInstance().options.ignoreOffload;
   }

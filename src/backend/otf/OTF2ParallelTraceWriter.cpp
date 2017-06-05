@@ -183,7 +183,7 @@ OTF2ParallelTraceWriter::open()
     writeAnalysisMetricDefinitions();
     
     // if offloading is available and enabled
-    if( Parser::haveOffload() == true )
+    if( Parser::ignoreOffload() == false )
     {
       writeDeviceIdleDefinitions();
     }
@@ -263,7 +263,6 @@ OTF2ParallelTraceWriter::handleFinalDeviceIdleLeave()
 
   if( writeToFile && Parser::getOptions().deviceIdle & 1 )
   {
-    UTILS_OUT( "Last event time %llu ", streamStatusMap[ streamId ].lastEventTime );
     OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writerMap[ streamId ], NULL, 
                                       lastOffloadApiEvtTime, devIdleRegRef ) );
   }
@@ -295,16 +294,17 @@ OTF2ParallelTraceWriter::clearOpenEdges()
       if( openEdges.size() )
       {
         
-        UTILS_OUT( "  [%"PRIu64"] Clear open edge(s)", mapIt->first );
+        UTILS_OUT( " [%"PRIu64"] Clear %lu open edge(s)", 
+                   mapIt->first, openEdges.size() );
         for ( OpenEdgesList::const_iterator edgeIter = openEdges.begin();
             edgeIter != openEdges.end(); ++edgeIter)
         {
           Edge* edge = *edgeIter;
           
-          UTILS_OUT( "   %s -> %s", 
+          UTILS_OUT( "  %s -> %s", 
                      analysis->getNodeInfo( edge->getStartNode() ).c_str(), 
                      analysis->getNodeInfo( edge->getEndNode() ).c_str() )
-          UTILS_OUT( "    %s", edge->getName().c_str() );
+          //UTILS_OUT( "   %s", edge->getName().c_str() );
         }
         openEdges.clear();
       }
@@ -794,7 +794,7 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
           {
             Edge* edge = *edgeIter;
 
-            if ( edge->getCPUBlame() > 0 )
+            if ( edge->getBlame() > 0 )
             {
               streamState.openEdges.push_back( edge );
             }
@@ -974,11 +974,11 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event,
  * @param event Current CPU event
  * @return      Blame to assign to this event
  */
-uint64_t
-OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
+double
+OTF2ParallelTraceWriter::computeBlame( OTF2Event event )
 {
   // collect blame from all open edges
-  uint64_t totalBlame = 0;
+  double totalBlame = 0;
 
   // iterate over all open edges (if any) and calculate total blame
   if( streamStatusMap.count( event.location ) > 0 )
@@ -1000,18 +1000,26 @@ OTF2ParallelTraceWriter::computeCPUEventBlame( OTF2Event event )
     {
       Edge* edge = *edgeIter;
 
-      //std::cerr << getRegionName(event.regionRef) << " between nodes " << edge->getStartNode()->getUniqueName()
-      //          << " -> " << edge->getEndNode()->getUniqueName() << std::endl;
-
       // if edge has duration AND event is in between the edge
       if ( ( edge->getDuration() > 0 ) &&
-           ( edge->getEndNode()->getTime() > eventTime ) &&
-           ( edge->getStartNode()->getTime() < eventTime ) )
+           ( edge->getEndNode()->getTime() >= eventTime ) &&
+           ( edge->getStartNode()->getTime() <= eventTime ) )
       {
-        // blame = blame(edge) * time(cpu_region)/time(edge)
-        totalBlame += (double)( edge->getCPUBlame() ) * (double)timeDiff 
-                    / (double)( edge->getDuration() );
-      
+        // blame = blame(edge) * time(active region part)/time(edge)
+        totalBlame += ( double )( edge->getBlame() ) * ( double )timeDiff 
+                    / ( double )( edge->getDuration() );
+        
+        /*UTILS_OUT( "[%lu]Blame %lf for event %s from %s", 
+                   event.location, totalBlame, 
+                   defHandler->getRegionInfo( event.regionRef ).name,
+                   edge->getName().c_str() );*/
+        
+        if( edge->getEndNode()->getTime() == eventTime )
+        {
+          // erase edge, if edge end node is this event
+          edgeIter = openEdges.erase( edgeIter );
+        }
+        
         ++edgeIter;
       }
       else
@@ -1084,8 +1092,178 @@ OTF2ParallelTraceWriter::writeEventsWithAttributes( OTF2Event event,
       break;
 
     default:
-      /* write only counters for atomic events */
+      // write only counters for atomic events
       break;
+  }
+}
+
+void
+OTF2ParallelTraceWriter::writeEventsWithWaitingTime( 
+  OTF2Event event, OTF2_AttributeList* attributes, uint64_t waitingTime )
+{
+  UTILS_ASSERT( evt_writerMap.find( event.location ) != evt_writerMap.end(),
+                "Could not find OTF2 event writer for location" );
+  
+  OTF2_EvtWriter* evt_writer = evt_writerMap[ event.location ];
+
+  // skip the critical path attribute, as it is "cheaper" to write a counter, 
+  // whenever the critical path changes instead of to every region
+
+  // all metrics are definitely assigned to leave nodes
+  if( event.type == RECORD_LEAVE && waitingTime != 0 )
+  {
+    if( attributes == NULL )
+    {
+      attributes = OTF2_AttributeList_New();
+      UTILS_WARNING( "Create new attribute list, as event does not provide one!" );
+    }
+
+    OTF2_CHECK( OTF2_AttributeList_AddUint64( attributes, 
+                                              cTable->getMetricId( WAITING_TIME ), 
+                                              waitingTime ) );
+  }
+  
+  switch ( event.type )
+  {
+    case RECORD_ENTER:
+      OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writer, attributes, event.time, event.regionRef ) );
+      break;
+
+    case RECORD_LEAVE:
+      OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writer, attributes, event.time, event.regionRef ) );
+      break;
+
+    default:
+      // write only counters for atomic events
+      break;
+  }
+}
+
+// critical path counter, absolute next mode
+void
+OTF2ParallelTraceWriter::writeCriticalPathMetric( OTF2Event event, 
+                                                  bool graphNodesAvailable )
+{
+  UTILS_ASSERT( evt_writerMap.find( event.location ) != evt_writerMap.end(),
+                "Could not find OTF2 event writer for location" );
+  
+  OTF2_EvtWriter* evt_writer = evt_writerMap[ event.location ];
+  
+  UTILS_ASSERT( streamStatusMap.count( event.location ) > 0, 
+                "Could not find stream status!" );
+  
+  StreamStatus& streamState = streamStatusMap[ event.location ];
+
+  // if the stream is on the critical path, but no more graph nodes available
+  // and therefore the counter table is empty (can happen on host processes)
+  if( graphNodesAvailable == false && streamState.onCriticalPath == true )
+  {
+    // if we are at a leave event, which is the last on the stack, write '0'
+    if( event.type == RECORD_LEAVE && 
+        streamState.activityStack.size() == 1 && 
+        streamState.lastMetricValues[ CRITICAL_PATH ] != 0 )
+    {
+      OTF2_MetricValue value;
+      value.unsigned_int = 0;
+      streamState.lastMetricValues[ CRITICAL_PATH ] = 0;
+      
+      OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
+                                         cTable->getMetricId( CRITICAL_PATH ), 1, 
+                                         cTable->getMetricValueType( CRITICAL_PATH ), 
+                                         &value ) );
+      return;
+    }
+    
+    if( event.type == RECORD_ENTER && /*streamState.activityStack.size() == 0*/ 
+        streamState.lastMetricValues[ CRITICAL_PATH ] == 0 )
+    {
+      OTF2_MetricValue value;
+      value.unsigned_int = 1;
+      streamState.lastMetricValues[ CRITICAL_PATH ] = 1;
+      
+      OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
+                                         cTable->getMetricId( CRITICAL_PATH ), 1, 
+                                         cTable->getMetricValueType( CRITICAL_PATH ), 
+                                         &value ) );
+    }
+    
+    return;
+  }
+
+  if( graphNodesAvailable )
+  {
+    const MetricEntry* metric = cTable->getMetric( CRITICAL_PATH );
+    OTF2_MetricValue   value;
+
+    // set counter to '0' for last leave event on the stack, if last counter 
+    // value is not already '0' for this location (applies to CUDA kernels)
+    if( event.type == RECORD_LEAVE && streamState.activityStack.size() == 1 &&
+        streamState.lastMetricValues[ CRITICAL_PATH ] != 0 )
+    {
+      value.unsigned_int = 0;
+      streamState.lastMetricValues[ CRITICAL_PATH ] = 0;
+
+      OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
+                                         cTable->getMetricId( CRITICAL_PATH ), 
+                                         1, &( metric->valueType ), &value ) );
+
+      return;
+    }
+
+    uint64_t onCP = streamState.onCriticalPath;
+    if( streamState.lastMetricValues[ CRITICAL_PATH ] != onCP )
+    {
+      value.unsigned_int = onCP;
+      streamState.lastMetricValues[ CRITICAL_PATH ] = onCP;
+
+      OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
+                                         cTable->getMetricId( CRITICAL_PATH ), 
+                                         1, &( metric->valueType ), &value ) );
+    }
+  }
+}
+
+void
+OTF2ParallelTraceWriter::writeBlameMetric( OTF2Event event, double blame )
+{
+  UTILS_ASSERT( evt_writerMap.find( event.location ) != evt_writerMap.end(),
+                "Could not find OTF2 event writer for location" );
+  
+  OTF2_EvtWriter* evt_writer = evt_writerMap[ event.location ];
+
+  UTILS_ASSERT( streamStatusMap.count( event.location ) > 0, 
+                "Could not find stream status!" );
+  
+  StreamStatus& streamState = streamStatusMap[ event.location ];
+  
+  const MetricEntry* metric = cTable->getMetric( CRITICAL_PATH );
+  
+  OTF2_MetricValue value;
+  
+  // reset counter if this enter is the first event on the activity stack
+  if ( event.type == RECORD_ENTER && streamState.activityStack.size() == 0 )
+  {
+    value.floating_point = 0;
+    OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
+                                       cTable->getMetricId( BLAME ), 
+                                       1, &( metric->valueType ), &value ) );
+  }
+  else
+  {
+    value.floating_point = blame;
+    OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
+                                       cTable->getMetricId( BLAME ), 
+                                       1, &( metric->valueType ), &value ) );
+  }
+
+  // reset counter if this leave is the last event on the activity stack
+  if ( event.type == RECORD_LEAVE && streamState.activityStack.size() == 1 &&
+       value.floating_point != 0 )
+  {
+    value.floating_point = 0;
+    OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
+                                       cTable->getMetricId( BLAME ), 
+                                       1, &( metric->valueType ), &value ) );
   }
 }
 
@@ -1198,7 +1376,7 @@ OTF2ParallelTraceWriter::writeCounterMetrics( OTF2Event event,
     }
     // END: critical path counter
     
-    // The following is currently only for the blame counter
+    // The following is currently only for the blame counter (last mode)
     
     // reset counter if this enter is the first event on the activity stack
     if ( event.type == RECORD_ENTER && streamState.activityStack.size() == 0 )
@@ -1408,6 +1586,11 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   // non-internal counter values for this event
   CounterMap tmpCounters;
   
+  // compute blame counter
+  double blame = computeBlame( event );
+  tmpCounters[ BLAME ] = (uint64_t) blame;
+  //UTILS_OUT("[%llu] Blame %lf on %s", currentStream->getId(), blame, eventName );
+  
   EventStream::SortedGraphNodeList::iterator endNodeIter = 
     currentStream->getNodes().end();
   EventStream::SortedGraphNodeList::iterator currentNodeIter = 
@@ -1518,10 +1701,11 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         UTILS_ASSERT( event.type == RECORD_ATOMIC,
                       "Event %s has unexpected type", eventName );
         
-        if( streamStatusMap[event.location].activityStack.size() > 0 )
+        // if there is an activity active, take ...
+        if( streamStatusMap[ event.location ].activityStack.size() > 0 )
         {
           const OTF2_RegionRef newRegionRef = 
-            streamStatusMap[event.location].activityStack.top();
+            streamStatusMap[ event.location ].activityStack.top();
           
           currentNode->setFunctionId( newRegionRef );
         
@@ -1539,7 +1723,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         {
           Edge* edge = *edgeIter;
 
-          if ( edge->getCPUBlame() > 0 )
+          if ( edge->getBlame() > 0 )
           {
             streamState.openEdges.push_back( edge );
           }
@@ -1554,7 +1738,8 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       }
       
       // copy node counter values to temporary counter map
-      const AnalysisMetric::MetricIdSet& metricIdSet = cTable->getAllMetricIds();
+      const AnalysisMetric::MetricIdSet& metricIdSet = 
+        cTable->getAllMetricIds();
       for ( AnalysisMetric::MetricIdSet::const_iterator metricIter = metricIdSet.begin();
             metricIter != metricIdSet.end(); ++metricIter )
       {
@@ -1562,9 +1747,11 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         const MetricEntry* metric = cTable->getMetric( metricType );
 
         // only for exposed metrics (CP, blame, waiting time)
-        if ( !( metric->isInternal ) )
+        if ( !( metric->isInternal ) && metricType != BLAME )
         {
-          tmpCounters[metricType] = currentNode->getCounter( metricType, NULL );
+          // store CP and waiting time counters from node into temporary table
+          tmpCounters[ metricType ] = 
+            currentNode->getCounter( metricType, NULL );
           
           // set CP counter to 0, if the next node is NOT on the CP 
           // (because we use counter next mode)
@@ -1617,37 +1804,6 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
           }
         }
       }
-      
-      // check in edges to blame the interval between this and the last event
-      if ( currentNode->isEnter() && graph->hasInEdges( currentNode ) )
-      {
-        // duration between last and current event
-        uint64_t timeDiff = event.time - streamState.lastEventTime;
-        
-        // iterate over in edges
-        const Graph::EdgeList& edges = graph->getInEdges( currentNode );
-        for ( Graph::EdgeList::const_iterator edgeIter = edges.begin();
-              edgeIter != edges.end(); edgeIter++ )
-        {
-          Edge* edge = *edgeIter;
-          if ( edge->getCPUBlame() > 0 )
-          {
-            /*
-            UTILS_MSG( ( strcmp( currentNode->getName(), "clFinish") == 0 ), 
-                       "[%llu] %s (%lf) has in Edge %s with blame %lf", 
-                       currentNode->getStreamId(), getRealTime(event.time),
-                       currentNode->getName(), edge->getName().c_str(), edge->getCPUBlame() );
-            */
-            
-            // calculate the partial blame for this edge
-            double blame = (double)( edge->getCPUBlame() ) * (double)timeDiff 
-                   / (double)( edge->getDuration() );
-            
-            // increase the blame counter for this event
-            tmpCounters[ BLAME ] += blame;
-          }
-        }
-      }
 
       // increase iterator over graph nodes
       ++currentNodeIter;
@@ -1689,15 +1845,6 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         }
       }
 
-      // compute blame counter
-      uint64_t blame = computeCPUEventBlame( event );
-      
-      //\todo: validate the following, which affects only the OTF2 output
-      if( blame )
-      {
-        tmpCounters[ BLAME ] = blame;
-      }
-
       // non-paradigm events cannot be wait states
       tmpCounters[ WAITING_TIME ] = 0;
     }
@@ -1717,7 +1864,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   */
   //UTILS_MSG( tmpCounters.size() == 0, "%"PRIu64":%s (onCP: %d)", 
   //           event.location, eventName.c_str(), streamState.onCriticalPath );
-  
+
   streamState.currentNodeIter = currentNodeIter;
 
   // write idle leave before the device task enter
@@ -1729,8 +1876,12 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   // write event with counters
   if ( writeToFile )
   {
-    writeCounterMetrics( event, tmpCounters );
-    writeEventsWithAttributes( event, attributeList, tmpCounters );    
+    //writeCounterMetrics( event, tmpCounters );
+    //writeEventsWithAttributes( event, attributeList, tmpCounters );
+    
+    writeCriticalPathMetric( event, currentNodeIter != endNodeIter);
+    writeBlameMetric( event, blame );
+    writeEventsWithWaitingTime( event, attributeList, tmpCounters[ WAITING_TIME ] );
   }
   
   // write idle enter after the device task leave

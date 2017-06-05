@@ -63,7 +63,7 @@ namespace casita
      getPredictionFilter();
      
      static bool 
-     haveOffload();
+     ignoreOffload();
 
      bool
      init( int mpiRank, int argc, char** argv ) throw ( std::runtime_error );

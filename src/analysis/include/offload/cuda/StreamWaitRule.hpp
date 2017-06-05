@@ -201,17 +201,28 @@ namespace casita
             processedSyncKernelLeaves.insert( syncKernelLeave );
 
             // add dependency
-            analysis->newEdge( syncKernelLeave,
-                                     waitingKernelEnter );
+            analysis->newEdge( syncKernelLeave, waitingKernelEnter );
 
             // insert wait state only if launch of next (waiting) kernel is 
             // before the blocking kernel finishes
             if ( waitingKernelLaunchEnter->getTime() <
                  syncKernelLeave->getTime() )
             {
-              //set counters
-              syncKernelLeave->incCounter( BLAME, 
-                syncKernelLeave->getTime() - waitingKernelLaunchEnter->getTime() );
+              //syncKernelLeave->incCounter( BLAME, 
+              //  syncKernelLeave->getTime() - waitingKernelLaunchEnter->getTime() );
+              
+              Edge* syncKernelEdge = 
+                analysis->getEdge( syncKernelEnter, syncKernelLeave );
+              if( syncKernelEdge )
+              {
+                syncKernelEdge->addBlame( syncKernelLeave->getTime() - waitingKernelLaunchEnter->getTime() );
+              }
+              else
+              {
+                UTILS_WARNING( "CUDA StreamWaitRule: Could not find kernel edge %s -> %s",
+                               analysis->getNodeInfo( syncKernelEnter ).c_str(),
+                               analysis->getNodeInfo( syncKernelLeave ).c_str() );
+              }
 
               waitStateEnterTime = std::min( waitStateEnterTime,
                                              waitingKernelLaunchEnter->getTime() );

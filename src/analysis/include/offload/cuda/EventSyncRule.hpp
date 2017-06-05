@@ -247,9 +247,22 @@ namespace casita
             analysis->getStatistics().addStatValue( 
               OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL, waitingTime );
 
-            // set counters
+            // attribute sync with waiting time
             syncLeave->incCounter( WAITING_TIME, waitingTime );
-            kernelLeave->incCounter( BLAME, waitingTime );
+            //kernelLeave->incCounter( BLAME, waitingTime );
+            
+            // blame kernel for letting the host wait
+            Edge* kernelEdge = analysis->getEdge( kernelEnter, kernelLeave );
+            if( kernelEdge )
+            {
+              kernelEdge->addBlame( waitingTime );
+            }
+            else
+            {
+              UTILS_WARNING( "CUDA EventSyncRule: Could not find kernel edge %s -> %s",
+                             analysis->getNodeInfo( kernelEnter ).c_str(),
+                             analysis->getNodeInfo( kernelLeave ).c_str() );
+            }
           }
 
           // add edge between kernel leave and syncLeave

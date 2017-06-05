@@ -408,7 +408,7 @@ namespace casita
            // if we found a CUDA function
            if ( strcmp( entry.table[j], name ) == 0 )
            {
-             if ( Parser::getInstance().getProgramOptions().ignoreOffload )
+             if ( Parser::ignoreOffload() )
              {
                descr->paradigm     = PARADIGM_CPU;
                descr->functionType = MISC_CPU;
@@ -444,7 +444,7 @@ namespace casita
          {
            if ( strcmp( entry.table[j], name ) == 0 )
            {
-             if ( Parser::getInstance().getProgramOptions().ignoreOffload )
+             if ( Parser::ignoreOffload() )
              {
                descr->paradigm     = PARADIGM_CPU;
                descr->functionType = MISC_CPU;

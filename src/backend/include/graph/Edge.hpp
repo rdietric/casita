@@ -44,9 +44,8 @@ namespace casita
          duration    = 0;
        }
 
-       cpuNodes           = 0;
-       cpuBlame           = 0;
-
+       this->cpuNodes     = 0;
+       this->blame        = 0;
        this->properties   = properties;
        this->edgeDuration = duration;
        this->edgeWeight   = computeWeight( duration, isBlocking() );
@@ -205,7 +204,7 @@ namespace casita
       * an edge between functions.
       * 
       * @return 
-      */
+      
      bool
      isRegion() const
      {      
@@ -236,7 +235,7 @@ namespace casita
          }
        }
        return false;
-     }
+     }*/
 
      void
      addCPUData( uint32_t nodes, uint64_t exclCPUEvtTime )
@@ -256,21 +255,21 @@ namespace casita
       * @return 
       */
      uint64_t
-     getCPUNodesExclTime( )
+     getCPUNodesExclTime()
      {
        return cpuEvtExclTime;
      }
 
      void
-     addCPUBlame( double blame )
+     addBlame( double blame )
      {
-       cpuBlame += blame;
+       this->blame += blame;
      }
 
      double
-     getCPUBlame( )
+     getBlame()
      {
-       return cpuBlame;
+       return blame;
      }
 
    private:
@@ -284,7 +283,7 @@ namespace casita
      uint32_t cpuNodes;
      uint64_t cpuEvtExclTime; //<! time of regions from CPU events between the edge nodes
      
-     double cpuBlame;
+     double blame;
 
      void
      setWeight( uint64_t weight )

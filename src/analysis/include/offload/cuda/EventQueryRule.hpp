@@ -128,24 +128,41 @@ namespace casita
               break;
             }
 
-            GraphNode::GraphNodePair& prevQuery = prev->getGraphPair();
+            GraphNode* prevQueryEnter = prev->getGraphPair().first;
+            GraphNode* prevQueryLeave = prev->getGraphPair().second;
 
             // if kernel is running during the query
-            if ( kernelEnter->getTime() <= prevQuery.first->getTime() )
+            if ( kernelEnter->getTime() <= prevQueryEnter->getTime() )
             {
               //\todo: why?
               // make query edge blocking
-              Edge* qEdge = commonAnalysis->getEdge( prevQuery.first, prevQuery.second);
+              Edge* qEdge = 
+                commonAnalysis->getEdge( prevQueryEnter, prevQueryLeave );
               if( qEdge )
               {
                 qEdge->makeBlocking();
               }
               
-              // set counters
-              uint64_t waitingTime = 
-                prevQuery.second->getTime() - prevQuery.first->getTime();
-              prevQuery.second->incCounter( WAITING_TIME, waitingTime );
-              kernelLeave->incCounter( BLAME, waitingTime );
+              // compute waiting time
+              uint64_t waitingTime = prevQueryLeave->getTime() 
+                                   - prevQueryEnter->getTime();
+              
+              // attribute waiting time to (unnecessary) query leave node
+              prevQueryLeave->incCounter( WAITING_TIME, waitingTime );
+              //kernelLeave->incCounter( BLAME, waitingTime );
+              
+              // blame the kernel for the query waiting time
+              Edge* kernelEdge = commonAnalysis->getEdge( kernelEnter, kernelLeave );
+              if( kernelEdge )
+              {
+                kernelEdge->addBlame( waitingTime );
+              }
+              else
+              {
+                UTILS_WARNING( "CUDA EventQueryRule: Could not find kernel edge %s -> %s",
+                               commonAnalysis->getNodeInfo( kernelEnter ).c_str(),
+                               commonAnalysis->getNodeInfo( kernelLeave ).c_str() );
+              }
               
               commonAnalysis->getStatistics().addStatWithCount( 
                 OFLD_STAT_EARLY_TEST, waitingTime );
@@ -153,7 +170,7 @@ namespace casita
               // add a blocking dependency, so it cannot be used for critical path analysis
               // \todo: needed anymore?
               commonAnalysis->newEdge( kernelLeave,
-                                       prevQuery.second,
+                                       prevQueryLeave,
                                        EDGE_IS_BLOCKING );
             }
 
@@ -170,11 +187,26 @@ namespace casita
         else 
         // if no kernel launch leave was found (e.g. associated kernel already synchronized)
         {
-          // blame this "useless" event query
-          uint64_t waitingTime = 
-            queryLeave->getTime() - queryLeave->getGraphPair().first->getTime();
+          GraphNode* queryEnter = queryLeave->getGraphPair().first;
+          
+          uint64_t waitingTime = queryLeave->getTime() - queryEnter->getTime();
+          
+          // attribute waiting time to (redundant) query leave node
           queryLeave->incCounter( WAITING_TIME, waitingTime );
-          queryLeave->incCounter( BLAME, waitingTime );
+          //queryLeave->incCounter( BLAME, waitingTime );
+          
+          // blame this redundant event query
+          Edge* queryEdge = commonAnalysis->getEdge( queryEnter, queryLeave );
+          if( queryEdge )
+          {
+            queryEdge->addBlame( waitingTime );
+          }
+          else
+          {
+            UTILS_WARNING( "CUDA EventQueryRule: Could not find query edge %s -> %s",
+                           commonAnalysis->getNodeInfo( queryEnter ).c_str(),
+                           commonAnalysis->getNodeInfo( queryLeave ).c_str() );
+          }
         }
         
         return true;
