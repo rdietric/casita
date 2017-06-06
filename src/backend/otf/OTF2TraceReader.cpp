@@ -59,9 +59,6 @@ OTF2TraceReader::OTF2TraceReader( void*                  userData,
   mpiSize( mpiSize ),
   mpiProcessId( 1 ),
   reader( NULL ),
-  ticksPerSecond( 1 ),
-  timerOffset( 0 ),
-  traceLength( 0 ),
   ompForkJoinRef( 0 )
 {
 
@@ -459,9 +456,9 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_ClockProperties(
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
-  tr->setTimerOffset( globalOffset );
-  tr->setTimerResolution( timerResolution );
-  tr->setTraceLength( traceLength );
+  tr->defHandler->setTimerResolution( timerResolution );
+  tr->defHandler->setTimerOffset( globalOffset );
+  tr->defHandler->setTraceLength( traceLength );
 
   return OTF2_CALLBACK_SUCCESS;
 }
@@ -776,14 +773,15 @@ OTF2TraceReader::otf2CallbackEnter( OTF2_LocationRef    location,
                                     OTF2_AttributeList* attributes,
                                     OTF2_RegionRef      region )
 {
-  OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+  OTF2TraceReader* tr = ( OTF2TraceReader* )userData;
 
   if ( tr->handleEnter )
   {
     OTF2KeyValueList& kvList = tr->getKVList();
     kvList.setList( attributes );
 
-    tr->handleEnter(tr, time - tr->getTimerOffset(), region, location, &kvList);
+    tr->handleEnter( tr, time - tr->defHandler->getTimerOffset(), region, 
+                     location, &kvList );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -804,8 +802,8 @@ OTF2TraceReader::otf2CallbackLeave( OTF2_LocationRef    location,
     OTF2KeyValueList& kvList = tr->getKVList();
     kvList.setList( attributes );
 
-    bool interrupt = tr->handleLeave( tr, time - tr->getTimerOffset(), region, 
-                                      location, &kvList );
+    bool interrupt = tr->handleLeave( tr, time - tr->defHandler->getTimerOffset(), 
+                                      region, location, &kvList );
     
     if ( interrupt )
       return OTF2_CALLBACK_INTERRUPT;
@@ -1053,7 +1051,7 @@ OTF2TraceReader::otf2CallbackComm_RmaWinDestroy(
 
   if ( tr->handleRmaWinDestroy )
   {
-    tr->handleRmaWinDestroy( tr, time - tr->getTimerOffset() , location );
+    tr->handleRmaWinDestroy( tr, time - tr->defHandler->getTimerOffset() , location );
   }
   
   return OTF2_CALLBACK_SUCCESS;
@@ -1119,42 +1117,6 @@ OTF2TraceReader::otf2CallbackComm_RmaGet( OTF2_LocationRef location,
   return OTF2_CALLBACK_SUCCESS;
 }
 */
-
-uint64_t
-OTF2TraceReader::getTimerResolution()
-{
-  return ticksPerSecond;
-}
-
-void
-OTF2TraceReader::setTimerResolution( uint64_t ticksPerSecond )
-{
-  this->ticksPerSecond = ticksPerSecond;
-}
-
-uint64_t
-OTF2TraceReader::getTimerOffset()
-{
-  return timerOffset;
-}
-
-void
-OTF2TraceReader::setTimerOffset( uint64_t offset )
-{
-  this->timerOffset = offset;
-}
-
-uint64_t
-OTF2TraceReader::getTraceLength()
-{
-  return traceLength;
-}
-
-void
-OTF2TraceReader::setTraceLength( uint64_t length )
-{
-  this->traceLength = length;
-}
 
 OTF2TraceReader::ProcessGroupMap&
 OTF2TraceReader::getProcGoupMap()

@@ -63,8 +63,8 @@ namespace casita
         uint64_t totalDuration;
         uint64_t totalDurationOnCP;
         uint64_t waitingTime;
-        uint64_t totalBlame;
-        uint64_t blameOnCP;
+        double   totalBlame;
+        double   blameOnCP;
         double   fractionCP;
         double   fractionBlame;
       } ActivityGroup;
@@ -169,9 +169,8 @@ namespace casita
       //!< pointer to the table of available counters
       AnalysisMetric* cTable; 
       
-      //!< timer resolution and offset
-      uint64_t timerResolution;
-      uint64_t timerOffset;
+      //!< ticks per nano second (timer resolution (ticks per second) divided by nano seconds)
+      double timeConversionFactor;
       
       double
       getRealTime( uint64_t time );
@@ -202,7 +201,9 @@ namespace casita
       typedef std::map< MetricType, uint64_t > CounterMap;
 
       void
-      updateActivityGroupMap( OTF2Event event, CounterMap& counters );
+      updateActivityGroupMap( OTF2Event event, bool evtOnCP, 
+                              uint64_t waitingTime, double blame,
+                              bool graphNodesAvailable );
 
       double
       computeBlame( OTF2Event event );

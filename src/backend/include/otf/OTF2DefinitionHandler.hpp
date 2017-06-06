@@ -38,6 +38,24 @@ namespace casita
         OTF2DefinitionHandler();
         virtual ~OTF2DefinitionHandler();
         
+        uint64_t
+        getTimerResolution();
+
+        void
+        setTimerResolution( uint64_t ticksPerSecond );
+
+        uint64_t
+        getTimerOffset();
+
+        void
+        setTimerOffset( uint64_t offset );
+
+        uint64_t
+        getTraceLength();
+
+        void
+        setTraceLength( uint64_t length );
+        
         void
         storeString( uint32_t stringRef, const char* string );
         
@@ -76,6 +94,11 @@ namespace casita
       private:
         //<! pointer to the one and only analysis engine
         //AnalysisEngine* analysis;
+        
+        //!< resolution of the trace's timer (ticks per second)
+        uint64_t timerResolution;
+        uint64_t timerOffset;
+        uint64_t traceLength;
 
         //!< maps OTF2 IDs to strings (global definitions), maps are ordered by key
         std::map< uint32_t, const char* > stringRefMap;

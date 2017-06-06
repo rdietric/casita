@@ -77,18 +77,6 @@ Runner::~Runner()
   }
 }
 
-ProgramOptions&
-Runner::getOptions()
-{
-  return options;
-}
-
-AnalysisEngine&
-Runner::getAnalysis()
-{
-  return analysis;
-}
-
 void
 Runner::prepareAnalysis()
 {
@@ -158,7 +146,7 @@ Runner::prepareAnalysis()
   analysis.getMPIAnalysis().createMPICommunicatorsFromMap();
 
   // set the timer resolution in the analysis engine
-  uint64_t timerResolution = traceReader->getTimerResolution();
+  uint64_t timerResolution = definitions.getTimerResolution();
   analysis.setTimerResolution( timerResolution );
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
              "[0] Timer resolution = %llu",
@@ -167,7 +155,7 @@ Runner::prepareAnalysis()
   if ( timerResolution < 1000000000 ) // 1GHz
   {
     UTILS_MSG( mpiRank == 0, 
-               "[0] Warning: your timer resolution is very low (< 1 GHz)!" );
+               "Warning: your timer resolution is very low (< 1 GHz)!" );
   }
 
   // setup reading events
@@ -432,7 +420,7 @@ Runner::mergeActivityGroups()
   
   assert( activityGroupMap );
 
-  uint64_t globalBlame    = 0;
+  double globalBlame      = 0;
   uint64_t lengthCritPath = globalLengthCP;
   //  analysis.getLastNode()->getTime() - analysis.getSourceNode()->getTime();
   
@@ -546,8 +534,8 @@ Runner::mergeActivityGroups()
       
       if ( globalBlame > 0 )
       {
-        groupIter->second.fractionBlame =
-          (double)( groupIter->second.totalBlame ) / (double)globalBlame;
+        groupIter->second.fractionBlame = groupIter->second.totalBlame 
+                                        / globalBlame;
       }
       else
       {
@@ -1609,8 +1597,17 @@ Runner::printAllActivities()
 
   if ( mpiRank == 0 )
   {
-    printf( "\n%50s %10s %11s %11s %6s %8s %8s %10s\n",
-            "Activity Group",
+    // length of the first column in stdout (region name)
+    const int RNAMELEN = 42;
+    
+    if( globalLengthCP == 0 )
+    {
+      UTILS_MSG( true, "Global critical path length is 0. Skipping output ..." );
+      return;
+    }
+
+    printf( "\n%*s %10s %11s %11s %6s %8s %8s %10s\n",
+            RNAMELEN, "Region",
             "Calls",
             "Time[s]",
             "Time on CP",
@@ -1618,18 +1615,13 @@ Runner::printAllActivities()
             "Blame[%]",
             "Blame+CP",
             "Blame on CP" );
-    //printf( "-------------------------------------------------- ---------- ----"
-    //        "------- ----------- ------- ----------- -------- ------\n" );
-    printf( "--------------------------------------------------\n" );
-    
+
+    printf( "%.*s", 
+            RNAMELEN, "-----------------------------------------------------" );
+    printf( "\n" );
+
     std::set< OTF2ParallelTraceWriter::ActivityGroup,
               OTF2ParallelTraceWriter::ActivityGroupCompare > sortedActivityGroups;
-
-    if( globalLengthCP == 0 )
-    {
-      UTILS_MSG( true, "Global critical path length is 0. Skipping output ..." );
-      return;
-    }
       
     // for all activity groups
     for ( OTF2ParallelTraceWriter::ActivityGroupMap::iterator iter =
@@ -1658,7 +1650,7 @@ Runner::printAllActivities()
                            + std::string( "_rating.csv" );
       
       summaryFile = fopen(Filename.c_str(),"w");
-      fprintf(summaryFile, "Activity Group;Calls;Time [s];Time on CP [s];"
+      fprintf(summaryFile, "Region;Calls;Time [s];Time on CP [s];"
                            "CP Ratio [%%];Global Blame Ratio [%%];"
                            "Blame+CP;Blame on CP [s]\n" );
     }
@@ -1666,13 +1658,12 @@ Runner::printAllActivities()
     uint32_t sumInstances   = 0;
     uint64_t sumDuration    = 0;
     uint64_t sumDurationCP  = 0;
-    uint64_t sumBlameOnCP   = 0;  
+    double sumBlameOnCP     = 0.0;  
     double sumFractionCP    = 0.0;
     double sumFractionBlame = 0.0;
-    
     uint64_t sumWaitingTime = 0;
     
-    size_t ctr           = 0;
+    size_t ctr = 0;
     for ( std::set< OTF2ParallelTraceWriter::ActivityGroup,
                     OTF2ParallelTraceWriter::ActivityGroupCompare >::
           const_iterator iter = sortedActivityGroups.begin();
@@ -1692,20 +1683,24 @@ Runner::printAllActivities()
         size_t regNameLen = strlen( regName );
         size_t regShift = 0;
         
-        if( regNameLen > 50 && regNameLen < 100 )
+        if( regNameLen > RNAMELEN )
         {
-          regShift = regNameLen - 50;
+          do
+          {
+            printf( "%.*s\n", RNAMELEN-1, regName + regShift );
+            regShift += RNAMELEN - 1;
+          } while( ( regNameLen - regShift ) > RNAMELEN );
         }
 
-        printf( "%50.50s %10u %11f %11f %6.2f %8.4f %6.6f %11.6f\n",
-                regName + regShift,
+        printf( "%*.*s %10u %11f %11f %6.2f %8.4f %6.6f %11.6f\n",
+                RNAMELEN, RNAMELEN, regName + regShift,
                 iter->numInstances,
                 analysis.getRealTime( iter->totalDuration ),
                 analysis.getRealTime( iter->totalDurationOnCP ),
                 100.0 * iter->fractionCP,
                 100.0 * iter->fractionBlame,
                 iter->fractionCP + iter->fractionBlame,
-                analysis.getRealTime( iter->blameOnCP ) );
+                iter->blameOnCP );
         
         ++ctr;
       }
@@ -1720,29 +1715,32 @@ Runner::printAllActivities()
                  100.0 * iter->fractionCP,
                  100.0 * iter->fractionBlame,
                  iter->fractionCP + iter->fractionBlame,
-                 analysis.getRealTime( iter->blameOnCP ) );
+                 iter->blameOnCP );
       }
       
       sumWaitingTime += iter->waitingTime;
     }
     
-    printf( "--------------------------------------------------\n"
-            "%48.48s%2lu %10u %11lf %11lf %6.2lf %8.4lf %20.6lf\n",
-              "Sum of Top ",
+    printf( "%.*s", 
+            RNAMELEN, "-----------------------------------------------------" );
+    printf( "\n%*.*s%2lu %10u %11lf %11lf %6.2lf %8.4lf %20.6lf\n",
+              RNAMELEN - 2, RNAMELEN - 2, "Sum of Top ",
               ctr,
               sumInstances,
               analysis.getRealTime( sumDuration ),
               analysis.getRealTime( sumDurationCP ),
               100.0 * sumFractionCP,
               100.0 * sumFractionBlame, 
-              analysis.getRealTime( sumBlameOnCP ) );
+              sumBlameOnCP );
     
     // print statistics
     Statistics& stats = analysis.getStatistics();
-    printf( "\nPattern summary:\n"
-            " Total program runtime:         %lf s\n"
-            " Total attributed waiting time: %lf s\n",
-            analysis.getRealTime(  criticalPathEnd.second - criticalPathStart.second ),
+    printf( "\n\033[4mPattern summary:\033[24m\n"
+            " %-30.30s: %11lf s\n"
+            " %-30.30s: %11lf s\n", 
+            "Total program runtime", 
+            (double) definitions.getTraceLength() / (double) definitions.getTimerResolution(),
+            "Total attributed waiting time",
             analysis.getRealTime( sumWaitingTime ) );
       
     //// MPI ////
@@ -1753,50 +1751,60 @@ Runner::printAllActivities()
                             stats.getStats()[ MPI_STAT_COLLECTIVE ];
     if( patternCount )
     {                      
-      printf( " MPI wait patterns:         %"PRIu64" (%lf s)\n",
-              patternCount,
+      printf( " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+              "MPI wait patterns",
               analysis.getRealTime( 
                 stats.getStats()[MPI_STAT_LATE_SENDER_WTIME] + 
                 stats.getStats()[MPI_STAT_LATE_RECEIVER_WTIME] +
                 stats.getStats()[MPI_STAT_SENDRECV_WTIME] +
                 stats.getStats()[MPI_STAT_WAITALL_LATEPARTNER_WTIME] +
                 stats.getStats()[MPI_STAT_COLLECTIVE_WTIME]
-              ) );
+              ), patternCount );
     }
                             
     patternCount = stats.getStats()[MPI_STAT_LATE_SENDER];
     if( patternCount )
     {
-      printf( "  Late sender:              %"PRIu64" (%lf s)\n", patternCount,
-              analysis.getRealTime( stats.getStats()[MPI_STAT_LATE_SENDER_WTIME] ) );
+      printf( " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+              " Late sender", 
+              analysis.getRealTime( stats.getStats()[MPI_STAT_LATE_SENDER_WTIME] ),
+              patternCount );
     }
     
     patternCount = stats.getStats()[ MPI_STAT_LATE_RECEIVER ];
     if( patternCount )
     {
-      printf( "  Late receiver:            %"PRIu64" (%lf s)\n", patternCount,
-              analysis.getRealTime( stats.getStats()[MPI_STAT_LATE_RECEIVER_WTIME] ) );
+      printf( " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+              " Late receiver",
+              analysis.getRealTime( stats.getStats()[MPI_STAT_LATE_RECEIVER_WTIME] ),
+              patternCount );
     }
     
     patternCount = stats.getStats()[MPI_STAT_SENDRECV];
     if( patternCount )
     {
-      printf( "  Wait in MPI_Sendrecv:     %"PRIu64" (%lf s)\n", patternCount,
-              analysis.getRealTime( stats.getStats()[MPI_STAT_SENDRECV_WTIME] ) );
+      printf( " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+              " Wait in MPI_Sendrecv",
+              analysis.getRealTime( stats.getStats()[MPI_STAT_SENDRECV_WTIME] ),
+              patternCount );
     }
     
     patternCount = stats.getStats()[ MPI_STAT_WAITALL_LATEPARTNER ];
     if( patternCount )
     {
-      printf( "  MPI_Waitall late partner: %"PRIu64" (%lf s)\n", patternCount,
-              analysis.getRealTime( stats.getStats()[MPI_STAT_WAITALL_LATEPARTNER_WTIME] ) );
+      printf( " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+              " MPI_Waitall late partner",
+              analysis.getRealTime( stats.getStats()[MPI_STAT_WAITALL_LATEPARTNER_WTIME] ),
+              patternCount );
     }
     
     patternCount = stats.getStats()[ MPI_STAT_COLLECTIVE ];
     if( patternCount )
     {
-      printf( "  Wait in MPI collective:   %"PRIu64" (%lf s)\n", patternCount,
-              analysis.getRealTime( stats.getStats()[MPI_STAT_COLLECTIVE_WTIME] ) );
+      printf( " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+              " Wait in MPI collective",
+              analysis.getRealTime( stats.getStats()[MPI_STAT_COLLECTIVE_WTIME] ),
+              patternCount );
     }
     
     //// OpenMP ////
@@ -1806,8 +1814,10 @@ Runner::printAllActivities()
       if( patternCount )
       {
         printf( " OpenMP\n"
-                "  Wait in OpenMP barrier: %"PRIu64" (%lf s)\n", patternCount,
-                analysis.getRealTime( stats.getStats()[OMP_STAT_BARRIER_WTIME] ) );
+                " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+                " Wait in OpenMP barrier",
+                analysis.getRealTime( stats.getStats()[OMP_STAT_BARRIER_WTIME] ),
+                patternCount );
       }
     }
     
@@ -1815,21 +1825,25 @@ Runner::printAllActivities()
     if( analysis.haveParadigm( PARADIGM_CUDA ) || analysis.haveParadigm( PARADIGM_OCL ) )
     {
       printf( " Offloading\n"
-              "  Idle device:               %2.2lf%% (%lf s) \n"
-              "  Compute idle device:       %2.2lf%% (%lf s)\n",
-        (double) stats.getStats()[OFLD_STAT_IDLE_TIME] / 
-          (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100,
-        analysis.getRealTime( stats.getStats()[OFLD_STAT_IDLE_TIME] ),
-        (double) stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME] / 
-          (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100,
-        analysis.getRealTime( stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME] ) );
+              " %-30.30s: %11lf s (%2.2lf%%)\n"
+              " %-30.30s: %11lf s (%2.2lf%%)\n",
+              " Idle device",
+              analysis.getRealTime( stats.getStats()[OFLD_STAT_IDLE_TIME] ),
+              (double) stats.getStats()[OFLD_STAT_IDLE_TIME] / 
+              (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100,
+              " Compute idle device",
+              analysis.getRealTime( stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME] ), 
+              (double) stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME] / 
+              (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100
+         );
 
       patternCount = stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WAIT];
       if( patternCount )
       {
-        printf( "  Early blocking wait:       %"PRIu64" (%lf s, on kernel: %lf)\n",
-          patternCount, 
+        printf( " %-30.30s: %11lf s (%"PRIu64" occurrences), on kernel: %lf s\n",
+          " Early blocking wait",
           analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME] ),
+          patternCount, 
           analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL] ) );
       }
 
@@ -1843,23 +1857,30 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[OFLD_STAT_BLOCKING_COM];
       if( patternCount )
       {
-        printf( "  Blocking communication:    %"PRIu64" (%lf s)\n", patternCount,
-          analysis.getRealTime( stats.getStats()[OFLD_STAT_BLOCKING_COM_TIME] ) );
+        printf( " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+                " Blocking communication",
+          analysis.getRealTime( stats.getStats()[OFLD_STAT_BLOCKING_COM_TIME] ),
+          patternCount );
       }
 
       patternCount = stats.getStats()[OFLD_STAT_MULTIPLE_COM];
       if( patternCount )
       {
-        printf( "  Consecutive communication: %"PRIu64" (%lf s)\n", patternCount,
-          analysis.getRealTime( stats.getStats()[OFLD_STAT_MULTIPLE_COM_TIME] ) );
+        printf( " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+                " Consecutive communication",
+          analysis.getRealTime( stats.getStats()[OFLD_STAT_MULTIPLE_COM_TIME] ),
+          patternCount );
       }
       
       patternCount = stats.getStats()[OFLD_STAT_KERNEL_START_DELAY];
       if( patternCount )
       {
-        printf( "  Kernel Startup Delay:      %"PRIu64" (%lf s, %lf ms/kernel) \n\n", patternCount,
-          analysis.getRealTime( stats.getStats()[OFLD_STAT_KERNEL_START_DELAY_TIME] ),
-          analysis.getRealTime( stats.getStats()[OFLD_STAT_KERNEL_START_DELAY_TIME] ) / patternCount *1000 );
+        printf( " %-30.30s: %11lf ms/kernel (%"PRIu64" occurrences), total delay: %lf s\n\n",
+          " Kernel Startup Delay",
+          analysis.getRealTime( stats.getStats()[OFLD_STAT_KERNEL_START_DELAY_TIME] ) / patternCount *1000,
+          patternCount,
+          analysis.getRealTime( stats.getStats()[OFLD_STAT_KERNEL_START_DELAY_TIME] )
+        );
       }
     }
     

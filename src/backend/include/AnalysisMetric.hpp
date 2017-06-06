@@ -56,6 +56,7 @@ namespace casita
    const char* description; //!< description of the metric
    MetricMode  metricMode;  //!< write mode of the metric (e.g. next, last, etc.)
    OTF2_Type   valueType;   //!< OTF2 value type (uint64_t, float, etc.)
+   const char* unit;        //!< base unit of the metric value
    bool        isInternal;  //!< internal metrics are not written to the trace
  } MetricEntry;
  
@@ -81,13 +82,13 @@ namespace casita
  {
    { BLAME,         "Blame",         
                     "Amount of caused waiting time", 
-                    COUNTER_ABSOLUT_LAST, OTF2_TYPE_DOUBLE, false },
+                    COUNTER_ABSOLUT_LAST, OTF2_TYPE_DOUBLE, "seconds", false },
    { WAITING_TIME,  "Waiting Time",  
                     "Time in a wait state",          
-                    ATTRIBUTE, OTF2_TYPE_UINT64, false },
+                    ATTRIBUTE, OTF2_TYPE_UINT64, "ticks", false },
    { CRITICAL_PATH, "Critical Path", 
                     "On the critical path boolean",  
-                    COUNTER_ABSOLUT_NEXT, OTF2_TYPE_UINT64, false },
+                    COUNTER_ABSOLUT_NEXT, OTF2_TYPE_UINT64, "boolean", false },
                     
    // correctness
    { OMP_BARRIER_ERROR,   "MUST correctness check", 
@@ -96,11 +97,11 @@ namespace casita
                     
    // internal metrics
    { OMPT_REGION_ID,       "OMPT Region ID",         
-                           "", METRIC_MODE_UNKNOWN, OTF2_TYPE_UINT64, true },
+                           "", METRIC_MODE_UNKNOWN, OTF2_TYPE_UINT64, "", true },
    { OMP_PARENT_REGION_ID, "OpenMP Target Parent Region ID",  
-                           "", METRIC_MODE_UNKNOWN, OTF2_TYPE_UINT64, true },
+                           "", METRIC_MODE_UNKNOWN, OTF2_TYPE_UINT64, "", true },
    { OMP_IGNORE_BARRIER,   "OpenMP Target Collapsed Barrier", 
-                           "", METRIC_MODE_UNKNOWN, OTF2_TYPE_UINT8, true }
+                           "", METRIC_MODE_UNKNOWN, OTF2_TYPE_UINT8, "", true }
  };
 
  class AnalysisMetric

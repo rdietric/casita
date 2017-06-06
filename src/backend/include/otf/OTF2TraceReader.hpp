@@ -187,24 +187,6 @@ namespace casita
 
       int32_t
       getFirstKey( const std::string keyName );
-
-      uint64_t
-      getTimerResolution();
-
-      void
-      setTimerResolution( uint64_t ticksPerSecond );
-
-      uint64_t
-      getTimerOffset();
-
-      void
-      setTimerOffset( uint64_t offset );
-
-      uint64_t
-      getTraceLength();
-
-      void
-      setTraceLength( uint64_t length );
       
       void*
       getUserData();
@@ -548,9 +530,6 @@ namespace casita
       CommGroupMap     groupMap;
 
       ProcessGroupMap  processGroupMap;
-      uint64_t         ticksPerSecond;
-      uint64_t         timerOffset;
-      uint64_t         traceLength;
       uint32_t         ompForkJoinRef;
   };
  }

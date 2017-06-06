@@ -49,14 +49,12 @@ namespace casita
         
         uint32_t* data  = (uint32_t*)( recvLeave->getData() );
         uint32_t mpiTag = data[ 0 ];
-        uint32_t comRef = data[1];
+        uint32_t comRef = data[ 1 ];
         MPI_Comm communicator = mpiAnalysis.getMPICommGroup( comRef ).comm;
         delete[] data;
         
-        //UTILS_WARNING( "[%"PRIu64"] RecvRule: ")
-        
         // replay receive and retrieve information from communication partner
-        uint64_t buffer[CASITA_MPI_P2P_BUF_SIZE];
+        uint64_t buffer[ CASITA_MPI_P2P_BUF_SIZE ];
         MPI_CHECK( MPI_Recv( buffer, 
                              CASITA_MPI_P2P_BUF_SIZE, 
                              CASITA_MPI_P2P_ELEMENT_TYPE,
@@ -66,9 +64,9 @@ namespace casita
                              MPI_STATUS_IGNORE ) );
         
         GraphNode* recvEnter     = recvLeave->getGraphPair().first;
-        uint64_t   sendStartTime = buffer[0];
-        uint64_t   sendEndTime   = buffer[1];
-        uint64_t   sendEnterId   = buffer[2];
+        uint64_t   sendStartTime = buffer[ 0 ];
+        uint64_t   sendEndTime   = buffer[ 1 ];
+        uint64_t   sendEnterId   = buffer[ 2 ];
         
         /*if( ( buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_SEND ) &&
             ( buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_RECV ) )
@@ -109,7 +107,7 @@ namespace casita
                              partnerRank,
                              mpiTag + CASITA_MPI_REVERS_REPLAY_TAG, 
                              communicator //MPI_COMM_WORLD 
-          ) );
+        ) );
 
         // if send starts after receive starts, we found a late sender
         // no additional check for overlap needed, as MPI_Recv is always blocking

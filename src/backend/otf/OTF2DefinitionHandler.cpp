@@ -19,7 +19,10 @@
 //using namespace casita;
 using namespace casita::io;
 
-OTF2DefinitionHandler::OTF2DefinitionHandler()
+OTF2DefinitionHandler::OTF2DefinitionHandler() :
+  timerResolution( 1 ),
+  timerOffset( 0 ),
+  traceLength( 0 )
 { 
   
 }
@@ -27,6 +30,42 @@ OTF2DefinitionHandler::OTF2DefinitionHandler()
 OTF2DefinitionHandler::~OTF2DefinitionHandler() 
 { 
   
+}
+
+uint64_t
+OTF2DefinitionHandler::getTimerResolution()
+{
+  return timerResolution;
+}
+
+void
+OTF2DefinitionHandler::setTimerResolution( uint64_t ticksPerSecond )
+{
+  this->timerResolution = ticksPerSecond;
+}
+
+uint64_t
+OTF2DefinitionHandler::getTimerOffset()
+{
+  return timerOffset;
+}
+
+void
+OTF2DefinitionHandler::setTimerOffset( uint64_t offset )
+{
+  this->timerOffset = offset;
+}
+
+uint64_t
+OTF2DefinitionHandler::getTraceLength()
+{
+  return traceLength;
+}
+
+void
+OTF2DefinitionHandler::setTraceLength( uint64_t length )
+{
+  this->traceLength = length;
 }
 
 /**

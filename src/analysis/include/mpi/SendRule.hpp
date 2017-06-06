@@ -56,7 +56,7 @@ namespace casita
         uint32_t mpiTag       = data[ 0 ];
         uint32_t comRef       = data[ 1 ];
         MPI_Comm communicator = mpiAnalysis.getMPICommGroup( comRef ).comm;
-        
+
         // delete data field allocated in class AnalysisParadigmMPI
         delete[] data;
         
@@ -71,7 +71,7 @@ namespace casita
         buffer[1] = sendEndTime;
         buffer[2] = sendEnter->getId();
         buffer[3] = sendLeave->getId();
-        buffer[CASITA_MPI_P2P_BUF_LAST] = MPI_SEND;
+        buffer[ CASITA_MPI_P2P_BUF_LAST ] = MPI_SEND;
         MPI_CHECK( MPI_Send( buffer, 
                              CASITA_MPI_P2P_BUF_SIZE, 
                              CASITA_MPI_P2P_ELEMENT_TYPE,
@@ -111,7 +111,7 @@ namespace casita
         uint64_t recvStartTime = buffer[0];
         
         // detect wait state or distribute blame
-        if ( ( sendStartTime <= recvStartTime ) )
+        if ( sendStartTime <= recvStartTime )
         {
           // early sender/late receiver AND send overlaps with receive
           if ( sendStartTime < recvStartTime && sendEndTime > recvStartTime )

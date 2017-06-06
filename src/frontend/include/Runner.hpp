@@ -51,12 +51,6 @@ namespace casita
      void
      runAnalysis( EventStream::SortedGraphNodeList& allNodes );
 
-     ProgramOptions&
-     getOptions();
-
-     AnalysisEngine&
-     getAnalysis();
-
      void
      printAllActivities();
 
