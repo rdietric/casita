@@ -17,6 +17,10 @@ Offloading (CUDA/OpenCL)
 
 MISC
 - added summary output on inefficiency patterns for MPI, OpenMP, and offloading
+- added units for critical path, waiting time, and blame in OTF2 output
+- simplified blame distribution
+- write blame metric in seconds instead of ticks
+- improved rating output for long region names
 - reduced CASITA's memory overhead (less edges are created, different stream
   objects for MPI, OpenMP, and device streams, etc.)
 - added function filter for trace output
