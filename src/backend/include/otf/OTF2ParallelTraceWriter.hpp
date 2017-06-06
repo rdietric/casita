@@ -214,22 +214,13 @@ namespace casita
                                   uint64_t waitingTime );
       
       void
-      writeEventsWithAttributes( OTF2Event event, OTF2_AttributeList* attributes, 
-                                 CounterMap& counters );
-      
-      void
       writeCriticalPathMetric( OTF2Event event, bool graphNodesAvailable );
       
       void
       writeBlameMetric( OTF2Event event, double blame );
       
-      void
-      writeCounterMetrics( OTF2Event event, CounterMap& counters );
-      
       ///// \todo: works only for a single device per MPI rank ////
-      
-      
-      
+
       //<! used to detect offloading idle
       int deviceRefCount;
       uint64_t lastIdleStart;
@@ -274,8 +265,8 @@ namespace casita
         
         bool isFilterOn;
         
-        //!< save last counter values to avoid writing of unused counter records
-        CounterMap lastMetricValues;
+        //!< save last written critical path counter to avoid writing of unused counter records
+        bool lastWrittenCpValue;
         
         //!< Keep track if process is currently on critical path.
         //!< This is necessary to write counter values correctly.

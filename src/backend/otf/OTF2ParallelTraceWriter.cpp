@@ -802,6 +802,7 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
                                              cTable->getMetricId( CRITICAL_PATH ), 
                                              1, &type, &value ) );
           streamState.onCriticalPath = false;
+          streamState.lastWrittenCpValue = false;
 
           //UTILS_MSG( true, "[%"PRIu32"] Write CP =0 (node %s)", 
           //           mpiRank, (*currentNodeIter)->getUniqueName().c_str() );
@@ -842,10 +843,11 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
       streamState.lastMetricValues[ *ctrIdIter ] = 0;
     }*/
     
-    // set the initial critical path value if this is the first call of this function
+    // set the initial critical path value, if this is the first call of this function
     if( firstCall ) 
     {
       streamState.isFilterOn = false;
+      streamState.lastWrittenCpValue = false;
       
       // set the initial critical path value for this stream
       // (only in the first call of this function)
@@ -1058,67 +1060,13 @@ OTF2ParallelTraceWriter::computeBlame( OTF2Event event )
 }
 
 /**
- * Write attributes (or metric) values after the given event to new OTF2 file.
- *
- * @param event    event to add attributes
- * @param counters map of metric values
+ * Write waiting time as OTF2 attribute to output trace file. Write only values
+ * that are greater than zero.
+ * 
+ * @param event
+ * @param attributes list of existing OTF2 attributes
+ * @param waitingTime
  */
-void
-OTF2ParallelTraceWriter::writeEventsWithAttributes( OTF2Event event, 
-                                                    OTF2_AttributeList* attributes,
-                                                    CounterMap& counters )
-{
-  UTILS_ASSERT( evt_writerMap.find( event.location ) != evt_writerMap.end(),
-                "Could not find OTF2 event writer for location" );
-  
-  OTF2_EvtWriter* evt_writer = evt_writerMap[ event.location ];
-  
-  // for all available metrics
-  for ( CounterMap::const_iterator iter = counters.begin();
-        iter != counters.end(); ++iter )
-  {
-    const MetricType metricType = iter->first;
-    
-    // skip the critical path attribute, as it is "cheaper" to write a counter, 
-    // whenever the critical path changes instead of to every region
-    
-    // ignore all metrics, but attributes
-    if( cTable->getMetric( metricType )->metricMode != ATTRIBUTE )
-    {
-      continue;
-    }
-
-    // all metrics are definitely assigned to leave nodes
-    if( event.type == RECORD_LEAVE && iter->second != 0 )
-    {
-      if( attributes == NULL )
-      {
-        attributes = OTF2_AttributeList_New();
-        UTILS_WARNING( "Create new attribute list, as event does not provide one!" );
-      }
-      
-      OTF2_CHECK( OTF2_AttributeList_AddUint64( attributes, 
-                                                cTable->getMetricId( metricType ), 
-                                                iter->second ) );
-    }
-  }
-  
-  switch ( event.type )
-  {
-    case RECORD_ENTER:
-      OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writer, attributes, event.time, event.regionRef ) );
-      break;
-
-    case RECORD_LEAVE:
-      OTF2_CHECK( OTF2_EvtWriter_Leave( evt_writer, attributes, event.time, event.regionRef ) );
-      break;
-
-    default:
-      // write only counters for atomic events
-      break;
-  }
-}
-
 void
 OTF2ParallelTraceWriter::writeEventsWithWaitingTime( 
   OTF2Event event, OTF2_AttributeList* attributes, uint64_t waitingTime )
@@ -1161,7 +1109,13 @@ OTF2ParallelTraceWriter::writeEventsWithWaitingTime(
   }
 }
 
-// critical path counter, absolute next mode
+/**
+ * Write critical path value to new OTF2 file. Write counter only if it has 
+ * changed. Critical path counter is written in OTF2_METRIC_ABSOLUTE_NEXT mode.
+ * 
+ * @param event
+ * @param graphNodesAvailable
+ */
 void
 OTF2ParallelTraceWriter::writeCriticalPathMetric( OTF2Event event, 
                                                   bool graphNodesAvailable )
@@ -1175,76 +1129,68 @@ OTF2ParallelTraceWriter::writeCriticalPathMetric( OTF2Event event,
                 "Could not find stream status!" );
   
   StreamStatus& streamState = streamStatusMap[ event.location ];
-
-  // if the stream is on the critical path, but no more graph nodes available
-  // and therefore the counter table is empty (can happen on host processes)
-  if( graphNodesAvailable == false && streamState.onCriticalPath == true )
+  
+  // if we are at a leave event, which is the last on the stack, and critical
+  // path is not yet set to zero, then write '0'
+  if( event.type == RECORD_LEAVE && 
+      streamState.activityStack.size() == 1 && 
+      streamState.lastWrittenCpValue != 0 )
   {
-    // if we are at a leave event, which is the last on the stack, write '0'
-    if( event.type == RECORD_LEAVE && 
-        streamState.activityStack.size() == 1 && 
-        streamState.lastMetricValues[ CRITICAL_PATH ] != 0 )
+    OTF2_MetricValue value;
+    value.unsigned_int = 0;
+    streamState.lastWrittenCpValue = 0;
+
+    OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
+                                       cTable->getMetricId( CRITICAL_PATH ), 1, 
+                                       cTable->getMetricValueType( CRITICAL_PATH ), 
+                                       &value ) );
+    return;
+  }
+  
+  if( graphNodesAvailable )
+  {
+    // more internal nodes are available and the critical path value changes
+    uint64_t onCP = streamState.onCriticalPath;
+    if( streamState.lastWrittenCpValue != onCP )
     {
       OTF2_MetricValue value;
-      value.unsigned_int = 0;
-      streamState.lastMetricValues[ CRITICAL_PATH ] = 0;
-      
+      value.unsigned_int = onCP;
+      streamState.lastWrittenCpValue = onCP;
+
       OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
                                          cTable->getMetricId( CRITICAL_PATH ), 1, 
                                          cTable->getMetricValueType( CRITICAL_PATH ), 
                                          &value ) );
-      return;
     }
-    
-    if( event.type == RECORD_ENTER && /*streamState.activityStack.size() == 0*/ 
-        streamState.lastMetricValues[ CRITICAL_PATH ] == 0 )
+  }
+  // if the stream is on the critical path, but no more internal nodes are available
+  // This can happen on host processes, e.g. after MPI_Finalize().
+  else if( streamState.onCriticalPath == true )
+  {
+    // set critical path counter to '1' on any enter node if the last written
+    // value was zero
+    if( event.type == RECORD_ENTER && streamState.lastWrittenCpValue == 0 )
     {
       OTF2_MetricValue value;
       value.unsigned_int = 1;
-      streamState.lastMetricValues[ CRITICAL_PATH ] = 1;
+      streamState.lastWrittenCpValue = 1;
       
       OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
                                          cTable->getMetricId( CRITICAL_PATH ), 1, 
                                          cTable->getMetricValueType( CRITICAL_PATH ), 
                                          &value ) );
-    }
-    
-    return;
-  }
-
-  if( graphNodesAvailable )
-  {
-    const MetricEntry* metric = cTable->getMetric( CRITICAL_PATH );
-    OTF2_MetricValue   value;
-
-    // set counter to '0' for last leave event on the stack, if last counter 
-    // value is not already '0' for this location (applies to CUDA kernels)
-    if( event.type == RECORD_LEAVE && streamState.activityStack.size() == 1 &&
-        streamState.lastMetricValues[ CRITICAL_PATH ] != 0 )
-    {
-      value.unsigned_int = 0;
-      streamState.lastMetricValues[ CRITICAL_PATH ] = 0;
-
-      OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
-                                         cTable->getMetricId( CRITICAL_PATH ), 
-                                         1, &( metric->valueType ), &value ) );
-
-      return;
-    }
-
-    uint64_t onCP = streamState.onCriticalPath;
-    if( streamState.lastMetricValues[ CRITICAL_PATH ] != onCP )
-    {
-      value.unsigned_int = onCP;
-      streamState.lastMetricValues[ CRITICAL_PATH ] = onCP;
-
-      OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
-                                         cTable->getMetricId( CRITICAL_PATH ), 
-                                         1, &( metric->valueType ), &value ) );
     }
   }
 }
 
+/**
+ * Write blame value to new OTF2 file. Blame counter is written in 
+ * OTF2_METRIC_ABSOLUTE_LAST mode.
+ * \todo: change blame counter to next mode to avoid zero values on every event
+ * 
+ * @param event
+ * @param blame
+ */
 void
 OTF2ParallelTraceWriter::writeBlameMetric( OTF2Event event, double blame )
 {
@@ -1286,145 +1232,6 @@ OTF2ParallelTraceWriter::writeBlameMetric( OTF2Event event, double blame )
     OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
                                        cTable->getMetricId( BLAME ), 
                                        1, &( metric->valueType ), &value ) );
-  }
-}
-
-/**
- * Write counter values to new OTF2 file. Write counters only if they have changed.
- * Critical path counter implementation is for OTF2_METRIC_ABSOLUTE_NEXT mode.
- * Waiting time and blame counters are OTF2_METRIC_ABSOLUTE_LAST mode.
- *
- * @param event    event to potentially add counter values
- * @param counters corresponding metric value map
- */
-void
-OTF2ParallelTraceWriter::writeCounterMetrics( OTF2Event event, 
-                                              CounterMap& counters )
-{
-  UTILS_ASSERT( evt_writerMap.find( event.location ) != evt_writerMap.end(),
-                "Could not find OTF2 event writer for location" );
-  
-  OTF2_EvtWriter* evt_writer = evt_writerMap[ event.location ];
-  /*
-  UTILS_MSG( event.type == RECORD_ENTER && 
-             strcmp( getRegionName(event.regionRef).c_str(), "BUFFER FLUSH" ) == 0, 
-             "BUFFER FLUSH enter: '%s' stack %d (time: %llu), #counters: %llu", 
-             getRegionName(event.regionRef).c_str(), 
-             activityStack[event.location].size(), event.time, counters.size() );
-  */
-  UTILS_ASSERT( streamStatusMap.count( event.location ) > 0, 
-                "Could not find stream status!" );
-  
-  StreamStatus& streamState = streamStatusMap[ event.location ];
-
-  // if the stream is on the critical path, but no more graph nodes available
-  // and therefore the counter table is empty (can happen on host processes)
-  if( counters.size() == 0 && streamState.onCriticalPath == true )
-  {
-    // if we are at a leave event, which is the last on the stack, write '0'
-    if( event.type == RECORD_LEAVE && 
-        streamState.activityStack.size() == 1 && 
-        streamState.lastMetricValues[ CRITICAL_PATH ] != 0 )
-    {
-      OTF2_MetricValue value;
-      value.unsigned_int = 0;
-      streamState.lastMetricValues[ CRITICAL_PATH ] = 0;
-      
-      OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
-                                         cTable->getMetricId( CRITICAL_PATH ), 1, 
-                                         cTable->getMetricValueType( CRITICAL_PATH ), 
-                                         &value ) );
-      return;
-    }
-    
-    if( event.type == RECORD_ENTER && /*streamState.activityStack.size() == 0*/ 
-        streamState.lastMetricValues[ CRITICAL_PATH ] == 0 )
-    {
-      OTF2_MetricValue value;
-      value.unsigned_int = 1;
-      streamState.lastMetricValues[ CRITICAL_PATH ] = 1;
-      
-      OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
-                                         cTable->getMetricId( CRITICAL_PATH ), 1, 
-                                         cTable->getMetricValueType( CRITICAL_PATH ), 
-                                         &value ) );
-    }
-    
-    return;
-  }
-
-  // if counters are available
-  for ( CounterMap::const_iterator iter = counters.begin();
-        iter != counters.end(); ++iter )
-  {
-    const MetricType metricType = iter->first;
-    
-    const MetricEntry* metric = cTable->getMetric( metricType );
-    OTF2_MetricValue   value;
-    
-    // ignore attributes (waiting time)
-    if( metric->metricMode == ATTRIBUTE )
-      continue;
-    
-    // critical path counter, absolute next mode
-    if( CRITICAL_PATH == metricType )
-    {
-      // set counter to '0' for last leave event on the stack, if last counter 
-      // value is not already '0' for this location (applies to CUDA kernels)
-      if( event.type == RECORD_LEAVE && streamState.activityStack.size() == 1 &&
-          streamState.lastMetricValues[ CRITICAL_PATH ] != 0 )
-      {
-        value.unsigned_int = 0;
-        streamState.lastMetricValues[ CRITICAL_PATH ] = 0;
-      
-        OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
-                                           cTable->getMetricId( CRITICAL_PATH ), 
-                                           1, &( metric->valueType ), &value ) );
-        continue;
-      }
-      
-      uint64_t onCP = streamState.onCriticalPath;
-      if( streamState.lastMetricValues[ CRITICAL_PATH ] != onCP )
-      {
-        value.unsigned_int = onCP;
-        streamState.lastMetricValues[ CRITICAL_PATH ] = onCP;
-        
-        OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
-                                           cTable->getMetricId( CRITICAL_PATH ), 
-                                           1, &( metric->valueType ), &value ) );
-      }
-
-      continue;
-    }
-    // END: critical path counter
-    
-    // The following is currently only for the blame counter (last mode)
-    
-    // reset counter if this enter is the first event on the activity stack
-    if ( event.type == RECORD_ENTER && streamState.activityStack.size() == 0 )
-    {
-      value.unsigned_int = 0;
-      OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
-                                         cTable->getMetricId( metricType ), 
-                                         1, &( metric->valueType ), &value ) );
-    }
-    else
-    {
-      value.unsigned_int = iter->second;
-      OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
-                                         cTable->getMetricId( metricType ), 
-                                         1, &( metric->valueType ), &value ) );
-    }
-
-    // reset counter if this leave is the last event on the activity stack
-    if ( event.type == RECORD_LEAVE && streamState.activityStack.size() == 1 &&
-         value.unsigned_int != 0 )
-    {
-      value.unsigned_int = 0;
-      OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
-                                         cTable->getMetricId( metricType ), 
-                                         1, &( metric->valueType ), &value ) );
-    }
   }
 }
 
