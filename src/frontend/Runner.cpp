@@ -1683,13 +1683,13 @@ Runner::printAllActivities()
         size_t regNameLen = strlen( regName );
         size_t regShift = 0;
         
-        if( regNameLen > RNAMELEN )
+        if( regNameLen > ( size_t ) RNAMELEN )
         {
           do
           {
             printf( "%.*s\n", RNAMELEN-1, regName + regShift );
             regShift += RNAMELEN - 1;
-          } while( ( regNameLen - regShift ) > RNAMELEN );
+          } while( ( regNameLen - regShift ) > ( size_t ) RNAMELEN );
         }
 
         printf( "%*.*s %10u %11f %11f %6.2f %8.4f %6.6f %11.6f\n",
