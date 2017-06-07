@@ -85,7 +85,7 @@ namespace casita
                     COUNTER_ABSOLUT_LAST, OTF2_TYPE_DOUBLE, "seconds", false },
    { WAITING_TIME,  "Waiting Time",  
                     "Time in a wait state",          
-                    ATTRIBUTE, OTF2_TYPE_UINT64, "ticks", false },
+                    ATTRIBUTE, OTF2_TYPE_DOUBLE, "seconds", false },
    { CRITICAL_PATH, "Critical Path", 
                     "On the critical path boolean",  
                     COUNTER_ABSOLUT_NEXT, OTF2_TYPE_UINT64, "boolean", false },

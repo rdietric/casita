@@ -527,15 +527,13 @@ OTF2ParallelTraceWriter::writeAnalysisMetricDefinitions()
                                                       strRefUnit,
                                                       entry->unit ) );
         
-        
         if( entry->metricMode == ATTRIBUTE )
         {
           uint32_t newAttrId = cTable->newOtf2Id( metric );
 
           OTF2_CHECK(
             OTF2_GlobalDefWriter_WriteAttribute( otf2GlobalDefWriter, newAttrId, 
-                                                 strRefName,
-                                                 strRefDesc,
+                                                 strRefName, strRefDesc,
                                                  entry->valueType ) );
         }
         else if( entry->metricMode != METRIC_MODE_UNKNOWN )
@@ -1088,9 +1086,14 @@ OTF2ParallelTraceWriter::writeEventsWithWaitingTime(
       UTILS_WARNING( "Create new attribute list, as event does not provide one!" );
     }
 
-    OTF2_CHECK( OTF2_AttributeList_AddUint64( attributes, 
+    //OTF2_CHECK( OTF2_AttributeList_AddUint64( attributes, 
+    //                                          cTable->getMetricId( WAITING_TIME ), 
+    //                                          waitingTime ) );
+    
+    double wt = waitingTime * timeConversionFactor;
+    OTF2_CHECK( OTF2_AttributeList_AddDouble( attributes, 
                                               cTable->getMetricId( WAITING_TIME ), 
-                                              waitingTime ) );
+                                              wt ) );
   }
   
   switch ( event.type )
@@ -1413,12 +1416,18 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   //           eventName.c_str(), event.type, (int)mapsInternalNode );
 
   // non-internal counter values for this event
-  bool     evtOnCP      = false;
-  uint64_t waitingTime  = 0;
+  bool     evtOnCP     = false;
+  uint64_t waitingTime = 0;
   
-  // compute blame counter
-  double blame = computeBlame( event );
-  
+  // write blame only if we have open edges (avoid to write blame '0')
+  bool   writeBlame = false;
+  double blame      = 0.0;
+  if( streamState.openEdges.size() > 0 )
+  {
+    writeBlame = true;
+    // compute blame counter
+    blame = computeBlame( event );
+  }
   EventStream::SortedGraphNodeList::iterator endNodeIter = 
     currentStream->getNodes().end();
   EventStream::SortedGraphNodeList::iterator currentNodeIter = 
@@ -1554,6 +1563,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
           if ( edge->getBlame() > 0 )
           {
             streamState.openEdges.push_back( edge );
+            writeBlame = true;
           }
         }
       }
@@ -1676,7 +1686,12 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   if ( writeToFile )
   {
     writeCriticalPathMetric( event, streamState.currentNodeIter != endNodeIter );
-    writeBlameMetric( event, blame );
+    
+    if( writeBlame )
+    {
+      writeBlameMetric( event, blame );
+    }
+    
     writeEventsWithWaitingTime( event, attributeList, waitingTime );
   }
   
