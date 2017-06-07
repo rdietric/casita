@@ -73,7 +73,8 @@ main( int argc, char** argv )
     // if selected as parameter, the summary statistics are merged and printed
     if ( options.mergeActivities )
     {
-      UTILS_MSG_NOBR( mpiRank == 0, "Generate activity impact rating:" );
+      UTILS_MSG_NOBR( mpiRank == 0 && options.verbose >= VERBOSE_TIME, 
+                      "Generate program region impact rating:" );
       
       clock_t ts_merge = clock() - timestamp;
 
@@ -83,7 +84,8 @@ main( int argc, char** argv )
       
       ts_merge = clock() - ts_merge;
     
-      UTILS_MSG( mpiRank == 0, " (%f sec)", ( (float) ts_merge ) / CLOCKS_PER_SEC );
+      UTILS_MSG( mpiRank == 0 && options.verbose >= VERBOSE_TIME, 
+                 " (%f sec)", ( (float) ts_merge ) / CLOCKS_PER_SEC );
 
       runner->printAllActivities();
 

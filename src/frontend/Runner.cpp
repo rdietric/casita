@@ -340,7 +340,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     // write OTF2 definitions for this MPI rank (only once), not thread safe!
     if( !otf2_def_written )
     {
-      UTILS_MSG( mpiRank == 0, "[0] Writing result to %s", 
+      UTILS_MSG( mpiRank == 0, "Writing result to %s", 
                  Parser::getInstance().getPathToFile().c_str() );
 
       otf2_def_written = true;
@@ -388,13 +388,13 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     UTILS_OUT( "Critical-path analysis took %f seconds.", 
                ( (float) time_analysis_cp ) / CLOCKS_PER_SEC );
     
-    UTILS_OUT( "Trace writing (and CPU blame assignment) took %f seconds.", 
+    UTILS_OUT( "Trace writing (and blame assignment) took %f seconds.", 
                ( (float) time_events_write ) / CLOCKS_PER_SEC );
+    
+    UTILS_MSG( options.analysisInterval, "Number of analysis intervals: %"PRIu32
+               " (Cleanup nodes took %f seconds)", ++analysis_intervals, 
+               ( (float) time_events_flush ) / CLOCKS_PER_SEC );
   }
-
-  UTILS_MSG( mpiRank == 0 && options.analysisInterval,
-             "Number of analysis intervals: %"PRIu32" (Cleanup nodes took %f seconds)", 
-             ++analysis_intervals, ( (float) time_events_flush ) / CLOCKS_PER_SEC );
   
   UTILS_MSG( options.verbose >= VERBOSE_SOME, 
                "[%u] Total number of processed events: %"PRIu64, 

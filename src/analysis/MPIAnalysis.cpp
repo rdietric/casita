@@ -287,7 +287,8 @@ MPIAnalysis::reset()
   // 
   if( remoteNodeMap.size() > 0 ) 
   {
-    UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC, 
+    UTILS_MSG_IF_ONCE( Parser::getVerboseLevel() > VERBOSE_BASIC, 
+                       Parser::getVerboseLevel() > VERBOSE_TIME, 
                "[%"PRIu32"] Clear %lu remote nodes. Critical path analysis "
                "might fail otherwise.", mpiRank, remoteNodeMap.size() );
     

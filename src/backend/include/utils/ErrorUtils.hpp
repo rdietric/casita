@@ -175,6 +175,15 @@ namespace casita
  { \
    UTILS_WARN_ONCE( fmt, __VA_ARGS__ ); \
  }
+ 
+ #define UTILS_MSG_IF_ONCE( cond, cond2, fmt, ... ) \
+ if ( cond ) { \
+   UTILS_OUT( fmt, __VA_ARGS__ ); \
+ } \
+ else if ( cond2 ) \
+ { \
+   UTILS_WARN_ONCE( fmt, __VA_ARGS__ ); \
+ }
 
 // debugging
 #if defined(DEBUG) && defined(DEBUG_LEVEL)
