@@ -136,8 +136,11 @@ namespace casita
                         "not found.", waitAllLeave->getStreamId() );
             }
             
+            // determine waiting time, which cannot be longer than the 
+            // MPI_Waitall duration
             uint64_t wtime = 
-              latestCommPartnerStopTime - waitAllEnter->getTime();
+              std::min( latestCommPartnerStopTime, waitAllLeave->getTime() ) 
+              - waitAllEnter->getTime();
             
             // add waiting time statistics (MPI_STAT_WAITALL)
             analysis->getStatistics().addStatWithCount( 

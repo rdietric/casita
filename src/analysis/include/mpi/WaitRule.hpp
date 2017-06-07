@@ -120,7 +120,8 @@ namespace casita
                          streamId );
             }
             
-            uint64_t wtime = p2pPartnerTime - waitEnter->getTime();
+            uint64_t wtime = std::min( p2pPartnerTime, waitLeave->getTime() )
+                           - waitEnter->getTime();
             
             // add waiting time to statistics
             if( p2pPartnerType & ( MPI_RECV | MPI_IRECV ) )
