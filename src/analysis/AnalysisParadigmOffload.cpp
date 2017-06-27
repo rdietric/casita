@@ -558,7 +558,8 @@ AnalysisParadigmOffload::removeKernelLaunch( GraphNode* kernel )
       GraphNode* kernelLaunchLeave = kernelLaunchEnter->getGraphPair().second;
       pendingKernelLaunchMap[ streamId ].remove( kernelLaunchLeave );
 
-      UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_TIME, 
+      UTILS_MSG_IF_ONCE( Parser::getVerboseLevel() > VERBOSE_BASIC, 
+                         Parser::getVerboseLevel() > VERBOSE_TIME,
                  "[%"PRIu32"] Removed %s referencing %"PRIu64" from kernel "
                  "launch map (new list size %llu)", 
                  commonAnalysis->getMPIRank(),
