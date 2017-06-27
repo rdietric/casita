@@ -788,7 +788,6 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
             ( currentNodeIter + 1 != processNodes->end() ) && 
             ( *( currentNodeIter + 1 ) )->getCounter( CRITICAL_PATH, NULL ) == 0 )
         {
-          OTF2_Type        type  = OTF2_TYPE_UINT64;
           OTF2_MetricValue value;
           OTF2_EvtWriter*  evt_writer = evt_writerMap[ streamId ];
 
@@ -796,9 +795,9 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
 
           // we need the metric instance/class ID
           OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, 
-                                             streamState.lastEventTime,
-                                             cTable->getMetricId( CRITICAL_PATH ), 
-                                             1, &type, &value ) );
+            streamState.lastEventTime, cTable->getMetricId( CRITICAL_PATH ), 1, 
+            cTable->getMetricValueType( CRITICAL_PATH ), &value ) );
+          
           streamState.onCriticalPath = false;
           streamState.lastWrittenCpValue = false;
 
@@ -1137,11 +1136,11 @@ OTF2ParallelTraceWriter::writeCriticalPathMetric( OTF2Event event,
   // path is not yet set to zero, then write '0'
   if( event.type == RECORD_LEAVE && 
       streamState.activityStack.size() == 1 && 
-      streamState.lastWrittenCpValue != 0 )
+      streamState.lastWrittenCpValue == true )
   {
     OTF2_MetricValue value;
     value.unsigned_int = 0;
-    streamState.lastWrittenCpValue = 0;
+    streamState.lastWrittenCpValue = false;
 
     OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
                                        cTable->getMetricId( CRITICAL_PATH ), 1, 
@@ -1172,11 +1171,11 @@ OTF2ParallelTraceWriter::writeCriticalPathMetric( OTF2Event event,
   {
     // set critical path counter to '1' on any enter node if the last written
     // value was zero
-    if( event.type == RECORD_ENTER && streamState.lastWrittenCpValue == 0 )
+    if( event.type == RECORD_ENTER && streamState.lastWrittenCpValue == false )
     {
       OTF2_MetricValue value;
       value.unsigned_int = 1;
-      streamState.lastWrittenCpValue = 1;
+      streamState.lastWrittenCpValue = true;
       
       OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
                                          cTable->getMetricId( CRITICAL_PATH ), 1, 
@@ -1584,9 +1583,18 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
 
       // if next node is NOT on the CP, set the CP value for the
       // following CPU events to false
-      if( nextNode && nextNode->getCounter( CRITICAL_PATH ) == 0 )
+      if( nextNode ) 
       {
-        streamState.onCriticalPath = false;
+        if( nextNode->getCounter( CRITICAL_PATH ) == 0 )
+        {
+          streamState.onCriticalPath = false;
+        }
+        // \todo: workaround for OTF2 output
+        else if( currentNode->isOffloadKernel() && 
+                 nextNode->getCounter( CRITICAL_PATH ) == 1 )
+        {
+          streamState.onCriticalPath = true;
+        }
       }
 
       // if node is leave
@@ -1667,12 +1675,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       }
     }
   }
-  
-  /*UTILS_MSG( streamState.onCriticalPath || evtOnCP, 
-             "[%llu] %s (%d) on CP? stream %d, event: %d", 
-             event.location, defHandler->getRegionName( event.regionRef ), 
-             event.type, streamState.onCriticalPath, evtOnCP );
-  */
+
   // write idle leave before the device task enter
   if( currentStream->isDeviceStream() && event.type == RECORD_ENTER )
   {
