@@ -1146,10 +1146,11 @@ Runner::findLastMpiNode( GraphNode** localLastMpiLeave )
 /**
  * Detect the critical path of the MPI sub graph and generate a list of critical
  * sections that are analyzed locally (but OpenMP parallel).
- * This routine implements a master slave concept. The master looks for runs
- * until a blocking local MPI edge. Then it sends messages to all communication
- * partners of the respective MPI activity. The slaves wait for such messages 
- * and check whether they will be the new master (have an edge to the last master node).
+ * This routine implements a master slave concept. The master MPI nodes on the
+ * process as critical until a blocking local MPI edge is found. Then it sends 
+ * a message (new master) to the non-blocking communication partner using the MPI remote node
+ * which has been generated during the analysis. The slaves wait for a message
+ * and process their "critical MPI sections".
  *
  * @param sectionsList  critical sections between MPI regions on the critical 
  *                      path will be stored in this list
@@ -1300,7 +1301,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
           // whether the edge is available and ignore return value)
           MPIAnalysis::RemoteNode pnPair = // (stream ID, node ID)
             analysis.getMPIAnalysis().getRemoteNodeInfo( currentNode,
-                                                          &nodeHasRemoteInfo );
+                                                         &nodeHasRemoteInfo );
           
           // check enter event
           if( !nodeHasRemoteInfo )
@@ -1508,9 +1509,11 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
                      mpiRank, status.MPI_SOURCE,
                      nextNodeID ); // continuation node ID
 
+      const Graph::NodeList& nodes = mpiGraph->getNodes();
+      
       // binary search for continuation node
       GraphNode* slaveLeaveNode = 
-        GraphNode::findNode( nextNodeID, mpiGraph->getNodes() );
+        GraphNode::findNode( nextNodeID, nodes );
 
       //////// if the node could not be found, do a sequential search //////////
       if( !slaveLeaveNode || slaveLeaveNode->getId() != nextNodeID )
@@ -1519,8 +1522,8 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
         slaveLeaveNode = NULL;
 
         // sequential search 
-        for( Graph::NodeList::const_iterator iter = mpiGraph->getNodes().begin();
-             iter != mpiGraph->getNodes().end(); ++iter )
+        for( Graph::NodeList::const_iterator iter = nodes.begin();
+             iter != nodes.end(); ++iter )
         {
           if( (*iter)->getId() == nextNodeID )
           {
@@ -1531,12 +1534,12 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
 
         if( !slaveLeaveNode )
         {
-          if( nextNodeID < mpiGraph->getNodes().front()->getId() )
+          if( nextNodeID < nodes.front()->getId() )
           {
             UTILS_MSG( true, "[%u] Node ID %"PRIu64" is out of range "
                        "[%"PRIu64",%"PRIu64"]! Send from %d",
-                       mpiRank, nextNodeID, mpiGraph->getNodes().front()->getId(), 
-                       mpiGraph->getNodes().back()->getId(), status.MPI_SOURCE );
+                       mpiRank, nextNodeID, nodes.front()->getId(), 
+                       nodes.back()->getId(), status.MPI_SOURCE );
           }
           else
           {
