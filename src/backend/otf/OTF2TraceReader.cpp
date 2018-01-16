@@ -28,6 +28,10 @@
 #include "otf/OTF2TraceReader.hpp"
 #include "utils/ErrorUtils.hpp"
 
+#if defined(SCOREP_USER_ENABLE)
+#include "scorep/SCOREP_User.h"
+#endif
+
 #define OTF2_CHECK( cmd ) \
   { \
     int _status = cmd; \
@@ -243,6 +247,10 @@ OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
 bool
 OTF2TraceReader::readEvents( uint64_t *events_read )
 {
+#if defined(SCOREP_USER_ENABLE)
+  SCOREP_USER_REGION( "readEvents", SCOREP_USER_REGION_TYPE_FUNCTION )
+#endif
+    
   OTF2_GlobalEvtReader* global_evt_reader =
     OTF2_Reader_GetGlobalEvtReader( reader );
   

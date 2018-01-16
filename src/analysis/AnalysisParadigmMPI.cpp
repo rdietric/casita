@@ -130,14 +130,14 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
     // invalidate communicator
     commData.comRef = UINT32_MAX;
     
-    // expose this blocking MPI operation, if an offloading kernel is active
+    /* expose this blocking MPI operation, if an offloading kernel is active
     if( commonAnalysis->getAnalysis( PARADIGM_OFFLOAD ) )
     {
       offload::AnalysisParadigmOffload* ofldAnalysis = 
         ( offload::AnalysisParadigmOffload* ) commonAnalysis->getAnalysis( PARADIGM_OFFLOAD );
       
       ofldAnalysis->getActiveKernelCount();
-    }
+    }*/
   }
   else // handle non-blocking MPI communication enter/leave events
   {

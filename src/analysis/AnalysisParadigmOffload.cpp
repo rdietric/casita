@@ -31,7 +31,7 @@ using namespace casita::io;
 
 AnalysisParadigmOffload::AnalysisParadigmOffload( AnalysisEngine* analysisEngine ) :
   IAnalysisParadigm( analysisEngine ),
-  activeKernels ( 0 )
+  pendingKernels( 0 ) 
 {
   // triggered on offload kernel leave
   addRule( new KernelExecutionRule( 9 ) );
@@ -157,28 +157,37 @@ AnalysisParadigmOffload::getParadigm()
 }
 
 void
-AnalysisParadigmOffload::handlePostEnter( GraphNode* node )
+AnalysisParadigmOffload::handlePostEnter( GraphNode* enterNode )
 {
-  if ( node->isOffloadEnqueueKernel() )
+  if( NULL == enterNode )
   {
-    addPendingKernelLaunch( node );
+    UTILS_WARNING( "Offload enter node == NULL!" );
+    return;
   }
-  else if( node->isOffloadKernel() )
+  
+  if ( enterNode->isOffloadEnqueueKernel() )
   {
-    activeKernels++;
+    addPendingKernelLaunch( enterNode );
+    pendingKernels++;
   }
 }
 
 void
-AnalysisParadigmOffload::handlePostLeave( GraphNode* node )
+AnalysisParadigmOffload::handlePostLeave( GraphNode* leaveNode )
 {
-  if ( node->isOffloadEnqueueKernel() )
+  if( NULL == leaveNode )
   {
-    addPendingKernelLaunch( node );
+    UTILS_WARNING( "Offload leave node == NULL!" );
+    return;
   }
-  else if( node->isOffloadKernel() )
+  
+  if ( leaveNode->isOffloadEnqueueKernel() )
   {
-    activeKernels--;
+    addPendingKernelLaunch( leaveNode );
+  }
+  else if( leaveNode->isOffloadKernel() )
+  {
+    pendingKernels--;
   }
 }
 
@@ -255,9 +264,9 @@ AnalysisParadigmOffload::handleKeyValuesLeave( OTF2TraceReader*  reader,
 }
 
 size_t
-AnalysisParadigmOffload::getActiveKernelCount() const
+AnalysisParadigmOffload::getPendingKernelCount() const
 {
-  return activeKernels;
+  return pendingKernels;
 }
 
 
@@ -416,14 +425,8 @@ void
 AnalysisParadigmOffload::addPendingKernelLaunch( GraphNode* launch )
 {
   // append at tail (FIFO)
-  if( launch )
-  {
-    pendingKernelLaunchMap[ launch->getGraphPair().first->getReferencedStreamId() ].push_back( launch );
-  }
-  else
-  {
-    UTILS_WARNING( "Try to add NULL as kernel launch!" );
-  }
+  pendingKernelLaunchMap[ launch->getGraphPair().first->getReferencedStreamId() ]
+    .push_back( launch );
 }
 
 /**

@@ -139,7 +139,7 @@ namespace casita
             
             // add waiting time to statistics
             commonAnalysis->getStatistics().addStatWithCount( 
-              MPI_STAT_LATE_RECEIVER, recvStartTime - sendStartTime  );
+              MPI_STAT_LATE_RECEIVER, recvStartTime - sendStartTime );
             
             sendLeave->setCounter( WAITING_TIME, recvStartTime - sendStartTime );
           }

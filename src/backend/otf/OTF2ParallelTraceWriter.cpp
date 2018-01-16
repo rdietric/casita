@@ -44,6 +44,10 @@
 #include "FunctionTable.hpp"
 #include "Parser.hpp"
 
+#if defined(SCOREP_USER_ENABLE)
+#include "scorep/SCOREP_User.h"
+#endif
+
 using namespace casita;
 using namespace casita::io;
 
@@ -714,6 +718,8 @@ OTF2ParallelTraceWriter::registerEventCallbacks()
 uint64_t
 OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
 {
+  //SCOREP_USER_REGION( "writeLocations", SCOREP_USER_REGION_TYPE_FUNCTION )
+  
   UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_SOME, 
              "[%"PRIu32"] Write streams ...", mpiRank );
   
@@ -872,11 +878,19 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
   firstCall = false;
   
   assert( otf2GlobalEventReader );
-
+  
+#if defined(SCOREP_USER_ENABLE)
+  SCOREP_USER_REGION_DEFINE( read_events_handle )
+  SCOREP_USER_REGION_BEGIN( read_events_handle, "writer::readEvents",
+                            SCOREP_USER_REGION_TYPE_COMMON )
+#endif
   // returns 0 if successful, >0 otherwise
   uint64_t events_read = 0;
   OTF2_ErrorCode otf2_error = OTF2_Reader_ReadGlobalEvents( 
     otf2Reader, otf2GlobalEventReader, eventsToRead, &events_read );
+#if defined(SCOREP_USER_ENABLE)
+  SCOREP_USER_REGION_END( read_events_handle )
+#endif
   
   UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() > VERBOSE_BASIC, 
              "[0] Writer: Read %"PRIu64" / %"PRIu64" events", 
@@ -1393,7 +1407,9 @@ OTF2ParallelTraceWriter::handleDeviceTaskLeave( uint64_t time,
 void
 OTF2ParallelTraceWriter::processNextEvent( OTF2Event event, 
                                            OTF2_AttributeList* attributeList )
-{  
+{
+  //SCOREP_USER_REGION( "writer::processEvent", SCOREP_USER_REGION_TYPE_FUNCTION )
+    
   RegionInfo& regionInfo = defHandler->getRegionInfo( event.regionRef );  
   const char* eventName  = regionInfo.name;
   

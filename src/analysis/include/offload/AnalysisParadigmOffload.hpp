@@ -66,7 +66,7 @@ namespace casita
                             OTF2KeyValueList* list );
       
       size_t
-      getActiveKernelCount( void ) const;
+      getPendingKernelCount( void ) const;
       
       bool
       isKernelPending( GraphNode* kernelNode );
@@ -125,9 +125,9 @@ namespace casita
       void
       printKernelLaunchMap();
 
-    private:
-      // number of pending kernels during trace reading
-      size_t activeKernels;
+    private:      
+      // number of pending kernels (between launch and kernel end) during trace reading
+      size_t pendingKernels;
       
       //!< maps event ID to last (cuEventRecord) leave node for this event
       IdEventNodeMap     eventLaunchMap;

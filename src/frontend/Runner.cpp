@@ -30,6 +30,9 @@
 
 #include "Runner.hpp"
 
+#if defined(SCOREP_USER_ENABLE)
+#include "scorep/SCOREP_User.h"
+#endif
 
 using namespace casita;
 using namespace casita::io;
@@ -80,6 +83,12 @@ Runner::~Runner()
 void
 Runner::prepareAnalysis()
 {
+#if defined(SCOREP_USER_ENABLE)
+  SCOREP_USER_REGION_DEFINE( prepare_handle )
+  SCOREP_USER_REGION_BEGIN( prepare_handle, "prepareAnalysis",
+                            SCOREP_USER_REGION_TYPE_PHASE )
+#endif
+    
   //OTF2DefinitionHandler* defHandler = new OTF2DefinitionHandler();
   callbacks.setDefinitionHandler( &definitions );
 
@@ -164,6 +173,10 @@ Runner::prepareAnalysis()
   // initialize the OTF2 trace writer
   writer = new OTF2ParallelTraceWriter( &analysis, &definitions );
   
+  #if defined(SCOREP_USER_ENABLE)
+  SCOREP_USER_REGION_END( prepare_handle )
+  #endif
+  
   // read events from the trace, build a graph and do the analysis
   processTrace( traceReader );
   
@@ -193,6 +206,10 @@ Runner::prepareAnalysis()
 void
 Runner::processTrace( OTF2TraceReader* traceReader )
 {
+#if defined(SCOREP_USER_ENABLE)
+  SCOREP_USER_REGION( "processTrace", SCOREP_USER_REGION_TYPE_FUNCTION )
+#endif
+    
   if ( !traceReader )
   {
     throw RTException( "Trace reader is not available!" );
@@ -238,6 +255,12 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   clock_t time_analysis_cp   = 0;
   do
   {
+#if defined(SCOREP_USER_ENABLE)
+    SCOREP_USER_REGION_DEFINE( read_handle )
+    SCOREP_USER_REGION_BEGIN( read_handle, "processTrace::read",
+                              SCOREP_USER_REGION_TYPE_PHASE )
+#endif
+    
     // read events until global collective (with global event reader)
     clock_t time_tmp = clock();
     
@@ -251,6 +274,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     
     //\todo: separate function?
     // for interval analysis
+    // invokes global blocking collective
     if( events_available )
     {
       time_tmp = clock();
@@ -260,13 +284,14 @@ Runner::processTrace( OTF2TraceReader* traceReader )
       uint64_t last_node_id = 0;
       uint64_t current_pending_nodes = 0;
         
-      // if the global collective if within an OpenMP region and barriers are
-      // open we need to retain the MPI nodes and cannot start an intermediate 
-      // analysis
+      // if the global collective is within an OpenMP region or an offload 
+      // kernel is pending we cannot start an intermediate analysis
       if( ( ompAnalysis && ompAnalysis->getNestingLevel() > 0 ) ||
-          ( ofldAnalysis && ofldAnalysis->getActiveKernelCount() > 0 ) )
+          ( ofldAnalysis && ofldAnalysis->getPendingKernelCount() > 0 ) )
       {
-        //UTILS_MSG( true, "Found pending local region" );
+        //UTILS_OUT( "Found pending local region" );
+        // invalidate pending nodes
+        current_pending_nodes = UINT64_MAX;
       }
       else
       {
@@ -282,7 +307,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
       MPI_CHECK( MPI_Allreduce( &current_pending_nodes, &maxNodes, 1, 
                                 MPI_UINT64_T, MPI_MAX, MPI_COMM_WORLD ) );
 
-      if ( options.analysisInterval < maxNodes )
+      if ( options.analysisInterval < maxNodes && UINT64_MAX != maxNodes )
       {
         start_analysis = true;
         
@@ -295,12 +320,19 @@ Runner::processTrace( OTF2TraceReader* traceReader )
       // if we didn't find a process with enough work, continue reading
       if( !start_analysis )
       {
+#if defined(SCOREP_USER_ENABLE)
+        SCOREP_USER_REGION_END( read_handle )
+#endif
         continue;
       }
       
       // increase counter of analysis intervals
       ++analysis_intervals;
     }
+    
+#if defined(SCOREP_USER_ENABLE)
+    SCOREP_USER_REGION_END( read_handle )
+#endif
 
     // perform analysis for these events
     time_tmp = clock();
@@ -309,7 +341,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     time_analysis += clock() - time_tmp;
       
     // \todo: to run the CPA we need all nodes on all processes to be analyzed?
-    MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
+    //MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
     UTILS_MSG( mpiRank == 0 && !options.analysisInterval, 
                "[0] Computing the critical path" );
@@ -326,10 +358,10 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     computeCriticalPath( analysis_intervals <= 1, !events_available );
 
     //\todo: needed?
-    if ( analysis_intervals > 1 && events_available )
+    /*if ( analysis_intervals > 1 && events_available )
     {
       MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
-    }
+    }*/
     
     time_analysis_cp += clock() - time_tmp;
     
@@ -369,8 +401,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
       time_events_flush += clock() - time_tmp;
     }
     
-    // necessary?
-    MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
+    //MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
   } while( events_available );
   
   // write the last device idle leave events
@@ -616,6 +647,10 @@ Runner::mergeStatistics()
 void
 Runner::computeCriticalPath( const bool firstInterval, const bool lastInterval )
 {
+#if defined(SCOREP_USER_ENABLE)
+  SCOREP_USER_REGION( "computeCriticalPath", SCOREP_USER_REGION_TYPE_FUNCTION )
+#endif
+    
   // if this is the last analysis interval, find the end of the critical path
   // and determine the total length of the critical path
   if( lastInterval )

@@ -1,3 +1,8 @@
+---------------------------------- TODO ----------------------------------
+- expose communication time (currently only waiting time is accounted)
+- replace class GraphNode with model-specific types: ThreadEventNode, 
+  ProcessLeaveNode, and OffloadEventNode (avoids allocation before rules)
+
 ---------------------------------- CASITA 1.9 ----------------------------------
 
 MPI
@@ -11,7 +16,7 @@ MISC
 - added units for critical path, waiting time, and blame in OTF2 output
 - improved rating output for long region names
 - beautified pattern summary output
-
+- added Score-P user instrumentation to analyze CASITA's performance
 
 ---------------------------------- CASITA 1.8 ----------------------------------
 

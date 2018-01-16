@@ -30,6 +30,10 @@
 #include "omp/AnalysisParadigmOMP.hpp"
 #include "offload/AnalysisParadigmOffload.hpp"
 
+#if defined(SCOREP_USER_ENABLE)
+#include "scorep/SCOREP_User.h"
+#endif
+
 using namespace casita;
 using namespace casita::io;
 
@@ -185,6 +189,10 @@ AnalysisEngine::getAnalysis( Paradigm paradigm )
 void
 AnalysisEngine::runAnalysis()
 {
+#if defined(SCOREP_USER_ENABLE)
+  SCOREP_USER_REGION( "runAnalysis", SCOREP_USER_REGION_TYPE_FUNCTION )
+#endif
+    
   EventStream::SortedGraphNodeList allNodes;
   getAllNodes( allNodes );
   
@@ -441,7 +449,11 @@ AnalysisEngine::addNewGraphNode( uint64_t            time,
 
 void 
 AnalysisEngine::createIntermediateBegin()
-{  
+{
+#if defined(SCOREP_USER_ENABLE)
+  SCOREP_USER_REGION( "createIntermediateBegin", SCOREP_USER_REGION_TYPE_FUNCTION )
+#endif
+    
   // clean all lists in the graph and delete edges, 
   // node objects are deleted via the streams
   graph.cleanup( true );
