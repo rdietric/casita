@@ -1,0 +1,3 @@
+- expose communication time (currently only waiting time is accounted)
+- replace class GraphNode with model-specific types, e.g. ThreadEventNode, 
+  ProcessLeaveNode, and OffloadEventNode to avoid additional allocations

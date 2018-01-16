@@ -1,8 +1,3 @@
----------------------------------- TODO ----------------------------------
-- expose communication time (currently only waiting time is accounted)
-- replace class GraphNode with model-specific types: ThreadEventNode, 
-  ProcessLeaveNode, and OffloadEventNode (avoids allocation before rules)
-
 ---------------------------------- CASITA 1.9 ----------------------------------
 
 MPI

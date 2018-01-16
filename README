@@ -4,7 +4,8 @@ total program runtime and the load balancing. CASITA generates an OTF2 trace
 with additional information such as the critical path, waiting time, and the
 cause of wait states. The same metrics are used to generate a summary profile 
 which rates activities according their potential to improve the program runtime 
-and the load balancing.
+and the load balancing. A summary of inefficient patterns exposes waiting times
+in the individual programming models and APIs.
 
 Publications:
 
@@ -24,31 +25,33 @@ Score-P Workflow"
 http://dx.doi.org/10.1007/978-3-319-16012-2_8
 
 "Analyzing Offloading Inefficiencies in Scalable Heterogeneous Applications"
-(P^3MA Workshop, ISC 2017)
+http://dx.doi.org/10.1007/978-3-319-67630-2_34
 
 
 CASITA analysis requirements:
 
-MPI analysis is based on replaying the MPI communication in forward and backward 
-direction, which means that the respective communication records have to be 
-available in the trace. CASITA also needs the region enter and leave events of 
-MPI communication functions. Currently, the MPI support is limited to blocking 
-and non-blocking point-to-point communication. 
+The MPI analysis is currently based on reenacting the MPI communication in 
+forward and backward direction, which means that the respective communication 
+records have to be available in the trace. CASITA also needs the region enter 
+and leave events of MPI communication functions. Currently, the MPI support is 
+limited to (two-sided) point-to-point communication and blocking collectives.
 
-OpenMP analysis is based on the OPARI2 instrumentation. Required are the 
-fork/join, parallel begin/end, and the barrier begin/end records. Both, MPI and 
-OpenMP analysis work with the default Score-P configuration. 
+The OpenMP analysis is still based on the OPARI2 instrumentation. It requires 
+the fork/join, parallel begin/end, and the barrier begin/end records. Both, MPI 
+and OpenMP analysis work with the default Score-P trace output. 
 
 CUDA analysis is supported since Score-P 1.3. The respective OTF2 trace file has
 to contain the following information:
-* Enter and leave events of CUDA driver API
-functions that synchronize with the device (including blocking CUDA memory 
-copies and CUDA event queries) as well as CUDA kernel launch and CUDA event 
-record. Furthermore, kernels and references have to be collected. The minimum
-set of Score-P CUDA recording features is "driver,kernel,references" which can 
-be set with the environment variable SCORE_CUDA_ENABLE.
+* Enter and leave events of CUDA driver API functions that synchronize with the 
+  device (including blocking CUDA memory copies and CUDA event queries) as well 
+  as CUDA kernel launch and CUDA event record. 
+* Enter and leave events of kernel launches and kernels 
+* Kernel references (dependency information between launch and synchronization 
+  of kernels)
+The minimum set of Score-P CUDA recording features is "driver,kernel,references" 
+which can be set with the environment variable SCORE_CUDA_ENABLE.
 
-OpenCL analysis also requires references, e.g. to record the OpenCL queue a 
-kernel is enqueued to or synchronized with clFinish. This is currently only 
+The OpenCL analysis also requires kernel dependencies, e.g. to detect the OpenCL
+queue a kernel is enqueued to or synchronized with clFinish. This is currently 
 implemented in a Score-P development branch. OpenACC analysis is indirectly 
 supported with the low-level paradigms CUDA and OpenCL.
