@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -807,7 +807,7 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
           streamState.onCriticalPath = false;
           streamState.lastWrittenCpValue = false;
 
-          //UTILS_MSG( true, "[%"PRIu32"] Write CP =0 (node %s)", 
+          //UTILS_OUT( "[%"PRIu32"] Write CP =0 (node %s)", 
           //           mpiRank, (*currentNodeIter)->getUniqueName().c_str() );
         }
         
@@ -857,7 +857,7 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
       if( stream->isFirstCritical() )
       {
         streamState.onCriticalPath = true;
-        //UTILS_MSG( true, "Process [%llu] has initial CP", stream->getId());
+        //UTILS_OUT( "Process [%llu] has initial CP", stream->getId());
 
         // after the first interval analysis there is no first critical any more
         stream->isFirstCritical() = false;
@@ -1454,8 +1454,8 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
     // if we are after the end of the node list
     if ( currentNodeIter == endNodeIter )
     {
-      UTILS_MSG( true, "[%u] OTF2 writer: More events than nodes! "
-                       "(%s (%" PRIu64 "): %s (%d) at %" PRIu64 ")", 
+      UTILS_OUT( "[%u] OTF2 writer: More events than nodes! "
+                 "(%s (%" PRIu64 "): %s (%d) at %" PRIu64 ")", 
                  mpiRank, currentStream->getName(), event.location, 
                  eventName, event.type, getRealTime( event.time ) );
     }

@@ -70,7 +70,7 @@ namespace casita
           }
           /*else
           {
-            UTILS_MSG( true, "Could not find edge!");
+            UTILS_OUT( "Could not find edge!");
           }*/
         }
         

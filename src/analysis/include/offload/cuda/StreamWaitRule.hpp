@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017
+ * Copyright (c) 2013-2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -106,10 +106,10 @@ namespace casita
           GraphNode* waitingKernelLaunchEnter = (GraphNode*) waitingKernelEnter->getLink();
           if ( !waitingKernelLaunchEnter )
           {
-            UTILS_MSG( true, "[%u] Applying StreamWaitRule failed. "
-                             "Kernel %s has no matching kernel launch", 
-                             analysis->getMPIRank(),
-                             waitingKernelEnter->getUniqueName().c_str() );
+            UTILS_OUT( "[%u] Applying StreamWaitRule failed. "
+                       "Kernel %s has no matching kernel launch", 
+                       analysis->getMPIRank(),
+                       waitingKernelEnter->getUniqueName().c_str() );
             
             return false;
           }
@@ -141,10 +141,10 @@ namespace casita
             EventNode* eventLaunchLeave = (EventNode*)streamWaitLeave->getLink();
             if ( !eventLaunchLeave )
             {
-              UTILS_MSG( true,  " * Ignoring stream wait event %s without "
-                                "matching event record for event %" PRIu64 " \n",
-                                streamWaitLeave->getUniqueName().c_str(),
-                                streamWaitLeave->getEventId() );
+              UTILS_OUT( " * Ignoring stream wait event %s without "
+                         "matching event record for event %" PRIu64 " \n",
+                         streamWaitLeave->getUniqueName().c_str(),
+                         streamWaitLeave->getEventId() );
               break;
             }
 

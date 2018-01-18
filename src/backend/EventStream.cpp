@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -711,14 +711,14 @@ EventStream::reset()
   // clear list of unlinked MPI nodes (print to stderr before), the last node is always unlinked!
   if( unlinkedMPINodes.size() > 1 )
   {
-    UTILS_MSG( true, "[%"PRIu64"] Clear list of unlinked MPI nodes (%lu)!", 
-                     this->id, this->unlinkedMPINodes.size() );
+    UTILS_OUT( "[%"PRIu64"] Clear list of unlinked MPI nodes (%lu)!", 
+               this->id, this->unlinkedMPINodes.size() );
     
     for ( SortedGraphNodeList::const_iterator iter =
             unlinkedMPINodes.begin(); iter != unlinkedMPINodes.end(); ++iter )
     {
-      UTILS_MSG( true, "[%"PRIu64"]   %s", 
-                       this->id, ( *iter )->getUniqueName().c_str() );
+      UTILS_OUT( "[%"PRIu64"]   %s", 
+                 this->id, ( *iter )->getUniqueName().c_str() );
     }
     
     unlinkedMPINodes.clear();

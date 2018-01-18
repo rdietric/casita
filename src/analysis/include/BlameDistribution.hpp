@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -65,8 +65,7 @@ namespace casita
       {
         GraphNode* currentWalkNode = *iter;
         
-        UTILS_MSG( true, " -> %s", 
-                   analysis->getNodeInfo( currentWalkNode ).c_str() );
+        UTILS_OUT( " -> %s", analysis->getNodeInfo( currentWalkNode ).c_str() );
       }
     }
     
@@ -98,9 +97,9 @@ namespace casita
        //&& strcmp( node->getName(), "MPI_Allreduce") == 0
        )
     {
-      UTILS_MSG( true, "[%u] Debug walklist from %s, totalBlame: %llu sec (%lf)",
-                analysis->getMPIRank(), analysis->getNodeInfo(node).c_str(),
-                totalBlame, analysis->getRealTime( totalBlame ) );
+      UTILS_OUT( "[%u] Debug walklist from %s, totalBlame: %llu sec (%lf)",
+                 analysis->getMPIRank(), analysis->getNodeInfo(node).c_str(),
+                 totalBlame, analysis->getRealTime( totalBlame ) );
     
       for( GraphNode::GraphNodeList::const_iterator iter = ++(walkList.begin());
            iter != walkList.end(); ++iter )
@@ -109,7 +108,7 @@ namespace casita
        
         uint64_t wtime = currentWalkNode->getCounter( WAITING_TIME, NULL );
        
-        UTILS_MSG( true, " -> %s with waiting time: %llu (%lf sec)", 
+        UTILS_OUT( " -> %s with waiting time: %llu (%lf sec)", 
                    analysis->getNodeInfo( currentWalkNode ).c_str(), 
                    wtime, analysis->getRealTime( wtime ) );
       }

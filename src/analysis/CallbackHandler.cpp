@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -205,7 +205,7 @@ CallbackHandler::handleLocationProperty( OTF2TraceReader*    reader,
     //           "[%"PRIu64"] Found CUDA null stream", streamId );
     if( strcmp ( handler->defHandler->getName( value.stringRef ), "yes" ) == 0 )
     {
-      //UTILS_MSG( true, "Found CUDA null stream == yes" );
+      //UTILS_OUT( "Found CUDA null stream == yes" );
       DeviceStream* stream = 
         analysis.getStreamGroup().getDeviceStream( streamId );
       analysis.getStreamGroup().setDeviceNullStream( stream );
@@ -344,7 +344,7 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   // do not create nodes for CPU events and MPI events in 1-Process-Programs
   if( !generateNode )
   {    
-    //UTILS_MSG( true, "CPU event: %s", funcName );
+    //UTILS_OUT( "CPU event: %s", funcName );
     analysis.addCPUEvent( time, streamId, false );
     return;
   }
@@ -444,7 +444,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
     
     if ( eventId == 0 )
     {
-      UTILS_MSG( true, "No eventId for event found" );
+      UTILS_WARNING( "No eventId for event found" );
       return false;
     }
 

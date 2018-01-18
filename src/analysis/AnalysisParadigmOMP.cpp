@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014-2017,
+ * Copyright (c) 2014-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -311,7 +311,7 @@ AnalysisParadigmOMP::omptBarrierRule( GraphNode* syncLeave )
           GraphNodeVec barriers;
           barriers.push_back( syncLeave );
           ompBarrierNodesMap[parallelEnter].push_back( barriers );
-          //UTILS_MSG( true, "New vector of barriers created (%s)", oor.what() );
+          //UTILS_OUT( "New vector of barriers created (%s)", oor.what() );
         }
       }
     }
@@ -413,7 +413,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
 
         list->getUInt64( (uint32_t)devIdKey, &device_id );
 
-        //UTILS_MSG( true, "Found device id %"PRIu64" on %s", 
+        //UTILS_OUT( "Found device id %"PRIu64" on %s", 
         //           device_id, node->getUniqueName().c_str());
 
         // use this for the device ID instead of the stream ID
@@ -434,7 +434,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
       
       list->getUInt64( (uint32_t)parallelIdKey, &parallel_id );      
       
-      //UTILS_MSG( true, "Found parallel id %"PRIu64" on %s", 
+      //UTILS_OUT( "Found parallel id %"PRIu64" on %s", 
       //           parallel_id, node->getUniqueName().c_str());
       
       // if parallel region enter event
@@ -753,7 +753,7 @@ AnalysisParadigmOMP::getTargetEnter( int targetDeviceId )
     return NULL;
   }
   
-  //UTILS_MSG( true, "getTargetEnter for device id %d (%lu)", targetDeviceId, 
+  //UTILS_OUT( "getTargetEnter for device id %d (%lu)", targetDeviceId, 
   //           ompTargetRegionBeginMap.size() );
 
   GraphNode* targetEnter = NULL;
@@ -762,7 +762,7 @@ AnalysisParadigmOMP::getTargetEnter( int targetDeviceId )
   {
     GraphNode* currEnter = it->second;
     
-    //UTILS_MSG( true, "Target data %p, refstream %llu", currEnter->getData(), 
+    //UTILS_OUT( "Target data %p, refstream %llu", currEnter->getData(), 
     //           currEnter->getReferencedStreamId() );
     
     if( currEnter->getData() && 

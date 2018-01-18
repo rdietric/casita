@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -112,7 +112,7 @@ namespace casita
             }
             else
             {
-              UTILS_MSG( true, "[%"PRIu64"] SendRecvRule: Edge not found. "
+              UTILS_OUT( "[%"PRIu64"] SendRecvRule: Edge not found. "
                          "Critical path analysis might fail!",
                          sendRecvLeave->getStreamId() );
             }

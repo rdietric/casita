@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -43,7 +43,7 @@ GraphEngine::GraphEngine() :
  */
 GraphEngine::~GraphEngine()
 {
-  /*UTILS_MSG( true, "Destructor of GraphEngine called" );
+  /*UTILS_OUT( "Destructor of GraphEngine called" );
   
   for ( EventStreamMap::iterator iter = streamsMap.begin();
         iter != streamsMap.end(); ++iter )

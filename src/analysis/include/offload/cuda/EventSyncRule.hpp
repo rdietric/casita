@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -194,13 +194,13 @@ namespace casita
           }
           else if ( kernelLeave->getTime() > syncLeave->getTime() )
           {
-            UTILS_MSG( true, "[%"PRIu32"] EventSyncRule on %s (%f) failed!", 
+            UTILS_OUT( "[%"PRIu32"] EventSyncRule on %s (%f) failed!", 
                        analysis->getMPIRank(),
                        syncLeave->getUniqueName().c_str(),
                        analysis->getRealTime( syncLeave->getTime() ) );
             // if the kernelLeave has been deleted in intermediate flush the 
             // following message creates a segmentation fault
-            UTILS_MSG( true, "Host-Device time displacement: kernel %s > evtSync %s"
+            UTILS_OUT( "Host-Device time displacement: kernel %s > evtSync %s"
                        ", kernel launch leave: %s",
                        analysis->getNodeInfo( kernelLeave ).c_str(), 
                        analysis->getNodeInfo( syncLeave ).c_str(),

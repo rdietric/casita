@@ -95,7 +95,7 @@ namespace casita
         // close forkjoin
         if (analysis->popFork() == NULL )
         {
-          UTILS_MSG( true, "Could not join the fork %s", 
+          UTILS_OUT( "Could not join the fork %s", 
                      ppr->getUniqueName().c_str() );
         }
 

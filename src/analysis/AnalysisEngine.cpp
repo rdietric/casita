@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -215,8 +215,7 @@ AnalysisEngine::runAnalysis()
     // print process every 5 percent (TODO: depending on number of events per paradigm)
     if ( printStatus && ( ctr - last_ctr > num_nodes / 20 ) )
     {
-      UTILS_MSG( true, "[0] %lu%% ",
-                 ( size_t )( 100.0 * (double)ctr / (double)num_nodes ) );
+      UTILS_OUT( "[0] %lu%% ", (size_t)( 100.0 * (double)ctr / (double)num_nodes ) );
       fflush( NULL );
       last_ctr = ctr;
     }

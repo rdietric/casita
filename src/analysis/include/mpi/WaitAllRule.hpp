@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2015-2017,
+ * Copyright (c) 2015-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -69,7 +69,7 @@ namespace casita
             // wait for MPI_Irecv or MPI_Isend
             if( !(record->leaveNode->isMPI_Irecv() || record->leaveNode->isMPI_Isend()) )
             {
-              UTILS_MSG( true, "[%"PRIu64"] WaitRule: Only MPI_Isend and "
+              UTILS_OUT( "[%"PRIu64"] WaitRule: Only MPI_Isend and "
                          "MPI_Irecv are supported! (%s)", waitAllLeave->getStreamId(), 
                          record->leaveNode->getUniqueName().c_str() );
               return false;
@@ -95,7 +95,7 @@ namespace casita
             if( waitStartTime < p2pPartnerStopTime && 
                 latestCommPartnerStopTime < p2pPartnerStopTime )
             {
-              //UTILS_MSG( true, "[%"PRIu64"] WaitRule: Found late sender/receiver", 
+              //UTILS_OUT( "[%"PRIu64"] WaitRule: Found late sender/receiver", 
               //           waitLeave->getStreamId() );
 
               latestCommPartnerStopTime = p2pPartnerStopTime;
@@ -132,8 +132,8 @@ namespace casita
             }
             else
             {
-              UTILS_OUT("[%"PRIu64"] MPI_Waitall rule: Activity edge "
-                        "not found.", waitAllLeave->getStreamId() );
+              UTILS_OUT( "[%"PRIu64"] MPI_Waitall rule: Activity edge "
+                         "not found.", waitAllLeave->getStreamId() );
             }
             
             // determine waiting time, which cannot be longer than the 

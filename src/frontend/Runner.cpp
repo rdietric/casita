@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -381,8 +381,8 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     // writes the OTF2 event streams and computes blame for CPU functions
     if( writer->writeLocations( events_to_read ) != events_to_read )
     {
-      UTILS_MSG( true, "[%d] Reader and writer are not synchronous! Aborting ...", 
-                       mpiRank );
+      UTILS_OUT( "[%d] Reader and writer are not synchronous! Aborting ...", 
+                 mpiRank );
       events_available = false;
     }
     
@@ -455,7 +455,7 @@ Runner::mergeActivityGroups()
   uint64_t lengthCritPath = globalLengthCP;
   //  analysis.getLastNode()->getTime() - analysis.getSourceNode()->getTime();
   
-  /*UTILS_MSG( true, "CP length (%llu - %llu) = %llu",
+  /*UTILS_OUT( "CP length (%llu - %llu) = %llu",
              analysis.getLastGraphNode( PARADIGM_COMPUTE_LOCAL )->getTime(),
              analysis.getSourceNode()->getTime(),
              lengthCritPath );*/
@@ -466,7 +466,7 @@ Runner::mergeActivityGroups()
         ++groupIter )
   {
     //IParallelTraceWriter::ActivityGroupMap::iterator iter = groupIter;
-    //UTILS_MSG( true, "Group ID %u", groupIter->second.functionId);
+    //UTILS_OUT( "Group ID %u", groupIter->second.functionId);
     
     // set the local CP fraction for this activity type
     groupIter->second.fractionCP =
@@ -802,7 +802,7 @@ Runner::findGlobalLengthCP()
   }
 //  else
 //  {
-//    UTILS_MSG( true, "[%d] No critical last time (stream %llu)", mpiRank,
+//    UTILS_OUT( "[%d] No critical last time (stream %llu)", mpiRank,
 //                     criticalPathEnd.first );
 //  }
 
@@ -812,7 +812,7 @@ Runner::findGlobalLengthCP()
                "[%d] Process is not on the critical path?", mpiRank );
   }
   
-  //UTILS_MSG( true, "[%d] Last time stamp: %llu", mpiRank, lastTime );
+  //UTILS_OUT( "[%d] Last time stamp: %llu", mpiRank, lastTime );
     
   // get the global last timestamp
   uint64_t globalLastTime = lastTime;
@@ -860,7 +860,7 @@ Runner::findCriticalPathStart()
   }
 //  else
 //  {
-//    UTILS_MSG( true, "[%d] No critical first (stream %llu) or last time (stream %llu)", mpiRank,
+//    UTILS_OUT( "[%d] No critical first (stream %llu) or last time (stream %llu)", mpiRank,
 //               criticalPathStart.first, criticalPathEnd.first );
 //  }
     
@@ -1571,14 +1571,14 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
         {
           if( nextNodeID < nodes.front()->getId() )
           {
-            UTILS_MSG( true, "[%u] Node ID %"PRIu64" is out of range "
+            UTILS_OUT( "[%u] Node ID %"PRIu64" is out of range "
                        "[%"PRIu64",%"PRIu64"]! Send from %d",
                        mpiRank, nextNodeID, nodes.front()->getId(), 
                        nodes.back()->getId(), status.MPI_SOURCE );
           }
           else
           {
-            UTILS_MSG( true, "[%u] Sequential search for node ID %"PRIu64" failed!",
+            UTILS_OUT( "[%u] Sequential search for node ID %"PRIu64" failed!",
                        mpiRank, nextNodeID );
           }
           //slaveNode = mpiGraph->getNodes().front();
@@ -1640,7 +1640,7 @@ Runner::printAllActivities()
     
     if( globalLengthCP == 0 )
     {
-      UTILS_MSG( true, "Global critical path length is 0. Skipping output ..." );
+      UTILS_OUT( "Global critical path length is 0. Skipping output ..." );
       return;
     }
 

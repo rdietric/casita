@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014, 2016, 2017
+ * Copyright (c) 2013-2014, 2016-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -481,8 +481,7 @@ namespace casita
     charPos = outArchiveName.find_last_of( "." );
     outArchiveName = outArchiveName.substr( 0, charPos );
     
-    //UTILS_MSG( true, "Path %s, File: %s", 
-    //             pathToFile.c_str(), outOtf2ArchiveName.c_str() );
+    //UTILS_OUT( "Path %s, File: %s", pathToFile.c_str(), outOtf2ArchiveName.c_str() );
   }
 
   ProgramOptions&

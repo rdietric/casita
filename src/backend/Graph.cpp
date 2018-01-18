@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014, 2016
+ * Copyright (c) 2013, 2014, 2016-2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -538,13 +538,13 @@ Graph::getLongestPath( GraphNode* startNode, GraphNode* endNode,
   
   /*if(test)
   {
-    UTILS_MSG( true, "Print critical path:" );
+    UTILS_OUT( "Print critical path:" );
     for ( GraphNode::GraphNodeList::const_iterator cpNode = path.begin();
         cpNode != path.end(); ++cpNode )
     {
       GraphNode* node = *cpNode;
 
-      UTILS_MSG( true, "%s", node->getUniqueName().c_str() );
+      UTILS_OUT( "%s", node->getUniqueName().c_str() );
     }
   }*/
 }
@@ -555,28 +555,28 @@ Graph::printPath( const GraphNode::GraphNodeList& path ) const
   for ( GraphNode::GraphNodeList::const_iterator cpNode = path.begin();
         cpNode != path.end(); ++cpNode )
   {
-    UTILS_MSG( true, "  %s", (*cpNode)->getUniqueName().c_str() );
+    UTILS_OUT( "  %s", (*cpNode)->getUniqueName().c_str() );
   }
 }
 
 void
 Graph::printInEdges( GraphNode* node ) const
 {
-  UTILS_MSG( true, "  <- in-edges for %s:", node->getUniqueName().c_str() );
+  UTILS_OUT( "  <- in-edges for %s:", node->getUniqueName().c_str() );
   const Graph::EdgeList& inEdges = getInEdges( node );
   for ( Graph::EdgeList::const_iterator eIter = inEdges.begin();
         eIter != inEdges.end(); ++eIter )
   {
     Edge* edge = *eIter;
-    UTILS_MSG( true, "     %s", edge->getName().c_str() );
+    UTILS_OUT( "     %s", edge->getName().c_str() );
   }
 }
 
 void
 Graph::printCircle( GraphNode* node, GraphNode::GraphNodeList& nodeList ) const
 {
-  UTILS_MSG( true, "Detected circular dependency in local critical path analysis"
-    " at %s. Print node list: " , node->getUniqueName().c_str() );
+  UTILS_OUT( "Detected circular dependency in local critical path analysis"
+             " at %s. Print node list: " , node->getUniqueName().c_str() );
   for( GraphNode::GraphNodeList::const_iterator it = nodeList.begin();
        it != nodeList.end(); ++it )
   {

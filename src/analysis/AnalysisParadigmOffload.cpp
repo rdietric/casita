@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2017
+ * Copyright (c) 2017-2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -80,7 +80,7 @@ AnalysisParadigmOffload::reset()
 //        for(GraphNode::GraphNodeList::const_iterator it = mapIter->second.begin(); 
 //            it != mapIter->second.end(); ++it )
 //        {
-//          UTILS_MSG( true, "#### %s",  commonAnalysis->getNodeInfo(*it).c_str() );
+//          UTILS_OUT( "#### %s",  commonAnalysis->getNodeInfo(*it).c_str() );
 //        }
 //      }
       
@@ -350,17 +350,17 @@ AnalysisParadigmOffload::printKernelLaunchMap()
     
     if( mapIter->second.size() )
     {
-      UTILS_MSG( true, "[%"PRIu32"] %llu pending kernel launches for device stream %"PRIu64,
+      UTILS_OUT( "[%"PRIu32"] %llu pending kernel launches for device stream %"PRIu64,
                  commonAnalysis->getMPIRank(), mapIter->second.size(), mapIter->first );
       
       EventStream* evtStream = this->commonAnalysis->getStream( mapIter->first );
       if( evtStream )
       {
-        UTILS_MSG( true, "  ... with stream name: %s", evtStream->getName() );
+        UTILS_OUT( "  ... with stream name: %s", evtStream->getName() );
       }
       else
       {
-        UTILS_MSG( true, "  ... with missing stream object" );
+        UTILS_OUT( "  ... with missing stream object" );
       }
       
       for( GraphNode::GraphNodeList::const_iterator itList = mapIter->second.begin();
@@ -373,24 +373,23 @@ AnalysisParadigmOffload::printKernelLaunchMap()
       
     }
   }
-  UTILS_MSG( true, "[%"PRIu32"] %"PRIu64" pending kernel launches on %llu different device streams",
+  UTILS_OUT( "[%"PRIu32"] %"PRIu64" pending kernel launches on %llu different device streams",
              commonAnalysis->getMPIRank(),pendingKernelLaunchCount, pendingKernelLaunchMap.size() );
 }
 
 void
 AnalysisParadigmOffload::printDebugInformation( uint64_t eventId )
 {
-  UTILS_MSG( true, "Passed event id: %llu", eventId );
+  UTILS_OUT( "Passed event id: %llu", eventId );
   
-  UTILS_MSG( true, "Number of stored event IDs with corresponding last event record leave node: %llu",
+  UTILS_OUT( "Number of stored event IDs with corresponding last event record leave node: %llu",
              eventLaunchMap.size() );
   
     EventNode* eventRecordLeave = eventLaunchMap[eventId];
   
   uint64_t streamId = eventRecordLeave->getStreamId( );
   
-  UTILS_MSG( true, "Host stream: %llu (%s)",
-             streamId,
+  UTILS_OUT( "Host stream: %llu (%s)", streamId,
              this->commonAnalysis->getStream( streamId )->getName() );
   
   printKernelLaunchMap();
@@ -816,7 +815,7 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelEnter ) cons
   
   // kernel enter found ...
   
-  //UTILS_MSG( true, "Create kernel dependency edges from %s", 
+  //UTILS_OUT( "Create kernel dependency edges from %s", 
   //                 commonAnalysis->getNodeInfo( kernelEnter ).c_str() );
   
   GraphNode* kernelLaunchEnter = ( GraphNode* ) kernelEnter->getLink();

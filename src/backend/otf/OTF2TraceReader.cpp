@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -429,7 +429,7 @@ OTF2TraceReader::readDefinitions()
   if ( ( rankStreamMap.size() == 0 && mpiSize > 1 ) || 
        ( rankStreamMap.size() && (mpiSize != rankStreamMap.size() ) ) )
   {
-    UTILS_MSG( true, "[%u] CASITA has to be run with %zu MPI process(es)!",
+    UTILS_OUT( "[%u] CASITA has to be run with %zu MPI process(es)!",
                mpiRank, rankStreamMap.size() == 0 ? 1 : rankStreamMap.size() );
     
     return false;
@@ -447,7 +447,7 @@ OTF2TraceReader::readDefinitions()
     TokenTokenMap64::iterator iter = processFamilyMap.begin();
     for( ; iter != processFamilyMap.end(); ++iter )
     {
-      UTILS_MSG( true, "[0] stream %" PRIu64 " -> rank %" PRIu64 "", 
+      UTILS_OUT( "[0] stream %" PRIu64 " -> rank %" PRIu64 "", 
                  iter->first, iter->second );
     }
   }*/

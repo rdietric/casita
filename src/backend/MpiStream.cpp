@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2017,
+ * Copyright (c) 2017-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -149,7 +149,7 @@ MpiStream::saveMPIIsendRequest( uint64_t requestId )
 void
 MpiStream::saveMPIIrecvRequest( uint64_t requestId )
 {
-  //UTILS_MSG( true, "[%"PRIu64"] Save MPIIrecvRequest %"PRIu64, this->id, requestId);
+  //UTILS_OUT( "[%"PRIu64"] Save MPIIrecvRequest %"PRIu64, this->id, requestId);
   
   pendingMPIRequestId = requestId;
 }
@@ -186,7 +186,7 @@ MpiStream::addPendingMPIIrecvNode( GraphNode* node )
     record.requestId = pendingMPIRequestId;
     record.leaveNode = node;
 
-    //UTILS_MSG( true, "[%"PRIu64"] New MPI_Irecv record: %s Request ID: %"PRIu64,
+    //UTILS_OUT( "[%"PRIu64"] New MPI_Irecv record: %s Request ID: %"PRIu64,
     //           this->id, node->getUniqueName().c_str(), pendingMPIRequestId );
     
     // add new record to map
@@ -213,7 +213,7 @@ void
 MpiStream::handleMPIIrecvEventData( uint64_t requestId, uint64_t partnerId,
                                     OTF2_CommRef comm, uint32_t tag )
 {
-  //UTILS_MSG( true, "[%"PRIu64"] MPIIrecv: mpiWaitRequest = %"PRIu64, 
+  //UTILS_OUT( "[%"PRIu64"] MPIIrecv: mpiWaitRequest = %"PRIu64, 
   //                 this->id, requestId );
   
   if( mpiIcommRecords.count( requestId ) > 0 )
@@ -229,9 +229,9 @@ MpiStream::handleMPIIrecvEventData( uint64_t requestId, uint64_t partnerId,
   {
     // if non-blocking communication over interval boundaries occurs it would
     // probably not influence the critical path or generate waiting time or blame
-    UTILS_MSG( true, "[%"PRIu64"<-%"PRIu64"] Ignore MPI_Irecv communication "
-                     "over interval boundaries. (OTF2 request: %"PRIu64")", 
-                     this->id, partnerId, requestId );
+    UTILS_OUT( "[%"PRIu64"<-%"PRIu64"] Ignore MPI_Irecv communication "
+               "over interval boundaries. (OTF2 request: %"PRIu64")", 
+               this->id, partnerId, requestId );
   }
 }
 
@@ -324,7 +324,7 @@ MpiStream::setMPIIsendNodeData( GraphNode* node )
   }
   
   
-  //UTILS_MSG( true, "[%"PRIu64"] New MPI_Isend record: %s Request ID: %"PRIu64,
+  //UTILS_OUT( "[%"PRIu64"] New MPI_Isend record: %s Request ID: %"PRIu64,
   //           this->id, node->getUniqueName().c_str(), pendingMPIRequestId );
   
   // set node-specific data to a pointer to the record in the map
@@ -367,7 +367,7 @@ MpiStream::setMPIWaitNodeData( GraphNode* node )
     }
     else
     {
-      UTILS_MSG( true, "[%"PRIu64"] MPI_Wait node: Could not find communication"
+      UTILS_OUT( "[%"PRIu64"] MPI_Wait node: Could not find communication"
                  " record with request ID %"PRIu64" and communication partner %"
                  PRIu64, this->id, pendingReqId );
     }
@@ -380,7 +380,7 @@ MpiStream::setMPIWaitNodeData( GraphNode* node )
   }
   else
   {
-    UTILS_MSG( true, "List of pending OTF2 request IDs > 1 (#%llu) at %s", 
+    UTILS_OUT( "List of pending OTF2 request IDs > 1 (#%llu) at %s", 
                pendingRequests.size(), node->getUniqueName().c_str() );
   }
 }
@@ -447,7 +447,7 @@ MpiStream::handleMPITest( GraphNode* node )
   }
   else
   {
-    UTILS_MSG( true, "List of pending OTF2 request IDs > 1 (#%llu) at %s", 
+    UTILS_OUT( "List of pending OTF2 request IDs > 1 (#%llu) at %s", 
                pendingRequests.size(), node->getUniqueName().c_str() );
   }
 }
@@ -535,8 +535,8 @@ MpiStream::waitForPendingMPIRequest( uint64_t requestId )
       it++;
   }
   
-  UTILS_MSG( true, "[%"PRIu64"] OTF2 MPI request ID %"PRIu64" could not be found."
-                   " Has already completed?", this->id, requestId );
+  UTILS_OUT( "[%"PRIu64"] OTF2 MPI request ID %"PRIu64" could not be found."
+             " Has already completed?", this->id, requestId );
 
   return false;
 }
@@ -557,8 +557,7 @@ MpiStream::getPendingMPIIcommRecord( uint64_t requestId )
   }
   catch (const std::out_of_range& oor) 
   {
-    UTILS_MSG( true, 
-               "[%"PRIu64"] OTF2 MPI request ID %"PRIu64" could not be found. "
+    UTILS_OUT( "[%"PRIu64"] OTF2 MPI request ID %"PRIu64" could not be found. "
                "Has already completed? (%s)", this->id, requestId, oor.what() );
     return NULL;
   }
@@ -585,8 +584,8 @@ MpiStream::removePendingMPIRequest( uint64_t requestId )
   }
   else
   {
-    UTILS_MSG( true, "[%"PRIu64"] OTF2 MPI request ID %"PRIu64" could not be "
-                     "found. Has already completed?", this->id, requestId );
+    UTILS_OUT( "[%"PRIu64"] OTF2 MPI request ID %"PRIu64" could not be "
+               "found. Has already completed?", this->id, requestId );
   }
 }
 

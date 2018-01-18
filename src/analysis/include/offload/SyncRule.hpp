@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2017
+ * Copyright (c) 2017-2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -199,7 +199,7 @@ namespace casita
         // if this is a late (useless) synchronization
         if( isLateSync )
         {
-          //UTILS_MSG( true, "[%"PRIu32"] Found late synchronized kernel at %s",
+          //UTILS_OUT( "[%"PRIu32"] Found late synchronized kernel at %s",
           //                 analysis->getMPIRank(),
           //                analysis->getNodeInfo(syncLeave).c_str() );
               

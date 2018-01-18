@@ -129,7 +129,7 @@ namespace casita
           // make edge blocking if root is a wait state
           if ( total_waiting_time )
           {
-            UTILS_MSG( true, "[%u] AllToOne %s is blocking", 
+            UTILS_OUT( "[%u] AllToOne %s is blocking", 
                        allToOneLeave->getStreamId( ), allToOneLeave->getUniqueName().c_str() );
             
             Edge* allToOneRecordEdge = commonAnalysis->getEdge(

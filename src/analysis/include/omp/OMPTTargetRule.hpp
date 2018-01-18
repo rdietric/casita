@@ -113,7 +113,7 @@ namespace casita
               GraphNode* lastOffloadNode = 
                 GraphNode::findLastNodeBefore( node->getTime(), deviceStream->getNodes() );
               
-              //UTILS_MSG( true, "Last offload node: %s < %lf", 
+              //UTILS_OUT( "Last offload node: %s < %lf", 
               //            analysis->getNodeInfo( lastOffloadNode ).c_str(),
               //            analysis->getRealTime( node->getTime() ) );
               
