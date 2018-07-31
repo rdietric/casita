@@ -211,7 +211,7 @@ EventStream::getLastNode( Paradigm paradigm ) const
 GraphNode*
 EventStream::getLastParadigmNode( Paradigm paradigm ) const
 {
-  return graphData[(int)log2( paradigm )].lastNode;
+  return graphData[(int)log2( (double)paradigm )].lastNode;
 }
 
 /**
@@ -224,7 +224,7 @@ EventStream::getLastParadigmNode( Paradigm paradigm ) const
 GraphNode*
 EventStream::getFirstParadigmNode( Paradigm paradigm ) const
 {
-  return graphData[(int)log2( paradigm )].firstNode;
+  return graphData[(int)log2( (double)paradigm )].firstNode;
 }
 
 void
