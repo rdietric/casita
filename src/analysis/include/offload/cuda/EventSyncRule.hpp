@@ -130,11 +130,12 @@ namespace casita
           uint64_t strmId = ( *iter )->getId();
           GraphNode* kernelLaunchLeave = ofldAnalysis->getLastKernelLaunchLeave(
                   eventRecordEnterTime, strmId );
-          
+                    
           // if the stream has no kernel launch leave, the kernel has already 
           // been synchronized, hence continue with next stream
           if ( !kernelLaunchLeave )
           {
+            //UTILS_WARNING("EventSyncRule: no kernel launch leave for stream %lu", strmId);
             continue;
           }
 
