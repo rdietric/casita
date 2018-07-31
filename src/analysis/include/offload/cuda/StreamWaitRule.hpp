@@ -50,6 +50,7 @@ namespace casita
         // applied at streamWaitEvent leave
         if ( node->isEventNode() && node->isCUDAStreamWaitEvent() )
         {
+          // get referenced device stream
           uint64_t referencedDevWaitProc = node->getReferencedStreamId();
           if ( !referencedDevWaitProc )
           {
@@ -58,6 +59,8 @@ namespace casita
                     node->getUniqueName().c_str() );
           }
 
+          
+          // link the stream wait event leave node with the event record leave node
           EventNode* swEventNode = (EventNode*)node;
           swEventNode->setLink( ofldAnalysis->getEventRecordLeave( 
                                   swEventNode->getEventId() ) );
