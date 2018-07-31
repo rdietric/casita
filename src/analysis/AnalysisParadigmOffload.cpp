@@ -45,11 +45,6 @@ AnalysisParadigmOffload::AnalysisParadigmOffload( AnalysisEngine* analysisEngine
     addRule( new EventLaunchRule( 1 ) );
     addRule( new EventSyncRule( 1 ) );
     addRule( new EventQueryRule( 1 ) );
-  }
-  
-  // CUDA only rules
-  if( analysisEngine->haveParadigm( PARADIGM_CUDA ) )
-  {
     addRule( new StreamWaitRule( 1 ) );
   }
 }
@@ -366,7 +361,7 @@ AnalysisParadigmOffload::printKernelLaunchMap()
       for( GraphNode::GraphNodeList::const_iterator itList = mapIter->second.begin();
            itList != mapIter->second.end(); ++itList )
       {
-        UTILS_WARNING( "[%"PRIu32"] Open kernel launch %s",
+        UTILS_WARNING( "[%"PRIu32"] Pending kernel launch %s",
                        commonAnalysis->getMPIRank(),
                        commonAnalysis->getNodeInfo( *itList ).c_str() );
       }
@@ -492,7 +487,7 @@ AnalysisParadigmOffload::consumeFirstPendingKernelLaunchEnter( uint64_t kernelSt
  */
 GraphNode*
 AnalysisParadigmOffload::getLastKernelLaunchLeave( uint64_t timestamp,
-                                                uint64_t deviceStreamId ) const
+                                                   uint64_t deviceStreamId ) const
 {
   GraphNode* lastLaunchLeave = NULL;
 
