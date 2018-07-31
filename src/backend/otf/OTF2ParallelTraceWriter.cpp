@@ -1146,28 +1146,33 @@ OTF2ParallelTraceWriter::writeCriticalPathMetric( OTF2Event event,
   
   StreamStatus& streamState = streamStatusMap[ event.location ];
   
-  // if we are at a leave event, which is the last on the stack, and critical
-  // path is not yet set to zero, then write '0'
+  // if we are at a leave event, which is the last on the stack
+  // make sure that the CP counter is '0'
   if( event.type == RECORD_LEAVE && 
-      streamState.activityStack.size() == 1 && 
-      streamState.lastWrittenCpValue == true )
+      streamState.activityStack.size() == 1 )
   {
-    OTF2_MetricValue value;
-    value.unsigned_int = 0;
-    streamState.lastWrittenCpValue = false;
+    // if critical path is not yet set to zero, then write '0'
+    if( streamState.lastWrittenCpValue == true )
+    {
+      OTF2_MetricValue value;
+      value.unsigned_int = 0;
+      streamState.lastWrittenCpValue = false;
 
-    OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
-                                       cTable->getMetricId( CRITICAL_PATH ), 1, 
-                                       cTable->getMetricValueType( CRITICAL_PATH ), 
-                                       &value ) );
+      OTF2_CHECK( OTF2_EvtWriter_Metric( evt_writer, NULL, event.time,
+                                         cTable->getMetricId( CRITICAL_PATH ), 1, 
+                                         cTable->getMetricValueType( CRITICAL_PATH ), 
+                                         &value ) );
+    }
+    
     return;
   }
   
+  // more internal nodes are available (we are not at the last graph node)
   if( graphNodesAvailable )
   {
-    // more internal nodes are available and the critical path value changes
+    // the critical path value changes
     uint64_t onCP = streamState.onCriticalPath;
-    if( streamState.lastWrittenCpValue != onCP )
+    if( streamState.lastWrittenCpValue != onCP)
     {
       OTF2_MetricValue value;
       value.unsigned_int = onCP;
