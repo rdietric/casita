@@ -1,7 +1,7 @@
 ---------------------------------- CASITA 1.9 ----------------------------------
 
 MPI
-- do not allow to assign more waiting to MPI_Wait[all] than its duration
+- do not allow to assign more waiting time to MPI_Wait[all] than its duration
 
 MISC
 - improved implementation of blame distribution (only use edges to store blame)

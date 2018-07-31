@@ -1996,18 +1996,18 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Attribute(
 
   if ( tw->mpiRank == 0 )
   {
-    OTF2DefinitionHandler* defs = tw->defHandler;
-    // do not write the attribute definitions that have only been written for CASITA
-    if ( strcmp( defs->getName( name ), SCOREP_CUDA_STREAMREF ) != 0 &&
-         strcmp( defs->getName( name ), SCOREP_CUDA_EVENTREF ) != 0 &&
-         strcmp( defs->getName(  name ), SCOREP_CUDA_CURESULT ) != 0 &&
-         strcmp( defs->getName(  name ), SCOREP_OPENCL_QUEUEREF ) != 0 /* &&
-         strcmp( defs->getName(  name ), SCOREP_OMP_TARGET_LOCATIONREF ) != 0 &&
-         strcmp( defs->getName(  name ), SCOREP_OMP_TARGET_REGION_ID ) != 0 &&
-         strcmp( defs->getName(  name ), SCOREP_OMP_TARGET_PARENT_REGION_ID ) != 0*/ )
+//    OTF2DefinitionHandler* defs = tw->defHandler;
+//    // do not write the attribute definitions that have only been written for CASITA
+//    if ( strcmp( defs->getName( name ), SCOREP_CUDA_STREAMREF ) != 0 &&
+//         strcmp( defs->getName( name ), SCOREP_CUDA_EVENTREF ) != 0 &&
+//         strcmp( defs->getName(  name ), SCOREP_CUDA_CURESULT ) != 0 &&
+//         strcmp( defs->getName(  name ), SCOREP_OPENCL_QUEUEREF ) != 0 /* &&
+//         strcmp( defs->getName(  name ), SCOREP_OMP_TARGET_LOCATIONREF ) != 0 &&
+//         strcmp( defs->getName(  name ), SCOREP_OMP_TARGET_REGION_ID ) != 0 &&
+//         strcmp( defs->getName(  name ), SCOREP_OMP_TARGET_PARENT_REGION_ID ) != 0*/ )
     {
       OTF2_CHECK( OTF2_GlobalDefWriter_WriteAttribute( tw->otf2GlobalDefWriter, self,
-                                                     name, description, type ) );
+                                                       name, description, type ) );
     }
   }
   
@@ -2413,14 +2413,12 @@ OTF2ParallelTraceWriter::otf2CallbackLeave( OTF2_LocationRef    location, // str
   
   if( tw->analysis->isRegionFiltered( region ) )
   {
-    UTILS_WARNING("asdf3");
     tw->streamStatusMap[location].isFilterOn = false;
     return OTF2_CALLBACK_SUCCESS;
   }
   
   if( tw->streamStatusMap[location].isFilterOn )
   {
-    UTILS_WARNING("asdf2");
     return OTF2_CALLBACK_SUCCESS;
   }
 

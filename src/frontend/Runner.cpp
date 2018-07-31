@@ -1778,7 +1778,7 @@ Runner::printAllActivities()
             " %-30.30s: %11lf s\n", 
             "Total program runtime", 
             (double) definitions.getTraceLength() / (double) definitions.getTimerResolution(),
-            "Total attributed waiting time",
+            "Total waiting time",
             analysis.getRealTime( sumWaitingTime ) );
       
     //// MPI ////
