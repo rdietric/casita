@@ -96,7 +96,7 @@ GraphEngine::newEventStream( uint64_t                     id,
         if( pch != NULL )
         {
           p->setNativeStreamId( atoi( pch + 1 ) );
-          //UTILS_WARNING( "Set stream %d as NULL stream", atoi( pch + 1 ) );
+          //UTILS_OUT( "Set stream %d as NULL stream", atoi( pch + 1 ) );
         }
       }
     }

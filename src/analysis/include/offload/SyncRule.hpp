@@ -86,6 +86,7 @@ namespace casita
           
           GraphNode* kernelLeave = 
             analysis->getStreamGroup().getDeviceStream( refStreamId )->getLastPendingKernel();
+          
           ofldAnalysis->createKernelDependencies( kernelLeave );
         }
         

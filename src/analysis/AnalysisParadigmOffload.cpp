@@ -754,14 +754,13 @@ AnalysisParadigmOffload::removeEventQuery( uint64_t eventId )
 }
 
 /**
- * Create dependency edges from the given kernel enter to preceding kernels in
+ * Create dependency edges from a given kernel node to preceding kernels in
  * other device streams.
  * 
- * @param kernelEnter
- * @param prevKernelLeave
+ * @param kernelNode kernel enter or leave node
  */
 void
-AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelEnter ) const
+AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelNode ) const
 {
   if( Parser::getInstance().getProgramOptions().linkKernels == false )
   {
@@ -769,14 +768,14 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelEnter ) cons
   }
   
   // if no kernel is given, assume a global device synchronization
-  if( kernelEnter == NULL )
+  if( kernelNode == NULL )
   {
     const EventStreamGroup::DeviceStreamList& deviceStreams = 
       commonAnalysis->getDeviceStreams();
   
     if( deviceStreams.size() == 0 )
     {
-      UTILS_WARNING( "Cannot sync without device streams." );
+      UTILS_WARNING( "[Offload] No device streams found!" );
       return;
     }
 
@@ -786,21 +785,23 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelEnter ) cons
     {
       DeviceStream* devStrm = *streamIt;
       GraphNode* lastKernelLeave = devStrm->getLastPendingKernel();
-      if( !kernelEnter || 
-         ( lastKernelLeave && Node::compareLess( kernelEnter, lastKernelLeave ) ) )
+      if( !kernelNode || 
+         ( lastKernelLeave && Node::compareLess( kernelNode, lastKernelLeave ) ) )
       {
-        kernelEnter = lastKernelLeave;
+        kernelNode = lastKernelLeave;
       }
     }
   }
   
-  if( NULL == kernelEnter )
+  // get kernel enter node
+  GraphNode *kernelEnter = NULL;
+  if( NULL == kernelNode )
   {
     return;
   }
   else
   {
-    kernelEnter = kernelEnter->getGraphPair().first;
+    kernelEnter = kernelNode->getGraphPair().first;
   }
   
   if( NULL == kernelEnter )
@@ -822,7 +823,7 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelEnter ) cons
     GraphNode* prevKernelEnter = kernelEnter->getLinkLeft();
     if( !prevKernelEnter )
     {
-      // create edge to kernelLaunch if necessary
+      // create edge to kernel Launch if necessary
       if( kernelEnter->getLink() != kernelLaunchEnter )
       {
         commonAnalysis->newEdge( kernelLaunchEnter, kernelEnter );
