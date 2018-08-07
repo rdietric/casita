@@ -250,12 +250,8 @@ namespace casita
       }
 
       // print path
-      else if( opt.compare( string( "-p" ) ) == 0 )
-      {
-        options.printCriticalPath = true;
-        i++;
-      }
-      else if( opt.find( "--path=" ) != string::npos )
+      else if( opt.compare( string( "-p" ) ) == 0 ||
+               opt.find( "--path=" ) != string::npos )
       {
         options.printCriticalPath = true;
       }
@@ -285,12 +281,8 @@ namespace casita
       }
       
       // create dependencies between kernels from different streams
-      else if( opt.compare( string( "-l" ) ) == 0 )
-      {
-        options.linkKernels = true;
-        i++;
-      }
-      else if( opt.find( "--link-kernels" ) != string::npos )
+      else if( opt.compare( string( "-l" ) ) == 0 || 
+               opt.find( "--link-kernels" ) != string::npos )
       {
         options.linkKernels = true;
       }
@@ -298,6 +290,7 @@ namespace casita
       // handle the given stream (by ID) as null stream
       else if( opt.find( "--nullstream=" ) != string::npos )
       {
+        cout << "set null stream\n" << std::endl;
         options.nullStream = 
           atoi( opt.erase( 0, string( "--nullstream=" ).length() ).c_str() );
       }
