@@ -671,7 +671,9 @@ AnalysisEngine::getNodeInfo( Node* node )
 {
   std::stringstream sstream;
   
-  sstream << node->getUniqueName() << ":" << getRealTime( node->getTime() );
+  sstream.precision(6);
+  
+  sstream << fixed << node->getUniqueName() << ":" << getRealTime( node->getTime() );
 
   return sstream.str();
 }

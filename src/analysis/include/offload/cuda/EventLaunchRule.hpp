@@ -60,7 +60,7 @@ namespace casita
             evtRecLeave->getReferencedStreamId( ) );
         }
 
-        if ( refProcess->isHostStream( ) )
+        if ( refProcess->isHostStream() )
         {
           RTException(
             "Process %s referenced by event launch %s is a host stream",

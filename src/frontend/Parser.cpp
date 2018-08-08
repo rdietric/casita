@@ -290,7 +290,6 @@ namespace casita
       // handle the given stream (by ID) as null stream
       else if( opt.find( "--nullstream=" ) != string::npos )
       {
-        cout << "set null stream\n" << std::endl;
         options.nullStream = 
           atoi( opt.erase( 0, string( "--nullstream=" ).length() ).c_str() );
       }

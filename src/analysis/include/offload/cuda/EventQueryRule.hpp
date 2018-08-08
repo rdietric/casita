@@ -69,10 +69,11 @@ namespace casita
                                                   evQueryLeave->getEventId() );
         if ( !refDeviceProcessId )
         {
-          ErrorUtils::getInstance().throwFatalError(
-            "Could not find device stream ID for event %" PRIu64 " from %s",
-            evQueryLeave->getEventId(),
-            evQueryLeave->getUniqueName().c_str() );
+          UTILS_WARNING( "Could not process CUDA event query %s. "
+            "Device stream not found! No event with ID %" PRIu64 " recorded?",
+            commonAnalysis->getNodeInfo(evQueryLeave).c_str(),
+            evQueryLeave->getEventId() );
+          return false;
         }
 
         // get the first kernel launch before eventLaunch enter
@@ -80,8 +81,11 @@ namespace casita
                                                    evQueryLeave->getEventId() );
         if ( !eventLaunchLeave )
         {
-          throw RTException( "Could not find event record for event %" PRIu64,
-                             evQueryLeave->getEventId() );
+          UTILS_WARNING( "Could not process CUDA event query %s. "
+            "Event record not found! No event with ID %" PRIu64 " recorded?",
+            commonAnalysis->getNodeInfo(evQueryLeave).c_str(),
+            evQueryLeave->getEventId() );
+          return false;
         }
 
         GraphNode* kernelLaunchLeave = analysis->getLastKernelLaunchLeave(

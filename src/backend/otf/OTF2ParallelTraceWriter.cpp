@@ -271,6 +271,7 @@ OTF2ParallelTraceWriter::handleFinalDeviceIdleLeave()
   // make sure that we do not write an OTF2 event before the last written one
   if( lastOffloadApiEvtTime < streamStatusMap[ streamId ].lastEventTime )
   {
+    UTILS_OUT("Set to last time for stream %llu", streamId);
     lastOffloadApiEvtTime = streamStatusMap[ streamId ].lastEventTime;
   }
 
@@ -1325,6 +1326,11 @@ OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time,
     currentDeviceComTaskH2D    = isH2D;
     lastDeviceComTaskEnterTime = time;
   }
+  
+  // remember last event on offloading stream to keep order of timestamps for
+  // idle time correct
+  lastOffloadApiEvtTime = time;
+  //streamStatusMap[ devStream->getId() ].lastEventTime = time;
 }
 
 /**
@@ -1399,6 +1405,11 @@ OTF2ParallelTraceWriter::handleDeviceTaskLeave( uint64_t time,
                                         time, devIdleRegRef ) );
     }
   }
+  
+  // remember last event on offloading stream to keep order of timestamps for
+  // idle time correct
+  lastOffloadApiEvtTime = time;
+  //streamStatusMap[ devStream->getId() ].lastEventTime = time;
 }
 
 /**
@@ -2263,6 +2274,7 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaOpCompleteBlocking(
     OTF2_CHECK( OTF2_EvtWriter_RmaOpCompleteBlocking( tw->evt_writerMap[location],
                                                       attributeList, time,
                                                       win, matchingId ) );
+    //tw->streamStatusMap[ location ].lastEventTime = time;
   }
   
   EventStream* stream = tw->analysis->getStream( location );
