@@ -121,14 +121,20 @@ namespace casita
               waitEdge->makeBlocking();
 
               // referenced stream is needed in critical path analysis
-              waitAllLeave->setReferencedStreamId( 
-                             latestRecord->leaveNode->getReferencedStreamId() );
+              //waitAllLeave->setReferencedStreamId( 
+              //               latestRecord->leaveNode->getReferencedStreamId() );
+              
+              // get communication partner stream ID
+              MPIAnalysis& mpiAnalysis = analysis->getMPIAnalysis();
+              uint64_t partnerStreamId = mpiAnalysis.getStreamId( 
+                latestRecord->leaveNode->getReferencedStreamId(), 
+                latestRecord->comRef );
 
               // add remote edge for critical path analysis
               analysis->getMPIAnalysis().addRemoteMPIEdge(
                 waitAllLeave,
                 latestRecord->recvBuffer[ 2 ], // remote node ID (leave event)
-                latestRecord->leaveNode->getReferencedStreamId() ); // remote process ID
+                partnerStreamId ); // remote process ID
             }
             else
             {

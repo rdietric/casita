@@ -1170,8 +1170,7 @@ Runner::findLastMpiNode( GraphNode** localLastMpiLeave )
 
     UTILS_DBG_MSG( DEBUG_CPA_MPI,
                    "  [%u] critical path reverse replay starts at node %s (%f)",
-                   mpiRank, myLastMpiNode->getUniqueName().c_str(),
-                   analysis.getRealTime( myLastMpiNode->getTime() ) );
+                   mpiRank, analysis.getNodeInfo(localLastMpiEnter).c_str() );
    
   }
   
@@ -1272,25 +1271,23 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
       if ( lastNode )
       {
         UTILS_MSG( options.verbose >= VERBOSE_ANNOY,
-                   "[%u] isMaster, currentNode = %s (%f), lastNode = %s (%f)",
-                   mpiRank, currentNode->getUniqueName().c_str(),
-                   analysis.getRealTime( currentNode->getTime() ),
-                   lastNode->getUniqueName().c_str(),
-                   analysis.getRealTime( lastNode->getTime() ) );
+                   "[%u] isMaster, currentNode = %s, lastNode = %s",
+                   mpiRank, analysis.getNodeInfo( currentNode ).c_str(),
+                   analysis.getNodeInfo( lastNode ).c_str() );
       }
       else
       {
         UTILS_MSG( options.verbose >= VERBOSE_ANNOY,
-                   "[%u] isMaster, currentNode = %s (%f)",
-                   mpiRank, currentNode->getUniqueName().c_str(),
-                   analysis.getRealTime( currentNode->getTime() ) );
+                   "[%u] isMaster, currentNode = %s",
+                   mpiRank, analysis.getNodeInfo( currentNode ).c_str() );
       }
 
       UTILS_MSG( lastNode && ( lastNode->getId() <= currentNode->getId() ),
                  "[%u] ! [Warning] current node ID %"PRIu64" (%s) is not strictly "
                  "decreasing; last node ID %"PRIu64" (%s)", 
-                 mpiRank, currentNode->getId(), currentNode->getUniqueName().c_str(),
-                 lastNode->getId(), lastNode->getUniqueName().c_str() );
+                 mpiRank, currentNode->getId(), 
+                 analysis.getNodeInfo( currentNode ).c_str(),
+                 lastNode->getId(), analysis.getNodeInfo( lastNode ).c_str() );
       
       //\todo: the intermediate begin has to be the start of a section
       if ( currentNode->isLeave() ) // isLeave
@@ -1321,8 +1318,8 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
             section.endNode   = sectionEndNode;
 
             UTILS_DBG_MSG( DEBUG_CPA_MPI, "[%d] Push critical section [%s,%s]", 
-                           mpiRank, currentNode->getUniqueName().c_str(), 
-                           sectionEndNode->getUniqueName().c_str());
+                           mpiRank, analysis.getNodeInfo( currentNode ).c_str(), 
+                           analysis.getNodeInfo( sectionEndNode ).c_str() );
             sectionList.push_back( section );
 
             // the leave node is still on the critical path
@@ -1356,10 +1353,8 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
           }
           
           UTILS_DBG_MSG( DEBUG_CPA_MPI,
-                         "[%u]  found wait state for %s (%f), changing stream at %s",
-                         mpiRank, currentNode->getUniqueName().c_str(),
-                         analysis.getRealTime( currentNode->getTime() ),
-                         currentNode->getUniqueName().c_str() );
+                         "[%d]  found wait state for %s, changing stream",
+                         mpiRank, analysis.getNodeInfo( currentNode ).c_str() );
 
           // get global MPI world rank from stream ID
           uint32_t mpiPartnerRank = 
@@ -1380,7 +1375,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
           }
 
           UTILS_DBG_MSG( DEBUG_CPA_MPI,
-                         "[%u]  testing remote MPI worker %u for remote edge to"
+                         "[%d]  testing remote MPI worker %u for remote edge to"
                          " my node %"PRIu64" on stream %"PRIu64,
                          mpiRank, mpiPartnerRank, sendBfr[0], sendBfr[1] );
 
@@ -1417,8 +1412,8 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
 
             UTILS_DBG_MSG( DEBUG_CPA_MPI,  
                            "[%d] Push critical section [%s,%s] (MPI_Init/atomic)", 
-                           mpiRank, currentNode->getUniqueName().c_str(), 
-                           sectionEndNode->getUniqueName().c_str());
+                           mpiRank, analysis.getNodeInfo( currentNode ).c_str(), 
+                           analysis.getNodeInfo( sectionEndNode ).c_str() );
             sectionList.push_back( section );
           }
           else if ( currentNode->isMPIInit() )
@@ -1432,9 +1427,9 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
 
           // notify all slaves that we are done
           UTILS_MSG( options.verbose >= VERBOSE_BASIC && !options.analysisInterval, 
-                     "[%u] Critical path reached global collective %s. "
+                     "[%d] Critical path reached global collective %s. "
                      "Asking all slaves to terminate", mpiRank, 
-                     currentNode->getUniqueName().c_str() );
+                     analysis.getNodeInfo( currentNode ).c_str() );
 
           // send "path found" message to all ranks
           sendBfr[0] = 0;
@@ -1486,15 +1481,15 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
 
         if ( !foundPredecessor )
         {
-          throw RTException( "[%u] No ingoing intra-stream edge for node %s",
-                             currentNode->getUniqueName().c_str() );
+          throw RTException( "[%d] No ingoing intra-stream edge for node %s",
+                             mpiRank, analysis.getNodeInfo( currentNode ).c_str() );
         }
       } // END: isEnter (master)
     } ///////////////////////////// END: master ////////////////////////////////
     else
     {
       //////////////////////////////// slave ////////////////////////////////
-      UTILS_DBG_MSG( DEBUG_CPA_MPI, "[%u] Slave receives... ", mpiRank);
+      UTILS_DBG_MSG( DEBUG_CPA_MPI, "[%d] Slave receives... ", mpiRank);
 
       // use a non-blocking MPI receive to start local CPA meanwhile
       MPI_Request request_recv = MPI_REQUEST_NULL;
@@ -1531,7 +1526,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
       if ( recvBfr[1] == PATH_FOUND_MSG )
       {
         UTILS_MSG( options.verbose >= VERBOSE_ALL,
-                   "[%u] * terminate requested by master", mpiRank );
+                   "[%d] * terminate requested by master", mpiRank );
         break;
       }
       
@@ -1571,17 +1566,20 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
         {
           if( nextNodeID < nodes.front()->getId() )
           {
-            UTILS_OUT( "[%u] Node ID %"PRIu64" is out of range "
-                       "[%"PRIu64",%"PRIu64"]! Send from %d",
-                       mpiRank, nextNodeID, nodes.front()->getId(), 
-                       nodes.back()->getId(), status.MPI_SOURCE );
+            UTILS_WARNING( "[%d] Node ID %"PRIu64" is out of range "
+                           "[%"PRIu64",%"PRIu64"]! Send from %d",
+                           mpiRank, nextNodeID, nodes.front()->getId(), 
+                           nodes.back()->getId(), status.MPI_SOURCE );
           }
           else
           {
-            UTILS_OUT( "[%u] Sequential search for node ID %"PRIu64" failed!",
-                       mpiRank, nextNodeID );
+            UTILS_WARNING( "[%d] Sequential search for node ID %"PRIu64" failed!",
+                           mpiRank, nextNodeID );
           }
-          //slaveNode = mpiGraph->getNodes().front();
+          
+          //UTILS_WARNING( "[%d] Continue at first local MPI node %s",
+          //               mpiRank, analysis.getNodeInfo( slaveLeaveNode ).c_str() );
+          //slaveLeaveNode = mpiGraph->getNodes().front();
         }
       }
       //////////////////////////////////////////////////////////////////////////
@@ -1610,8 +1608,8 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
       UTILS_DBG_MSG( DEBUG_CPA_MPI,
                      "[%u] becomes new master at node %s, lastNode = %s\n",
                      mpiRank,
-                     currentNode->getUniqueName().c_str(),
-                     lastNode->getUniqueName().c_str() );
+                     analysis.getNodeInfo( currentNode ).c_str(),
+                     analysis.getNodeInfo( lastNode ).c_str() );
 
       // continue main loop as master
     }

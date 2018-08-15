@@ -667,8 +667,6 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
                 "Cannot add graph node with stream ID %" PRIu64 " to stream "
                 "with ID %" PRIu64, node->getStreamId(), stream->getId() );
   
-  
-
   // insert/add node to sorted stream node list and initialize map of 
   // predecessors and successors
   if( !stream->getLastNode() || Node::compareLess( stream->getLastNode(), node ) )

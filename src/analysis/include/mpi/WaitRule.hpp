@@ -34,7 +34,7 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmMPI* mpiAnalysis, GraphNode* waitLeave )
+      apply( AnalysisParadigmMPI* analysisParadigmMPI, GraphNode* waitLeave )
       {
         // applied at MPI_Wait leave
         if ( !waitLeave->isMPIWait() || waitLeave->isEnter() )
@@ -47,7 +47,7 @@ namespace casita
           MpiStream::MPIIcommRecord* record = 
             (MpiStream::MPIIcommRecord* ) waitLeave->getData(); 
           
-          AnalysisEngine* analysis = mpiAnalysis->getCommon();
+          AnalysisEngine* analysis = analysisParadigmMPI->getCommon();
           
           uint64_t streamId = waitLeave->getStreamId();
           
@@ -99,14 +99,20 @@ namespace casita
             {
               waitEdge->makeBlocking();
 
-              // referenced stream is needed in critical path analysis
-              waitLeave->setReferencedStreamId( record->leaveNode->getReferencedStreamId() );
+              // referenced stream is needed in critical path analysis 
+              // TODO: not any more???
+              // waitLeave->setReferencedStreamId( record->leaveNode->getReferencedStreamId() );
 
+              // get communication partner stream ID
+              MPIAnalysis& mpiAnalysis = analysis->getMPIAnalysis();
+              uint64_t partnerStreamId = mpiAnalysis.getStreamId( 
+                record->leaveNode->getReferencedStreamId(), record->comRef );
+              
               // add remote edge for critical path analysis
-              analysis->getMPIAnalysis().addRemoteMPIEdge(
+              mpiAnalysis.addRemoteMPIEdge(
                 waitLeave,
                 record->recvBuffer[2], // remote node ID (leave event)
-                record->leaveNode->getReferencedStreamId() ); // remote process ID
+                partnerStreamId ); // remote process ID
               
               // mark this node as blocking to enable the MPI streamWalkCallback
               // if this is not set, it will be not handled as blocking MPI and
