@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014, 2016, 2017
+ * Copyright (c) 2014, 2016-2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -114,7 +114,7 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
     }
     else if( node->isMPICollective() )
     {
-      /*UTILS_WARNING( "[%"PRIu64"] set communicator for %s (group %u)", 
+      /*UTILS_WARNING( "[%" PRIu64 "] set communicator for %s (group %u)", 
                        node->getStreamId(), 
                        node->getUniqueName().c_str(),
                        commData.comRef );*/

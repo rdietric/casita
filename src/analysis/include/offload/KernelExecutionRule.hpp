@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2017,
+ * Copyright (c) 2017, 2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -59,7 +59,7 @@ namespace casita
 
         if ( !launchEnterEvent )
         {
-          UTILS_OUT( "[%"PRIu32"] Applying KernelExecutionRule failed. "
+          UTILS_OUT( "[%" PRIu32 "] Applying KernelExecutionRule failed. "
                      "Found kernel %s without matching kernel launch.",
                      analysis->getMPIRank(),
                      analysis->getNodeInfo( kernelLeave ).c_str() );

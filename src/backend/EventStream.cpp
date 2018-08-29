@@ -340,7 +340,7 @@ EventStream::insertGraphNode( GraphNode*                  node,
                               GraphNode::ParadigmNodeMap& nextNodes )
 {
   UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-             "Insert node %s on stream %"PRIu64, 
+             "Insert node %s on stream %" PRIu64, 
              node->getUniqueName().c_str(), this->getId() );
   
   // set changed flag
@@ -711,13 +711,13 @@ EventStream::reset()
   // clear list of unlinked MPI nodes (print to stderr before), the last node is always unlinked!
   if( unlinkedMPINodes.size() > 1 )
   {
-    UTILS_OUT( "[%"PRIu64"] Clear list of unlinked MPI nodes (%lu)!", 
+    UTILS_OUT( "[%" PRIu64 "] Clear list of unlinked MPI nodes (%lu)!", 
                this->id, this->unlinkedMPINodes.size() );
     
     for ( SortedGraphNodeList::const_iterator iter =
             unlinkedMPINodes.begin(); iter != unlinkedMPINodes.end(); ++iter )
     {
-      UTILS_OUT( "[%"PRIu64"]   %s", 
+      UTILS_OUT( "[%" PRIu64 "]   %s", 
                  this->id, ( *iter )->getUniqueName().c_str() );
     }
     

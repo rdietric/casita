@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013, 2014, 2016, 2017
+ * Copyright (c) 2013, 2014, 2016-2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -44,7 +44,7 @@ EventStreamGroup::addDeviceStream( DeviceStream* p )
 {
   if( !p->isDeviceStream() )
   {
-    UTILS_WARNING( "%s (%"PRIu64") is not a device stream", 
+    UTILS_WARNING( "%s (%" PRIu64 ") is not a device stream", 
                    p->getName(), p->getId() );
     return;
   }
@@ -101,7 +101,7 @@ EventStreamGroup::setDeviceNullStream( DeviceStream* stream )
   
   if( !stream->isDeviceStream() )
   {
-    UTILS_WARNING( "%s (%"PRIu64") Cannot set device null stream for non-device"
+    UTILS_WARNING( "%s (%" PRIu64 ") Cannot set device null stream for non-device"
                    " stream", stream->getName(), stream->getId() );
     return;
   }
@@ -149,7 +149,7 @@ EventStreamGroup::getMpiStream( uint64_t id ) const
   
   if( !strm->isMpiStream() )
   {
-    UTILS_WARNING( "%"PRIu64" is not an MPI stream!" );
+    UTILS_WARNING( "%" PRIu64 " is not an MPI stream!" );
     
     return NULL;
   }
@@ -165,7 +165,7 @@ EventStreamGroup::getDeviceStream( uint64_t id ) const
   {
     if( !iter->second->isDeviceStream() )
     {
-      UTILS_WARNING( "%"PRIu64" is not a device stream!" );
+      UTILS_WARNING( "%" PRIu64 " is not a device stream!" );
       
       return NULL;
     }

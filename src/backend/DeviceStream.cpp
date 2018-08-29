@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2017,
+ * Copyright (c) 2017, 2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -168,7 +168,7 @@ DeviceStream::reset()
   if( !(this->pendingKernels.empty()) && Parser::getVerboseLevel() > VERBOSE_BASIC )
   {
     UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
-               "[%"PRIu64"] %lz pending kernels found!", 
+               "[%" PRIu64 "] %lz pending kernels found!", 
                      this->id, this->pendingKernels.size() );
     
     if( Parser::getVerboseLevel() > VERBOSE_BASIC )

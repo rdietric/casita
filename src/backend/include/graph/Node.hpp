@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -73,7 +73,7 @@ namespace casita
  {
    OFLD_WAIT           = ( 1 << 1 ),
    OFLD_WAIT_QUEUE     = ( 1 << 2 ),
-   OFLD_WAIT_ALL      = ( 1 << 3 ),
+   OFLD_WAIT_ALL       = ( 1 << 3 ),
    OFLD_WAIT_EVT       = ( 1 << 4 ),
    OFLD_WAITSTATE      = ( 1 << 5 ),
    OFLD_TASK_KERNEL    = ( 1 << 6 ),
@@ -122,6 +122,40 @@ namespace casita
    OMP_WAITSTATE      = ( 1 << 6 ),
    OMP_TARGET         = ( 1 << 7 ),
    OMP_TARGET_FLUSH   = ( 1 << 8 )
+ };
+ 
+  enum NodeType
+  {
+    SYNC,        // synchronization or wait operation
+    TEST,        // test or query operation
+    REF_ALL,     // references all
+    REF_QUEUE,   // references queue
+    REF_EVT,     // references event
+    BLOCKING,    // blocking operations
+    TRIGGER,     // trigger operations such as MPI_Isend, cudaLaunch
+    TASK,        // compute task
+    COMPUTE,     // compute operation
+    EVENT,       // event
+    TRANSFER,    // transfer operation
+    SEND,        // send operation
+    RECV,        // receive operation
+    WAITSTATE,   // operation is wait state
+    COLLECTIVE,  // collective operation
+    BCAST,       // one-to-all operation
+    GATHER,      // all-to-one operation
+    MISC        // misc operation
+    
+    // MPI specific
+//    MPI_INIT,
+//    MPI_FINALIZE,
+//    MPI_EXIT,
+//    
+//    // OpenMP specific
+//    OMP_FORKJOIN,
+//    OMP_PARALLEL,
+//    OMP_IMPLICIT_TASK,
+//    OMP_TARGET,
+//    OMP_TARGET_FLUSH
  };
  
   typedef struct

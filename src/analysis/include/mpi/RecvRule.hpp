@@ -71,8 +71,8 @@ namespace casita
         /*if( ( buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_SEND ) &&
             ( buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_RECV ) )
         {
-          UTILS_WARNING( "[%"PRIu64"] MPI_Recv rule: Partner rank %"PRIu32" is"
-                         " MPI_SENDRECV (%"PRIu64") at %s", 
+          UTILS_WARNING( "[%" PRIu64 "] MPI_Recv rule: Partner rank %" PRIu32 " is"
+                         " MPI_SENDRECV (%" PRIu64 ") at %s", 
                          recvLeave->getStreamId(),
                          partnerRank, buffer[CASITA_MPI_P2P_BUF_LAST],
                          recvLeave->getUniqueName().c_str() );
@@ -82,8 +82,8 @@ namespace casita
         if ( !( buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_SEND || 
                 buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_ISEND ) )
         {
-          UTILS_WARNING( "[%"PRIu64"] MPI_Recv rule: Partner rank %"PRIu32" is"
-                         "not MPI_[I]SEND (%"PRIu64")", recvLeave->getStreamId(),
+          UTILS_WARNING( "[%" PRIu64 "] MPI_Recv rule: Partner rank %" PRIu32 " is"
+                         "not MPI_[I]SEND (%" PRIu64 ")", recvLeave->getStreamId(),
                          partnerRank, buffer[CASITA_MPI_P2P_BUF_LAST] );
           
           return false;
@@ -129,7 +129,7 @@ namespace casita
           }
           else
           {
-            UTILS_OUT( "["PRIu64"] RecvRule: Record edge not found. Critical "
+            UTILS_OUT( "[" PRIu64 "] RecvRule: Record edge not found. Critical "
                        "path analysis might fail!", recvLeave->getStreamId() );
           }
           

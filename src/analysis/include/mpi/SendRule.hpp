@@ -90,8 +90,8 @@ namespace casita
         /*if( ( buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_SEND ) &&
             ( buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_RECV ) )
         {
-          UTILS_WARNING( "[%"PRIu64"] SendRule: Partner rank %"PRIu32" is"
-                         " MPI_SENDRECV (%"PRIu64") at %s", 
+          UTILS_WARNING( "[%" PRIu64 "] SendRule: Partner rank %" PRIu32 " is"
+                         " MPI_SENDRECV (%" PRIu64 ") at %s", 
                          sendLeave->getStreamId(),
                          partnerRank, buffer[CASITA_MPI_P2P_BUF_LAST],
                          sendLeave->getUniqueName().c_str() );
@@ -101,8 +101,8 @@ namespace casita
         if ( !( buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_RECV || 
                 buffer[CASITA_MPI_P2P_BUF_LAST] & MPI_IRECV ) )
         {
-          UTILS_WARNING( "[%"PRIu64"] MPI_Send rule: Partner rank %"PRIu32" is "
-                         "not MPI_[I]RECV (%"PRIu64"), tag: %u", sendLeave->getStreamId(),
+          UTILS_WARNING( "[%" PRIu64 "] MPI_Send rule: Partner rank %" PRIu32 " is "
+                         "not MPI_[I]RECV (%" PRIu64 "), tag: %u", sendLeave->getStreamId(),
                          partnerRank, buffer[CASITA_MPI_P2P_BUF_LAST], mpiTag );
           
           return false;
@@ -133,7 +133,7 @@ namespace casita
             }
             else
             {
-              UTILS_OUT( "[%"PRIu64"] SendRule: Activity edge not found.", 
+              UTILS_OUT( "[%" PRIu64 "] SendRule: Activity edge not found.", 
                          sendLeave->getStreamId() );
             }
             

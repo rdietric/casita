@@ -112,7 +112,7 @@ namespace casita
             }
             else
             {
-              UTILS_OUT( "[%"PRIu64"] SendRecvRule: Edge not found. "
+              UTILS_OUT( "[%" PRIu64 "] SendRecvRule: Edge not found. "
                          "Critical path analysis might fail!",
                          sendRecvLeave->getStreamId() );
             }
@@ -169,7 +169,7 @@ namespace casita
           }
           else
           {
-            UTILS_WARNING( "[%"PRIu64"] SendrecvRule: Activity edge not found.", 
+            UTILS_WARNING( "[%" PRIu64 "] SendrecvRule: Activity edge not found.", 
                            sendRecvLeave->getStreamId() );
           }
           
@@ -212,7 +212,7 @@ namespace casita
             }
             else
             {
-              UTILS_WARNING( "[%"PRIu64"] SendrecvRule: Activity edge not found.", 
+              UTILS_WARNING( "[%" PRIu64 "] SendrecvRule: Activity edge not found.", 
                              sendRecvLeave->getStreamId() );
             }
 
@@ -235,7 +235,7 @@ namespace casita
           }
           else
           {
-            UTILS_WARNING( "[%"PRIu64"] SendrecvRule: Error in determining "
+            UTILS_WARNING( "[%" PRIu64 "] SendrecvRule: Error in determining "
                            "waiting time." );
           }
           

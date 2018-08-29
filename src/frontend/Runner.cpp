@@ -248,6 +248,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   uint64_t total_events_read  = 0;
   uint64_t events_to_read     = 0; // number of events for the trace writer to read
   
+  clock_t time_start         = clock();
   clock_t time_events_read   = 0;
   clock_t time_events_write  = 0;
   clock_t time_events_flush  = 0;
@@ -409,36 +410,39 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   
   if( mpiRank == 0 && options.verbose >= VERBOSE_TIME )
   {
+    UTILS_OUT( "Total analysis time: %f seconds.", 
+               ( (float) clock() + time_start ) / CLOCKS_PER_SEC );
+    
     // Time consumption output for individual analysis steps
-    UTILS_OUT( "Trace reading (and graph construction) took %f seconds.", 
+    UTILS_OUT( "  Trace reading (and graph construction) took %f seconds.", 
                ( (float) time_events_read ) / CLOCKS_PER_SEC );
 
-    UTILS_OUT( "Applying analysis rules took %f seconds.", 
+    UTILS_OUT( "  Applying analysis rules took %f seconds.", 
                ( (float) time_analysis ) / CLOCKS_PER_SEC );
 
-    UTILS_OUT( "Critical-path analysis took %f seconds.", 
+    UTILS_OUT( "  Critical-path analysis took %f seconds.", 
                ( (float) time_analysis_cp ) / CLOCKS_PER_SEC );
     
-    UTILS_OUT( "Trace writing (and blame assignment) took %f seconds.", 
+    UTILS_OUT( "  Trace writing (and blame assignment) took %f seconds.", 
                ( (float) time_events_write ) / CLOCKS_PER_SEC );
     
-    UTILS_MSG( options.analysisInterval, "Number of analysis intervals: %"PRIu32
-               " (Cleanup nodes took %f seconds)", ++analysis_intervals, 
+    UTILS_MSG( options.analysisInterval, "  Number of analysis intervals: %" PRIu32
+               "   (Cleanup nodes took %f seconds)", ++analysis_intervals, 
                ( (float) time_events_flush ) / CLOCKS_PER_SEC );
   }
   
   UTILS_MSG( options.verbose >= VERBOSE_SOME, 
-               "[%u] Total number of processed events: %"PRIu64, 
+               "[%u] Total number of processed events (per process): %" PRIu64, 
                mpiRank, total_events_read );
   
   // print the total number of processed events over all processes
-  if( options.verbose >= VERBOSE_BASIC )
+  if( options.verbose >= VERBOSE_TIME )
   {
     uint64_t total_events = 0;
     MPI_CHECK( MPI_Reduce( &total_events_read, &total_events, 1, 
                            MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD ) );
     
-    UTILS_MSG( mpiRank == 0, "Total number of processed events: %"PRIu64, 
+    UTILS_MSG( mpiRank == 0, "Total number of processed events: %" PRIu64, 
                              total_events );
   }
 }
@@ -482,8 +486,8 @@ Runner::mergeActivityGroups()
   // send/receive groups to master/from other MPI streams
   if ( 0 == mpiRank )
   {
-    UTILS_MSG_NOBR( options.verbose >= VERBOSE_BASIC,
-                    " Combining regions from %d analysis processes", mpiSize );
+    UTILS_MSG( options.verbose >= VERBOSE_BASIC,
+               " Combining regions from %d analysis processes", mpiSize );
   
     // receive number of regions from other processes
     uint32_t numEntriesSend = 0; // we do not evaluate this for root rank 0
@@ -1283,8 +1287,8 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
       }
 
       UTILS_MSG( lastNode && ( lastNode->getId() <= currentNode->getId() ),
-                 "[%u] ! [Warning] current node ID %"PRIu64" (%s) is not strictly "
-                 "decreasing; last node ID %"PRIu64" (%s)", 
+                 "[%u] ! [Warning] current node ID %" PRIu64 " (%s) is not strictly "
+                 "decreasing; last node ID %" PRIu64 " (%s)", 
                  mpiRank, currentNode->getId(), 
                  analysis.getNodeInfo( currentNode ).c_str(),
                  lastNode->getId(), analysis.getNodeInfo( lastNode ).c_str() );
@@ -1376,7 +1380,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
 
           UTILS_DBG_MSG( DEBUG_CPA_MPI,
                          "[%d]  testing remote MPI worker %u for remote edge to"
-                         " my node %"PRIu64" on stream %"PRIu64,
+                         " my node %" PRIu64 " on stream %" PRIu64,
                          mpiRank, mpiPartnerRank, sendBfr[0], sendBfr[1] );
 
           // send a message to the 
@@ -1535,7 +1539,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
    
       // find local node for remote node id and decide if we can continue here
       UTILS_DBG_MSG( DEBUG_CPA_MPI,
-                     "[%u]  tested by remote MPI worker %u for node %"PRIu64,
+                     "[%u]  tested by remote MPI worker %u for node %" PRIu64,
                      mpiRank, status.MPI_SOURCE,
                      nextNodeID ); // continuation node ID
 
@@ -1566,14 +1570,14 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
         {
           if( nextNodeID < nodes.front()->getId() )
           {
-            UTILS_WARNING( "[%d] Node ID %"PRIu64" is out of range "
-                           "[%"PRIu64",%"PRIu64"]! Send from %d",
+            UTILS_WARNING( "[%d] Node ID %" PRIu64 " is out of range "
+                           "[%" PRIu64 ",%" PRIu64 "]! Send from %d",
                            mpiRank, nextNodeID, nodes.front()->getId(), 
                            nodes.back()->getId(), status.MPI_SOURCE );
           }
           else
           {
-            UTILS_WARNING( "[%d] Sequential search for node ID %"PRIu64" failed!",
+            UTILS_WARNING( "[%d] Sequential search for node ID %" PRIu64 " failed!",
                            mpiRank, nextNodeID );
           }
           
@@ -1787,7 +1791,7 @@ Runner::printAllActivities()
                             stats.getStats()[ MPI_STAT_COLLECTIVE ];
     if( patternCount )
     {                      
-      printf( " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+      printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
               "MPI wait patterns",
               analysis.getRealTime( 
                 stats.getStats()[MPI_STAT_LATE_SENDER_WTIME] + 
@@ -1801,7 +1805,7 @@ Runner::printAllActivities()
     patternCount = stats.getStats()[MPI_STAT_LATE_SENDER];
     if( patternCount )
     {
-      printf( " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+      printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
               " Late sender", 
               analysis.getRealTime( stats.getStats()[MPI_STAT_LATE_SENDER_WTIME] ),
               patternCount );
@@ -1810,7 +1814,7 @@ Runner::printAllActivities()
     patternCount = stats.getStats()[ MPI_STAT_LATE_RECEIVER ];
     if( patternCount )
     {
-      printf( " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+      printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
               " Late receiver",
               analysis.getRealTime( stats.getStats()[MPI_STAT_LATE_RECEIVER_WTIME] ),
               patternCount );
@@ -1819,7 +1823,7 @@ Runner::printAllActivities()
     patternCount = stats.getStats()[MPI_STAT_SENDRECV];
     if( patternCount )
     {
-      printf( " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+      printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
               " Wait in MPI_Sendrecv",
               analysis.getRealTime( stats.getStats()[MPI_STAT_SENDRECV_WTIME] ),
               patternCount );
@@ -1828,7 +1832,7 @@ Runner::printAllActivities()
     patternCount = stats.getStats()[ MPI_STAT_WAITALL_LATEPARTNER ];
     if( patternCount )
     {
-      printf( " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+      printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
               " MPI_Waitall late partner",
               analysis.getRealTime( stats.getStats()[MPI_STAT_WAITALL_LATEPARTNER_WTIME] ),
               patternCount );
@@ -1837,7 +1841,7 @@ Runner::printAllActivities()
     patternCount = stats.getStats()[ MPI_STAT_COLLECTIVE ];
     if( patternCount )
     {
-      printf( " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+      printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
               " Wait in MPI collective",
               analysis.getRealTime( stats.getStats()[MPI_STAT_COLLECTIVE_WTIME] ),
               patternCount );
@@ -1850,7 +1854,7 @@ Runner::printAllActivities()
       if( patternCount )
       {
         printf( " OpenMP\n"
-                " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+                " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
                 " Wait in OpenMP barrier",
                 analysis.getRealTime( stats.getStats()[OMP_STAT_BARRIER_WTIME] ),
                 patternCount );
@@ -1876,7 +1880,7 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WAIT];
       if( patternCount )
       {
-        printf( " %-30.30s: %11lf s (%"PRIu64" occurrences), on kernel: %lf s\n",
+        printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences), on kernel: %lf s\n",
           " Early blocking wait",
           analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME] ),
           patternCount, 
@@ -1886,14 +1890,14 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[OFLD_STAT_EARLY_TEST];
       if( patternCount )
       {
-        printf( "  Early test for completion: %"PRIu64" (%lf s)\n", patternCount,
+        printf( "  Early test for completion: %" PRIu64 " (%lf s)\n", patternCount,
           analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_TEST_TIME] ) );
       }
 
       patternCount = stats.getStats()[OFLD_STAT_BLOCKING_COM];
       if( patternCount )
       {
-        printf( " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+        printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
                 " Blocking communication",
           analysis.getRealTime( stats.getStats()[OFLD_STAT_BLOCKING_COM_TIME] ),
           patternCount );
@@ -1902,7 +1906,7 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[OFLD_STAT_MULTIPLE_COM];
       if( patternCount )
       {
-        printf( " %-30.30s: %11lf s (%"PRIu64" occurrences)\n",
+        printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
                 " Consecutive communication",
           analysis.getRealTime( stats.getStats()[OFLD_STAT_MULTIPLE_COM_TIME] ),
           patternCount );
@@ -1911,7 +1915,7 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[OFLD_STAT_KERNEL_START_DELAY];
       if( patternCount )
       {
-        printf( " %-30.30s: %11lf ms/kernel (%"PRIu64" occurrences), total delay: %lf s\n\n",
+        printf( " %-30.30s: %11lf ms/kernel (%" PRIu64 " occurrences), total delay: %lf s\n\n",
           " Kernel Startup Delay",
           analysis.getRealTime( stats.getStats()[OFLD_STAT_KERNEL_START_DELAY_TIME] ) / patternCount *1000,
           patternCount,

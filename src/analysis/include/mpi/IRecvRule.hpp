@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2016, 2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -55,7 +55,7 @@ namespace casita
         if( NULL == record )
         {
           UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_TIME, 
-                     "[%"PRIu64"] MPI_Irecv rule: No record data.",
+                     "[%" PRIu64 "] MPI_Irecv rule: No record data.",
                      irecvLeave->getStreamId());
           
           return false;

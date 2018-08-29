@@ -308,7 +308,7 @@ OTF2ParallelTraceWriter::clearOpenEdges()
       if( openEdges.size() )
       {
         
-        UTILS_OUT( " [%"PRIu64"] Clear %lu open edge(s)", 
+        UTILS_OUT( " [%" PRIu64 "] Clear %lu open edge(s)", 
                    mapIt->first, openEdges.size() );
         for ( OpenEdgesList::const_iterator edgeIter = openEdges.begin();
             edgeIter != openEdges.end(); ++edgeIter)
@@ -425,7 +425,7 @@ OTF2ParallelTraceWriter::copyGlobalDefinitions()
                                         &definitions_read );
 
   UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-             "[0] Trace writer: Read/wrote %"PRIu64" definitions", 
+             "[0] Trace writer: Read/wrote %" PRIu64 " definitions", 
              definitions_read );
 }
 
@@ -602,7 +602,7 @@ void
 OTF2ParallelTraceWriter::setupGlobalEvtReader()
 {
   UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_ANNOY, 
-             "[%"PRIu32"] Setup global event reader", mpiRank );
+             "[%" PRIu32 "] Setup global event reader", mpiRank );
   
   
   for( LocationParentMap::const_iterator it = locationParentMap.begin();
@@ -722,7 +722,7 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
   //SCOREP_USER_REGION( "writeLocations", SCOREP_USER_REGION_TYPE_FUNCTION )
   
   UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_SOME, 
-             "[%"PRIu32"] Write streams ...", mpiRank );
+             "[%" PRIu32 "] Write streams ...", mpiRank );
   
   // reset "per interval" values in the trace writer
   reset();
@@ -753,14 +753,14 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
       // clear list of open edges
       UTILS_MSG( streamState.openEdges.size() > 1 &&
                  Parser::getVerboseLevel() >= VERBOSE_TIME, 
-                 " [%"PRIu64"] Clear %lu open edge(s).", 
+                 " [%" PRIu64 "] Clear %lu open edge(s).", 
                  streamState.stream->getId(), streamState.openEdges.size() );
       
       streamState.openEdges.clear();
     }
     
     EventStream::SortedGraphNodeList* processNodes = &( stream->getNodes() );
-    UTILS_ASSERT( processNodes, "No nodes for stream %"PRIu64" found!", streamId );
+    UTILS_ASSERT( processNodes, "No nodes for stream %" PRIu64 " found!", streamId );
 
     EventStream::SortedGraphNodeList::iterator currentNodeIter = 
       processNodes->begin();
@@ -786,7 +786,7 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
         GraphNode* currentNode = *currentNodeIter;
         
         UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_ALL, 
-                   "[%"PRIu32"] TraceWriter: Skip atomic node: %s", 
+                   "[%" PRIu32 "] TraceWriter: Skip atomic node: %s", 
                    mpiRank, currentNode->getUniqueName().c_str() );
 
         // first part of the condition should be wrong for the global source node
@@ -894,7 +894,7 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
 #endif
   
   UTILS_MSG( mpiRank == 0 && Parser::getVerboseLevel() > VERBOSE_BASIC, 
-             "[0] Writer: Read %"PRIu64" / %"PRIu64" events", 
+             "[0] Writer: Read %" PRIu64 " / %" PRIu64 " events", 
              events_read, eventsToRead );
   
   if ( OTF2_SUCCESS != otf2_error )
@@ -1553,7 +1553,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
 
       UTILS_ASSERT( currentNode->getFunctionId() == event.regionRef,
                     //&& currentNode->getRecordType() == event.type,
-                    " [%u] RegionRef doesn't fit for event %"PRIu64":%s:%d:%" PRIu64 ":%lf"
+                    " [%u] RegionRef doesn't fit for event %" PRIu64 ":%s:%d:%" PRIu64 ":%lf"
                     " and internal node %s:%lf, %u != %" PRIu64, mpiRank, 
                     event.location, eventName, event.type, event.time, getRealTime(event.time),
                     currentNode->getUniqueName().c_str(),

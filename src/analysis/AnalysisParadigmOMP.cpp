@@ -134,7 +134,7 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
           }
         }
 
-        //UTILS_WARNING("Distribute blame %"PRIu64" to %s", blame, 
+        //UTILS_WARNING("Distribute blame %" PRIu64 " to %s", blame, 
         //               commonAnalysis->getNodeInfo( latestBarrierEnter).c_str() );
         
         distributeBlame( commonAnalysis,
@@ -452,7 +452,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
         // if parallel region is already listed
         if( parallelMap.count( parallel_id ) > 0 )
         {
-          UTILS_WARNING( "[OMPT] Overwriting parallel region (%"PRIu64") %s with %s!",
+          UTILS_WARNING( "[OMPT] Overwriting parallel region (%" PRIu64 ") %s with %s!",
                          parallel_id,
                          commonAnalysis->getNodeInfo( parallelMap[parallel_id] ).c_str(),
                          commonAnalysis->getNodeInfo( enterNode ).c_str() );
@@ -469,7 +469,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
         if( ompOpenWorkerNodesMap.count( parallel_id ) > 0 )
         {
           UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
-                "[OMPT] Fix dependencies for parallel region %"PRIu64" at %s",
+                "[OMPT] Fix dependencies for parallel region %" PRIu64 " at %s",
                 parallel_id, commonAnalysis->getNodeInfo( enterNode ).c_str() );
           
           GraphNodeVec::iterator it = 
@@ -516,7 +516,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
         else
         {
           UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
-                     "[OMPT] Parallel region %"PRIu64" at %s not available!",
+                     "[OMPT] Parallel region %" PRIu64 " at %s not available!",
                      parallel_id,
                      commonAnalysis->getNodeInfo( enterNode ).c_str() );
           

@@ -46,7 +46,7 @@ namespace casita
    public GraphEngine
  {
    public:
-
+ 
      AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize );
 
      virtual

@@ -68,8 +68,8 @@ CallbackHandler::printNode( GraphNode* node, EventStream* stream )
     }
 
     fprintf( stderr,
-             "[%12"PRIu64"(%12.8fs):%10"PRIu64",%5"PRIu64"] [%20.20s] on "
-             "[%15s:%11"PRIu64"], [%s]",
+             "[%12" PRIu64 "(%12.8fs):%10" PRIu64 ",%5" PRIu64 "] [%20.20s] on "
+             "[%15s:%11" PRIu64 "], [%s]",
              node->getTime(), analysis.getRealTime( node->getTime() ),
              node->getId(), node->getFunctionId(),
              node->getName(),
@@ -111,7 +111,7 @@ CallbackHandler::readAttributeUint32( OTF2TraceReader*  reader,
   {
     CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
     AnalysisEngine&  analysis = handler->getAnalysis();
-    UTILS_WARNING( "[%"PRIu32"] No value for key %s found", 
+    UTILS_WARNING( "[%" PRIu32 "] No value for key %s found", 
                    analysis.getMPIRank(), keyName );
   }
 
@@ -183,7 +183,7 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
   }
 
   UTILS_MSG( Parser::getInstance().getVerboseLevel() >= VERBOSE_BASIC,
-             "  [%u] Found stream %s (%"PRIu64") with type %u, parent %"PRIu64,
+             "  [%u] Found stream %s (%" PRIu64 ") with type %u, parent %" PRIu64,
              analysis.getMPIRank(), name, streamId, streamType, parentId );
 
   analysis.newEventStream( streamId, parentId, name, streamType );
@@ -309,7 +309,7 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   
   if( stream->isFilterOn() )
   {
-    UTILS_MSG(true, "Filtering nested region %s", funcName );
+    UTILS_OUT( "Filtering nested region %s", funcName );
     
     return;
   }
@@ -325,7 +325,7 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
     }
     else
     {
-      UTILS_MSG(true, "Enable filter for %s (%u)", funcName, functionId );
+      UTILS_OUT( "Enable filter for %s (%u)", funcName, functionId );
     
       // set the filter to on (ignore nested regions)
       stream->setFilter( true, time );
@@ -412,7 +412,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   
   if( analysis.isRegionFiltered( functionId ) )
   {
-    UTILS_MSG(true, "Disable filter for %s", funcName );
+    UTILS_OUT( "Disable filter for %s", funcName );
 
     stream->setFilter( false, time );
   }
@@ -638,6 +638,9 @@ CallbackHandler::handleMPIComm( OTF2TraceReader* reader,
              pMPIType, tag );
 
   stream->setPendingMPIRecord( pMPIType, partnerId, root_comm, tag );
+  
+  // trace statistics
+  //analysis.blockingMPI
 }
 
 /**

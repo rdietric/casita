@@ -84,7 +84,7 @@ namespace casita
         
         if( refProcess == NULL )
         {
-          UTILS_WARNING( "[%"PRIu32"] EventSyncRule: Referenced stream (%"PRIu64
+          UTILS_WARNING( "[%" PRIu32 "] EventSyncRule: Referenced stream (%" PRIu64
                           ") %s (%f) on stream %s  not found!",
             analysis->getMPIRank(),
             eventRecordLeave->getReferencedStreamId(),
@@ -110,7 +110,7 @@ namespace casita
         GraphNode* eventRecordEnter = eventRecordLeave->getGraphPair().first;
         if( !eventRecordEnter )
         {
-          UTILS_WARNING( "[%"PRIu32"] No event record enter event for %s found", 
+          UTILS_WARNING( "[%" PRIu32 "] No event record enter event for %s found", 
                          analysis->getMPIRank(),
                          analysis->getNodeInfo( eventRecordLeave ).c_str() );
           return false;
@@ -151,7 +151,7 @@ namespace casita
             // analysis->printDebugInformation( ( (EventNode*)syncLeave )->getEventId( ) );
 
             UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME, 
-              "[%"PRIu32"] EventSyncRule on %s (%f) failed.\n"
+              "[%" PRIu32 "] EventSyncRule on %s (%f) failed.\n"
               "Synchronize returned before kernel %s (%f) on stream "
               "[%u, %s] finished. Deferring node ...",
               analysis->getMPIRank(),
@@ -195,7 +195,7 @@ namespace casita
           }
           else if ( kernelLeave->getTime() > syncLeave->getTime() )
           {
-            UTILS_OUT( "[%"PRIu32"] EventSyncRule on %s (%f) failed!", 
+            UTILS_OUT( "[%" PRIu32 "] EventSyncRule on %s (%f) failed!", 
                        analysis->getMPIRank(),
                        syncLeave->getUniqueName().c_str(),
                        analysis->getRealTime( syncLeave->getTime() ) );
@@ -290,7 +290,7 @@ namespace casita
           else
           {
             UTILS_WARNING( "Cannot consume pending kernels. Stream with ID %"
-                           PRIu64" not found!", kernelLeave->getStreamId() );
+                           PRIu64 " not found!", kernelLeave->getStreamId() );
           }
         }
         

@@ -506,7 +506,7 @@ AnalysisEngine::createIntermediateBegin()
         if( nodes.back()->isEnter() )
         {
           UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC,
-            "[%"PRIu64"] Found incomplete kernel %s at intermediate analysis start.", 
+            "[%" PRIu64 "] Found incomplete kernel %s at intermediate analysis start.", 
             p->getId(), getNodeInfo( nodes.back() ).c_str())
           
           nodes.pop_back();
@@ -516,7 +516,7 @@ AnalysisEngine::createIntermediateBegin()
         if( ( ( DeviceStream* ) p )->getLastPendingKernel() )
         {
           UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC, 
-            "Stream %"PRIu64" has pending kernels at intermediate analysis start.", 
+            "Stream %" PRIu64 " has pending kernels at intermediate analysis start.", 
             p->getId() );
         }
         else
@@ -628,7 +628,7 @@ AnalysisEngine::createIntermediateBegin()
       newEdge( globalSourceNode, lastNode ); 
       
       UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-                 "[%"PRIu64"] Created intermediate start node: %s",
+                 "[%" PRIu64 "] Created intermediate start node: %s",
                  p->getId(), getNodeInfo(lastNode).c_str() );
     }
     else
@@ -636,7 +636,7 @@ AnalysisEngine::createIntermediateBegin()
       // clear nodes of device streams
       p->clearNodes();
       UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_SOME, 
-                 "[%"PRIu64"] Cleared nodes list", p->getId() );
+                 "[%" PRIu64 "] Cleared nodes list", p->getId() );
     }
   }
 }
@@ -716,8 +716,8 @@ AnalysisEngine::checkPendingMPIRequests()
 
       if( pendingRequests > 0 )
       {
-        UTILS_WARN_ONCE( "[%"PRIu32"] There are %lu pending MPI requests on "
-                         "stream %"PRIu64" (%s)!", getMPIRank(), 
+        UTILS_WARN_ONCE( "[%" PRIu32 "] There are %lu pending MPI requests on "
+                         "stream %" PRIu64 " (%s)!", getMPIRank(), 
                          pendingRequests, stream->getId(), stream->getName() );
       }
     }

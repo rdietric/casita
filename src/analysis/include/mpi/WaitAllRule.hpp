@@ -69,7 +69,7 @@ namespace casita
             // wait for MPI_Irecv or MPI_Isend
             if( !(record->leaveNode->isMPI_Irecv() || record->leaveNode->isMPI_Isend()) )
             {
-              UTILS_OUT( "[%"PRIu64"] WaitRule: Only MPI_Isend and "
+              UTILS_OUT( "[%" PRIu64 "] WaitRule: Only MPI_Isend and "
                          "MPI_Irecv are supported! (%s)", waitAllLeave->getStreamId(), 
                          record->leaveNode->getUniqueName().c_str() );
               return false;
@@ -138,7 +138,7 @@ namespace casita
             }
             else
             {
-              UTILS_OUT( "[%"PRIu64"] MPI_Waitall rule: Activity edge "
+              UTILS_OUT( "[%" PRIu64 "] MPI_Waitall rule: Activity edge "
                          "not found.", waitAllLeave->getStreamId() );
             }
             

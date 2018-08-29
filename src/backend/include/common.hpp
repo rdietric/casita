@@ -70,5 +70,4 @@ namespace casita
         assert( 0 );
       }
   };
-
 }

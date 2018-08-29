@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -36,7 +36,10 @@ MPIAnalysis::~MPIAnalysis()
     if ( iter->second.comm != MPI_COMM_NULL && iter->second.comm !=
          MPI_COMM_SELF )
     {
-      MPI_CHECK( MPI_Comm_free( &( iter->second.comm ) ) );
+      if ( MPI_SUCCESS != MPI_Comm_free( &( iter->second.comm ) ) )
+      {
+        UTILS_WARNING( "Could not free MPI communicator!");
+      }
     }
   }
 }
@@ -289,7 +292,7 @@ MPIAnalysis::reset()
   {
     UTILS_MSG_IF_ONCE( Parser::getVerboseLevel() > VERBOSE_BASIC, 
                        Parser::getVerboseLevel() > VERBOSE_TIME, 
-               "[%"PRIu32"] Clear %lu remote nodes. Critical path analysis "
+               "[%" PRIu32 "] Clear %lu remote nodes. Critical path analysis "
                "might fail otherwise.", mpiRank, remoteNodeMap.size() );
     
     if( Parser::getVerboseLevel() > VERBOSE_BASIC )
@@ -297,8 +300,8 @@ MPIAnalysis::reset()
       for( RemoteNodeMap::const_iterator it = remoteNodeMap.begin(); 
            it != remoteNodeMap.end(); ++it )
       {
-        UTILS_OUT( "[%"PRIu32"] Node %s has open remote node %"PRIu64
-                         " on stream %"PRIu64, 
+        UTILS_OUT( "[%" PRIu32 "] Node %s has open remote node %" PRIu64
+                         " on stream %" PRIu64, 
                    mpiRank, it->first->getUniqueName().c_str(), 
                    it->second.nodeID, it->second.streamID );
       }

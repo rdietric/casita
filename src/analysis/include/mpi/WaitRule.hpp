@@ -59,7 +59,7 @@ namespace casita
           // wait for MPI_Irecv or MPI_Isend
           if( !(record->leaveNode->isMPI_Irecv() || record->leaveNode->isMPI_Isend()) )
           {
-            UTILS_OUT( "[%"PRIu64"] WaitRule: Only MPI_Isend and MPI_Irecv"
+            UTILS_OUT( "[%" PRIu64 "] WaitRule: Only MPI_Isend and MPI_Irecv"
                        " are supported! (%s)", streamId, 
                        record->leaveNode->getUniqueName().c_str() );
             return false;
@@ -121,7 +121,7 @@ namespace casita
             }
             else
             {
-              UTILS_OUT( "[%"PRIu64"] MPI_Wait rule: Activity edge not found.", 
+              UTILS_OUT( "[%" PRIu64 "] MPI_Wait rule: Activity edge not found.", 
                          streamId );
             }
             

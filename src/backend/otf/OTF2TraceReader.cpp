@@ -182,8 +182,7 @@ OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
 
   OTF2_Reader_CloseDefFiles( reader );
 
-  OTF2_GlobalEvtReader* global_evt_reader        =
-    OTF2_Reader_GetGlobalEvtReader( reader );
+  OTF2_GlobalEvtReader* global_evt_reader = OTF2_Reader_GetGlobalEvtReader( reader );
 
   OTF2_GlobalEvtReaderCallbacks* event_callbacks =
     OTF2_GlobalEvtReaderCallbacks_New();
@@ -534,7 +533,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationProperty(
   if( tr->defHandler->haveStringRef( name ) )
   {
     UTILS_MSG( Parser::getInstance().getVerboseLevel() >= VERBOSE_BASIC, 
-               "[%"PRIu64"] Found location property %s", 
+               "[%" PRIu64 "] Found location property %s", 
                location, tr->defHandler->getName( name ) );
     
     // location strings are only stored for locations of this MPI rank

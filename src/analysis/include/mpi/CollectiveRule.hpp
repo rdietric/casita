@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2016, 2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -89,7 +89,7 @@ namespace casita
         sendBuffer[2] = colLeave->getId();
         sendBuffer[3] = colLeave->getStreamId();
         
-        /*UTILS_WARNING( "[%"PRIu64"] MPI collective rule for %s (group %u)", 
+        /*UTILS_WARNING( "[%" PRIu64 "] MPI collective rule for %s (group %u)", 
                        colLeave->getStreamId(), 
                        colLeave->getUniqueName().c_str(),
                        mpiGroupId );*/
@@ -134,7 +134,7 @@ namespace casita
           }
           else
           {
-            UTILS_WARNING( "[%"PRIu64"] MPI collective rule: Record edge not "
+            UTILS_WARNING( "[%" PRIu64 "] MPI collective rule: Record edge not "
                            "found. CPA might fail!", colLeave->getStreamId() );
           }
           

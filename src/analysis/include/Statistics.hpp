@@ -42,7 +42,7 @@ enum StatMetric
    MPI_STAT_LATE_RECEIVER_WTIME = 17, // late receiver waiting time
    MPI_STAT_SENDRECV = 18,
    MPI_STAT_SENDRECV_WTIME = 19,
-   MPI_STAT_COLLECTIVE = 20,       // number of (imbalanced) collectives
+   MPI_STAT_COLLECTIVE = 20,       // number of (unbalanced) collectives
    MPI_STAT_COLLECTIVE_WTIME = 21, // waiting time in collectives
    MPI_STAT_WAITALL_LATEPARTNER = 22,
    MPI_STAT_WAITALL_LATEPARTNER_WTIME = 23,
@@ -50,6 +50,22 @@ enum StatMetric
    //OpenMP
    OMP_STAT_BARRIER = 24,      // OpenMP barriers
    OMP_STAT_BARRIER_WTIME = 25 // waiting time in OpenMP barriers
+};
+
+#define ACTIVITY_TYPE_NUMBER 10
+enum ActivityType
+{
+  // offloading
+   OFLD_KERNEL = 0,
+   OFLD_SYNC = 1,
+   OFLD_EVT_RECORD = 2,
+   OFLD_EVT_QUERY = 3,
+   OFLD_EVT_SYNC = 4,
+   MPI_SEND  = 5,
+   MPI_RECV = 6,
+   MPI_WAIT = 7,
+   OMP_FORK = 8,
+   OMP_BARRIER = 9
 };
 
 namespace casita
@@ -65,22 +81,28 @@ namespace casita
     private:
       /////// important metrics ////////
       
-      // MPI
-      uint64_t mpi_blocking_communication;
-      
       // communication roofline
       uint64_t fastest_communication; //\todo: per type (size)
       uint64_t avg_communication; //\todo: per type (size)
       
-      // offloading
+      // inefficiencies
       uint64_t stats[ STATS_NUMBER ];
-      //uint64_t launch_overhead;    
+      
+      // occurrences 
+      uint64_t occurrences[ ACTIVITY_TYPE_NUMBER ];
       
       // OpenMP
       uint64_t fork_parallel_overhead;
       uint64_t barrier_overhead;
       
     public:
+      
+      uint64_t mpiBlockingComCounter;
+      uint64_t mpiNonBlockingComCounter;
+      uint64_t mpiBlockingCollectiveCounter;
+      uint64_t ofldKernelCounter;
+      uint64_t ofldTransferCounter;
+      uint64_t ofldSyncCounter;
       
       void
       addStatWithCount( StatMetric statType, uint64_t time, 

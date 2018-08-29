@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015,
+ * Copyright (c) 2013-2015, 2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -96,7 +96,7 @@ main( int argc, char** argv )
     
     timestamp = clock() - timestamp;
     
-    UTILS_MSG( mpiRank == 0, "CASITA analysis took %f seconds.\n", ( (float) timestamp ) / CLOCKS_PER_SEC );
+    UTILS_MSG( mpiRank == 0, "Total CASITA runtime: %f seconds.\n", ( (float) timestamp ) / CLOCKS_PER_SEC );
   }
   catch( RTException e )
   {

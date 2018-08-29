@@ -278,7 +278,7 @@ AnalysisParadigmOffload::isKernelPending( GraphNode* kernelNode )
     if( kernelNode->getGraphPair().second->getLink() == NULL )
     {
       UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC, 
-                 "[%"PRIu64"] Do not delete unsynchronized kernel %s", 
+                 "[%" PRIu64 "] Do not delete unsynchronized kernel %s", 
                  kernelNode->getStreamId(), 
                  this->commonAnalysis->getNodeInfo( kernelNode ).c_str() );
       return true;
@@ -288,7 +288,7 @@ AnalysisParadigmOffload::isKernelPending( GraphNode* kernelNode )
   else if( kernelNode->isEnter() )
   {
     UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC, 
-               "[%"PRIu64"] Do not delete incomplete kernel %s", 
+               "[%" PRIu64 "] Do not delete incomplete kernel %s", 
                kernelNode->getStreamId(), 
                this->commonAnalysis->getNodeInfo( kernelNode ).c_str() );
     return true;
@@ -345,7 +345,7 @@ AnalysisParadigmOffload::printKernelLaunchMap()
     
     if( mapIter->second.size() )
     {
-      UTILS_OUT( "[%"PRIu32"] %llu pending kernel launches for device stream %"PRIu64,
+      UTILS_OUT( "[%" PRIu32 "] %llu pending kernel launches for device stream %" PRIu64,
                  commonAnalysis->getMPIRank(), mapIter->second.size(), mapIter->first );
       
       EventStream* evtStream = this->commonAnalysis->getStream( mapIter->first );
@@ -361,14 +361,14 @@ AnalysisParadigmOffload::printKernelLaunchMap()
       for( GraphNode::GraphNodeList::const_iterator itList = mapIter->second.begin();
            itList != mapIter->second.end(); ++itList )
       {
-        UTILS_WARNING( "[%"PRIu32"] Pending kernel launch %s",
+        UTILS_WARNING( "[%" PRIu32 "] Pending kernel launch %s",
                        commonAnalysis->getMPIRank(),
                        commonAnalysis->getNodeInfo( *itList ).c_str() );
       }
       
     }
   }
-  UTILS_OUT( "[%"PRIu32"] %"PRIu64" pending kernel launches on %llu different device streams",
+  UTILS_OUT( "[%" PRIu32 "] %" PRIu64 " pending kernel launches on %llu different device streams",
              commonAnalysis->getMPIRank(),pendingKernelLaunchCount, pendingKernelLaunchMap.size() );
 }
 
@@ -557,7 +557,7 @@ AnalysisParadigmOffload::removeKernelLaunch( GraphNode* kernel )
 
       UTILS_MSG_IF_ONCE( Parser::getVerboseLevel() > VERBOSE_BASIC, 
                          Parser::getVerboseLevel() > VERBOSE_TIME,
-                 "[%"PRIu32"] Removed %s referencing %"PRIu64" from kernel "
+                 "[%" PRIu32 "] Removed %s referencing %" PRIu64 " from kernel "
                  "launch map (new list size %llu)", 
                  commonAnalysis->getMPIRank(),
                  commonAnalysis->getNodeInfo( kernelLaunchLeave ).c_str(),
@@ -580,7 +580,7 @@ AnalysisParadigmOffload::clearKernelEnqueues( uint64_t streamId )
     if( pendingKernelLaunchMap[ streamId ].size() > 0 )
     {
       UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
-        "[%"PRIu32"] Clear list of %llu pending kernel launches for stream %"PRIu64, 
+        "[%" PRIu32 "] Clear list of %llu pending kernel launches for stream %" PRIu64, 
         commonAnalysis->getMPIRank(), 
         (unsigned long long)pendingKernelLaunchMap[ streamId ].size(), streamId );
       
