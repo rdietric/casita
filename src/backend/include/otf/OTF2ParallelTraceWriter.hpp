@@ -155,6 +155,8 @@ namespace casita
       
       AnalysisEngine* analysis;
       
+      Statistics* statistics;
+      
       OTF2DefinitionHandler* defHandler;
       
       uint32_t mpiRank, mpiSize;

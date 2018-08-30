@@ -56,6 +56,9 @@ namespace casita
         }
         
         AnalysisEngine* analysis = ofldAnalysis->getCommon();
+        
+        // count occurrence
+        analysis->getStatistics().countActivity( STAT_OFLD_SYNC );
 
         GraphNode* syncEnter = syncLeave->getGraphPair().first;
         
@@ -136,7 +139,7 @@ namespace casita
                 
                 // early blocking wait statistics
                 analysis->getStatistics().addStatWithCount( 
-                  OFLD_STAT_EARLY_BLOCKING_WAIT, 
+                  STAT_OFLD_EARLY_BLOCKING_WAIT, 
                   syncLeave->getTime() - syncEnter->getTime() );
               }
               else if( !syncEdge->isBlocking() )
@@ -145,7 +148,7 @@ namespace casita
                 
                 // early blocking wait statistics
                 analysis->getStatistics().addStatWithCount( 
-                  OFLD_STAT_EARLY_BLOCKING_WAIT, 
+                  STAT_OFLD_EARLY_BLOCKING_WAIT, 
                   syncLeave->getTime() - syncEnter->getTime() );
               }
 

@@ -51,6 +51,9 @@ namespace casita
 
         AnalysisEngine* analysis = mAnalysis->getCommon();
         
+        // count occurrences
+        analysis->getStatistics().countActivity( STAT_MPI_COLLECTIVE );
+        
         // test for pending non-blocking MPI communication (to close open requests)
         if ( !colLeave->isMPIInit() )
         {

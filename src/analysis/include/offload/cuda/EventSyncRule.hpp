@@ -60,6 +60,9 @@ namespace casita
         }
 
         AnalysisEngine* analysis = ofldAnalysis->getCommon();
+        
+        // count occurrence
+        analysis->getStatistics().countActivity( STAT_OFLD_SYNC_EVT );
 
         // use the CUDA event ID to get cuEventRecord leave node
         EventNode* eventRecordLeave = ofldAnalysis->getEventRecordLeave(
@@ -224,7 +227,7 @@ namespace casita
                 
                 // early blocking wait statistics
                 analysis->getStatistics().addStatWithCount( 
-                  OFLD_STAT_EARLY_BLOCKING_WAIT, 
+                  STAT_OFLD_EARLY_BLOCKING_WAIT, 
                   syncLeave->getTime() - syncEnter->getTime() );
               }
             }
@@ -234,7 +237,7 @@ namespace casita
               
               // early blocking wait statistics
               analysis->getStatistics().addStatWithCount( 
-                OFLD_STAT_EARLY_BLOCKING_WAIT, 
+                STAT_OFLD_EARLY_BLOCKING_WAIT, 
                 syncLeave->getTime() - syncEnter->getTime() );
             }
             

@@ -44,6 +44,11 @@ namespace casita
         }
 
         AnalysisEngine* commonAnalysis = analysis->getCommon();
+        
+        // count occurrence
+        commonAnalysis->getStatistics().countActivity( STAT_MPI_SEND );
+        commonAnalysis->getStatistics().countActivity( STAT_MPI_RECV );
+        
         MPIAnalysis& mpiAnalysis = commonAnalysis->getMPIAnalysis();
 
         GraphNode* sendRecvEnter = sendRecvLeave->getGraphPair().first;

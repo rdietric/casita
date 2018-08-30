@@ -488,7 +488,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   if( ( regionDesc.functionType & OFLD_BLOCKING_DATA ) && 
       regionDesc.paradigm & PARADIGM_OFFLOAD )
   {
-    analysis.getStatistics().addStatWithCount( OFLD_STAT_BLOCKING_COM, 
+    analysis.getStatistics().addStatWithCount( STAT_OFLD_BLOCKING_COM, 
       leaveNode->getTime() - enterNode->getTime() );
   }
 

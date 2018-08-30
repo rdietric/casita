@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -43,6 +43,10 @@ namespace casita
         }
 
         AnalysisEngine* commonAnalysis = analysis->getCommon();
+        
+        // count occurrence
+        commonAnalysis->getStatistics().countActivity( STAT_OMP_BARRIER );
+        
         GraphNode*      barrierEnter   = barrierLeave->getGraphPair().first;
         EventStream*    nodeStream     = commonAnalysis->getStream(
           barrierLeave->getStreamId() );

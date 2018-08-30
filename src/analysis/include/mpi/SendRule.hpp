@@ -43,6 +43,9 @@ namespace casita
         }
 
         AnalysisEngine* commonAnalysis = analysis->getCommon();
+        
+        commonAnalysis->getStatistics().countActivity(STAT_MPI_SEND);
+        
         MPIAnalysis& mpiAnalysis = commonAnalysis->getMPIAnalysis();
 
         GraphNode* sendEnter = sendLeave->getGraphPair().first;

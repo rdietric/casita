@@ -103,6 +103,8 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter(
     devComputeIdleRegRef( 0 ),
     graph( NULL )
 {
+  statistics = &( analysis->getStatistics() );
+  
   flush_callbacks.otf2_post_flush = postFlush;
   flush_callbacks.otf2_pre_flush  = preFlush;
   

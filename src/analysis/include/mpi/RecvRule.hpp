@@ -43,6 +43,10 @@ namespace casita
         }
 
         AnalysisEngine* commonAnalysis = analysis->getCommon();
+        
+        // count occurrences
+        commonAnalysis->getStatistics().countActivity( STAT_MPI_RECV );
+        
         MPIAnalysis& mpiAnalysis = commonAnalysis->getMPIAnalysis();
 
         int partnerRank = (int) recvLeave->getReferencedStreamId();

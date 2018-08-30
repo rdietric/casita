@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014, 2016, 2017
+ * Copyright (c) 2013-2014, 2016-2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -50,12 +50,17 @@ namespace casita
         ////////////////////////////////////////////////////////////////////////
         // this is an OpenMP join node
         
+        AnalysisEngine* analysisEngine = analysis->getCommon();
+        
+        analysisEngine->getStatistics().countActivity( STAT_OMP_JOIN );
+        
         GraphNode* ppr = analysis->getInnerMostFork();
         
         UTILS_ASSERT( ppr->getFunctionId() == node->getFunctionId(),
                       "[%" PRIu64 "] OpenMP join %s does not match the open fork %s",
-                      node->getStreamId(), node->getUniqueName( ).c_str(),
-                      ppr->getUniqueName().c_str() );
+                      node->getStreamId(), 
+                      analysisEngine->getNodeInfo(node).c_str(),
+                      analysisEngine->getNodeInfo(ppr).c_str() );
 
         /* check if closing join matches the open fork (have the same ID)
         if ( ppr->getFunctionId( ) != node->getFunctionId( ) )
@@ -78,7 +83,7 @@ namespace casita
         
         // iterate over all OpenMP streams and add dependency edge to join
         const EventStreamGroup::EventStreamList& streams = 
-                                        analysis->getCommon()->getHostStreams();
+                                        analysisEngine->getHostStreams();
         for ( EventStreamGroup::EventStreamList::const_iterator pIter =
                 streams.begin(); pIter != streams.end(); ++pIter )
         {
@@ -86,7 +91,7 @@ namespace casita
           GraphNode*   kernel = analysis->getOmpCompute( p->getId( ) );
           if ( ( kernel != NULL ) && ( kernel->getStreamId() != node->getStreamId( ) ) )
           {
-            analysis->getCommon( )->newEdge( kernel, node );
+            analysisEngine->newEdge( kernel, node );
           }
 
           analysis->setOmpCompute( NULL, p->getId( ) );

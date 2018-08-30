@@ -49,6 +49,9 @@ namespace casita
         }
 
         AnalysisEngine* analysis = ofldAnalysis->getCommon();
+        
+        // count occurrence
+        analysis->getStatistics().countActivity( STAT_OFLD_KERNEL );
 
         uint64_t kernelStrmId = kernelLeave->getStreamId();
 

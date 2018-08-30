@@ -49,6 +49,8 @@ namespace casita
           
           AnalysisEngine* analysis = analysisParadigmMPI->getCommon();
           
+          analysis->getStatistics().countActivity( STAT_MPI_WAIT );
+          
           uint64_t streamId = waitLeave->getStreamId();
           
           if( !record->leaveNode )

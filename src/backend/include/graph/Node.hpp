@@ -71,91 +71,91 @@ namespace casita
  
  enum NodeTypeOFLD
  {
-   OFLD_WAIT           = ( 1 << 1 ),
-   OFLD_WAIT_QUEUE     = ( 1 << 2 ),
-   OFLD_WAIT_ALL       = ( 1 << 3 ),
-   OFLD_WAIT_EVT       = ( 1 << 4 ),
-   OFLD_WAITSTATE      = ( 1 << 5 ),
-   OFLD_TASK_KERNEL    = ( 1 << 6 ),
-   OFLD_TASK_DATA      = ( 1 << 7 ),
-   OFLD_ENQUEUE_KERNEL = ( 1 << 8 ),
-   OFLD_ENQUEUE_DATA   = ( 1 << 9 ),
-   OFLD_ENQUEUE_EVT    = ( 1 << 10 ),
-   OFLD_ENQUEUE_WAIT   = ( 1 << 11 ),
-   OFLD_QUERY          = ( 1 << 12 ),
-   OFLD_QUERY_EVT      = ( 1 << 13 ),
-   OFLD_BLOCKING_DATA  = ( 1 << 14 ),
-   OFLD_ASYNC_DATA     = ( 1 << 15 )
+   OFLD_WAIT           = ( 1 << 1 ),  // TYPE_SYNC
+   OFLD_WAIT_QUEUE     = ( 1 << 2 ),  // TYPE_SYNC | TYPE_REF_QUEUE
+   OFLD_WAIT_ALL       = ( 1 << 3 ),  // TYPE_SYNC | TYPE_REF_ALL
+   OFLD_WAIT_EVT       = ( 1 << 4 ),  // TYPE_SYNC | TYPE_REF_EVT
+   OFLD_WAITSTATE      = ( 1 << 5 ),  // TYPE_WAITSTATE
+   OFLD_TASK_KERNEL    = ( 1 << 6 ),  // TYPE_TASK | TYPE_COMPUTE
+   OFLD_TASK_DATA      = ( 1 << 7 ),  // TYPE_TASK | TYPE_TRANSFER
+   OFLD_ENQUEUE_KERNEL = ( 1 << 8 ),  // TYPE_TRIGGER | TYPE_COMPUTE
+   OFLD_ENQUEUE_DATA   = ( 1 << 9 ),  // TYPE_TRIGGER | TYPE_TRANSFER
+   OFLD_ENQUEUE_EVT    = ( 1 << 10 ), // TYPE_TRIGGER | TYPE_EVENT
+   OFLD_ENQUEUE_WAIT   = ( 1 << 11 ), // TYPE_TRIGGER | TYPE_SYNC
+   OFLD_QUERY          = ( 1 << 12 ), // TYPE_TEST
+   OFLD_QUERY_EVT      = ( 1 << 13 ), // TYPE_TEST | TYPE_EVENT
+   OFLD_BLOCKING_DATA  = ( 1 << 14 ), // TYPE_BLOCKING | TYPE_TRANSFER
+   OFLD_ASYNC_DATA     = ( 1 << 15 )  // TYPE_TRIGGER | TYPE_TRANSFER
  };
 
  enum NodeTypeMPI
  {
-   MPI_RECV       = ( 1 << 1 ),
-   MPI_SEND       = ( 1 << 2 ),
-   MPI_WAIT       = ( 1 << 3 ),
-   MPI_COLLECTIVE = ( 1 << 4 ),
-   MPI_SENDRECV   = ( 1 << 5 ),
-   MPI_MISC       = ( 1 << 6 ),
-   MPI_EXIT       = ( 1 << 7 ),
-   MPI_WAITSTATE  = ( 1 << 8 ),
-   MPI_ONETOALL   = ( 1 << 9 ),
-   MPI_ALLTOONE   = ( 1 << 10 ),
-   MPI_ISEND      = ( 1 << 11 ),
-   MPI_IRECV      = ( 1 << 12 ),
-   MPI_WAITALL    = ( 1 << 13 ),
-   MPI_TEST       = ( 1 << 14 ),
-   MPI_TESTALL    = ( 1 << 15 ),
-   MPI_INIT       = ( 1 << 16 ),
+   MPI_SEND       = ( 1 << 1 ),  // TYPE_BLOCKING | TYPE_SEND
+   MPI_RECV       = ( 1 << 2 ),  // TYPE_BLOCKING | TYPE_RECV
+   MPI_WAIT       = ( 1 << 3 ),  // TYPE_SYNC | TYPE_REF_EVT
+   MPI_COLLECTIVE = ( 1 << 4 ),  // TYPE_BLOCKING | TYPE_COLLECTIVE
+   MPI_SENDRECV   = ( 1 << 5 ),  // TYPE_BLOCKING | TYPE_SEND | TYPE_RECV
+   MPI_MISC       = ( 1 << 6 ),  // TYPE_MISC
+   MPI_EXIT       = ( 1 << 7 ),  
+   MPI_WAITSTATE  = ( 1 << 8 ),  // TYPE_WAITSTATE
+   MPI_ONETOALL   = ( 1 << 9 ),  // TYPE_BCAST
+   MPI_ALLTOONE   = ( 1 << 10 ), // TYPE_GATHER
+   MPI_ISEND      = ( 1 << 11 ), // TYPE_TRIGGER | TYPE_SEND
+   MPI_IRECV      = ( 1 << 12 ), // TYPE_TRIGGER | TYPE_RECV
+   MPI_WAITALL    = ( 1 << 13 ), // TYPE_SYNC | TYPE_REF_ALL
+   MPI_TEST       = ( 1 << 14 ), // TYPE_TEST | TYPE_REF_EVT
+   MPI_TESTALL    = ( 1 << 15 ), // TYPE_TEST | TYPE_REF_ALL
+   MPI_INIT       = ( 1 << 16 ), 
    MPI_FINALIZE   = ( 1 << 17 ),
-   MPI_ALLRANKS   = ( 1 << 18 ), // all ranks are involved in the MPI operation
-   MPI_BLOCKING   = ( 1 << 19 ), // blocking MPI operation
-   MPI_COMM       = ( 1 << 20 )  // MPI communication (not set yet)
+   MPI_ALLRANKS   = ( 1 << 18 ), // TYPE_REF_ALL // all ranks are involved in the MPI operation
+   MPI_BLOCKING   = ( 1 << 19 ), // TYPE_BLOCKING // blocking MPI operation
+   MPI_COMM       = ( 1 << 20 )  // TYPE_TRANSFER // MPI communication (not set yet)
  };
 
  enum NodeTypeOMP
  {
-   OMP_SYNC           = ( 1 << 1 ),
-   OMP_FORKJOIN       = ( 1 << 2 ),
-   OMP_PARALLEL       = ( 1 << 3 ),
-   OMP_IMPLICIT_TASK  = ( 1 << 4 ),
-   OMP_MISC           = ( 1 << 5 ),
-   OMP_WAITSTATE      = ( 1 << 6 ),
+   OMP_SYNC           = ( 1 << 1 ),  // TYPE_SYNC
+   OMP_FORKJOIN       = ( 1 << 2 ),  // TYPE_TRIGGER
+   OMP_PARALLEL       = ( 1 << 3 ),  // TYPE_COLLECTIVE
+   OMP_IMPLICIT_TASK  = ( 1 << 4 ),  // TYPE_COMPUTE
+   OMP_MISC           = ( 1 << 5 ),  // TYPE_MISC
+   OMP_WAITSTATE      = ( 1 << 6 ),  // TYPE_WAITSTATE
    OMP_TARGET         = ( 1 << 7 ),
    OMP_TARGET_FLUSH   = ( 1 << 8 )
  };
  
   enum NodeType
   {
-    SYNC,        // synchronization or wait operation
-    TEST,        // test or query operation
-    REF_ALL,     // references all
-    REF_QUEUE,   // references queue
-    REF_EVT,     // references event
-    BLOCKING,    // blocking operations
-    TRIGGER,     // trigger operations such as MPI_Isend, cudaLaunch
-    TASK,        // compute task
-    COMPUTE,     // compute operation
-    EVENT,       // event
-    TRANSFER,    // transfer operation
-    SEND,        // send operation
-    RECV,        // receive operation
-    WAITSTATE,   // operation is wait state
-    COLLECTIVE,  // collective operation
-    BCAST,       // one-to-all operation
-    GATHER,      // all-to-one operation
-    MISC        // misc operation
+    TYPE_SYNC       = ( 1 << 1 ),   // synchronization or wait operation
+    TYPE_TEST       = ( 1 << 2 ),   // test or query operation
+    TYPE_REF_ALL    = ( 1 << 3 ),   // references all
+    TYPE_REF_QUEUE  = ( 1 << 4 ),   // references queue
+    TYPE_REF_EVT    = ( 1 << 5 ),   // references event or task
+    TYPE_BLOCKING   = ( 1 << 6 ),   // blocking operations
+    TYPE_TRIGGER    = ( 1 << 7 ),   // trigger operations such as MPI_Isend, cudaLaunch, etc.
+    TYPE_TASK       = ( 1 << 8 ),   // compute task
+    TYPE_COMPUTE    = ( 1 << 9 ),   // compute operation
+    TYPE_EVENT      = ( 1 << 10 ),  // event
+    TYPE_TRANSFER   = ( 1 << 11 ),  // transfer operation
+    TYPE_SEND       = ( 1 << 12 ),  // send operation
+    TYPE_RECV       = ( 1 << 13 ),  // receive operation
+    TYPE_WAITSTATE  = ( 1 << 14 ),  // operation is wait state
+    TYPE_COLLECTIVE = ( 1 << 15 ),  // collective operation
+    TYPE_BCAST      = ( 1 << 16 ),  // one-to-all operation
+    TYPE_GATHER     = ( 1 << 17 ),  // all-to-one operation
+    TYPE_MISC       = ( 1 << 18 ),  // misc operation
     
     // MPI specific
-//    MPI_INIT,
-//    MPI_FINALIZE,
-//    MPI_EXIT,
-//    
-//    // OpenMP specific
-//    OMP_FORKJOIN,
-//    OMP_PARALLEL,
-//    OMP_IMPLICIT_TASK,
-//    OMP_TARGET,
-//    OMP_TARGET_FLUSH
+    TYPE_MPI_INIT,
+    TYPE_MPI_FINALIZE,
+    TYPE_MPI_EXIT,
+    
+    // OpenMP specific
+    TYPE_OMP_FORKJOIN,
+    TYPE_OMP_PARALLEL,
+    TYPE_OMP_IMPLICIT_TASK,
+    TYPE_OMP_TARGET,
+    TYPE_OMP_TARGET_FLUSH
  };
  
   typedef struct

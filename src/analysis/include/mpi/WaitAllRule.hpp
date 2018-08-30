@@ -49,6 +49,9 @@ namespace casita
 
           // variables that are constant for every request
           AnalysisEngine* analysis = mpiAnalysis->getCommon();
+          
+          analysis->getStatistics().countActivity( STAT_MPI_WAIT );
+          
           MpiStream*    stream   = 
             analysis->getStreamGroup().getMpiStream( waitAllLeave->getStreamId() );
           GraphNode* waitAllEnter  = waitAllLeave->getGraphPair().first;

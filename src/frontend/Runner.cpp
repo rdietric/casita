@@ -620,21 +620,62 @@ Runner::mergeStatistics()
   
   Statistics& stats = analysis.getStatistics();
 
+  //// summarize inefficiency patterns and wait statistics ////
+  uint64_t statsRecvBuf[ mpiSize * STAT_NUMBER ];
+  
   //\todo: MPI_Gatherv might be better?
-  uint64_t statsRecvBuf[ mpiSize * STATS_NUMBER ];
-  MPI_CHECK( MPI_Gather( stats.getStats(), STATS_NUMBER, MPI_UINT64_T, 
-                         statsRecvBuf,  STATS_NUMBER, MPI_UINT64_T, 
+  MPI_CHECK( MPI_Gather( stats.getStats(), STAT_NUMBER, MPI_UINT64_T, 
+                         statsRecvBuf,  STAT_NUMBER, MPI_UINT64_T, 
                          0, MPI_COMM_WORLD ) );
 
   if( 0 == mpiRank )
   {
-    // add stats from all other MPI streams
-    for ( int rank = STATS_NUMBER; rank < mpiSize * STATS_NUMBER; rank += STATS_NUMBER )
+    // add for each MPI stream
+    // \todo: here we might detect imbalances
+    #pragma omp parallel for
+    for ( int rank = STAT_NUMBER; rank < mpiSize * STAT_NUMBER; rank += STAT_NUMBER )
     {
       stats.addAllStats( &statsRecvBuf[ rank ] );
     }
   }
-    
+  
+  //// aggregate number of activity occurrences over all processes ////
+  uint64_t *recvBuf = NULL;
+  
+  if( static_cast<unsigned>(STAT_ACTIVITY_TYPE_NUMBER) <= 
+                                            static_cast<unsigned>(STAT_NUMBER) )
+  {
+    recvBuf = statsRecvBuf;
+  }
+  else
+  {
+    recvBuf = (uint64_t*)malloc( mpiSize * STAT_NUMBER * sizeof( uint64_t ) );
+  }
+  
+  //\todo: MPI_Gatherv might be better?
+  MPI_CHECK( MPI_Gather( stats.getActivityCounts(), STAT_ACTIVITY_TYPE_NUMBER, 
+                         MPI_UINT64_T, recvBuf,  STAT_ACTIVITY_TYPE_NUMBER, 
+                         MPI_UINT64_T, 0, MPI_COMM_WORLD ) );
+
+  if( 0 == mpiRank )
+  {
+    // add for each MPI stream
+    #pragma omp parallel for
+    for ( int rank = STAT_ACTIVITY_TYPE_NUMBER; 
+          rank < mpiSize * STAT_ACTIVITY_TYPE_NUMBER; 
+          rank += STAT_ACTIVITY_TYPE_NUMBER )
+    {
+      stats.addActivityCounts( &recvBuf[ rank ] );
+    }
+  }
+  
+  // free memory if allocated beforehand
+  if( static_cast<unsigned>(STAT_ACTIVITY_TYPE_NUMBER) > 
+                                          static_cast<unsigned>(STAT_NUMBER) )
+  {
+    free(recvBuf);
+  }
+  //////////////////////////////////////////////////////////////
 }
 
 /**
@@ -1632,11 +1673,71 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
 void
 Runner::printAllActivities()
 {
-  OTF2ParallelTraceWriter::ActivityGroupMap* activityGroupMap =
-    writer->getActivityGroupMap();
-
   if ( mpiRank == 0 )
   {
+    ///////////// print information on activity occurrences ///////////
+    Statistics& stats = analysis.getStatistics();
+    uint64_t actCount = stats.getActivityCounts()[ STAT_MPI_COLLECTIVE ];
+    if( actCount )
+    {
+      printf( " #MPI (blocking) collectives: %" PRIu64 "\n", actCount );
+    }
+    
+    actCount = stats.getActivityCounts()[ STAT_MPI_SEND ] 
+             + stats.getActivityCounts()[ STAT_MPI_RECV ];
+    if( actCount )
+    {
+      printf( " #MPI (blocking) send/recv: %" PRIu64 "\n", actCount );
+    }
+
+    actCount = stats.getActivityCounts()[ STAT_MPI_WAIT ];
+    if( actCount )
+    {
+      printf( " #MPI wait[all]: %" PRIu64 "\n", actCount );
+    }
+             
+    actCount = stats.getActivityCounts()[ STAT_OMP_JOIN ];
+    if( actCount )
+    {
+      printf( " #OpenMP fork/join: %" PRIu64 "\n", actCount );
+    }
+    
+    actCount = stats.getActivityCounts()[ STAT_OMP_BARRIER ];
+    if( actCount )
+    {
+      printf( " #OpenMP barriers: %" PRIu64 "\n", actCount );
+    }
+    
+    actCount = stats.getActivityCounts()[ STAT_OFLD_KERNEL ];
+    if( actCount )
+    {
+      printf( " #Offloading kernels: %" PRIu64 "\n", actCount);
+    }
+    
+    actCount = stats.getActivityCounts()[ STAT_OFLD_SYNC ];
+    if( actCount )
+    {
+      printf( " #Offload stream/device synchronization: %" PRIu64 "\n", 
+              actCount );
+    }
+    
+    actCount = stats.getActivityCounts()[ STAT_OFLD_SYNC_EVT ];
+    if( actCount )
+    {
+      printf( " #Offload event synchronization: %" PRIu64 "\n",actCount );
+    }
+    
+    actCount = stats.getActivityCounts()[ STAT_OFLD_TEST_EVT ];
+    if( actCount )
+    {
+      printf( " #Offload event queries: %" PRIu64 "\n", actCount );
+    }
+    
+    
+    /////////////// Region statistics //////////////7
+    OTF2ParallelTraceWriter::ActivityGroupMap* activityGroupMap =
+                                                  writer->getActivityGroupMap();
+    
     // length of the first column in stdout (region name)
     const int RNAMELEN = 42;
     
@@ -1773,8 +1874,7 @@ Runner::printAllActivities()
               100.0 * sumFractionBlame, 
               sumBlameOnCP );
     
-    // print statistics
-    Statistics& stats = analysis.getStatistics();
+    // print inefficiency and wait statistics
     printf( "\n\033[4mPattern summary:\033[24m\n"
             " %-30.30s: %11lf s\n"
             " %-30.30s: %11lf s\n", 
@@ -1877,7 +1977,7 @@ Runner::printAllActivities()
               (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100
          );
 
-      patternCount = stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WAIT];
+      patternCount = stats.getStats()[STAT_OFLD_EARLY_BLOCKING_WAIT];
       if( patternCount )
       {
         printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences), on kernel: %lf s\n",
@@ -1894,12 +1994,12 @@ Runner::printAllActivities()
           analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_TEST_TIME] ) );
       }
 
-      patternCount = stats.getStats()[OFLD_STAT_BLOCKING_COM];
+      patternCount = stats.getStats()[STAT_OFLD_BLOCKING_COM];
       if( patternCount )
       {
         printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
                 " Blocking communication",
-          analysis.getRealTime( stats.getStats()[OFLD_STAT_BLOCKING_COM_TIME] ),
+          analysis.getRealTime( stats.getStats()[STAT_OFLD_BLOCKING_COM_TIME] ),
           patternCount );
       }
 
