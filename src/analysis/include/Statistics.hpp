@@ -56,23 +56,41 @@ namespace casita
 
   enum ActivityType
   {
-    // offloading
-     STAT_OFLD_KERNEL = 0,      // offload kernels
-     STAT_OFLD_SYNC = 1,        // any offload synchronization, except for events
-     STAT_OFLD_SYNC_EVT = 2,    // offload event synchronization
-     STAT_OFLD_TEST_EVT = 3,    // offload test operation
-     
-     // MPI
-     STAT_MPI_COLLECTIVE = 4, // MPI collectives (only blocking)
-     STAT_MPI_SEND = 5,       // MPI send (no isend)
-     STAT_MPI_RECV = 6,       // MPI recv (no irecv)
-     STAT_MPI_WAIT = 7,       // MPI wait, including waitall
+    // MPI
+     STAT_MPI_COLLECTIVE = 0, // MPI collectives (only blocking)
+     STAT_MPI_P2P = 1,       // MPI send/recv/sendrecv (only blocking)
+     STAT_MPI_WAIT = 2,       // MPI wait, including waitall
      
      // OpenMP (OMPT not yet considered)
-     STAT_OMP_JOIN = 8,    // OpenMP fork
-     STAT_OMP_BARRIER = 9, // OpenMP barrier
+     STAT_OMP_JOIN = 3,    // OpenMP fork
+     STAT_OMP_BARRIER = 4, // OpenMP barrier
      
-     STAT_ACTIVITY_TYPE_NUMBER = 10
+    // offloading
+     STAT_OFLD_KERNEL = 5,      // offload kernels
+     STAT_OFLD_SYNC = 6,        // any offload synchronization, except for events
+     STAT_OFLD_SYNC_EVT = 7,    // offload event synchronization
+     STAT_OFLD_TEST_EVT = 8,    // offload test operation
+
+     STAT_ACTIVITY_TYPE_NUMBER = 9
+  };
+  
+  typedef struct
+  {
+    ActivityType type;
+    const char*  str;
+  } TypeStrActivity;
+  
+  static const TypeStrActivity typeStrTableActivity[ STAT_ACTIVITY_TYPE_NUMBER ] =
+  {
+    { STAT_MPI_COLLECTIVE, "MPI (blocking) collectives" },
+    { STAT_MPI_P2P, "MPI (blocking) p2p" },
+    { STAT_MPI_WAIT, "MPI wait[all]" },
+    { STAT_OMP_JOIN, "OpenMP fork/join" },
+    { STAT_OMP_BARRIER, "OpenMP barriers" },
+    { STAT_OFLD_KERNEL, "Ofld. kernels" },
+    { STAT_OFLD_SYNC, "Ofld. stream/device synchr." },
+    { STAT_OFLD_SYNC_EVT, "Ofld. event synchr." },
+    { STAT_OFLD_TEST_EVT, "Ofld. event queries" }
   };
   
   class Statistics
@@ -123,6 +141,12 @@ namespace casita
       
       void
       countActivity( ActivityType activityType );
+      
+      void
+      setActivityCount( ActivityType activityType, uint64_t count );
+      
+      void
+      setActivityCounts( uint64_t *count );
       
       uint64_t*
       getActivityCounts();

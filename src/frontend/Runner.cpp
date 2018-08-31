@@ -25,6 +25,7 @@
 
 #include <time.h>
 #include <vector>       /* clock_t, clock, CLOCKS_PER_SEC */
+#include <iomanip>
 
 #include "otf/OTF2DefinitionHandler.hpp"
 
@@ -68,6 +69,8 @@ Runner::Runner( int mpiRank, int mpiSize ) :
     criticalPathEnd.first = UINT64_MAX;
     criticalPathEnd.second = 0;
   }
+  
+  total_events_read = 0;
 }
 
 Runner::~Runner()
@@ -245,7 +248,6 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   // minimum number of graph nodes required to start analysis
   uint64_t interval_node_id   = 0;
   uint32_t analysis_intervals = 0;
-  uint64_t total_events_read  = 0;
   uint64_t events_to_read     = 0; // number of events for the trace writer to read
   
   clock_t time_start         = clock();
@@ -410,41 +412,46 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   
   if( mpiRank == 0 && options.verbose >= VERBOSE_TIME )
   {
-    UTILS_OUT( "Total analysis time: %f seconds.", 
-               ( (float) clock() + time_start ) / CLOCKS_PER_SEC );
-    
+    std::cout.precision(6);
+    std::cout << std::fixed;
+    std::cout << std::setw(44) << std::left << "- Total analysis time: " << std::right
+              << std::setw(12)
+              << ( (float) clock() + time_start ) / CLOCKS_PER_SEC 
+              << std::setw(4) << " sec" << std::endl;
+   
     // Time consumption output for individual analysis steps
-    UTILS_OUT( "  Trace reading (and graph construction) took %f seconds.", 
-               ( (float) time_events_read ) / CLOCKS_PER_SEC );
+    std::cout << std::setw(44) << std::left 
+              << "  Trace reading (and graph construction): " << std::right
+              << std::setw(12)
+              << ( (float) time_events_read ) / CLOCKS_PER_SEC
+              << std::setw(4) << " sec" << std::endl;
 
-    UTILS_OUT( "  Applying analysis rules took %f seconds.", 
-               ( (float) time_analysis ) / CLOCKS_PER_SEC );
-
-    UTILS_OUT( "  Critical-path analysis took %f seconds.", 
-               ( (float) time_analysis_cp ) / CLOCKS_PER_SEC );
+    std::cout << std::setw(44) << std::left 
+              << "  Applying analysis rules: " << std::right
+              << std::setw(12)
+              << ( (float) time_analysis ) / CLOCKS_PER_SEC
+              << std::setw(4) << " sec" << std::endl;
     
-    UTILS_OUT( "  Trace writing (and blame assignment) took %f seconds.", 
-               ( (float) time_events_write ) / CLOCKS_PER_SEC );
+    std::cout << std::setw(44) << std::left 
+              << "  Critical-path analysis: " << std::right
+              << std::setw(12)
+              << ( (float) time_analysis_cp ) / CLOCKS_PER_SEC
+              << std::setw(4) << " sec" << std::endl;
     
-    UTILS_MSG( options.analysisInterval, "  Number of analysis intervals: %" PRIu32
-               "   (Cleanup nodes took %f seconds)", ++analysis_intervals, 
+    std::cout << std::setw(44) << std::left 
+              << "  Trace writing (and blame assignment): " << std::right
+              << std::setw(12)
+              << ( (float) time_events_write ) / CLOCKS_PER_SEC
+              << std::setw(4) << " sec" << std::endl;
+    
+    UTILS_MSG( options.analysisInterval, "- Number of analysis intervals: %" PRIu32
+               " (Cleanup nodes took %f seconds)", ++analysis_intervals, 
                ( (float) time_events_flush ) / CLOCKS_PER_SEC );
   }
   
   UTILS_MSG( options.verbose >= VERBOSE_SOME, 
-               "[%u] Total number of processed events (per process): %" PRIu64, 
-               mpiRank, total_events_read );
-  
-  // print the total number of processed events over all processes
-  if( options.verbose >= VERBOSE_TIME )
-  {
-    uint64_t total_events = 0;
-    MPI_CHECK( MPI_Reduce( &total_events_read, &total_events, 1, 
-                           MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD ) );
-    
-    UTILS_MSG( mpiRank == 0, "Total number of processed events: %" PRIu64, 
-                             total_events );
-  }
+             "  [%u] Total number of processed events (per process): %" PRIu64, 
+             mpiRank, total_events_read );
 }
 
 void
@@ -623,7 +630,7 @@ Runner::mergeStatistics()
   //// summarize inefficiency patterns and wait statistics ////
   uint64_t statsRecvBuf[ mpiSize * STAT_NUMBER ];
   
-  //\todo: MPI_Gatherv might be better?
+  //\todo: MPI_Reduce was more efficient, but we might detect imbalances
   MPI_CHECK( MPI_Gather( stats.getStats(), STAT_NUMBER, MPI_UINT64_T, 
                          statsRecvBuf,  STAT_NUMBER, MPI_UINT64_T, 
                          0, MPI_COMM_WORLD ) );
@@ -633,7 +640,9 @@ Runner::mergeStatistics()
     // add for each MPI stream
     // \todo: here we might detect imbalances
     #pragma omp parallel for
-    for ( int rank = STAT_NUMBER; rank < mpiSize * STAT_NUMBER; rank += STAT_NUMBER )
+    for ( int rank = STAT_NUMBER; // ignore own values
+          rank < mpiSize * STAT_NUMBER; 
+          rank += STAT_NUMBER )
     {
       stats.addAllStats( &statsRecvBuf[ rank ] );
     }
@@ -652,21 +661,28 @@ Runner::mergeStatistics()
     recvBuf = (uint64_t*)malloc( mpiSize * STAT_NUMBER * sizeof( uint64_t ) );
   }
   
-  //\todo: MPI_Gatherv might be better?
-  MPI_CHECK( MPI_Gather( stats.getActivityCounts(), STAT_ACTIVITY_TYPE_NUMBER, 
-                         MPI_UINT64_T, recvBuf,  STAT_ACTIVITY_TYPE_NUMBER, 
-                         MPI_UINT64_T, 0, MPI_COMM_WORLD ) );
-
+  /* MPI_Gather would enables some kind of imbalance analysis on the root process 
+  //MPI_CHECK( MPI_Gather( stats.getActivityCounts(), STAT_ACTIVITY_TYPE_NUMBER, 
+  //                       MPI_UINT64_T, recvBuf,  STAT_ACTIVITY_TYPE_NUMBER, 
+  //                       MPI_UINT64_T, 0, MPI_COMM_WORLD ) );
   if( 0 == mpiRank )
   {
     // add for each MPI stream
     #pragma omp parallel for
-    for ( int rank = STAT_ACTIVITY_TYPE_NUMBER; 
+    for ( int rank = STAT_ACTIVITY_TYPE_NUMBER; // ignore own values
           rank < mpiSize * STAT_ACTIVITY_TYPE_NUMBER; 
           rank += STAT_ACTIVITY_TYPE_NUMBER )
     {
       stats.addActivityCounts( &recvBuf[ rank ] );
     }
+  }*/
+  MPI_CHECK( MPI_Reduce( stats.getActivityCounts(), recvBuf, 
+                         STAT_ACTIVITY_TYPE_NUMBER, MPI_UINT64_T, MPI_SUM, 0, 
+                         MPI_COMM_WORLD ) );
+  if( 0 == mpiRank )
+  {
+    // set the accumulated values
+    stats.setActivityCounts( recvBuf );
   }
   
   // free memory if allocated beforehand
@@ -676,6 +692,16 @@ Runner::mergeStatistics()
     free(recvBuf);
   }
   //////////////////////////////////////////////////////////////
+  
+  // print the total number of processed events over all processes
+  if( options.verbose >= VERBOSE_TIME )
+  {
+    uint64_t total_events = 0;
+    MPI_CHECK( MPI_Reduce( &total_events_read, &total_events, 1, 
+                           MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD ) );
+    
+    total_events_read = total_events;
+  }
 }
 
 /**
@@ -1675,65 +1701,31 @@ Runner::printAllActivities()
 {
   if ( mpiRank == 0 )
   {
+    std::cout << "- Total number of processed events: "
+              << std::setw(19) << total_events_read << std::endl;
+    
     ///////////// print information on activity occurrences ///////////
     Statistics& stats = analysis.getStatistics();
-    uint64_t actCount = stats.getActivityCounts()[ STAT_MPI_COLLECTIVE ];
-    if( actCount )
+    for(int i = 0; i < STAT_ACTIVITY_TYPE_NUMBER; i++)
     {
-      printf( " #MPI (blocking) collectives: %" PRIu64 "\n", actCount );
+      uint64_t actCount = stats.getActivityCounts()[ i ];
+      if( actCount )
+      {
+        for(int j = 0; j < STAT_ACTIVITY_TYPE_NUMBER; j++)
+        {
+          if( casita::typeStrTableActivity[ i ].type == 
+              casita::typeStrTableActivity[ j ].type )
+          {
+            //printf( "  %32s: %" PRIu64 "\n", casita::typeStrTableActivity[ i ].str, actCount );
+            std::cout << std::setw(34) << casita::typeStrTableActivity[ i ].str 
+                      << ": "
+                      << std::setw(19) << actCount << std::endl;
+            break;
+          }
+        }
+      }
     }
-    
-    actCount = stats.getActivityCounts()[ STAT_MPI_SEND ] 
-             + stats.getActivityCounts()[ STAT_MPI_RECV ];
-    if( actCount )
-    {
-      printf( " #MPI (blocking) send/recv: %" PRIu64 "\n", actCount );
-    }
-
-    actCount = stats.getActivityCounts()[ STAT_MPI_WAIT ];
-    if( actCount )
-    {
-      printf( " #MPI wait[all]: %" PRIu64 "\n", actCount );
-    }
-             
-    actCount = stats.getActivityCounts()[ STAT_OMP_JOIN ];
-    if( actCount )
-    {
-      printf( " #OpenMP fork/join: %" PRIu64 "\n", actCount );
-    }
-    
-    actCount = stats.getActivityCounts()[ STAT_OMP_BARRIER ];
-    if( actCount )
-    {
-      printf( " #OpenMP barriers: %" PRIu64 "\n", actCount );
-    }
-    
-    actCount = stats.getActivityCounts()[ STAT_OFLD_KERNEL ];
-    if( actCount )
-    {
-      printf( " #Offloading kernels: %" PRIu64 "\n", actCount);
-    }
-    
-    actCount = stats.getActivityCounts()[ STAT_OFLD_SYNC ];
-    if( actCount )
-    {
-      printf( " #Offload stream/device synchronization: %" PRIu64 "\n", 
-              actCount );
-    }
-    
-    actCount = stats.getActivityCounts()[ STAT_OFLD_SYNC_EVT ];
-    if( actCount )
-    {
-      printf( " #Offload event synchronization: %" PRIu64 "\n",actCount );
-    }
-    
-    actCount = stats.getActivityCounts()[ STAT_OFLD_TEST_EVT ];
-    if( actCount )
-    {
-      printf( " #Offload event queries: %" PRIu64 "\n", actCount );
-    }
-    
-    
+  
     /////////////// Region statistics //////////////7
     OTF2ParallelTraceWriter::ActivityGroupMap* activityGroupMap =
                                                   writer->getActivityGroupMap();

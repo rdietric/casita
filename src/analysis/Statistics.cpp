@@ -70,6 +70,21 @@ Statistics::countActivity( ActivityType activityType )
   activity_count[ activityType ]++;
 }
 
+void
+Statistics::setActivityCount( ActivityType activityType, uint64_t count )
+{
+  activity_count[ activityType ] = count;
+}
+
+void
+Statistics::setActivityCounts( uint64_t *counts )
+{
+  for( int i = 0; i < STAT_ACTIVITY_TYPE_NUMBER; ++i )
+  {
+    this->activity_count[ i ] = counts[ i ];
+  }
+}
+
 uint64_t*
 Statistics::getActivityCounts()
 {
@@ -79,8 +94,7 @@ Statistics::getActivityCounts()
 void
 Statistics::addActivityCounts( uint64_t* counts )
 {
-  int i;
-  for( i = 0; i < STAT_ACTIVITY_TYPE_NUMBER; ++i )
+  for( int i = 0; i < STAT_ACTIVITY_TYPE_NUMBER; ++i )
   {
     this->activity_count[ i ] += counts[ i ];
   }

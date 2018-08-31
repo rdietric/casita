@@ -45,7 +45,7 @@ namespace casita
         AnalysisEngine* commonAnalysis = analysis->getCommon();
         
         // count occurrences
-        commonAnalysis->getStatistics().countActivity( STAT_MPI_RECV );
+        commonAnalysis->getStatistics().countActivity( STAT_MPI_P2P );
         
         MPIAnalysis& mpiAnalysis = commonAnalysis->getMPIAnalysis();
 

@@ -44,10 +44,9 @@ main( int argc, char** argv )
   MPI_CHECK( MPI_Comm_size( MPI_COMM_WORLD, &mpiSize ) );
 
   UTILS_MSG( mpiRank == 0, "Running CASITA " CASITA_VERSION 
-                           " with %d analysis processes", mpiSize );
-  UTILS_MSG( mpiRank == 0, "Using %d OpenMP threads for processing of "
-                            "critical path sections", omp_get_max_threads() );
-                           
+                           " with %d analysis MPI processes and %d OpenMP threads", 
+                           mpiSize, omp_get_max_threads() );
+  
   if ( !Parser::getInstance().init( mpiRank, argc, argv ) )
   {
     if (mpiRank == 0)
@@ -74,7 +73,7 @@ main( int argc, char** argv )
     if ( options.mergeActivities )
     {
       UTILS_MSG_NOBR( mpiRank == 0 && options.verbose >= VERBOSE_TIME, 
-                      "Generate program region impact rating:" );
+                      "- Merge process statistics:" );
       
       clock_t ts_merge = clock() - timestamp;
 
@@ -85,7 +84,7 @@ main( int argc, char** argv )
       ts_merge = clock() - ts_merge;
     
       UTILS_MSG( mpiRank == 0 && options.verbose >= VERBOSE_TIME, 
-                 " (%f sec)", ( (float) ts_merge ) / CLOCKS_PER_SEC );
+                 " %f sec", ( (float) ts_merge ) / CLOCKS_PER_SEC );
 
       runner->printAllActivities();
 

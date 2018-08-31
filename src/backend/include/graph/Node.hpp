@@ -158,7 +158,7 @@ namespace casita
     TYPE_OMP_TARGET_FLUSH
  };
  
-  typedef struct
+ typedef struct
  {
    NodeTypeOFLD type;
    const char*  str;
