@@ -412,33 +412,33 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   
   if( mpiRank == 0 && options.verbose >= VERBOSE_TIME )
   {
-    std::cout.precision(6);
-    std::cout << std::fixed;
-    std::cout << std::setw(44) << std::left << "- Total analysis time: " << std::right
+    std::cerr.precision(6);
+    std::cerr << std::fixed;
+    std::cerr << std::setw(44) << std::left << "- Total analysis time: " << std::right
               << std::setw(12)
               << ( (float) clock() + time_start ) / CLOCKS_PER_SEC 
               << std::setw(4) << " sec" << std::endl;
    
     // Time consumption output for individual analysis steps
-    std::cout << std::setw(44) << std::left 
+    std::cerr << std::setw(44) << std::left 
               << "  Trace reading (and graph construction): " << std::right
               << std::setw(12)
               << ( (float) time_events_read ) / CLOCKS_PER_SEC
               << std::setw(4) << " sec" << std::endl;
 
-    std::cout << std::setw(44) << std::left 
+    std::cerr << std::setw(44) << std::left 
               << "  Applying analysis rules: " << std::right
               << std::setw(12)
               << ( (float) time_analysis ) / CLOCKS_PER_SEC
               << std::setw(4) << " sec" << std::endl;
     
-    std::cout << std::setw(44) << std::left 
+    std::cerr << std::setw(44) << std::left 
               << "  Critical-path analysis: " << std::right
               << std::setw(12)
               << ( (float) time_analysis_cp ) / CLOCKS_PER_SEC
               << std::setw(4) << " sec" << std::endl;
     
-    std::cout << std::setw(44) << std::left 
+    std::cerr << std::setw(44) << std::left 
               << "  Trace writing (and blame assignment): " << std::right
               << std::setw(12)
               << ( (float) time_events_write ) / CLOCKS_PER_SEC
@@ -1882,61 +1882,67 @@ Runner::printAllActivities()
                             stats.getStats()[ MPI_STAT_WAITALL_LATEPARTNER ] +
                             stats.getStats()[ MPI_STAT_COLLECTIVE ];
     if( patternCount )
-    {                      
-      printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
-              "MPI wait patterns",
-              analysis.getRealTime( 
+    {
+      double ptime = analysis.getRealTime( 
                 stats.getStats()[MPI_STAT_LATE_SENDER_WTIME] + 
                 stats.getStats()[MPI_STAT_LATE_RECEIVER_WTIME] +
                 stats.getStats()[MPI_STAT_SENDRECV_WTIME] +
                 stats.getStats()[MPI_STAT_WAITALL_LATEPARTNER_WTIME] +
-                stats.getStats()[MPI_STAT_COLLECTIVE_WTIME]
-              ), patternCount );
+                stats.getStats()[MPI_STAT_COLLECTIVE_WTIME]);
+      
+      printf( " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
+              "MPI wait patterns",
+              ptime, ptime/(double)analysis.getMPISize(), patternCount );
     }
                             
     patternCount = stats.getStats()[MPI_STAT_LATE_SENDER];
     if( patternCount )
     {
-      printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
+      double ptime = 
+          analysis.getRealTime( stats.getStats()[MPI_STAT_LATE_SENDER_WTIME] );
+      printf( " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
               " Late sender", 
-              analysis.getRealTime( stats.getStats()[MPI_STAT_LATE_SENDER_WTIME] ),
-              patternCount );
+              ptime, ptime/(double)analysis.getMPISize(), patternCount );
     }
     
     patternCount = stats.getStats()[ MPI_STAT_LATE_RECEIVER ];
     if( patternCount )
     {
-      printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
+      double ptime = 
+          analysis.getRealTime( stats.getStats()[MPI_STAT_LATE_RECEIVER_WTIME] );
+      printf( " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
               " Late receiver",
-              analysis.getRealTime( stats.getStats()[MPI_STAT_LATE_RECEIVER_WTIME] ),
-              patternCount );
+              ptime, ptime/(double)analysis.getMPISize(), patternCount );
     }
     
     patternCount = stats.getStats()[MPI_STAT_SENDRECV];
     if( patternCount )
     {
-      printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
+      double ptime = 
+          analysis.getRealTime( stats.getStats()[MPI_STAT_SENDRECV_WTIME] );
+      printf( " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
               " Wait in MPI_Sendrecv",
-              analysis.getRealTime( stats.getStats()[MPI_STAT_SENDRECV_WTIME] ),
-              patternCount );
+              ptime, ptime/(double)analysis.getMPISize(), patternCount );
     }
     
     patternCount = stats.getStats()[ MPI_STAT_WAITALL_LATEPARTNER ];
     if( patternCount )
     {
-      printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
+      double ptime = 
+          analysis.getRealTime( stats.getStats()[MPI_STAT_WAITALL_LATEPARTNER_WTIME] );
+      printf( " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
               " MPI_Waitall late partner",
-              analysis.getRealTime( stats.getStats()[MPI_STAT_WAITALL_LATEPARTNER_WTIME] ),
-              patternCount );
+              ptime, ptime/(double)analysis.getMPISize(), patternCount );
     }
     
     patternCount = stats.getStats()[ MPI_STAT_COLLECTIVE ];
     if( patternCount )
     {
-      printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
+      double ptime = 
+          analysis.getRealTime( stats.getStats()[MPI_STAT_COLLECTIVE_WTIME] );
+      printf( " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
               " Wait in MPI collective",
-              analysis.getRealTime( stats.getStats()[MPI_STAT_COLLECTIVE_WTIME] ),
-              patternCount );
+              ptime, ptime/(double)analysis.getMPISize(), patternCount );
     }
     
     //// OpenMP ////
