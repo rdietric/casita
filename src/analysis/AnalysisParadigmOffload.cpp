@@ -838,6 +838,8 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelNode ) const
       break;
     }
     
+    //\todo: prevKernelEnter->getTime() can cause a segmentation fault
+    // probably because a kernel has been deleted during intermediate flush
     if( prevKernelEnter->getTime() > kernelLaunchEnter->getTime() )
     {
       // create dependency edge

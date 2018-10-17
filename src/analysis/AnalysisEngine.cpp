@@ -516,8 +516,8 @@ AnalysisEngine::createIntermediateBegin()
         if( ( ( DeviceStream* ) p )->getLastPendingKernel() )
         {
           UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC, 
-            "Stream %" PRIu64 " has pending kernels at intermediate analysis start.", 
-            p->getId() );
+            "Stream %" PRIu64 " (%s) has pending kernels at intermediate analysis start.", 
+            p->getId(), p->getName() );
         }
         else
         {
