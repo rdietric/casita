@@ -98,7 +98,7 @@ namespace casita
     cout << " -o [--output=]NAME       output OTF2 file" << endl;
     cout << " -r [--replace]           replace CASITA trace and summary file" << endl;
     cout << " -v [--verbose=]INTEGER   verbosity level" << endl;
-    cout << " -s [--summary]           create summary CSV file" << endl;
+    cout << "    [--no-csv]            write rating to .csv file" << endl;
     cout << " -t  --top=INTEGER        print top optimization candidates" << endl;
     cout << " -f  --filter=List        filter regions (ignored in analysis and output trace)" << endl;
     cout << "     --idle=[0,1,2,3]     write device idle regions to output trace" << endl
@@ -208,11 +208,10 @@ namespace casita
         }
       }
 
-      //  summary
-      else if( opt.compare( string( "-s" ) ) == 0 ||
-               opt.find( "--summary" ) != string::npos )
+      // do not create a csv file for the rating
+      else if( opt.find( "--no-csv" ) != string::npos )
       {
-        options.createRatingCSV = true;
+        options.createRatingCSV = false;
       }
 
 

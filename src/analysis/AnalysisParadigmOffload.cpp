@@ -274,7 +274,7 @@ AnalysisParadigmOffload::isKernelPending( GraphNode* kernelNode )
 {
   if( kernelNode->hasPartner() )
   {
-    // kernel leave has not yet been synchronized (compare BlameKernelRule)
+    // kernel leave has not yet been synchronized (compare SyncRule)
     if( kernelNode->getGraphPair().second->getLink() == NULL )
     {
       UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC, 

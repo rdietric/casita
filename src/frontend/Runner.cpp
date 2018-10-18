@@ -31,6 +31,9 @@
 
 #include "Runner.hpp"
 
+#include <fstream>
+#include <iostream>
+
 #if defined(SCOREP_USER_ENABLE)
 #include "scorep/SCOREP_User.h"
 #endif
@@ -412,37 +415,57 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   
   if( mpiRank == 0 && options.verbose >= VERBOSE_TIME )
   {
-    std::cerr.precision(6);
-    std::cerr << std::fixed;
-    std::cerr << std::setw(44) << std::left << "- Total analysis time: " << std::right
-              << std::setw(12)
-              << ( (float) clock() + time_start ) / CLOCKS_PER_SEC 
-              << std::setw(4) << " sec" << std::endl;
+    // open a file in write mode.
+    ofstream summaryFile;
+    std::string sFileName = Parser::getInstance().getPathToFile() 
+                           + std::string( "/" ) + Parser::getInstance().getOutArchiveName()
+                           + std::string( "_summary.txt" );
+    
+    summaryFile.open( sFileName );
+   
+    summaryFile.precision(6);
+    summaryFile << std::fixed;
+    
+    summaryFile << std::setw(44) << std::left << "- Total analysis time: " 
+                << std::right << std::setw(12)
+                << ( (float) clock() + time_start ) / CLOCKS_PER_SEC 
+                << std::setw(4) << " sec" << std::endl;
    
     // Time consumption output for individual analysis steps
-    std::cerr << std::setw(44) << std::left 
-              << "  Trace reading (and graph construction): " << std::right
-              << std::setw(12)
-              << ( (float) time_events_read ) / CLOCKS_PER_SEC
-              << std::setw(4) << " sec" << std::endl;
+    summaryFile << std::setw(44) << std::left 
+                << "  Trace reading (and graph construction): " << std::right
+                << std::setw(12)
+                << ( (float) time_events_read ) / CLOCKS_PER_SEC
+                << std::setw(4) << " sec" << std::endl;
 
-    std::cerr << std::setw(44) << std::left 
-              << "  Applying analysis rules: " << std::right
-              << std::setw(12)
-              << ( (float) time_analysis ) / CLOCKS_PER_SEC
-              << std::setw(4) << " sec" << std::endl;
+    summaryFile << std::setw(44) << std::left 
+                << "  Applying analysis rules: " << std::right
+                << std::setw(12)
+                << ( (float) time_analysis ) / CLOCKS_PER_SEC
+                << std::setw(4) << " sec" << std::endl;
     
-    std::cerr << std::setw(44) << std::left 
-              << "  Critical-path analysis: " << std::right
-              << std::setw(12)
-              << ( (float) time_analysis_cp ) / CLOCKS_PER_SEC
-              << std::setw(4) << " sec" << std::endl;
+    summaryFile << std::setw(44) << std::left 
+                << "  Critical-path analysis: " << std::right
+                << std::setw(12)
+                << ( (float) time_analysis_cp ) / CLOCKS_PER_SEC
+                << std::setw(4) << " sec" << std::endl;
     
-    std::cerr << std::setw(44) << std::left 
-              << "  Trace writing (and blame assignment): " << std::right
-              << std::setw(12)
-              << ( (float) time_events_write ) / CLOCKS_PER_SEC
-              << std::setw(4) << " sec" << std::endl;
+    summaryFile << std::setw(44) << std::left 
+                << "  Trace writing (and blame assignment): " << std::right
+                << std::setw(12)
+                << ( (float) time_events_write ) / CLOCKS_PER_SEC
+                << std::setw(4) << " sec" << std::endl;
+    
+    summaryFile.close();
+    
+    // print summary file to console
+	  ifstream fin( sFileName );
+    string temp;
+	  while( getline( fin, temp ) )
+    {
+      std::cerr << temp << std::endl;
+    }
+	  fin.close();
     
     UTILS_MSG( options.analysisInterval, "- Number of analysis intervals: %" PRIu32
                " (Cleanup nodes took %f seconds)", ++analysis_intervals, 
@@ -1738,8 +1761,27 @@ Runner::printAllActivities()
       UTILS_OUT( "Global critical path length is 0. Skipping output ..." );
       return;
     }
+    
+    std::string sFileName = Parser::getInstance().getPathToFile() 
+                           + std::string( "/" ) + Parser::getInstance().getOutArchiveName()
+                           + std::string( "_summary.txt" );
+    
+    char mode[1] = {'w'};
+    
+    // use append mode, if timing information have already been written
+    if( mpiRank == 0 && options.verbose >= VERBOSE_TIME )
+    {
+      mode[0] = 'a';
+    }
+    
+    FILE *sFile = fopen( sFileName.c_str(), mode );
+    
+    if( NULL == sFile )
+    {
+      sFile = stdout;
+    }
 
-    printf( "\n%*s %10s %11s %11s %6s %8s %8s %10s\n",
+    fprintf( sFile, "\n%*s %10s %11s %11s %6s %8s %8s %10s\n",
             RNAMELEN, "Region",
             "Calls",
             "Time[s]",
@@ -1749,9 +1791,9 @@ Runner::printAllActivities()
             "Blame+CP",
             "Blame on CP" );
 
-    printf( "%.*s", 
-            RNAMELEN, "-----------------------------------------------------" );
-    printf( "\n" );
+    fprintf( sFile, "%.*s", 
+             RNAMELEN, "-----------------------------------------------------" );
+    fprintf( sFile, "\n" );
 
     std::set< OTF2ParallelTraceWriter::ActivityGroup,
               OTF2ParallelTraceWriter::ActivityGroupCompare > sortedActivityGroups;
@@ -1771,19 +1813,19 @@ Runner::printAllActivities()
       sortedActivityGroups.insert( iter->second );
     }
       
-    // print summary in CSV file (file has to be declared in this scope for closing it)
-    FILE *summaryFile;
+    // print rating in CSV file (file has to be declared in this scope for closing it)
+    FILE *ratingFile;
     if (options.createRatingCSV){
       
       UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
                  "[0] generate rating as csv file" );
 
-      std::string Filename = Parser::getInstance().getPathToFile() 
-                           + std::string( "/" ) + Parser::getInstance().getOutArchiveName()
-                           + std::string( "_rating.csv" );
+      string rFileName = Parser::getInstance().getPathToFile() 
+                       + string( "/" ) + Parser::getInstance().getOutArchiveName()
+                       + string( "_rating.csv" );
       
-      summaryFile = fopen(Filename.c_str(),"w");
-      fprintf(summaryFile, "Region;Calls;Time [s];Time on CP [s];"
+      ratingFile = fopen( rFileName.c_str(), "w" );
+      fprintf(ratingFile, "Region;Calls;Time [s];Time on CP [s];"
                            "CP Ratio [%%];Global Blame Ratio [%%];"
                            "Blame+CP;Blame on CP [s]\n" );
     }
@@ -1820,12 +1862,12 @@ Runner::printAllActivities()
         {
           do
           {
-            printf( "%.*s\n", RNAMELEN-1, regName + regShift );
+            fprintf( sFile, "%.*s\n", RNAMELEN-1, regName + regShift );
             regShift += RNAMELEN - 1;
           } while( ( regNameLen - regShift ) > ( size_t ) RNAMELEN );
         }
 
-        printf( "%*.*s %10u %11f %11f %6.2f %8.4f %6.6f %11.6f\n",
+        fprintf( sFile, "%*.*s %10u %11f %11f %6.2f %8.4f %6.6f %11.6f\n",
                 RNAMELEN, RNAMELEN, regName + regShift,
                 iter->numInstances,
                 analysis.getRealTime( iter->totalDuration ),
@@ -1840,7 +1882,7 @@ Runner::printAllActivities()
 
       if( options.createRatingCSV )
       {
-        fprintf( summaryFile, "%s;%u;%lf;%lf;%lf;%lf;%lf;%lf\n",
+        fprintf( ratingFile, "%s;%u;%lf;%lf;%lf;%lf;%lf;%lf\n",
                  definitions.getRegionName( iter->functionId ),
                  iter->numInstances,
                  analysis.getRealTime( iter->totalDuration ),
@@ -1854,9 +1896,14 @@ Runner::printAllActivities()
       sumWaitingTime += iter->waitingTime;
     }
     
-    printf( "%.*s", 
+    if (options.createRatingCSV)
+    {
+      fclose(ratingFile);
+    }
+    
+    fprintf( sFile, "%.*s", 
             RNAMELEN, "-----------------------------------------------------" );
-    printf( "\n%*.*s%2lu %10u %11lf %11lf %6.2lf %8.4lf %20.6lf\n",
+    fprintf( sFile, "\n%*.*s%2lu %10u %11lf %11lf %6.2lf %8.4lf %20.6lf\n",
               RNAMELEN - 2, RNAMELEN - 2, "Sum of Top ",
               ctr,
               sumInstances,
@@ -1867,7 +1914,7 @@ Runner::printAllActivities()
               sumBlameOnCP );
     
     // print inefficiency and wait statistics
-    printf( "\n\033[4mPattern summary:\033[24m\n"
+    fprintf( sFile, "\n\033[4mPattern summary:\033[24m\n"
             " %-30.30s: %11lf s\n"
             " %-30.30s: %11lf s\n", 
             "Total program runtime", 
@@ -1890,7 +1937,7 @@ Runner::printAllActivities()
                 stats.getStats()[MPI_STAT_WAITALL_LATEPARTNER_WTIME] +
                 stats.getStats()[MPI_STAT_COLLECTIVE_WTIME]);
       
-      printf( " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
+      fprintf( sFile, " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
               "MPI wait patterns",
               ptime, ptime/(double)analysis.getMPISize(), patternCount );
     }
@@ -1900,7 +1947,7 @@ Runner::printAllActivities()
     {
       double ptime = 
           analysis.getRealTime( stats.getStats()[MPI_STAT_LATE_SENDER_WTIME] );
-      printf( " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
+      fprintf( sFile, " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
               " Late sender", 
               ptime, ptime/(double)analysis.getMPISize(), patternCount );
     }
@@ -1910,7 +1957,7 @@ Runner::printAllActivities()
     {
       double ptime = 
           analysis.getRealTime( stats.getStats()[MPI_STAT_LATE_RECEIVER_WTIME] );
-      printf( " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
+      fprintf( sFile, " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
               " Late receiver",
               ptime, ptime/(double)analysis.getMPISize(), patternCount );
     }
@@ -1920,7 +1967,7 @@ Runner::printAllActivities()
     {
       double ptime = 
           analysis.getRealTime( stats.getStats()[MPI_STAT_SENDRECV_WTIME] );
-      printf( " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
+      fprintf( sFile, " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
               " Wait in MPI_Sendrecv",
               ptime, ptime/(double)analysis.getMPISize(), patternCount );
     }
@@ -1930,7 +1977,7 @@ Runner::printAllActivities()
     {
       double ptime = 
           analysis.getRealTime( stats.getStats()[MPI_STAT_WAITALL_LATEPARTNER_WTIME] );
-      printf( " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
+      fprintf( sFile, " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
               " MPI_Waitall late partner",
               ptime, ptime/(double)analysis.getMPISize(), patternCount );
     }
@@ -1940,7 +1987,7 @@ Runner::printAllActivities()
     {
       double ptime = 
           analysis.getRealTime( stats.getStats()[MPI_STAT_COLLECTIVE_WTIME] );
-      printf( " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
+      fprintf( sFile, " %-30.30s: %11lf s (%lf s per rank; %" PRIu64 " overall occurrences)\n",
               " Wait in MPI collective",
               ptime, ptime/(double)analysis.getMPISize(), patternCount );
     }
@@ -1951,7 +1998,7 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[ OMP_STAT_BARRIER ];
       if( patternCount )
       {
-        printf( " OpenMP\n"
+        fprintf( sFile, " OpenMP\n"
                 " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
                 " Wait in OpenMP barrier",
                 analysis.getRealTime( stats.getStats()[OMP_STAT_BARRIER_WTIME] ),
@@ -1962,7 +2009,7 @@ Runner::printAllActivities()
     //// Offloading ////
     if( analysis.haveParadigm( PARADIGM_CUDA ) || analysis.haveParadigm( PARADIGM_OCL ) )
     {
-      printf( " Offloading\n"
+      fprintf( sFile, " Offloading\n"
               " %-30.30s: %11lf s (%2.2lf%%)\n"
               " %-30.30s: %11lf s (%2.2lf%%)\n",
               " Idle device",
@@ -1978,7 +2025,7 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[STAT_OFLD_EARLY_BLOCKING_WAIT];
       if( patternCount )
       {
-        printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences), on kernel: %lf s\n",
+        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences), on kernel: %lf s\n",
           " Early blocking wait",
           analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME] ),
           patternCount, 
@@ -1988,14 +2035,14 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[OFLD_STAT_EARLY_TEST];
       if( patternCount )
       {
-        printf( "  Early test for completion: %" PRIu64 " (%lf s)\n", patternCount,
+        fprintf( sFile, "  Early test for completion: %" PRIu64 " (%lf s)\n", patternCount,
           analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_TEST_TIME] ) );
       }
 
       patternCount = stats.getStats()[STAT_OFLD_BLOCKING_COM];
       if( patternCount )
       {
-        printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
+        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
                 " Blocking communication",
           analysis.getRealTime( stats.getStats()[STAT_OFLD_BLOCKING_COM_TIME] ),
           patternCount );
@@ -2004,7 +2051,7 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[OFLD_STAT_MULTIPLE_COM];
       if( patternCount )
       {
-        printf( " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
+        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
                 " Consecutive communication",
           analysis.getRealTime( stats.getStats()[OFLD_STAT_MULTIPLE_COM_TIME] ),
           patternCount );
@@ -2013,7 +2060,7 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[OFLD_STAT_KERNEL_START_DELAY];
       if( patternCount )
       {
-        printf( " %-30.30s: %11lf ms/kernel (%" PRIu64 " occurrences), total delay: %lf s\n\n",
+        fprintf( sFile, " %-30.30s: %11lf ms/kernel (%" PRIu64 " occurrences), total delay: %lf s\n\n",
           " Kernel Startup Delay",
           analysis.getRealTime( stats.getStats()[OFLD_STAT_KERNEL_START_DELAY_TIME] ) / patternCount *1000,
           patternCount,
@@ -2021,10 +2068,19 @@ Runner::printAllActivities()
         );
       }
     }
-    
-    if (options.createRatingCSV)
+
+    if( sFile )
     {
-      fclose(summaryFile);
+      fclose( sFile );
+
+      // print summary file to console
+      ifstream fin( sFileName );
+      string temp;
+      while( getline( fin, temp ) )
+      {
+        std::cerr << temp << std::endl;
+      }
+      fin.close();
     }
   }
 }
