@@ -38,7 +38,7 @@ namespace casita
       listAndWaitTime->list.push_back( node );
 
       // return false, if we found a process start node or a sync device leave node
-      if ( node->isProcess() || ( node->isLeave() && ( node->isOffloadWait() || 
+      if ( node->isProcess() || ( node->isLeave() && ( node->isOffloadWaitAll() || 
                                                        node->isOffloadEnqueueKernel() ) ) )
       {
         return false;

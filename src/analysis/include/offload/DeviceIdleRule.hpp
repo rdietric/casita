@@ -12,8 +12,6 @@
 
 #pragma once
 
-#include <c++/5/bits/stl_vector.h>
-
 #include "IOffloadRule.hpp"
 #include "AnalysisParadigmOffload.hpp"
 
@@ -207,7 +205,7 @@ namespace casita
                     UTILS_WARNING( "[DeviceIdleRule] %llu open edges at %s. "
                                    "Blame first intra stream edge.",
                                    edges->size(), 
-                                   analysis->getNodeInfo( blameStartNode ) );
+                                   analysis->getNodeInfo( blameStartNode ).c_str() );
                     for ( Graph::EdgeList::const_iterator edgeIter = edges->begin();
                           edgeIter != edges->end(); ++edgeIter)
                     {
