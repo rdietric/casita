@@ -529,6 +529,8 @@ EventStream::walkBackward( GraphNode*         node,
     return result;
   }
 
+  //\todo: replace with walkback via edges
+  
   SortedGraphNodeList::const_reverse_iterator iter = findNode( node );
   
   // print a warning if the node could not be found and use a sequential search

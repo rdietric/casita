@@ -41,6 +41,7 @@ namespace casita
    bool        noErrors;
    bool        ignoreAsyncMpi;
    bool        ignoreOffload;
+   bool        blame4deviceIdle;
    uint32_t    analysisInterval;
    int         verbose;
    int         eventsProcessed;

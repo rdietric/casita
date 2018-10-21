@@ -41,7 +41,8 @@ namespace casita
   typedef void ( *HandleDefProcess )( OTF2TraceReader* reader, 
                                       uint64_t processId, uint64_t parentId,
                                       const char* name,
-                                      OTF2KeyValueList* list, bool isGPU );
+                                      OTF2KeyValueList* list, 
+                                      OTF2_LocationType locationType );
   typedef void ( *HandleProcessMPIMapping )( OTF2TraceReader* reader,
                                              uint64_t      processId,
                                              uint32_t      mpiRank );

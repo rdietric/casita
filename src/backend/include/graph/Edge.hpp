@@ -44,19 +44,12 @@ namespace casita
          duration    = 0;
        }
 
-       this->cpuNodes     = 0;
+//       this->cpuNodes     = 0;
        this->blame        = 0;
        this->properties   = properties;
        this->edgeDuration = duration;
        this->edgeWeight   = computeWeight( duration, isBlocking() );
-       this->edgeParadigm = edgeParadigm;
-       
-       if( start->getId() == 5122 && end->getId() == 5112 )
-       {
-         UTILS_MSG( start->getId() == 5122 && end->getId() == 5112,
-                  "xxxxxxxxx Create edge %s", this->getName().c_str() );
-       }
-       
+       this->edgeParadigm = edgeParadigm;       
      }
 
      bool
@@ -237,28 +230,28 @@ namespace casita
        return false;
      }*/
 
-     void
-     addCPUData( uint32_t nodes, uint64_t exclCPUEvtTime )
-     {
-       UTILS_ASSERT( cpuNodes == 0, "Can not set CPU data multiple times" );
-
-       if ( nodes > 0 )
-       {
-         cpuNodes = nodes;
-         cpuEvtExclTime = exclCPUEvtTime;
-       }
-     }
-     
-     /**
-      * Get the time of regions that are explicitly created by CPU events for this edge. 
-      * 
-      * @return 
-      */
-     uint64_t
-     getCPUNodesExclTime()
-     {
-       return cpuEvtExclTime;
-     }
+//     void
+//     addCPUData( uint32_t nodes, uint64_t exclCPUEvtTime )
+//     {
+//       UTILS_ASSERT( cpuNodes == 0, "Can not set CPU data multiple times" );
+//
+//       if ( nodes > 0 )
+//       {
+//         cpuNodes = nodes;
+//         cpuEvtExclTime = exclCPUEvtTime;
+//       }
+//     }
+//     
+//     /**
+//      * Get the time of regions that are explicitly created by CPU events for this edge. 
+//      * 
+//      * @return 
+//      */
+//     uint64_t
+//     getCPUNodesExclTime()
+//     {
+//       return cpuEvtExclTime;
+//     }
 
      void
      addBlame( double blame )
@@ -280,16 +273,10 @@ namespace casita
      
      GraphNode::GraphNodePair pair;
 
-     uint32_t cpuNodes;
-     uint64_t cpuEvtExclTime; //<! time of regions from CPU events between the edge nodes
+//     uint32_t cpuNodes;
+//     uint64_t cpuEvtExclTime; //<! time of regions from CPU events between the edge nodes
      
      double blame;
-
-     void
-     setWeight( uint64_t weight )
-     {
-       edgeWeight = weight;
-     }
 
      static uint64_t
      computeWeight( uint64_t duration, bool blocking )

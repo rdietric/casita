@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013, 2014, 2016-2018
+ * Copyright (c) 2013, 2014, 2016-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -222,6 +222,25 @@ Graph::getOutEdges( GraphNode* node ) const
                      node->getUniqueName().c_str() );
 }
 
+/**
+ * 
+ * @param node
+ * @return 
+ */
+const Graph::EdgeList*
+Graph::getOutEdgesPtr( GraphNode* node ) const
+{
+  NodeEdges::const_iterator iter = outEdges.find( node );
+  if ( iter != outEdges.end() )
+  {
+    return &(iter->second);
+  }
+  else
+  {
+    return NULL;
+  }
+}
+
 Graph::EdgeList
 Graph::getOutEdges( GraphNode* node, Paradigm paradigm ) const
 {
@@ -435,13 +454,12 @@ Graph::getLongestPath( GraphNode* startNode, GraphNode* endNode,
     nodeDistanceMap.erase( currentNode );
 
     // if the current node has out edges
-    if ( hasOutEdges( currentNode ) )
+    const Graph::EdgeList *outEdges = getOutEdgesPtr( currentNode );
+    if ( outEdges && outEdges >0 )
     {
-      const Graph::EdgeList& outEdges = getOutEdges( currentNode );
-
       // iterate over the out edges
-      for ( Graph::EdgeList::const_iterator iter = outEdges.begin();
-            iter != outEdges.end(); ++iter )
+      for ( Graph::EdgeList::const_iterator iter = outEdges->begin();
+            iter != outEdges->end(); ++iter )
       {
         Edge* edge = *iter;
 

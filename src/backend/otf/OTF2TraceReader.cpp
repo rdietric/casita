@@ -499,7 +499,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(
     {
       tr->handleDefProcess( tr, self, locationGroup, 
                             tr->defHandler->getName( name ), NULL, 
-                            locationType == OTF2_LOCATION_TYPE_GPU ? true : false );
+                            locationType );
     }
   }
   

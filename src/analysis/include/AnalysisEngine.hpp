@@ -88,7 +88,7 @@ namespace casita
 
      GraphNode*
      newGraphNode( uint64_t time, uint64_t streamId,
-                   const std::string name, Paradigm paradigm,
+                   const char* name, Paradigm paradigm,
                    RecordType recordType, int nodeType );
 
      GraphNode*

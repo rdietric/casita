@@ -63,7 +63,7 @@ GraphEngine::newEventStream( uint64_t                     id,
     MpiStream* p = new MpiStream( id, parentId, name );
     streamGroup.addHostStream( p );
 
-    GraphNode* startNode = newGraphNode( 0, id, name, PARADIGM_ALL,
+    GraphNode* startNode = newGraphNode( 0, id, name.c_str(), PARADIGM_ALL,
                                          RECORD_ATOMIC, MISC_PROCESS );
 
     p->addGraphNode( startNode, NULL );
@@ -120,7 +120,7 @@ GraphEngine::newEventStream( uint64_t                     id,
   }
 
   // initialize CPU data for this stream (full reset is done in addCPUEvent() )
-  cpuDataPerProcess[id].numberOfEvents = 0;
+  //[id].numberOfEvents = 0;
 }
 
 Graph&
@@ -211,9 +211,10 @@ GraphEngine::getInEdges( GraphNode* n ) const
 const Graph::EdgeList&
 GraphEngine::getOutEdges( GraphNode* n ) const
 {
-  if ( graph.hasOutEdges( n ) )
+  const Graph::EdgeList *edges = graph.getOutEdgesPtr( n );
+  if ( edges && edges > 0 )
   {
-    return graph.getOutEdges( n );
+    return *edges;
   }
   else
   {
@@ -222,12 +223,12 @@ GraphEngine::getOutEdges( GraphNode* n ) const
 }
 
 GraphNode*
-GraphEngine::newGraphNode( uint64_t          time,
-                           uint64_t          streamId,
-                           const std::string name,
-                           Paradigm          paradigm,
-                           RecordType        recordType,
-                           int               nodeType )
+GraphEngine::newGraphNode( uint64_t      time,
+                           uint64_t      streamId,
+                           const char*   name,
+                           Paradigm      paradigm,
+                           RecordType    recordType,
+                           int           nodeType )
 {
   GraphNode* n = new GraphNode( time,
                                 streamId,
@@ -244,7 +245,7 @@ GraphEngine::newEventNode( uint64_t                      time,
                            uint64_t                      streamId,
                            uint64_t                      eventId,
                            EventNode::FunctionResultType fResult,
-                           const std::string             name,
+                           const char*                   name,
                            Paradigm                      paradigm,
                            RecordType                    recordType,
                            int                           nodeType )
@@ -307,9 +308,9 @@ Edge*
 GraphEngine::getEdge( GraphNode* source, GraphNode* target )
 {
   // iterate over outgoing edges of source node
-  const Graph::EdgeList& edgeList = getOutEdges( source );
-  for ( Graph::EdgeList::const_iterator iter = edgeList.begin();
-        iter != edgeList.end(); ++iter )
+  const Graph::EdgeList *edges = graph.getOutEdgesPtr( source );
+  for ( Graph::EdgeList::const_iterator iter = edges->begin();
+        iter != edges->end(); ++iter )
   {
     if ( ( *iter )->getEndNode() == target )
     {
@@ -612,9 +613,9 @@ GraphEngine::runSanityCheck( uint32_t mpiRank )
 
       if ( hasOutEdges( node ) )
       {
-        Graph::EdgeList outEdges = getOutEdges( node );
-        for ( Graph::EdgeList::const_iterator eIter = outEdges.begin();
-              eIter != outEdges.end(); ++eIter )
+        const Graph::EdgeList *outEdges = graph.getOutEdgesPtr( node );
+        for ( Graph::EdgeList::const_iterator eIter = outEdges->begin();
+              eIter != outEdges->end(); ++eIter )
         {
           sanityCheckEdge( *eIter, mpiRank );
         }
@@ -628,7 +629,7 @@ GraphEngine::runSanityCheck( uint32_t mpiRank )
  * 
  * @param time the time stamp of the event
  * @param stream the stream the event occurred
- */
+ 
 void
 GraphEngine::addCPUEvent( uint64_t time, uint64_t stream, bool isLeave )
 {
@@ -648,10 +649,11 @@ GraphEngine::addCPUEvent( uint64_t time, uint64_t stream, bool isLeave )
 
   cpuData.numberOfEvents++;
   cpuData.endTime = time;
-}
+}*/
 
 /**
- * Adds a node to the graph. Also adds edges.
+ * Adds a node to the graph and edges between all nodes on the same stream. 
+ * Adds also edges for implicit task dependencies on the same offloading device.
  * 
  * @param node
  * @param stream
@@ -729,7 +731,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   GraphNode* directPredecessor = NULL;
   GraphNode* directSuccessor   = NULL;
   
-  // iterate over paradigms
+  // iterate over paradigms and set direct predecessor and successor
   for ( size_t pIdx = 0; pIdx < NODE_PARADIGM_COUNT; ++pIdx )
   {
     Paradigm paradigm = (Paradigm)( 1 << pIdx );
@@ -739,7 +741,8 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
       nextNodeMap.find( paradigm );
 
     // if we have a paradigm predecessor node AND 
-    // (there is no direct predecessor OR the direct predecessor is before paradigm predecessor)
+    // ( there is no direct predecessor OR 
+    //   the direct predecessor is before paradigm predecessor )
     if ( paradigmPredIter != predNodeMap.end() && 
          ( !directPredecessor || 
            Node::compareLess( directPredecessor, paradigmPredIter->second ) ) )
@@ -751,7 +754,8 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
     }
 
     // if we have a paradigm successor AND
-    // (there is no direct successor OR the paradigm predecessor is before the direct successor)
+    // ( there is no direct successor OR 
+    //   the paradigm predecessor is before the direct successor )
     if( paradigmSuccessorIter != nextNodeMap.end() && 
         ( !directSuccessor || 
           Node::compareLess( paradigmSuccessorIter->second, directSuccessor ) ) )
@@ -761,7 +765,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
     }
   }
   
-  EdgeCPUData& cpuData = cpuDataPerProcess[ streamId ];
+//  EdgeCPUData& cpuData = cpuDataPerProcess[ streamId ];
 
   bool directPredLinked = false;
   bool directSuccLinked = false;
@@ -775,7 +779,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
     Paradigm predParadigm = directPredecessor->getParadigm();
 
     // paradigm predecessor edges are only needed for MPI, as these edges 
-    // are used to generate sub graphs
+    // are used to generate the MPI subgraph for critical path analysis
     if( nodeParadigm == PARADIGM_MPI )
     {
       // iterate over the paradigms
@@ -812,14 +816,15 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
         }
 
         // create an intra-paradigm, intra-stream edge
-        Edge* pEdge = newEdge( pred, node, edgeProp, &paradigm );
+//        Edge* pEdge = 
+          newEdge( pred, node, edgeProp, &paradigm );
 
-        UTILS_ASSERT( !( cpuData.numberOfEvents && ( cpuData.startTime > cpuData.endTime ) ),
-                      "Violation of time order for CPU events at '%s' (%",
-                      pEdge->getName().c_str() );
+//        UTILS_ASSERT( !( cpuData.numberOfEvents && ( cpuData.startTime > cpuData.endTime ) ),
+//                      "Violation of time order for CPU events at '%s' (%",
+//                      pEdge->getName().c_str() );
 
-        pEdge->addCPUData( cpuData.numberOfEvents,
-                           cpuData.exclEvtRegTime );
+//        pEdge->addCPUData( cpuData.numberOfEvents,
+//                           cpuData.exclEvtRegTime );
 
         // check if this already is the direct predecessor
         if ( directPredecessor == pred )
@@ -844,9 +849,10 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
                                  succ->getStreamId() );
             }
             removeEdge( oldEdge );
-            /* link to direct successor */
-            /* can't be a blocking edge, as we never insert leave nodes */
-            /* before enter nodes from the same function */
+            /* 
+             * link to direct successor cannot be a blocking edge, as we never 
+             * insert leave nodes before enter nodes from the same function 
+             */
             newEdge( node, succ, EDGE_NONE, &paradigm );
             //sanityCheckEdge( temp, stream->getId() );
 
@@ -871,15 +877,16 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
       }
 
       // link to direct predecessor (other paradigm)
-      Edge* temp = newEdge( directPredecessor, node, edgeProp, &predParadigm );
+//      Edge* temp = 
+        newEdge( directPredecessor, node, edgeProp, &predParadigm );
       //sanityCheckEdge( temp, stream->getId() );
 
-      UTILS_ASSERT( !( cpuData.numberOfEvents && ( cpuData.startTime > cpuData.endTime ) ),
-                    "Violation of time order for CPU events at '%s'",
-                    temp->getName().c_str() );
+//      UTILS_ASSERT( !( cpuData.numberOfEvents && ( cpuData.startTime > cpuData.endTime ) ),
+//                    "Violation of time order for CPU events at '%s'",
+//                    temp->getName().c_str() );
 
-      temp->addCPUData( cpuData.numberOfEvents,
-                        cpuData.exclEvtRegTime );
+//      temp->addCPUData( cpuData.numberOfEvents,
+//                        cpuData.exclEvtRegTime );
     }
 
     if ( directSuccessor )
@@ -903,9 +910,10 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   }
 
   // reset the number of CPU events for the following edge
-  cpuData.numberOfEvents = 0;
+  // cpuData.numberOfEvents = 0;
   
   // create edges from device kernel enter nodes to previous nodes on the device
+  // (implicit task dependencies)
   if( Parser::getInstance().getProgramOptions().linkKernels &&
       node->isEnter() && node->isOffloadKernel() )
   {

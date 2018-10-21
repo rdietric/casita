@@ -411,7 +411,7 @@ AnalysisEngine::getLastLeaveNode( uint64_t timestamp, uint64_t streamId ) const
 GraphNode*
 AnalysisEngine::newGraphNode( uint64_t          time,
                               uint64_t          streamId,
-                              const std::string name,
+                              const char*       name,
                               Paradigm          paradigm,
                               RecordType        recordType,
                               int               nodeType )

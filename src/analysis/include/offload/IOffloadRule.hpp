@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2017,
+ * Copyright (c) 2017, 2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -13,6 +13,7 @@
 #pragma once
 
 #include "AbstractRule.hpp"
+#include "OffloadRulesCommon.hpp"
 #include "AnalysisEngine.hpp"
 
 namespace casita

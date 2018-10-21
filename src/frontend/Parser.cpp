@@ -103,6 +103,7 @@ namespace casita
     cout << " -f  --filter=List        filter regions (ignored in analysis and output trace)" << endl;
     cout << "     --idle=[0,1,2,3]     write device idle regions to output trace" << endl
          << "                          (0=no, 1=device idle(default), 2=compute idle, 3=both)" << endl;
+    cout << "    [--blame4device-idle] blame the host for not keeping the device computing" << endl;
     cout << " -l  --link-kernels       create inter-stream kernel dependencies (default: off)" << endl;
     cout << "     --nullstream=INT     use null stream semantic for the given stream" << endl;
     cout << " -p [--path]              print critical paths" << endl;
@@ -273,10 +274,16 @@ namespace casita
         options.ignoreAsyncMpi = true;
       }
       
-      // do not run CUDA analysis
+      // do not run offloading analysis
       else if( opt.find( "--ignore-offloading" ) != string::npos )
       {
         options.ignoreOffload = true;
+      }
+      
+      // enable blaming host activities for not keeping the device busy
+      else if( opt.find( "--blame4device-idle" ) != string::npos )
+      {
+        options.blame4deviceIdle = true;
       }
       
       // create dependencies between kernels from different streams
@@ -502,6 +509,7 @@ namespace casita
     options.nullStream = -1;
     options.ignoreAsyncMpi = false;
     options.ignoreOffload = false;
+    options.blame4deviceIdle = false;
     options.createRatingCSV = true;
   }
 

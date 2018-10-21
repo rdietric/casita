@@ -24,7 +24,7 @@ namespace casita
   {
     public:
       /**
-       * The kernel execution rule is triggered at kernel enter nodes.
+       * The kernel execution rule is triggered at kernel leave nodes.
        * It uses the pending kernel launch map and links kernel enter with 
        * respective kernel launch enter.
        * 
@@ -39,23 +39,21 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmOffload* ofldAnalysis, GraphNode* kernelEnter )
+      apply( AnalysisParadigmOffload* ofldAnalysis, GraphNode* kernelLeave )
       {
 
         // applied at kernel leave
-        if ( !kernelEnter->isOffloadKernel() || !kernelEnter->isEnter() )
+        if ( !kernelLeave->isOffloadKernel() || !kernelLeave->isLeave() )
         {
           return false;
         }
-        
-        //UTILS_OUT("Kernel Execution Rule");
         
         AnalysisEngine* analysis = ofldAnalysis->getCommon();
         
         // count occurrence
         analysis->getStatistics().countActivity( STAT_OFLD_KERNEL );
 
-        uint64_t kernelStrmId = kernelEnter->getStreamId();
+        uint64_t kernelStrmId = kernelLeave->getStreamId();
 
         // find the stream which launched this kernel and consume the launch event
         // the number of kernel launches and kernel executions has to be the same
@@ -67,13 +65,12 @@ namespace casita
           UTILS_OUT( "[%" PRIu32 "] Applying KernelExecutionRule failed. "
                      "Found kernel %s without matching kernel launch.",
                      analysis->getMPIRank(),
-                     analysis->getNodeInfo( kernelEnter ).c_str() );
+                     analysis->getNodeInfo( kernelLeave ).c_str() );
           
           return false;
         }
 
-        //
-        GraphNode* kernelLeave = kernelEnter->getGraphPair().second;
+        GraphNode* kernelEnter = kernelLeave->getGraphPair().first;
         
         // link the kernel launch enter and kernel enter nodes between each other
         launchEnterEvent->setLink( kernelEnter );

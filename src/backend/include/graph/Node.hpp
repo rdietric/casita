@@ -344,7 +344,7 @@ namespace casita
      isPureWaitstate() const
      {
 
-       return isWaitstate() && ( strcmp( name.c_str(), NAME_WAITSTATE ) == 0 );
+       return isWaitstate() && ( strcmp( name, NAME_WAITSTATE ) == 0 );
      }
 
      /**
@@ -787,7 +787,7 @@ namespace casita
       * @param recordType
       * @param nodeType
       */
-     Node( uint64_t time, uint64_t streamId, const std::string name,
+     Node( uint64_t time, uint64_t streamId, const char* name,
            Paradigm paradigm, RecordType recordType, int nodeType ) :
        time( time ),
        streamId( streamId ),
@@ -839,13 +839,7 @@ namespace casita
      const char*
      getName() const
      {
-       return name.c_str();
-     }
-
-     virtual void
-     setName( const std::string newName )
-     {
-       name = newName;
+       return name;
      }
 
      virtual const std::string
@@ -1039,7 +1033,9 @@ namespace casita
      uint64_t       time;
      uint64_t       streamId;
      uint64_t       functionId;
-     std::string    name;
+     
+     // \todo: this could be removed, as name and function ID are redundant
+     const char*    name;
 
      RecordType     recordType;
      Paradigm       paradigm;
@@ -1056,7 +1052,6 @@ namespace casita
      
      uint64_t referencedStream;
      
-     
      //!< metric type, counter value
      std::map< MetricType, uint64_t > counters;
      
@@ -1069,7 +1064,7 @@ namespace casita
      // individual values cost 1 + 8 + 8 = 17 bytes
      // bool criticalPath;
      // uint64_t waitingTime
-     // double blame; // types: late sender, late receiver, OpenMP barrier, MPI collective
+     // types: late sender, late receiver, OpenMP barrier, MPI collective
  };
 
  typedef struct

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014, 2017
+ * Copyright (c) 2013-2014, 2017, 2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -31,7 +31,7 @@ namespace casita
      typedef std::pair< GraphNode*, GraphNode* > GraphNodePair;
      typedef std::map< Paradigm, GraphNode* > ParadigmNodeMap;
 
-     GraphNode( uint64_t time, uint64_t streamId, const std::string name,
+     GraphNode( uint64_t time, uint64_t streamId, const char* name,
                 Paradigm paradigm, RecordType recordType, int nodeType ) :
        Node( time, streamId, name, paradigm, recordType, nodeType ),
        linkLeft( NULL ),
@@ -47,12 +47,6 @@ namespace casita
      ~GraphNode()
      {
 
-     }
-
-     void
-     setName( const std::string newName )
-     {
-       name = newName;
      }
 
      /**
@@ -120,12 +114,6 @@ namespace casita
      }
 
      void
-     reduceTimestamp( uint64_t delta )
-     {
-       this->time -= delta;
-     }
-
-     void
      setLinkLeft( GraphNode* linkLeft )
      {
        this->linkLeft = linkLeft;
@@ -164,6 +152,18 @@ namespace casita
      getData() const
      {
        return this->data;
+     }
+     
+     bool
+     isOnCriticalPath() const
+     {
+       return (bool)( this->getCounter( CRITICAL_PATH ) );
+     }
+     
+     uint64_t
+     getWaitingTime() const
+     {
+       return this->getCounter( WAITING_TIME );
      }
      
      // TODO: This function might not be correct implemented.

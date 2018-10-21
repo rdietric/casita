@@ -124,6 +124,12 @@ namespace casita
       
       void
       printKernelLaunchMap();
+      
+      //!< number of active device tasks (currently only kernels)
+      uint8_t active_tasks;
+      
+      //!< time when device idle starts
+      uint64_t idle_start_time;
 
     private:      
       // number of pending kernels (between launch and kernel end) during trace reading

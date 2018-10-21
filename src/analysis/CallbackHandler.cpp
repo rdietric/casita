@@ -148,10 +148,12 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
                                    uint64_t          parentId, //location group
                                    const char*       name,
                                    OTF2KeyValueList* list,
-                                   bool              isGPU )
+                                   OTF2_LocationType locationType )
 {
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
   AnalysisEngine&  analysis = handler->getAnalysis();
+  
+  bool isGPU = locationType == OTF2_LOCATION_TYPE_GPU ? true : false;
   
   EventStream::EventStreamType streamType = EventStream::ES_HOST;
   
@@ -181,9 +183,18 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
   {
     analysis.addDetectedParadigm( PARADIGM_OMP );
   }
+  
+  if ( locationType == OTF2_LOCATION_TYPE_METRIC )
+  {
+    UTILS_OUT( "  [%u] Ignore metric stream '%s' (%" PRIu64 
+               ") with type %u, parent %" PRIu64,
+               analysis.getMPIRank(), name, streamId, streamType, parentId );
+    
+    return;
+  }
 
   UTILS_MSG( Parser::getInstance().getVerboseLevel() >= VERBOSE_BASIC,
-             "  [%u] Found stream %s (%" PRIu64 ") with type %u, parent %" PRIu64,
+             "  [%u] Found stream '%s' (%" PRIu64 ") with type %u, parent %" PRIu64,
              analysis.getMPIRank(), name, streamId, streamType, parentId );
 
   analysis.newEventStream( streamId, parentId, name, streamType );
@@ -345,7 +356,7 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
   if( !generateNode )
   {    
     //UTILS_OUT( "CPU event: %s", funcName );
-    analysis.addCPUEvent( time, streamId, false );
+//    analysis.addCPUEvent( time, streamId, false );
     return;
   }
 
@@ -433,7 +444,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   if( !generateNode )
   {
     //std::cout << " skipping " << funcName << std::endl;
-    analysis.addCPUEvent( time, streamId, true );
+//    analysis.addCPUEvent( time, streamId, true );
     return false;
   }
 

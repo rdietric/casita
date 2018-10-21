@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2017-2018
+ * Copyright (c) 2017-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -24,6 +24,7 @@
 #include "offload/cuda/EventSyncRule.hpp"
 #include "offload/cuda/EventQueryRule.hpp"
 #include "offload/cuda/StreamWaitRule.hpp"
+#include "offload/DeviceIdleRule.hpp"
 
 using namespace casita;
 using namespace casita::offload;
@@ -34,7 +35,13 @@ AnalysisParadigmOffload::AnalysisParadigmOffload( AnalysisEngine* analysisEngine
   pendingKernels( 0 ) 
 {
   // triggered on offload kernel leave
-  addRule( new KernelExecutionRule( 9 ) );
+  addRule( new KernelExecutionRule( 2 ) );
+  
+  if( Parser::getInstance().getProgramOptions().blame4deviceIdle )
+  {
+    addRule( new DeviceIdleRule( 1 ) );
+    active_tasks = 0;
+  }
   
   // note: rule clears the list of pending kernels when finished
   addRule( new SyncRule( 1 ) ); // triggered on cudaSync and clFinish
@@ -432,7 +439,8 @@ AnalysisParadigmOffload::addPendingKernelLaunch( GraphNode* launch )
  * @param kernelStreamId stream ID where the kernel is executed
  */
 GraphNode*
-AnalysisParadigmOffload::consumeFirstPendingKernelLaunchEnter( uint64_t kernelStreamId )
+AnalysisParadigmOffload::consumeFirstPendingKernelLaunchEnter( 
+  uint64_t kernelStreamId )
 {
   IdNodeListMap::iterator mapIter = 
     pendingKernelLaunchMap.find( kernelStreamId );
@@ -450,8 +458,6 @@ AnalysisParadigmOffload::consumeFirstPendingKernelLaunchEnter( uint64_t kernelSt
   }
 
   ////////////////// consume from head (FIFO) //////////////////
-  
-  // 
   // listIter->second (launch kernel node list) contains enter and leave records
   // set iterator to first element which should be a launch enter node
   GraphNode::GraphNodeList::iterator launchIter = mapIter->second.begin();
@@ -477,7 +483,7 @@ AnalysisParadigmOffload::consumeFirstPendingKernelLaunchEnter( uint64_t kernelSt
 
 /** 
  * Find last kernel launch (leave record) which launched a kernel for the 
- * given device stream and happened before the given time stamp.
+ * given device stream and happened before the given timestamp.
  * \todo: launch leave nodes remain in the list.
  * 
  * @param timestamp 

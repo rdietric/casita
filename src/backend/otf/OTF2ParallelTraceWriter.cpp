@@ -793,9 +793,9 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
 
         // first part of the condition should be wrong for the global source node
         // if current node is on the CP, but the following is not
-        if( ( currentNode->getCounter( CRITICAL_PATH, NULL ) == 1 ) &&
+        if( ( currentNode->isOnCriticalPath() ) &&
             ( currentNodeIter + 1 != processNodes->end() ) && 
-            ( *( currentNodeIter + 1 ) )->getCounter( CRITICAL_PATH, NULL ) == 0 )
+            ( *( currentNodeIter + 1 ) )->isOnCriticalPath() == false )
         {
           OTF2_MetricValue value;
           OTF2_EvtWriter*  evt_writer = evt_writerMap[ streamId ];
@@ -817,12 +817,11 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
         // if this node has output edges with blame, add it to open edges
         // for blame distribution on CPU events (intermediate nodes should have
         // output edges)
-        if( graph->hasOutEdges( currentNode ) )
-        {
-          const Graph::EdgeList& edges = graph->getOutEdges( currentNode );
-        
-          for ( Graph::EdgeList::const_iterator edgeIter = edges.begin();
-                edgeIter != edges.end(); edgeIter++ )
+        const Graph::EdgeList *edges = graph->getOutEdgesPtr( currentNode );
+        if ( edges && edges->size() > 0 )
+        {        
+          for ( Graph::EdgeList::const_iterator edgeIter = edges->begin();
+              edgeIter != edges->end(); edgeIter++ )
           {
             Edge* edge = *edgeIter;
 
@@ -1415,7 +1414,7 @@ OTF2ParallelTraceWriter::handleDeviceTaskLeave( uint64_t time,
 }
 
 /**
- * Process the next event read from original trace file.
+ * Process the next event, read from the input trace file.
  *
  * @param event
  * @param attributeList
@@ -1503,7 +1502,8 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
             // write compute idle enter
             //\todo: deviceId will be -1
             int deviceId = -1; //analysis->getStream( event.location )->getDeviceId();
-            EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
+            EventStream* stream = 
+              analysis->getStreamGroup().getFirstDeviceStream( deviceId );
             OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
                                               event.time, devComputeIdleRegRef ) );
           }
@@ -1519,7 +1519,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
           }
 
           firstOffloadApiEvtTime = event.time;
-        }
+        } // END: device idle handling
 
         // remember last event time for offloading API functions (not BUFFER_FLUSH)
         // to write offloading idle leave events
@@ -1539,12 +1539,13 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
             
             if( knStartTime > currentNode->getTime() )
             {
-              analysis->getStatistics().addStatWithCount( OFLD_STAT_KERNEL_START_DELAY, 
+              analysis->getStatistics().addStatWithCount( 
+                OFLD_STAT_KERNEL_START_DELAY, 
                 knStartTime - currentNode->getTime() );
             }
           }
         }
-      }
+      } // END: special handling for offloading
       else
       // reset consecutive communication count at MPI leave nodes 
       // (assumes that offloading is used in between MPI operations) 
@@ -1555,10 +1556,11 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
 
       UTILS_ASSERT( currentNode->getFunctionId() == event.regionRef,
                     //&& currentNode->getRecordType() == event.type,
-                    " [%u] RegionRef doesn't fit for event %" PRIu64 ":%s:%d:%" PRIu64 ":%lf"
+                    " [%u] RegionRef doesn't fit for event %" PRIu64 ":%s:%s:%" PRIu64 ":%lf"
                     " and internal node %s:%lf, %u != %" PRIu64, mpiRank, 
-                    event.location, eventName, event.type, event.time, getRealTime(event.time),
-                    currentNode->getUniqueName().c_str(),
+                    event.location, eventName, ( RECORD_ENTER == event.type ) ? "enter" : "leave/single/atomic", 
+                    event.time, getRealTime(event.time),
+                    analysis->getNodeInfo( currentNode ).c_str(),
                     (double)currentNode->getTime() / (double)defHandler->getTimerResolution(),
                     event.regionRef, currentNode->getFunctionId() );
 
@@ -1581,15 +1583,14 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         
           event.regionRef = newRegionRef;
         }
-      }
+      } // END: Fork/Join handling
 
       // preprocess current internal node (mark open edges to blame following events)
-      if ( graph->hasOutEdges( currentNode ) )
-      {
-        const Graph::EdgeList& edges = graph->getOutEdges( currentNode );
-        
-        for ( Graph::EdgeList::const_iterator edgeIter = edges.begin();
-              edgeIter != edges.end(); edgeIter++ )
+      const Graph::EdgeList *edges = graph->getOutEdgesPtr( currentNode );
+      if ( edges && edges->size() > 0 )
+      {        
+        for ( Graph::EdgeList::const_iterator edgeIter = edges->begin();
+              edgeIter != edges->end(); edgeIter++ )
         {
           Edge* edge = *edgeIter;
 
@@ -1608,10 +1609,10 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         nextNode = *( currentNodeIter + 1 );
       }
       
-      waitingTime = currentNode->getCounter( WAITING_TIME, NULL );
+      waitingTime = currentNode->getWaitingTime();
       
       // set critical path (counter next mode)
-      evtOnCP = (bool) currentNode->getCounter( CRITICAL_PATH, NULL );
+      evtOnCP = currentNode->isOnCriticalPath();
           
       streamState.onCriticalPath = evtOnCP;
 
@@ -1619,13 +1620,13 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       // following CPU events to false
       if( nextNode ) 
       {
-        if( nextNode->getCounter( CRITICAL_PATH ) == 0 )
+        if( ! nextNode->isOnCriticalPath() )
         {
           streamState.onCriticalPath = false;
         }
         // \todo: workaround for OTF2 output
         else if( currentNode->isOffloadKernel() && 
-                 nextNode->getCounter( CRITICAL_PATH ) == 1 )
+                 nextNode->isOnCriticalPath() )
         {
           streamState.onCriticalPath = true;
         }
@@ -1635,7 +1636,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       if( currentNode->isLeave() )
       {
         // if node is leave AND enter has zero as CP counter
-        if( currentNode->getGraphPair().first->getCounter(CRITICAL_PATH ) == 0 )
+        if( ! currentNode->getGraphPair().first->isOnCriticalPath() )
         {
           // zero the counter, as the activity is not on the CP
           // affects events that are no internal nodes
@@ -1692,13 +1693,13 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       // BUT: if next event is a leave AND the corresponding enter node is not on the CP
       // the nested regions are not on the CP
       if( currentNode->isLeave() &&
-          currentNode->getGraphPair().first->getCounter( CRITICAL_PATH ) == 0 )
+          currentNode->getGraphPair().first->isOnCriticalPath() == false )
       {
         evtOnCP = false;
       }
       else
       {
-        evtOnCP = (bool) currentNode->getCounter( CRITICAL_PATH );
+        evtOnCP = currentNode->isOnCriticalPath();
         
         // as tmpCounters is not evaluated when writing OTF2 events and counters
         // set the stream state

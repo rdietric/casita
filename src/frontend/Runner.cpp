@@ -1461,7 +1461,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
           // transfer blame for MPI_Wait[all]
           if( currentNode->isMPIWait() || currentNode->isMPIWaitall() )
           {
-            sendBfr[2] = currentNode->getCounter( WAITING_TIME, NULL );
+            sendBfr[2] = currentNode->getWaitingTime();
           }
           else
           {

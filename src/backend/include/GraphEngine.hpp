@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -32,15 +32,15 @@ namespace casita
    private:
 
      Graph::EdgeList emptyEdgeList;
-     typedef struct
-     {
-       uint64_t startTime;
-       uint64_t endTime;
-       uint64_t exclEvtRegTime; //<! time of regions from CPU events between paradigm nodes
-       uint32_t numberOfEvents;
-     } EdgeCPUData;
-
-     std::map< uint64_t, EdgeCPUData > cpuDataPerProcess;
+//     typedef struct
+//     {
+//       uint64_t startTime;
+//       uint64_t endTime;
+//       uint64_t exclEvtRegTime; //<! time of regions from CPU events between paradigm nodes
+//       uint32_t numberOfEvents;
+//     } EdgeCPUData;
+//
+//     std::map< uint64_t, EdgeCPUData > cpuDataPerProcess;
 
    public:
      typedef std::stack< GraphNode* > GraphNodeStack;
@@ -112,7 +112,7 @@ namespace casita
      GraphNode*
      newGraphNode( uint64_t          time,
                    uint64_t          streamId,
-                   const std::string name,
+                   const char*       name,
                    Paradigm          paradigm,
                    RecordType        recordType,
                    int               nodeType );
@@ -122,7 +122,7 @@ namespace casita
                    uint64_t                      streamId,
                    uint64_t                      eventId,
                    EventNode::FunctionResultType fResult,
-                   const std::string             name,
+                   const char*                   name,
                    Paradigm                      paradigm,
                    RecordType                    recordType,
                    int                           nodeType );
@@ -143,8 +143,8 @@ namespace casita
                       const char*                   name,
                       FunctionDescriptor*           desc );
 
-     void
-     addCPUEvent( uint64_t time, uint64_t stream, bool isLeave );
+//     void
+//     addCPUEvent( uint64_t time, uint64_t stream, bool isLeave );
 
      Edge*
      getEdge( GraphNode* source, GraphNode* target );

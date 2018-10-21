@@ -56,7 +56,7 @@ namespace casita
         if ( node->getCounter(OMP_IGNORE_BARRIER, NULL) )
         {
           // add waiting time of current node which is not the list end
-          listAndWaitTime->waitStateTime += node->getCounter(WAITING_TIME, NULL);
+          listAndWaitTime->waitStateTime += node->getWaitingTime();
           
           return true;
         }
@@ -71,7 +71,7 @@ namespace casita
       }
 
       // add waiting time of current node which is not the list end
-      listAndWaitTime->waitStateTime += node->getCounter(WAITING_TIME, NULL);
+      listAndWaitTime->waitStateTime += node->getWaitingTime();
       
       return true;
     }
@@ -90,7 +90,7 @@ namespace casita
       StreamWalkInfo* listAndWaitTime = (StreamWalkInfo*) userData;
 
       listAndWaitTime->list.push_back(node);
-      listAndWaitTime->waitStateTime += node->getCounter(WAITING_TIME, NULL);
+      listAndWaitTime->waitStateTime += node->getWaitingTime();
       
       if( node->getCaller() == NULL && 
           node->getCounter( OMP_FIRST_OFFLOAD_EVT, NULL ) == 1 )

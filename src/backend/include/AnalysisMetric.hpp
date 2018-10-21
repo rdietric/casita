@@ -34,11 +34,10 @@ namespace casita
     BLAME = 0,         // amount of caused waiting time
     WAITING_TIME = 1,  // waiting time of a region
     CRITICAL_PATH = 2, // is a location/stream on the critical path
-    OMP_BARRIER_ERROR = 3,     // correctness
+    BLAME4IDLE = 3,    // blame received for not keeping the device busy (internal)
     OMPT_REGION_ID = 4,        // internal
-    OMP_PARENT_REGION_ID = 5,  // internal
-    OMP_IGNORE_BARRIER = 6,    // internal
-    OMP_FIRST_OFFLOAD_EVT = 7  // internal
+    OMP_IGNORE_BARRIER = 5,    // internal
+    OMP_FIRST_OFFLOAD_EVT = 6  // internal
   };
   
   enum MetricMode
@@ -83,22 +82,17 @@ namespace casita
    { BLAME,         "Blame",         
                     "Amount of caused waiting time", 
                     COUNTER_ABSOLUT_LAST, OTF2_TYPE_DOUBLE, "seconds", false },
-   { WAITING_TIME,  "Waiting Time",  
-                    "Time in a wait state",          
+   { WAITING_TIME,  "Waiting Time",
+                    "Time in a wait state",
                     ATTRIBUTE, OTF2_TYPE_DOUBLE, "seconds", false },
    { CRITICAL_PATH, "Critical Path", 
-                    "On the critical path boolean",  
+                    "On the critical path boolean",
                     COUNTER_ABSOLUT_NEXT, OTF2_TYPE_UINT64, "boolean", false },
-                    
-   // correctness
-   { OMP_BARRIER_ERROR,   "MUST correctness check", 
-                           "Error: Thread passes a different barrier than other threads of the same team!", 
-                           ATTRIBUTE, true },
-                    
    // internal metrics
-   { OMPT_REGION_ID,       "OMPT Region ID",         
-                           "", METRIC_MODE_UNKNOWN, OTF2_TYPE_UINT64, "", true },
-   { OMP_PARENT_REGION_ID, "OpenMP Target Parent Region ID",  
+   { BLAME4IDLE,    "Blame4DeviceIdle",         
+                    "Amount of caused idle time on the device", 
+                    COUNTER_ABSOLUT_LAST, OTF2_TYPE_DOUBLE, "seconds", false },
+   { OMPT_REGION_ID,       "OMPT Region ID",
                            "", METRIC_MODE_UNKNOWN, OTF2_TYPE_UINT64, "", true },
    { OMP_IGNORE_BARRIER,   "OpenMP Target Collapsed Barrier", 
                            "", METRIC_MODE_UNKNOWN, OTF2_TYPE_UINT8, "", true }
