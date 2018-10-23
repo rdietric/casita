@@ -1729,7 +1729,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
     {
       writeBlameMetric( event, blame );
     }
-    
+      
     writeEventsWithWaitingTime( event, attributeList, waitingTime );
   }
   

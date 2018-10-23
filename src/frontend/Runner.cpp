@@ -2025,11 +2025,10 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[STAT_OFLD_EARLY_BLOCKING_WAIT];
       if( patternCount )
       {
-        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences), on kernel: %lf s\n",
-          " Early blocking wait",
-          analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME] ),
-          patternCount, 
-          analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL] ) );
+        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
+          " Early blocking wait (kernel)",
+          analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL] ),
+          patternCount );
       }
 
       patternCount = stats.getStats()[OFLD_STAT_EARLY_TEST];

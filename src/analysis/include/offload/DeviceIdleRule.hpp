@@ -41,12 +41,14 @@ namespace casita
       bool
       apply( AnalysisParadigmOffload* ofldAnalysis, GraphNode* kernelNode )
       {
-        // set initial idle time value
+        /* set initial idle time value based on the first offload leave
         if ( ofldAnalysis->idle_start_time == 0 && 
              kernelNode->isOffload() && kernelNode->isLeave() )
         {
           ofldAnalysis->idle_start_time = kernelNode->getTime();
-        }
+          UTILS_OUT( "Setting initial idle time based on %s", 
+                     ofldAnalysis->getCommon()->getNodeInfo( kernelNode ).c_str() );
+        }*/
 
         // applied at kernel enter (potential idle leave)
         if ( !kernelNode->isOffloadKernel() )
@@ -56,6 +58,12 @@ namespace casita
         
         if ( kernelNode->isEnter() )
         {
+          // ignore initial idle
+          if ( ofldAnalysis->idle_start_time == 0 )
+          {
+            return true;
+          }
+          
           //UTILS_OUT("Device Idle Rule");
           
           // if device was idle
