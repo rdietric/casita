@@ -1724,8 +1724,30 @@ Runner::printAllActivities()
 {
   if ( mpiRank == 0 )
   {
-    std::cout << "- Total number of processed events: "
-              << std::setw(19) << total_events_read << std::endl;
+    char mode[1] = {'w'};
+    
+    // use append mode, if timing information have already been written
+    if( options.verbose >= VERBOSE_TIME )
+    {
+      mode[0] = 'a';
+    }
+    
+    std::string sFileName = Parser::getInstance().getPathToFile() 
+                           + std::string( "/" ) + Parser::getInstance().getOutArchiveName()
+                           + std::string( "_summary.txt" );
+    
+    FILE *sFile = fopen( sFileName.c_str(), mode );
+    
+    if( NULL == sFile )
+    {
+      sFile = stdout;
+    }
+    
+//    std::cout << "- Total number of processed events: "
+//              << std::setw(19) << total_events_read << std::endl;
+    
+    fprintf( sFile, "- Total number of processed events: %19" PRIu64 "\n",
+             total_events_read );
     
     ///////////// print information on activity occurrences ///////////
     Statistics& stats = analysis.getStatistics();
@@ -1739,10 +1761,10 @@ Runner::printAllActivities()
           if( casita::typeStrTableActivity[ i ].type == 
               casita::typeStrTableActivity[ j ].type )
           {
-            //printf( "  %32s: %" PRIu64 "\n", casita::typeStrTableActivity[ i ].str, actCount );
-            std::cout << std::setw(34) << casita::typeStrTableActivity[ i ].str 
-                      << ": "
-                      << std::setw(19) << actCount << std::endl;
+            fprintf( sFile, "%34s: %19" PRIu64 "\n", 
+                     casita::typeStrTableActivity[ i ].str, actCount );
+//            std::cout << std::setw(34) << casita::typeStrTableActivity[ i ].str 
+//                      << ": " << std::setw(19) << actCount << std::endl;
             break;
           }
         }
@@ -1760,25 +1782,6 @@ Runner::printAllActivities()
     {
       UTILS_OUT( "Global critical path length is 0. Skipping output ..." );
       return;
-    }
-    
-    std::string sFileName = Parser::getInstance().getPathToFile() 
-                           + std::string( "/" ) + Parser::getInstance().getOutArchiveName()
-                           + std::string( "_summary.txt" );
-    
-    char mode[1] = {'w'};
-    
-    // use append mode, if timing information have already been written
-    if( mpiRank == 0 && options.verbose >= VERBOSE_TIME )
-    {
-      mode[0] = 'a';
-    }
-    
-    FILE *sFile = fopen( sFileName.c_str(), mode );
-    
-    if( NULL == sFile )
-    {
-      sFile = stdout;
     }
 
     fprintf( sFile, "\n%*s %10s %11s %11s %6s %8s %8s %10s\n",
@@ -2050,10 +2053,22 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[OFLD_STAT_MULTIPLE_COM];
       if( patternCount )
       {
-        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
+        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences)",
                 " Consecutive communication",
           analysis.getRealTime( stats.getStats()[OFLD_STAT_MULTIPLE_COM_TIME] ),
           patternCount );
+      }
+      
+      patternCount = stats.getStats()[OFLD_STAT_MULTIPLE_COM_SD];
+      if( patternCount )
+      {
+        fprintf( sFile, ", same direction: %lf s (%" PRIu64 " occurrences)",
+          analysis.getRealTime( stats.getStats()[OFLD_STAT_MULTIPLE_COM_SD_TIME] ),
+          patternCount );
+      }
+      if( stats.getStats()[OFLD_STAT_MULTIPLE_COM] || patternCount )
+      {
+        fprintf( sFile, "\n" );
       }
       
       patternCount = stats.getStats()[OFLD_STAT_KERNEL_START_DELAY];

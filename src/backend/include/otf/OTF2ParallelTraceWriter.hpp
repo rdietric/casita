@@ -238,6 +238,7 @@ namespace casita
       uint64_t lastDeviceComTaskEnterTime;
       bool     currentDeviceComTaskH2D;
       bool     previousDeviceComTaskH2D;
+      size_t   deviceConsecutiveComSDCount; // communication with same direction
       size_t   deviceConsecutiveComCount;
       
       //////////////////////////////////////////////////////////////

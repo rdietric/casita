@@ -130,7 +130,7 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter(
   deviceComputeRefCount = -1;
   
   // set consecutive device communication count to zero
-  deviceConsecutiveComCount = 0;
+  deviceConsecutiveComSDCount = 0;
   //previousDeviceComTaskH2D = true;
   //currentDeviceComTaskH2D = true;
   
@@ -1320,6 +1320,7 @@ OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time,
     
     // reset count
     deviceConsecutiveComCount = 0;
+    deviceConsecutiveComSDCount = 0;
   }
   else
   {
@@ -1367,27 +1368,37 @@ OTF2ParallelTraceWriter::handleDeviceTaskLeave( uint64_t time,
       }
     }
     
+    // reset counters
     deviceConsecutiveComCount = 0;
+    deviceConsecutiveComSDCount = 0;
   }
   else // communication task
   {
     // the previous device communication task has the same direction
     if( currentDeviceComTaskH2D == previousDeviceComTaskH2D )
     {
-      // if the previous device task was a communication
-      if( deviceConsecutiveComCount > 0 )
+      // if the previous device task was a communication (same direction)
+      if( deviceConsecutiveComSDCount > 0 )
       {
-        // add this consecutive communication to stats
+        // add this consecutive communication (same direction) to stats
         analysis->getStatistics().addStatWithCount( 
-          OFLD_STAT_MULTIPLE_COM, time - lastDeviceComTaskEnterTime );
+          OFLD_STAT_MULTIPLE_COM_SD, time - lastDeviceComTaskEnterTime );
       }
 
-      deviceConsecutiveComCount++;
+      deviceConsecutiveComSDCount++;
     }
     else
     {
-      deviceConsecutiveComCount = 1;
+      deviceConsecutiveComSDCount = 1;
     }
+    
+    if( deviceConsecutiveComCount > 0 )
+    {
+      // add this consecutive communication to stats
+      analysis->getStatistics().addStatWithCount( 
+        OFLD_STAT_MULTIPLE_COM, time - lastDeviceComTaskEnterTime );
+    }
+    deviceConsecutiveComCount++;
   }
   
   deviceRefCount--;
@@ -1549,9 +1560,10 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       else
       // reset consecutive communication count at MPI leave nodes 
       // (assumes that offloading is used in between MPI operations) 
-      if( currentNode->isMPI() && currentNode->isLeave() )
+      if( currentNode->isMPI() /*&& currentNode->isLeave()*/ )
       {
         deviceConsecutiveComCount = 0;
+        deviceConsecutiveComSDCount = 0;
       }
 
       UTILS_ASSERT( currentNode->getFunctionId() == event.regionRef,

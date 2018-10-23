@@ -3,6 +3,9 @@
 MPI
 - do not allow to assign more waiting time to MPI_Wait[all] than its duration
 
+Offloading
+- added rule to blame the host for not keeping the device busy
+
 MISC
 - improved implementation of blame distribution (only use edges to store blame)
 - avoid writing of zero values for the OTF2 blame counter
@@ -10,8 +13,10 @@ MISC
 - simplified writing of the critical path
 - added units for critical path, waiting time, and blame in OTF2 output
 - improved rating output for long region names
-- beautified pattern summary output
+- corrected and beautified pattern summary output
+- generate summary file
 - added Score-P user instrumentation to analyze CASITA's performance
+- reduced memory footprint
 
 
 ---------------------------------- CASITA 1.8 ----------------------------------

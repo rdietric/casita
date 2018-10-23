@@ -32,26 +32,28 @@ namespace casita
      OFLD_STAT_OFLD_TIME = 9, // duration of the offloading interval
      OFLD_STAT_MULTIPLE_COM = 10,      // multiple consecutive communication count
      OFLD_STAT_MULTIPLE_COM_TIME = 11,  // multiple consecutive communication time
-     OFLD_STAT_KERNEL_START_DELAY = 12,
-     OFLD_STAT_KERNEL_START_DELAY_TIME = 13,
+     OFLD_STAT_MULTIPLE_COM_SD = 12,      // multiple consecutive communication count
+     OFLD_STAT_MULTIPLE_COM_SD_TIME = 13,  // multiple consecutive communication time
+     OFLD_STAT_KERNEL_START_DELAY = 14,
+     OFLD_STAT_KERNEL_START_DELAY_TIME = 15,
 
      //MPI (are written in rules, could also be evaluated in OTF2TraceWriter by 
      //     reading leave node counter values)
-     MPI_STAT_LATE_SENDER = 14,       // number of late senders
-     MPI_STAT_LATE_SENDER_WTIME = 15, // late sender waiting time
-     MPI_STAT_LATE_RECEIVER = 16,       // number of late receivers
-     MPI_STAT_LATE_RECEIVER_WTIME = 17, // late receiver waiting time
-     MPI_STAT_SENDRECV = 18,
-     MPI_STAT_SENDRECV_WTIME = 19,
-     MPI_STAT_COLLECTIVE = 20,       // number of (unbalanced) collectives
-     MPI_STAT_COLLECTIVE_WTIME = 21, // waiting time in collectives
-     MPI_STAT_WAITALL_LATEPARTNER = 22,
-     MPI_STAT_WAITALL_LATEPARTNER_WTIME = 23,
+     MPI_STAT_LATE_SENDER = 16,       // number of late senders
+     MPI_STAT_LATE_SENDER_WTIME = 17, // late sender waiting time
+     MPI_STAT_LATE_RECEIVER = 18,       // number of late receivers
+     MPI_STAT_LATE_RECEIVER_WTIME = 19, // late receiver waiting time
+     MPI_STAT_SENDRECV = 20,
+     MPI_STAT_SENDRECV_WTIME = 21,
+     MPI_STAT_COLLECTIVE = 22,       // number of (unbalanced) collectives
+     MPI_STAT_COLLECTIVE_WTIME = 23, // waiting time in collectives
+     MPI_STAT_WAITALL_LATEPARTNER = 24,
+     MPI_STAT_WAITALL_LATEPARTNER_WTIME = 25,
 
      //OpenMP
-     OMP_STAT_BARRIER = 24,      // OpenMP barriers
-     OMP_STAT_BARRIER_WTIME = 25, // waiting time in OpenMP barriers
-     STAT_NUMBER = 26
+     OMP_STAT_BARRIER = 26,      // OpenMP barriers
+     OMP_STAT_BARRIER_WTIME = 27, // waiting time in OpenMP barriers
+     STAT_NUMBER = 28
   };
 
   enum ActivityType
