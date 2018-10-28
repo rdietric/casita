@@ -2025,7 +2025,7 @@ Runner::printAllActivities()
               (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100
          );
 
-      patternCount = stats.getStats()[STAT_OFLD_EARLY_BLOCKING_WAIT];
+      patternCount = stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WAIT];
       if( patternCount )
       {
         fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
@@ -2044,10 +2044,21 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[STAT_OFLD_BLOCKING_COM];
       if( patternCount )
       {
-        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
+        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences)",
                 " Blocking communication",
           analysis.getRealTime( stats.getStats()[STAT_OFLD_BLOCKING_COM_TIME] ),
           patternCount );
+        
+        patternCount = stats.getStats()[OFLD_STAT_BLOCKING_COM_EXCL_TIME];
+        if( patternCount )
+        {
+          fprintf( sFile, ", exclusive: %lf s\n",
+            analysis.getRealTime( patternCount ) );
+        }
+        else
+        {
+          fprintf( sFile, "\n" );
+        }
       }
 
       patternCount = stats.getStats()[OFLD_STAT_MULTIPLE_COM];

@@ -227,7 +227,7 @@ namespace casita
                 
                 // early blocking wait statistics
                 analysis->getStatistics().addStatWithCount( 
-                  STAT_OFLD_EARLY_BLOCKING_WAIT, 
+                  OFLD_STAT_EARLY_BLOCKING_WAIT, 
                   syncLeave->getTime() - syncEnter->getTime() );
               }
             }
@@ -237,7 +237,7 @@ namespace casita
               
               // early blocking wait statistics
               analysis->getStatistics().addStatWithCount( 
-                STAT_OFLD_EARLY_BLOCKING_WAIT, 
+                OFLD_STAT_EARLY_BLOCKING_WAIT, 
                 syncLeave->getTime() - syncEnter->getTime() );
             }
             

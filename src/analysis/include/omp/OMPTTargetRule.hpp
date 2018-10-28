@@ -162,7 +162,7 @@ namespace casita
 
               // add waiting time to offloading statistics
               analysis->getStatistics().addStatWithCount( 
-                STAT_OFLD_EARLY_BLOCKING_WAIT, waiting_time );
+                OFLD_STAT_EARLY_BLOCKING_WAIT, waiting_time );
               
               node->setCounter( WAITING_TIME, waiting_time );
 

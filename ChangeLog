@@ -5,6 +5,7 @@ MPI
 
 Offloading
 - added rule to blame the host for not keeping the device busy
+- improved consecutive transfer analysis
 
 MISC
 - improved implementation of blame distribution (only use edges to store blame)

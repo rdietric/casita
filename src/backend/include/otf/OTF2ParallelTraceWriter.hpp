@@ -173,9 +173,6 @@ namespace casita
       
       //!< ticks per nano second (timer resolution (ticks per second) divided by nano seconds)
       double timeConversionFactor;
-      
-      double
-      getRealTime( uint64_t time );
 
       //!< maps each process to corresponding evtWriter
       std::map< uint64_t, OTF2_EvtWriter* > evt_writerMap;

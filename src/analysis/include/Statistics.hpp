@@ -22,9 +22,9 @@ namespace casita
     // offloading
      STAT_OFLD_BLOCKING_COM = 0,       // number of blocking communications
      STAT_OFLD_BLOCKING_COM_TIME  = 1, // accumulated blocking communication time
-     STAT_OFLD_EARLY_BLOCKING_WAIT = 2,   // number of early blocking waits
-     OFLD_STAT_EARLY_BLOCKING_WTIME  = 3, // accumulated early blocking wait time
-     OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL = 4, // accumulated early blocking wait time
+     OFLD_STAT_BLOCKING_COM_EXCL_TIME = 2, // time a blocking communication is communicating
+     OFLD_STAT_EARLY_BLOCKING_WAIT = 3,   // number of early blocking waits
+     OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL = 4, // accumulated early blocking wait time on kernel
      OFLD_STAT_EARLY_TEST = 5,       // number of early tests
      OFLD_STAT_EARLY_TEST_TIME  = 6, // accumulated time of early tests
      OFLD_STAT_IDLE_TIME = 7,         // time an offloading device is idle

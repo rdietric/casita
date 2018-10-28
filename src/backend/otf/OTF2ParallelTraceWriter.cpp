@@ -328,20 +328,6 @@ OTF2ParallelTraceWriter::clearOpenEdges()
 }
 
 /**
- * Convert event time to elapsed runtime time (to compare with Vampir times).
- * 
- * @param time OTF2 event timestamp
- * 
- * @return elapsed runtime
- */
-double
-OTF2ParallelTraceWriter::getRealTime( uint64_t time )
-{
-  return (double)( time - defHandler->getTimerOffset() ) 
-       / (double) defHandler->getTimerResolution();
-}
-
-/**
  * Read definitions from original trace.
  * Write them to new one, if new OTF2 file is written.
  */
@@ -1485,7 +1471,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       UTILS_OUT( "[%u] OTF2 writer: More events than nodes! "
                  "(%s (%" PRIu64 "): %s (%d) at %" PRIu64 ")", 
                  mpiRank, currentStream->getName(), event.location, 
-                 eventName, event.type, getRealTime( event.time ) );
+                 eventName, event.type, analysis->getRealTime( event.time ) );
     }
     else
     {
@@ -1540,22 +1526,49 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         }
         
         // at kernel launch leave when the device is compute idle
-        if( currentNode->isLeave() && deviceComputeRefCount == 0 &&
-            currentNode->isOffloadEnqueueKernel() )
+        if( currentNode->isLeave() )
         {
-          GraphNode* launchEnter = currentNode->getGraphPair().first;
-          if( launchEnter && launchEnter->getLink() )
+          if( deviceComputeRefCount == 0 && currentNode->isOffloadEnqueueKernel() )
           {
-            uint64_t knStartTime = launchEnter->getLink()->getTime();
-            
-            if( knStartTime > currentNode->getTime() )
+            GraphNode* launchEnter = currentNode->getGraphPair().first;
+            if( launchEnter && launchEnter->getLink() )
             {
-              analysis->getStatistics().addStatWithCount( 
-                OFLD_STAT_KERNEL_START_DELAY, 
-                knStartTime - currentNode->getTime() );
+              uint64_t knStartTime = launchEnter->getLink()->getTime();
+
+              if( knStartTime > currentNode->getTime() )
+              {
+                analysis->getStatistics().addStatWithCount( 
+                  OFLD_STAT_KERNEL_START_DELAY, 
+                  knStartTime - currentNode->getTime() );
+              }
             }
           }
+          
+          // blocking communication handling
+          if( eventDesc.functionType & OFLD_BLOCKING_DATA )
+          {
+            GraphNode* comEnter = currentNode->getGraphPair().first;
+            uint64_t exclCom = currentNode->getTime() - comEnter->getTime();
+            
+            analysis->getStatistics().addStatWithCount( STAT_OFLD_BLOCKING_COM, 
+              exclCom );
+            
+            uint64_t lastKernelEnd = 
+              lastComputeIdleStart - defHandler->getTimerOffset();
+
+            if( lastKernelEnd > comEnter->getTime() && 
+                currentNode->getTime() > lastKernelEnd )
+            {
+              
+              exclCom = currentNode->getTime() - lastKernelEnd;
+            }
+            
+            analysis->getStatistics().addStatValue( OFLD_STAT_BLOCKING_COM_EXCL_TIME, 
+                exclCom );
+          }
         }
+        
+        
       } // END: special handling for offloading
       else
       // reset consecutive communication count at MPI leave nodes 
@@ -1571,7 +1584,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
                     " [%u] RegionRef doesn't fit for event %" PRIu64 ":%s:%s:%" PRIu64 ":%lf"
                     " and internal node %s:%lf, %u != %" PRIu64, mpiRank, 
                     event.location, eventName, ( RECORD_ENTER == event.type ) ? "enter" : "leave/single/atomic", 
-                    event.time, getRealTime(event.time),
+                    event.time, analysis->getRealTime(event.time),
                     analysis->getNodeInfo( currentNode ).c_str(),
                     (double)currentNode->getTime() / (double)defHandler->getTimerResolution(),
                     event.regionRef, currentNode->getFunctionId() );

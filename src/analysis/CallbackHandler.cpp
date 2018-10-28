@@ -494,14 +494,6 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   
   // additional handling for special nodes (e.g. MPI communication and OpenMP)
   analysis.handlePostLeave( leaveNode );
-  
-  // statistics on blocking CUDA/OpenCL communication
-  if( ( regionDesc.functionType & OFLD_BLOCKING_DATA ) && 
-      regionDesc.paradigm & PARADIGM_OFFLOAD )
-  {
-    analysis.getStatistics().addStatWithCount( STAT_OFLD_BLOCKING_COM, 
-      leaveNode->getTime() - enterNode->getTime() );
-  }
 
   // for debugging
   handler->printNode( leaveNode, stream );
