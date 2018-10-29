@@ -26,18 +26,18 @@
 
 namespace casita
 {
-  
-  #define NUM_OUTPUT_METRICS 3 // number of output metrics in the METRIC_TABLE
-
   enum MetricType
   {
     BLAME = 0,         // amount of caused waiting time
     WAITING_TIME = 1,  // waiting time of a region
     CRITICAL_PATH = 2, // is a location/stream on the critical path
-    BLAME4IDLE = 3,    // blame received for not keeping the device busy (internal)
-    OMPT_REGION_ID = 4,        // internal
-    OMP_IGNORE_BARRIER = 5,    // internal
-    OMP_FIRST_OFFLOAD_EVT = 6  // internal
+    
+    NUM_OUTPUT_METRICS = 3,
+    
+    BLAME4IDLE = 4,    // blame received for not keeping the device busy (internal)
+    OMPT_REGION_ID = 5,        // internal
+    OMP_IGNORE_BARRIER = 6,    // internal
+    OMP_FIRST_OFFLOAD_EVT = 7  // internal
   };
   
   enum MetricMode

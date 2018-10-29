@@ -20,17 +20,17 @@
 
 namespace casita
 {
-
  class Edge
  {
    public:
      Edge( GraphNode* start, GraphNode* end, uint64_t duration,
            bool blocking, Paradigm edgeParadigm ) :
+       startNode( start ),
+       endNode( end ),
        blocking( blocking ),
        edgeParadigm( edgeParadigm ),
        blame ( 0 )
      {
-       pair = std::make_pair( start, end );
        if ( isReverseEdge() )
        {
          blocking = true;
@@ -55,7 +55,6 @@ namespace casita
      uint64_t
      getWeight() const
      {
-       //return edgeWeight;
        return computeWeight( this->edgeDuration, this->blocking );
      }
 
@@ -64,14 +63,14 @@ namespace casita
      {
        std::stringstream name;
        
-       if( pair.first != NULL )
+       if( startNode != NULL )
        {
-         name << "[" << pair.first->getUniqueName() << ", ";
+         name << "[" << startNode->getUniqueName() << ", ";
        }
        
-       if( pair.second != NULL )
+       if( endNode != NULL )
        {
-         name << pair.second->getUniqueName() << ", (";
+         name << endNode->getUniqueName() << ", (";
        }
 
        if ( edgeParadigm == PARADIGM_ALL )
@@ -123,59 +122,49 @@ namespace casita
      bool
      isBlocking() const
      {
-       //return properties & EDGE_IS_BLOCKING;
        return this->blocking;
      }
 
      void
      makeBlocking()
      {
-       //edgeWeight  = std::numeric_limits< uint64_t >::max();
-       //properties |= EDGE_IS_BLOCKING;
        this->blocking = true;
      }
      
      void
      unblock()
      {
-       //properties &= !EDGE_IS_BLOCKING;
        this->blocking = false;
      }
 
      GraphNode*
      getStartNode() const
      {
-       return pair.first;
+       return startNode;
      }
 
      GraphNode*
      getEndNode() const
      {
-       return pair.second;
-     }
-
-     GraphNode::GraphNodePair&
-     getNodes()
-     {
-       return pair;
+       return endNode;
      }
 
      bool
      isReverseEdge() const
      {
-       return pair.first->getTime() > pair.second->getTime();
+       return startNode->getTime() > endNode->getTime();
      }
 
      bool
      isIntraStreamEdge() const
      {
-       return pair.first->getStreamId() == pair.second->getStreamId();
+       return startNode->getStreamId() == endNode->getStreamId();
      }
 
      bool
      isInterProcessEdge() const
      {
-       return pair.first->getStreamId() != pair.second->getStreamId();
+       return startNode->getStreamId() != endNode->getStreamId();
      }
      
      /**
@@ -229,11 +218,12 @@ namespace casita
      }
 
    private:
+     GraphNode* startNode;
+     GraphNode* endNode;
+     
      uint64_t edgeDuration;
      bool     blocking;
      Paradigm edgeParadigm;
-     
-     GraphNode::GraphNodePair pair;
 
      double blame;
 

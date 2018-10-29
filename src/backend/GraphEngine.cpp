@@ -286,8 +286,7 @@ GraphEngine::newEdge( GraphNode* source, GraphNode* target,
   Edge* newEdge = new Edge( source, target,
                             target->getTime() - source->getTime(), 
                             blocking, paradigm );
-  //std::cerr << "[" << n1->getStreamId() << "] Add Edge " << n1->getUniqueName() 
-  //          << " to " << n2->getUniqueName() << std::endl;
+
   graph.addEdge( newEdge );
 
   return newEdge;
