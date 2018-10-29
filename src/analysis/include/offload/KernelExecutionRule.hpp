@@ -119,8 +119,7 @@ namespace casita
               }
               else
               {
-                analysis->newEdge( syncEvtEnter, syncEvtLeave, 
-                                         EDGE_IS_BLOCKING );
+                analysis->newEdge( syncEvtEnter, syncEvtLeave, true );
               }
 
               // compute waiting time

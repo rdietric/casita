@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014, 2018,
+ * Copyright (c) 2013-2014,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -21,23 +21,35 @@
 namespace casita
 {
 
+ enum EdgeProperties
+ {
+   EDGE_NONE             = 0,
+   EDGE_IS_BLOCKING      = ( 1 << 0 ) // edge is a wait state
+ };
+
  class Edge
  {
    public:
+     typedef std::map< uint32_t, uint64_t > TimeProfileMap;
+     typedef std::map< Paradigm, Edge* > ParadigmEdgeMap;
+
      Edge( GraphNode* start, GraphNode* end, uint64_t duration,
-           bool blocking, Paradigm edgeParadigm ) :
-       blocking( blocking ),
-       edgeParadigm( edgeParadigm ),
-       blame ( 0 )
+           int properties, Paradigm edgeParadigm ) :
+       properties( EDGE_NONE )
      {
        pair = std::make_pair( start, end );
        if ( isReverseEdge() )
        {
-         blocking = true;
-         duration = 0;
+         properties |= EDGE_IS_BLOCKING;
+         duration    = 0;
        }
 
-       this->edgeDuration = duration;      
+//       this->cpuNodes     = 0;
+       this->blame        = 0;
+       this->properties   = properties;
+       this->edgeDuration = duration;
+       this->edgeWeight   = computeWeight( duration, isBlocking() );
+       this->edgeParadigm = edgeParadigm;       
      }
 
      bool
@@ -46,21 +58,26 @@ namespace casita
        return edgeParadigm & this->edgeParadigm;
      }
 
-     uint64_t
-     getDuration() const
+     Paradigm
+     getEdgeType( ) const
      {
-       return this->edgeDuration;
+       return edgeParadigm;
      }
 
      uint64_t
-     getWeight() const
+     getDuration( ) const
      {
-       //return edgeWeight;
-       return computeWeight( this->edgeDuration, this->blocking );
+       return edgeDuration;
+     }
+
+     uint64_t
+     getWeight( ) const
+     {
+       return edgeWeight;
      }
 
      const std::string
-     getName() const
+     getName( ) const
      {
        std::stringstream name;
        
@@ -105,7 +122,7 @@ namespace casita
          name << "(intra)";
        }
        
-       if( blocking )
+       if( isBlocking() )
        {
          name << " is blocking";
        }
@@ -117,29 +134,26 @@ namespace casita
 
        name << "]";
        
-       return name.str();
+       return name.str( );
      }
 
      bool
      isBlocking() const
      {
-       //return properties & EDGE_IS_BLOCKING;
-       return this->blocking;
+       return properties & EDGE_IS_BLOCKING;
      }
 
      void
      makeBlocking()
      {
-       //edgeWeight  = std::numeric_limits< uint64_t >::max();
-       //properties |= EDGE_IS_BLOCKING;
-       this->blocking = true;
+       edgeWeight  = std::numeric_limits< uint64_t >::max();
+       properties |= EDGE_IS_BLOCKING;
      }
      
      void
      unblock()
      {
-       //properties &= !EDGE_IS_BLOCKING;
-       this->blocking = false;
+       properties &= !EDGE_IS_BLOCKING;
      }
 
      GraphNode*
@@ -216,6 +230,29 @@ namespace casita
        return false;
      }*/
 
+//     void
+//     addCPUData( uint32_t nodes, uint64_t exclCPUEvtTime )
+//     {
+//       UTILS_ASSERT( cpuNodes == 0, "Can not set CPU data multiple times" );
+//
+//       if ( nodes > 0 )
+//       {
+//         cpuNodes = nodes;
+//         cpuEvtExclTime = exclCPUEvtTime;
+//       }
+//     }
+//     
+//     /**
+//      * Get the time of regions that are explicitly created by CPU events for this edge. 
+//      * 
+//      * @return 
+//      */
+//     uint64_t
+//     getCPUNodesExclTime()
+//     {
+//       return cpuEvtExclTime;
+//     }
+
      void
      addBlame( double blame )
      {
@@ -229,12 +266,16 @@ namespace casita
      }
 
    private:
+     int      properties;
      uint64_t edgeDuration;
-     bool     blocking;
+     uint64_t edgeWeight;
      Paradigm edgeParadigm;
      
      GraphNode::GraphNodePair pair;
 
+//     uint32_t cpuNodes;
+//     uint64_t cpuEvtExclTime; //<! time of regions from CPU events between the edge nodes
+     
      double blame;
 
      static uint64_t
@@ -248,11 +289,11 @@ namespace casita
            tmpDuration = 1;
          }
 
-         return std::numeric_limits< uint64_t >::max() - tmpDuration;
+         return std::numeric_limits< uint64_t >::max( ) - tmpDuration;
        }
        else
        {
-         return std::numeric_limits< uint64_t >::max();
+         return std::numeric_limits< uint64_t >::max( );
        }
 
      }

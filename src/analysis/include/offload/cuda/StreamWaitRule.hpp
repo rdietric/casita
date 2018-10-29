@@ -312,7 +312,7 @@ namespace casita
                 &functionDesc);
 
               analysis->newEdge( lastLeaveNode, waitEnter );
-              analysis->newEdge( waitEnter, waitLeave, EDGE_IS_BLOCKING );
+              analysis->newEdge( waitEnter, waitLeave, true );
               analysis->newEdge( waitLeave, waitingKernelEnter );
 
               // set counters

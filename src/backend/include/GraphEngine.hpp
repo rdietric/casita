@@ -107,7 +107,7 @@ namespace casita
 
      Edge*
      newEdge( GraphNode* n1, GraphNode* n2, 
-              int properties = EDGE_NONE, Paradigm* paradigm = NULL );
+              bool blocking = false, Paradigm* paradigm = NULL );
 
      GraphNode*
      newGraphNode( uint64_t          time,

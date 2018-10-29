@@ -70,7 +70,7 @@ namespace casita
               if( targetEnter )
               {
                 // add dependency edge
-                analysis->newEdge( targetEnter, node, EDGE_NONE );
+                analysis->newEdge( targetEnter, node, false );
               }
               else
               {
@@ -117,7 +117,7 @@ namespace casita
               //            analysis->getNodeInfo( lastOffloadNode ).c_str(),
               //            analysis->getRealTime( node->getTime() ) );
               
-              analysis->newEdge( lastOffloadNode->getGraphPair().second, node, EDGE_NONE );
+              analysis->newEdge( lastOffloadNode->getGraphPair().second, node, false );
               
               // set the last offload node for the current target region (over streams)
               // use only leave nodes

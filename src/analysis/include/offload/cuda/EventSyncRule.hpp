@@ -233,7 +233,7 @@ namespace casita
             }
             else
             {
-              analysis->newEdge( syncEnter, syncLeave, EDGE_IS_BLOCKING );
+              analysis->newEdge( syncEnter, syncLeave, true );
               
               // early blocking wait statistics
               analysis->getStatistics().addStatWithCount( 

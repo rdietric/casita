@@ -264,7 +264,7 @@ GraphEngine::newEventNode( uint64_t                      time,
 
 Edge*
 GraphEngine::newEdge( GraphNode* source, GraphNode* target, 
-                      int properties, Paradigm* edgeType )
+                      bool blocking, Paradigm* edgeType )
 {
   Paradigm paradigm = PARADIGM_ALL;
   if ( edgeType )
@@ -277,7 +277,7 @@ GraphEngine::newEdge( GraphNode* source, GraphNode* target,
     {
       paradigm = source->getParadigm();
     }
-    else // recently added this else branch
+    else 
     {
       paradigm = (Paradigm) ( source->getParadigm() | target->getParadigm() );
     }
@@ -285,7 +285,7 @@ GraphEngine::newEdge( GraphNode* source, GraphNode* target,
   
   Edge* newEdge = new Edge( source, target,
                             target->getTime() - source->getTime(), 
-                            properties, paradigm );
+                            blocking, paradigm );
   //std::cerr << "[" << n1->getStreamId() << "] Add Edge " << n1->getUniqueName() 
   //          << " to " << n2->getUniqueName() << std::endl;
   graph.addEdge( newEdge );
@@ -805,19 +805,19 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
         // as we have a predecessor in the iteration's paradigm, we create an edge
 
-        GraphNode* pred     = predPnmIter->second;
-        int        edgeProp = EDGE_NONE;
+        GraphNode* pred = predPnmIter->second;
+        bool isBlocking = false;
 
         // make the edge blocking, if current node and predecessor are wait states
         if ( pred->isEnter() && node->isLeave() && 
              pred->isWaitstate() && node->isWaitstate() )
         {
-          edgeProp |= EDGE_IS_BLOCKING;
+          isBlocking = true;
         }
 
         // create an intra-paradigm, intra-stream edge
 //        Edge* pEdge = 
-          newEdge( pred, node, edgeProp, &paradigm );
+        newEdge( pred, node, isBlocking, &paradigm );
 
 //        UTILS_ASSERT( !( cpuData.numberOfEvents && ( cpuData.startTime > cpuData.endTime ) ),
 //                      "Violation of time order for CPU events at '%s' (%",
@@ -853,7 +853,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
              * link to direct successor cannot be a blocking edge, as we never 
              * insert leave nodes before enter nodes from the same function 
              */
-            newEdge( node, succ, EDGE_NONE, &paradigm );
+            newEdge( node, succ, false, &paradigm );
             //sanityCheckEdge( temp, stream->getId() );
 
             if ( directSuccessor == succ )
@@ -868,17 +868,17 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
     // if the predecessor of the same paradigm is not the direct predecessor
     if ( !directPredLinked )
     {
-      int edgeProp = EDGE_NONE;
+      bool isBlocking = false;
 
       if ( directPredecessor->isEnter() && node->isLeave() && 
            directPredecessor->isWaitstate() && node->isWaitstate() )
       {
-        edgeProp |= EDGE_IS_BLOCKING;
+        isBlocking = true;
       }
 
       // link to direct predecessor (other paradigm)
 //      Edge* temp = 
-        newEdge( directPredecessor, node, edgeProp, &predParadigm );
+        newEdge( directPredecessor, node, isBlocking, &predParadigm );
       //sanityCheckEdge( temp, stream->getId() );
 
 //      UTILS_ASSERT( !( cpuData.numberOfEvents && ( cpuData.startTime > cpuData.endTime ) ),
@@ -902,7 +902,7 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
         }
 
         // link to direct successor 
-        newEdge( node, directSuccessor, EDGE_NONE, &succParadigm );
+        newEdge( node, directSuccessor, false, &succParadigm );
         //sanityCheckEdge( temp, stream->getId() );
       }
 

@@ -5,7 +5,7 @@ MPI
 
 Offloading
 - added rule to blame the host for not keeping the device busy
-- improved consecutive transfer analysis
+- refined consecutive transfer detection
 
 MISC
 - improved implementation of blame distribution (only use edges to store blame)
@@ -17,7 +17,7 @@ MISC
 - corrected and beautified pattern summary output
 - generate summary file
 - added Score-P user instrumentation to analyze CASITA's performance
-- reduced memory footprint
+- reduced memory footprint by removing members from Node and Edge classes
 
 
 ---------------------------------- CASITA 1.8 ----------------------------------

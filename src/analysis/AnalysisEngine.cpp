@@ -623,8 +623,6 @@ AnalysisEngine::createIntermediateBegin()
       graph.addNode( lastNode );
       
       // create and add a new edge (with paradigm MPI) between the above added nodes
-      //Paradigm paradigm_mpi = PARADIGM_MPI;
-      //newEdge( startNode, lastNode, EDGE_NONE, &paradigm_mpi );
       newEdge( globalSourceNode, lastNode ); 
       
       UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 

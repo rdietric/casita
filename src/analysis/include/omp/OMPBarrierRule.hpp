@@ -103,8 +103,7 @@ namespace casita
               }
               else
               {
-                commonAnalysis->newEdge( barrier.first, barrier.second,
-                                         EDGE_IS_BLOCKING );
+                commonAnalysis->newEdge( barrier.first, barrier.second, true );
               }              
               
               uint64_t wtime = 
