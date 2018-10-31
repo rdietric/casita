@@ -504,7 +504,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   
   // if analysis should be run in intervals (between global collectives)
   if ( analysis.getMPISize() > 1 && 
-       Parser::getInstance().getProgramOptions().analysisInterval &&
+       Parser::getOptions().analysisInterval &&
       // if we have read a global blocking collective, we can start the analysis
        ( leaveNode->isMPICollective() /*|| leaveNode->isMPIAllToOne() || leaveNode->isMPIOneToAll()*/ ) &&
        !( leaveNode->isMPIInit() ) && !( leaveNode->isMPIFinalize() ) )

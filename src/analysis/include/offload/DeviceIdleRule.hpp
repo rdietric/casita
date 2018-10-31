@@ -49,7 +49,7 @@ namespace casita
           UTILS_OUT( "Setting initial idle time based on %s", 
                      ofldAnalysis->getCommon()->getNodeInfo( kernelNode ).c_str() );
         }*/
-
+        
         // applied at kernel enter (potential idle leave)
         if ( !kernelNode->isOffloadKernel() )
         {
@@ -61,6 +61,11 @@ namespace casita
           // ignore initial idle
           if ( ofldAnalysis->idle_start_time == 0 )
           {
+            //UTILS_OUT("Ignore initial idle");
+            
+            // increase device usage count
+            ofldAnalysis->active_tasks++;
+            
             return true;
           }
           
@@ -83,13 +88,14 @@ namespace casita
             uint64_t idleEndTime = kernelNode->getTime();
             
             // blame is for all host streams the same
+            // initially set it to the total idle time
             uint64_t blame = idleEndTime - ofldAnalysis->idle_start_time;
             
             // initialize launch time with idle end time (in case we do not get
             // the launch)
             uint64_t launchTime = idleEndTime;
             
-            if(launchEnter)
+            if( launchEnter )
             {
               // get launch (host) stream
               launchTime = launchEnter->getTime();
@@ -126,13 +132,31 @@ namespace casita
                 // there is no open region
               }
               else
-              {
-                blameStartNode = 
+              {                
+                blameStartNode =
                   GraphNode::findLastNodeBefore( launchTime, hostStream->getNodes() );
+                
+                if( blameStartNode == NULL || 
+                    blameStartNode == hostStream->getNodes().front() )
+                {
+                  UTILS_WARN_ONCE( "[DeviceIdleRule] Node before kernel "
+                                   "launch %s on stream %s not found!", 
+                                   analysis->getNodeInfo( launchEnter ).c_str(),
+                                   hostStream->getName() );
+                  
+                  if( Parser::getOptions().analysisInterval )
+                  {
+                    UTILS_WARN_ONCE( "This might be due to an intermediate flush." );
+                  }
+                  
+                  continue;
+                }
                 
                 if ( launchTime < blameStartNode->getTime() )
                 {
-                  UTILS_WARNING( "[DeviceIdleRule] Error while reading trace!" );
+                  UTILS_WARNING( "[DeviceIdleRule] Error while reading trace! (%s < %s)",
+                                 analysis->getNodeInfo( launchEnter ).c_str(),
+                                 analysis->getNodeInfo( blameStartNode ).c_str() );
                   openRegionTime = 0;
                 }
                 else
@@ -149,6 +173,7 @@ namespace casita
                 continue;
               }
               
+              // set this time initially to the total idle time
               uint64_t totalTimeToBlame = blame;
               
               // if start node is launch enter node, we cannot forward blame
@@ -171,10 +196,12 @@ namespace casita
               }
               else // last node is not a device sync or launch leave
               {
+                //\todo: blame at least until the begin of idle or kernel launch???
+                
                 totalTimeToBlame = 
                   distributeBlame( analysis, blameStartNode, blame, 
                                    streamWalkCallback,
-                                   openRegionTime );
+                                   REASON_OFLD_DEVICE_IDLE, openRegionTime );
               }
               /*
               UTILS_OUT( "[%" PRIu32 "] Start at: %s; blame: %.9lf; time to blame: %.9lf, "
@@ -184,7 +211,7 @@ namespace casita
                          analysis->getRealTime(blame), 
                          analysis->getRealTime(totalTimeToBlame), openRegionTime );
               */
-              
+                    
               //\todo: forward blame if another node is before idle end
               
               // determine remaining blame
@@ -193,8 +220,6 @@ namespace casita
                 double openBlame = (double) blame
                                  * (double) openRegionTime
                                  / (double) totalTimeToBlame;
-                
-                
                 
                 // if we have open blame and no kernel launch enter as start node
                 if( openBlame > 0 )
@@ -206,14 +231,14 @@ namespace casita
                   {
                     //UTILS_OUT( "Blame open region with %lf", openBlame );
                     
-                    edges->front()->addBlame( openBlame );
+                    edges->front()->addBlame( openBlame, REASON_OFLD_DEVICE_IDLE );
                   }
                   else
                   {
-                    UTILS_WARNING( "[DeviceIdleRule] %llu open edges at %s. "
-                                   "Blame first intra stream edge.",
-                                   edges->size(), 
-                                   analysis->getNodeInfo( blameStartNode ).c_str() );
+                    UTILS_WARN_ONCE( "[DeviceIdleRule] %llu open edges at %s. "
+                                     "Blame first intra stream edge.",
+                                     edges->size(), 
+                                     analysis->getNodeInfo( blameStartNode ).c_str() );
                     for ( Graph::EdgeList::const_iterator edgeIter = edges->begin();
                           edgeIter != edges->end(); ++edgeIter)
                     {
@@ -223,7 +248,7 @@ namespace casita
                       
                       if( edge->isIntraStreamEdge() )
                       {
-                        edge->addBlame( openBlame );
+                        edge->addBlame( openBlame, REASON_OFLD_DEVICE_IDLE );
                         break;
                       }
                     }
@@ -234,14 +259,13 @@ namespace casita
                   UTILS_WARNING( "No blame for open region!" );
                 }
               }
-
             }
           }
           
           // increase device usage count
           ofldAnalysis->active_tasks++;
         }
-        else
+        else /* kernel leave node */
         {
           // decrease device usage count
           ofldAnalysis->active_tasks--;
@@ -251,6 +275,11 @@ namespace casita
           {
             // remember idle start time (to compute blame for host later)
             ofldAnalysis->idle_start_time = kernelNode->getTime();
+          }
+          else if ( ofldAnalysis->active_tasks < 0 )
+          {
+            UTILS_WARNING( "Active device tasks cannot be less than zero!" );
+            ofldAnalysis->active_tasks = 0;
           }
         }
         

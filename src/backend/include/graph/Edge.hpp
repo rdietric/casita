@@ -20,6 +20,9 @@
 
 namespace casita
 {
+  
+ typedef std::map< BlameReason, double > BlameMap;
+  
  class Edge
  {
    public:
@@ -28,8 +31,8 @@ namespace casita
        startNode( start ),
        endNode( end ),
        blocking( blocking ),
-       edgeParadigm( edgeParadigm ),
-       blame ( 0 )
+       edgeParadigm( edgeParadigm )//,
+       //blame ( 0 )
      {
        if ( isReverseEdge() )
        {
@@ -166,55 +169,56 @@ namespace casita
      {
        return startNode->getStreamId() != endNode->getStreamId();
      }
+          
+     void addBlame( double value, BlameReason type = REASON_UNCLASSIFIED )
+     {
+       BlameMap::iterator blameIt = this->blame.find( type );
+       if ( blameIt == this->blame.end() )
+       {
+         this->blame[ type ] = value;
+       }
+       else
+       {
+         blameIt->second += value;
+       }
+     }
+     
+     double getBlame( BlameReason type = REASON_UNCLASSIFIED )
+     {
+       BlameMap::const_iterator iter = this->blame.find( type );
+       if ( iter == this->blame.end() )
+       {
+         return 0;
+       }
+       else
+       {
+         return iter->second;
+       }
+     }
      
      /**
-      * Determine whether this is an edge representing a region/function or 
-      * an edge between functions.
-      * 
+      * Get the accumulated blame, independent of the blame reason.
       * @return 
-      
-     bool
-     isRegion() const
-     {      
-       if( isIntraStreamEdge() )
+      */
+     double getTotalBlame()
+     {
+       double total_blame = 0;
+       for( BlameMap::const_iterator it = this->blame.begin();
+           it != this->blame.end(); it++)
        {
-         // if either of the nodes is atomic this cannot be a region
-         if( pair.first->isAtomic() || pair.second->isAtomic() )
-         {
-           return false;
-         }
-         
-         bool result = false;
-         
-         // for forward edges
-         if( pair.first->isEnter() && pair.second->isLeave() )
-         {
-           result = true;
-         }
-         else
-         {
-           result = false;
-         }
-
-         // for reverse edges negate the result
-         if( isReverseEdge() )
-         {
-           return !result;
-         }
+         total_blame += it->second;
        }
-       return false;
-     }*/
-
-     void
-     addBlame( double blame )
-     {
-       this->blame += blame;
+       return total_blame;
      }
-
-     double
-     getBlame()
+     
+     /**
+      * Return the address of the blame map.
+      * 
+      * @return address of the blame map
+      */
+     BlameMap* getBlameMap()
      {
-       return blame;
+       return &(this->blame);
      }
 
    private:
@@ -225,7 +229,10 @@ namespace casita
      bool     blocking;
      Paradigm edgeParadigm;
 
-     double blame;
+     //double blame;
+     
+     //!< blame type, blame value
+     BlameMap blame;
 
      static uint64_t
      computeWeight( uint64_t duration, bool blocking )

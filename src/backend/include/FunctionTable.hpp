@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -491,7 +491,7 @@ namespace casita
              switch ( descr->functionType )
              {
                case OFLD_BLOCKING_DATA:
-                 descr->functionType |= OFLD_WAIT_ALL | OFLD_WAIT;
+                 descr->functionType |= OFLD_WAIT_ALL | OFLD_WAIT | OFLD_ENQUEUE_DATA;
                  return true;
                  
                case OFLD_WAIT_ALL:
@@ -501,7 +501,7 @@ namespace casita
                case OFLD_ASYNC_DATA:
                  if( deviceNullStreamOnly )
                  {
-                   descr->functionType |= OFLD_WAIT_ALL | OFLD_WAIT | OFLD_BLOCKING_DATA;
+                   descr->functionType |= OFLD_WAIT_ALL | OFLD_WAIT | OFLD_BLOCKING_DATA | OFLD_ENQUEUE_DATA;
                    return true;
                  }
                  else

@@ -492,7 +492,7 @@ OTF2ParallelTraceWriter::writeAnalysisMetricDefinitions()
   
   for ( size_t i = 0; i < NUM_OUTPUT_METRICS; ++i )
   {
-    MetricType metric = (MetricType) i;
+    MetricType metric = ( MetricType ) i;
     const MetricEntry* entry = cTable->getMetric( metric );
 
     // ignore internal metrics
@@ -811,7 +811,7 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
           {
             Edge* edge = *edgeIter;
 
-            if ( edge->getBlame() > 0 )
+            if ( edge->getTotalBlame() > 0 )
             {
               streamState.openEdges.push_back( edge );
             }
@@ -989,12 +989,111 @@ OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event,
 }
 
 /**
- * Compute blame for CPU event from blame that is stored in edges. 
+ * Collect statistical information for activity groups that is used later to 
+ * create the profile.
+ *
+ * @param event         current event that was read from original OTF2 file
+ * @param counters      counter values for that event
+ */
+void
+OTF2ParallelTraceWriter::updateActivityGroupMap( OTF2Event event, 
+                                                 bool evtOnCP,
+                                                 uint64_t waitingTime,
+                                                 double blame,
+                                                 BlameMap* blameMap,
+                                                 bool graphNodesAvailable )
+{
+  // add function to list if not present yet
+  if ( activityGroupMap.find( event.regionRef ) == activityGroupMap.end() )
+  {
+    activityGroupMap[ event.regionRef ].functionId        = event.regionRef;
+    activityGroupMap[ event.regionRef ].numInstances      = 0;
+    activityGroupMap[ event.regionRef ].totalBlame        = 0;
+    activityGroupMap[ event.regionRef ].blameOnCP         = 0;
+    activityGroupMap[ event.regionRef ].totalDuration     = 0;
+    activityGroupMap[ event.regionRef ].totalDurationOnCP = 0;
+    
+    // initialize individual blame values with zero
+    for( int i = 0; i < REASON_NUMBER; i++ )
+    {
+      activityGroupMap[ event.regionRef ].blame4[ i ] = 0;
+    }
+  }
+
+  // for each enter event, increase the number of instances found
+  if ( event.type == RECORD_ENTER )
+  {
+    activityGroupMap[ event.regionRef ].numInstances++;
+  }
+
+  UTILS_ASSERT( streamStatusMap.count( event.location ) > 0, 
+                "Could not find stream status!" );
+  
+  bool onCP = false;
+  
+  // if there are counters (nodes) available, use this for the critical path
+  if( graphNodesAvailable )
+  {
+    onCP = evtOnCP;
+  }
+  else
+  {
+    onCP = streamStatusMap[ event.location ].onCriticalPath;
+  }
+  
+  // add duration, CP time and blame to current function on stack
+  //if ( activityIter != activityStack.end() && activityIter->second.size() > 0 )
+  if( streamStatusMap[ event.location ].activityStack.size() > 0 )
+  {
+    uint32_t currentActivity = 
+      streamStatusMap[ event.location ].activityStack.top();
+    
+    // time between the last and the current event
+    uint64_t timeDiff = 
+      event.time - streamStatusMap[ event.location ].lastEventTime;
+    
+    // add blame to total blame
+    activityGroupMap[ currentActivity ].totalBlame += blame;
+    
+    /////// add individual blame types /////////
+    // move through the different blames of this program region
+    for( BlameMap::const_iterator blameIt = blameMap->begin();
+         blameIt != blameMap->end(); blameIt++ )
+    {
+      // look for the blame type
+      for( int i = 0; i < REASON_NUMBER; i++ )
+      {
+        // found the blame type
+        if( blameIt->first == i )
+        {
+          activityGroupMap[ currentActivity ].blame4[ i ] += 
+            blameIt->second * timeConversionFactor;
+          
+          break; // move to next blame portion of this program region
+        }
+      }
+    }
+    
+    // add waiting time
+    activityGroupMap[ currentActivity ].waitingTime   += waitingTime;
+
+    activityGroupMap[ currentActivity ].totalDuration += timeDiff;
+    
+    if( onCP )
+    {
+      activityGroupMap[ currentActivity ].totalDurationOnCP += timeDiff;
+      activityGroupMap[ currentActivity ].blameOnCP         += blame;
+    }
+  }
+}
+
+/**
+ * Compute blame for event from blame that is stored in edges. 
  * Use the blame of the out edge of last graph node and distribute it among 
  * the following non-graph (CPU) events according to their duration. 
  * See also the documentation of the variable "openEdges".
  *
- * @param event Current CPU event
+ * @param event Current event
  * @return      Blame to assign to this event
  */
 double
@@ -1055,6 +1154,86 @@ OTF2ParallelTraceWriter::computeBlame( OTF2Event event )
   
   //UTILS_MSG( totalBlame, "[%u] Computed total blame: %llu", mpiRank, totalBlame );
 
+  return totalBlame;
+}
+
+/**
+ * Compute blame for event from blame that is stored in edges. 
+ * Use the blame of the out edge of last graph node and distribute it among 
+ * the following non-graph (CPU) events according to their duration. 
+ * See also the documentation of the variable "openEdges".
+ *
+ * @param event current event
+ * @param blameMap map to store blame for this event
+ * @return total blame
+ */
+double
+OTF2ParallelTraceWriter::computeBlameMap( OTF2Event event, BlameMap *blameMap )
+{
+  double totalBlame = 0;
+  
+  // iterate over all open edges (if any) and calculate total blame
+  if( streamStatusMap.count( event.location ) > 0 )
+  {
+    StreamStatus& streamState = streamStatusMap[ event.location ];
+    
+    // time between current and last event on this location
+    uint64_t timeDiff = event.time - streamState.lastEventTime;
+
+    // remove timer offset from event time
+    uint64_t eventTime = event.time - defHandler->getTimerOffset();
+    
+    OpenEdgesList& openEdges = streamState.openEdges;
+    for ( OpenEdgesList::iterator edgeIter = openEdges.begin();
+          edgeIter != openEdges.end(); )
+    {
+      Edge* edge = *edgeIter;
+      uint64_t eDuration = edge->getDuration();
+
+      // if edge has duration AND event is in between the edge
+      if ( ( eDuration > 0 ) &&
+           ( edge->getEndNode()->getTime() >= eventTime ) &&
+           ( edge->getStartNode()->getTime() <= eventTime ) )
+      {
+        // for all blame types available with this edge
+        for( BlameMap::const_iterator blameEdgeIt = edge->getBlameMap()->begin();
+           blameEdgeIt != edge->getBlameMap()->end(); blameEdgeIt++)
+        {
+          BlameReason reason = blameEdgeIt->first;
+          
+          // blame = blame(edge) * time(active region part)/time(edge)
+          double value = blameEdgeIt->second * ( double )timeDiff / ( double )eDuration;
+          
+          totalBlame += value;
+          
+          // set or add blame into input map
+          BlameMap::iterator blameEventIt = blameMap->find( reason );
+          if ( blameEventIt != blameMap->end() )
+          {
+            blameEventIt->second += value;
+          }
+          else
+          {
+            (*blameMap)[ reason ] = value;
+          }
+        }
+        
+        if( edge->getEndNode()->getTime() == eventTime )
+        {
+          // erase edge, if edge end node is this event
+          edgeIter = openEdges.erase( edgeIter );
+        }
+        
+        ++edgeIter;
+      }
+      else
+      {
+        // erase edge, if event time is past its end node
+        edgeIter = openEdges.erase( edgeIter );
+      }
+    }
+  }
+  
   return totalBlame;
 }
 
@@ -1451,11 +1630,13 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   // write blame only if we have open edges (avoid to write blame '0')
   bool   writeBlame = false;
   double blame      = 0.0;
+  BlameMap blameMap;
   if( streamState.openEdges.size() > 0 )
   {
     writeBlame = true;
     // compute blame counter
-    blame = computeBlame( event );
+    //blame = computeBlame( event );
+    blame = computeBlameMap( event, &blameMap );
   }
   EventStream::SortedGraphNodeList::iterator endNodeIter = 
     currentStream->getNodes().end();
@@ -1619,7 +1800,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         {
           Edge* edge = *edgeIter;
 
-          if ( edge->getBlame() > 0 )
+          if ( edge->getTotalBlame() > 0 )
           {
             streamState.openEdges.push_back( edge );
             writeBlame = true;
@@ -1765,7 +1946,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
   }
 
   // update values in activityGroupMap
-  updateActivityGroupMap( event, evtOnCP, waitingTime, blame, 
+  updateActivityGroupMap( event, evtOnCP, waitingTime, blame, &blameMap,
                           streamState.currentNodeIter != endNodeIter );
   
   streamState.currentNodeIter = currentNodeIter;

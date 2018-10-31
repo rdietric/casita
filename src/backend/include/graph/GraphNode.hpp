@@ -413,15 +413,19 @@ namespace casita
       {
         return nodes.front();
       }
+      
+      GraphNode* found = NULL;
 
       // set start boundaries for the search
       size_t indexMin = 0;
       size_t indexMax = nodes.size() - 1;
       
+      size_t index = 0;
+      
       // do a binary search
       do
       {
-        size_t index = indexMax - ( indexMax - indexMin ) / 2;
+        index = indexMax - ( indexMax - indexMin ) / 2;
         
         //std::cerr << "Index = " << index << "[" << indexMin << "," << indexMax << "]" << std::endl;
 
@@ -432,11 +436,17 @@ namespace casita
         {
           if( nodes[indexMax]->getTime() <= time )
           {
-            return nodes[indexMax];
+            //return nodes[indexMax];
+            found = nodes[indexMax];
+            index = indexMax;
+            break;
           }
           else
           {
-            return nodes[indexMin];
+            //return nodes[indexMin];
+            found = nodes[indexMin];
+            index = indexMin;
+            break;
           }
         }
         // indexMin == indexMax == index
@@ -445,7 +455,10 @@ namespace casita
         {
           if( nodes[indexMax]->getTime() <= time )
           {
-            return nodes[indexMax];
+            //return nodes[indexMax];
+            found = nodes[indexMax];
+            index = indexMax;
+            break;
           }
           else
           {
@@ -476,6 +489,41 @@ namespace casita
 
       }
       while ( true );
+      
+      // if the found node does not fulfil the condition
+      if( found )
+      {
+        if( found->getTime() > time )
+        {
+          std::cerr << "Binary search failed! Wrong node at index " << index << " found: " 
+                    << found->getUniqueName() << " (" << nodes.size() << " nodes)" 
+                    << std::endl;
+          /*if(index > 0)
+            std::cerr << "Node before: " << nodes[index-1]->getUniqueName() << std::endl;
+          if(index+1 < nodes.size())
+            std::cerr << " Node after: " << nodes[index+1]->getUniqueName() << std::endl;
+          */
+          
+          // try to find a node before the found one that satisfies the condition
+          while( index > 0 )
+          {
+            if( nodes[index]->getTime() <= time )
+            {
+              return nodes[index];
+            }
+            index--;
+          }
+
+          std::cerr << "Return node at index " << index << ": " 
+                    << nodes[index]->getUniqueName() << std::endl;
+
+          return nodes[index];
+        }
+        else
+        {
+          return found;
+        }
+      }
 
       // return first node, if node could not be found
       std::cerr << "Node not found! Return first node" << std::endl;

@@ -198,7 +198,7 @@ AnalysisEngine::runAnalysis()
   
   bool printStatus = mpiAnalysis.getMPIRank() == 0  
                   && Parser::getVerboseLevel() >= VERBOSE_BASIC 
-                  && !Parser::getInstance().getProgramOptions().analysisInterval;
+                  && !Parser::getOptions().analysisInterval;
   
   size_t ctr       = 0, last_ctr = 0;
   size_t num_nodes = allNodes.size();
@@ -233,7 +233,7 @@ AnalysisEngine::runAnalysis()
   
   UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME && 
              mpiAnalysis.getMPIRank() == 0 && 
-             !Parser::getInstance().getProgramOptions().analysisInterval,
+             !Parser::getOptions().analysisInterval,
              "[0] Sanity check: %f sec", 
              ( (float) ( clock() - time_sanity_check ) ) / CLOCKS_PER_SEC );
 #endif

@@ -39,6 +39,7 @@ namespace casita
                    GraphNode* node,
                    uint64_t totalBlame,
                    EventStream::StreamWalkCallback callback,
+                   BlameReason reason = REASON_UNCLASSIFIED, 
                    uint64_t unaccounted = 0 )
   {
     // return if there is no blame to distribute
@@ -150,7 +151,7 @@ namespace casita
                    * (double) edge->getDuration()
                    / (double) totalTimeToBlame;
 
-      edge->addBlame( blame );
+      edge->addBlame( blame, reason );
 
       lastWalkNode = currentWalkNode;
     }

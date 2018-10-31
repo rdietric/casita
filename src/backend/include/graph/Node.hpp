@@ -312,24 +312,9 @@ namespace casita
      }
      
      bool
-     isOpenCLQueueSync() const
+     isOffloadEnqueueTransfer() const
      {
-
-       return isOpenCL() && ( nodeType & OFLD_WAIT_QUEUE );
-     }
-     
-     bool
-     isOpenCLEventSync() const
-     {
-
-       return isOpenCL() && ( nodeType & OFLD_WAIT_EVT );
-     }
-     
-     bool
-     isOpenCLSync() const
-     {
-
-       return isOpenCL() && ( nodeType & OFLD_WAIT );
+       return isOffload() && ( nodeType & OFLD_ENQUEUE_DATA );
      }
 
      bool

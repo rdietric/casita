@@ -63,6 +63,7 @@ namespace casita
         uint64_t totalDuration;
         uint64_t totalDurationOnCP;
         uint64_t waitingTime;
+        double   blame4[ REASON_NUMBER ]; //index is blame reason
         double   totalBlame;
         double   blameOnCP;
         double   fractionCP;
@@ -203,9 +204,17 @@ namespace casita
       updateActivityGroupMap( OTF2Event event, bool evtOnCP, 
                               uint64_t waitingTime, double blame,
                               bool graphNodesAvailable );
+      
+      void
+      updateActivityGroupMap( OTF2Event event, bool evtOnCP, 
+                              uint64_t waitingTime, double blame, 
+                              BlameMap* blameMap, bool graphNodesAvailable );
 
       double
       computeBlame( OTF2Event event );
+      
+      double
+      computeBlameMap ( OTF2Event event, BlameMap* blameMap );
       
       void
       writeEventsWithWaitingTime( OTF2Event event, 

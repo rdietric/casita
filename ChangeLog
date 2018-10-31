@@ -8,6 +8,7 @@ Offloading
 - refined consecutive transfer detection
 
 MISC
+- distinguish between different types/reasons of blame
 - improved implementation of blame distribution (only use edges to store blame)
 - avoid writing of zero values for the OTF2 blame counter
 - write blame and waiting time in seconds instead of ticks

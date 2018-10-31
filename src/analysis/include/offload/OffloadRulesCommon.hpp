@@ -37,9 +37,11 @@ namespace casita
       StreamWalkInfo* listAndWaitTime = (StreamWalkInfo*)userData;
       listAndWaitTime->list.push_back( node );
 
-      // return false, if we found a process start node or a sync device leave node
-      if ( node->isProcess() || ( node->isLeave() && ( node->isOffloadWaitAll() || 
-                                                       node->isOffloadEnqueueKernel() ) ) )
+      // return false, if we found a process start node or a sync device or 
+      // enqueue kernel leave node
+      if ( node->isProcess() || ( node->isLeave() && 
+                                  ( node->isOffloadWaitAll() || 
+                                    node->isOffloadEnqueueKernel() ) ) )
       {
         return false;
       }

@@ -171,7 +171,7 @@ namespace casita
               Edge* kernelEdge = analysis->getEdge( kernelEnter, kernelLeave );
               if( kernelEdge )
               {
-                kernelEdge->addBlame( waitingTime );
+                kernelEdge->addBlame( waitingTime, REASON_OFLD_WAIT4DEVICE );
               }
               else
               {
@@ -223,11 +223,19 @@ namespace casita
           syncLeave->setCounter( WAITING_TIME, waitingTime );
           //syncLeave->incCounter( BLAME, waitingTime );
           
-          // blame the synchronization for being useless
           Edge* syncEdge = analysis->getEdge( syncEnter, syncLeave );
           if( syncEdge )
           {
-            syncEdge->addBlame( waitingTime );
+            // blame the synchronization for being useless if it is not a 
+            // blocking data transfer
+            if( syncLeave->isOffloadEnqueueTransfer() )
+            {
+              syncEdge->addBlame( waitingTime, REASON_OFLD_BLOCKING_TRANSFER );
+            }
+            else
+            {
+              syncEdge->addBlame( waitingTime );
+            }
           }
           else
           {

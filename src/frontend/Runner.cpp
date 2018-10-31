@@ -487,7 +487,6 @@ Runner::mergeActivityGroups()
 
   double globalBlame      = 0;
   uint64_t lengthCritPath = globalLengthCP;
-  //  analysis.getLastNode()->getTime() - analysis.getSourceNode()->getTime();
   
   /*UTILS_OUT( "CP length (%llu - %llu) = %llu",
              analysis.getLastGraphNode( PARADIGM_COMPUTE_LOCAL )->getTime(),
@@ -561,6 +560,12 @@ Runner::mergeActivityGroups()
             groupIter->second.fractionCP        += group->fractionCP;
             groupIter->second.blameOnCP         += group->blameOnCP;
             groupIter->second.waitingTime       += group->waitingTime;
+            
+            for( int i = 0; i < REASON_NUMBER; i++ )
+            {
+              groupIter->second.blame4[ i ] += group->blame4[ i ];
+            }
+            
             groupIter->second.numUnifyStreams++;
           }
           else // create region and set region information
@@ -574,6 +579,12 @@ Runner::mergeActivityGroups()
             ( *activityGroupMap )[fId].blameOnCP         = group->blameOnCP;
             ( *activityGroupMap )[fId].waitingTime       = group->waitingTime;
             ( *activityGroupMap )[fId].numUnifyStreams   = group->numUnifyStreams;
+            
+            for( int i = 0; i < REASON_NUMBER; i++ )
+            {
+              ( *activityGroupMap )[ fId ].blame4[ i ]  = 
+                group->blame4[ i ];
+            }
           }
 
           // add the region's blame to overall blame
@@ -1717,7 +1728,8 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
 }
 
 /**
- * Print the summary statistics for regions with highest critical blame
+ * Print the summary statistics for regions with highest blame on the critical 
+ * path. 
  */
 void
 Runner::printAllActivities()
@@ -1763,8 +1775,6 @@ Runner::printAllActivities()
           {
             fprintf( sFile, "%34s: %19" PRIu64 "\n", 
                      casita::typeStrTableActivity[ i ].str, actCount );
-//            std::cout << std::setw(34) << casita::typeStrTableActivity[ i ].str 
-//                      << ": " << std::setw(19) << actCount << std::endl;
             break;
           }
         }
@@ -1784,14 +1794,14 @@ Runner::printAllActivities()
       return;
     }
 
-    fprintf( sFile, "\n%*s %10s %11s %11s %6s %8s %8s %10s\n",
+    fprintf( sFile, "\n%*s %10s %11s %11s %6s %11s %8s %10s\n",
             RNAMELEN, "Region",
             "Calls",
             "Time[s]",
             "Time on CP",
             "CP[%]",
+            "Blame",
             "Blame[%]",
-            "Blame+CP",
             "Blame on CP" );
 
     fprintf( sFile, "%.*s", 
@@ -1830,7 +1840,14 @@ Runner::printAllActivities()
       ratingFile = fopen( rFileName.c_str(), "w" );
       fprintf(ratingFile, "Region;Calls;Time [s];Time on CP [s];"
                            "CP Ratio [%%];Global Blame Ratio [%%];"
-                           "Blame+CP;Blame on CP [s]\n" );
+                           "Blame on CP [s]" );
+      
+      for(int i = 0; i < REASON_NUMBER; i++ )
+      {
+        fprintf(ratingFile, "; blame for %s [%%]", casita::typeStrTableBlameReason[ i ].str );
+      }
+      
+      fprintf(ratingFile, "\n" );      
     }
     
     uint32_t sumInstances   = 0;
@@ -1838,6 +1855,7 @@ Runner::printAllActivities()
     uint64_t sumDurationCP  = 0;
     double sumBlameOnCP     = 0.0;  
     double sumFractionCP    = 0.0;
+    double sumBlame         = 0.0;
     double sumFractionBlame = 0.0;
     uint64_t sumWaitingTime = 0;
     
@@ -1855,6 +1873,7 @@ Runner::printAllActivities()
         sumDurationCP    += iter->totalDurationOnCP;
         sumBlameOnCP     += iter->blameOnCP;
         sumFractionCP    += iter->fractionCP;
+        sumBlame         += iter->totalBlame;
         sumFractionBlame += iter->fractionBlame;
         
         const char* regName = definitions.getRegionName( iter->functionId );
@@ -1870,30 +1889,64 @@ Runner::printAllActivities()
           } while( ( regNameLen - regShift ) > ( size_t ) RNAMELEN );
         }
 
-        fprintf( sFile, "%*.*s %10u %11f %11f %6.2f %8.4f %6.6f %11.6f\n",
+        fprintf( sFile, "%*.*s %10u %11f %11f %6.2f %11f %8.4f %11.6f",
                 RNAMELEN, RNAMELEN, regName + regShift,
                 iter->numInstances,
                 analysis.getRealTime( iter->totalDuration ),
                 analysis.getRealTime( iter->totalDurationOnCP ),
                 100.0 * iter->fractionCP,
+                iter->totalBlame,
                 100.0 * iter->fractionBlame,
-                iter->fractionCP + iter->fractionBlame,
                 iter->blameOnCP );
+        
+        // blame reasons
+        if( options.extendedBlame && iter->totalBlame > 0 ) // avoid division by zero
+        {        
+          for(int i = 0; i < REASON_NUMBER; i++ )
+          {
+            double blameShare = 100*iter->blame4[ i ] / iter->totalBlame;
+            if( iter->blame4[ i ] > 0 && blameShare >= 1.0 )
+            {
+              for(int j = 0; j < REASON_NUMBER; j++)
+              {
+                if( casita::typeStrTableBlameReason[ i ].type == 
+                    casita::typeStrTableBlameReason[ j ].type )
+                {
+                  fprintf( sFile, "\n -> %3.2f%% (%.6f s) blame for %s", 
+                    blameShare, iter->blame4[i], 
+                    casita::typeStrTableBlameReason[ i ].str );
+                  break;
+                }
+              }
+            }
+          }
+        }
+        fprintf( sFile, "\n" );
         
         ++ctr;
       }
 
       if( options.createRatingCSV )
       {
-        fprintf( ratingFile, "%s;%u;%lf;%lf;%lf;%lf;%lf;%lf\n",
+        fprintf( ratingFile, "%s;%u;%lf;%lf;%lf;%lf;%lf",
                  definitions.getRegionName( iter->functionId ),
                  iter->numInstances,
                  analysis.getRealTime( iter->totalDuration ),
                  analysis.getRealTime( iter->totalDurationOnCP ),
                  100.0 * iter->fractionCP,
                  100.0 * iter->fractionBlame,
-                 iter->fractionCP + iter->fractionBlame,
+                 //iter->fractionCP + iter->fractionBlame,
                  iter->blameOnCP );
+        
+        if( iter->totalBlame > 0 ) // avoid division by zero
+        {
+          for(int i = 0; i < REASON_NUMBER; i++ )
+          {
+            fprintf( ratingFile, ";%lf", 100*iter->blame4[ i ] / iter->totalBlame );
+          }
+        }
+        
+        fprintf( ratingFile, "\n" );
       }
       
       sumWaitingTime += iter->waitingTime;
@@ -1906,18 +1959,20 @@ Runner::printAllActivities()
     
     fprintf( sFile, "%.*s", 
             RNAMELEN, "-----------------------------------------------------" );
-    fprintf( sFile, "\n%*.*s%2lu %10u %11lf %11lf %6.2lf %8.4lf %20.6lf\n",
+    fprintf( sFile, "\n%*.*s%2lu %10u %11lf %11lf %6.2lf %11lf %8.4lf %11.6lf\n",
               RNAMELEN - 2, RNAMELEN - 2, "Sum of Top ",
               ctr,
               sumInstances,
               analysis.getRealTime( sumDuration ),
               analysis.getRealTime( sumDurationCP ),
               100.0 * sumFractionCP,
+              sumBlame,
               100.0 * sumFractionBlame, 
               sumBlameOnCP );
     
     // print inefficiency and wait statistics
-    fprintf( sFile, "\n\033[4mPattern summary:\033[24m\n"
+    //fprintf( sFile, "\n\033[4mPattern summary:\033[24m\n"
+    fprintf( sFile, "\nPattern summary:\n"
             " %-30.30s: %11lf s\n"
             " %-30.30s: %11lf s\n", 
             "Total program runtime", 

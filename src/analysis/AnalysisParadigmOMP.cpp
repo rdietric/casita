@@ -140,7 +140,8 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
         distributeBlame( commonAnalysis,
                          latestBarrierEnter,
                          blame,
-                         streamWalkCallback );
+                         streamWalkCallback,
+                         REASON_OMP_BARRIER );
 
         // clear barrier vector after processing the respective barrier
         itParallel->clear();

@@ -40,6 +40,41 @@ namespace casita
     OMP_FIRST_OFFLOAD_EVT = 7  // internal
   };
   
+  /* Reasons of blame (mostly corresponds to inefficiency patterns) */
+  enum BlameReason
+  {
+    REASON_OFLD_DEVICE_IDLE = 0,
+    REASON_OFLD_WAIT4DEVICE = 1,
+    REASON_OFLD_BLOCKING_TRANSFER = 2,
+    REASON_MPI_COLLECTIVE = 3,
+    REASON_MPI_LATE_SENDER = 4,
+    REASON_MPI_LATE_RECEIVER = 5,
+    REASON_MPI_LATE_SENDRECV = 6,
+    REASON_OMP_BARRIER = 7,
+    REASON_UNCLASSIFIED = 8,
+    REASON_NUMBER = 9
+  };
+  
+  typedef struct
+  {
+    BlameReason type;
+    const char* str;
+  } TypeStrBlameReason;
+  
+  // correct ordering is important for table header of csv file
+  static const TypeStrBlameReason typeStrTableBlameReason[ REASON_NUMBER ] =
+  {
+    { REASON_OFLD_DEVICE_IDLE, "device idle" },
+    { REASON_OFLD_WAIT4DEVICE, "host wait" },
+    { REASON_OFLD_BLOCKING_TRANSFER, "blocking transfer" },
+    { REASON_MPI_COLLECTIVE, "MPI collective" },
+    { REASON_MPI_LATE_SENDER, "MPI late sender" },
+    { REASON_MPI_LATE_RECEIVER, "MPI late receiver" },
+    { REASON_MPI_LATE_SENDRECV, "MPI sendrecv" },
+    { REASON_OMP_BARRIER, "OpenMP barrier" },
+    { REASON_UNCLASSIFIED, "unclassified reason" }
+  };
+  
   enum MetricMode
   {
     ATTRIBUTE = 0,

@@ -159,7 +159,7 @@ namespace casita
               Edge* kernelEdge = commonAnalysis->getEdge( kernelEnter, kernelLeave );
               if( kernelEdge )
               {
-                kernelEdge->addBlame( waitingTime );
+                kernelEdge->addBlame( waitingTime, REASON_OFLD_WAIT4DEVICE );
               }
               else
               {

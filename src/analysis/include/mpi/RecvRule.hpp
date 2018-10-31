@@ -152,7 +152,8 @@ namespace casita
           distributeBlame( commonAnalysis,
                            recvEnter,
                            recvStartTime - sendStartTime,
-                           streamWalkCallback );
+                           streamWalkCallback,
+                           REASON_MPI_LATE_RECEIVER );
           
           //UTILS_WARNING( "Recv blame: %lf", 
           //                 commonAnalysis->getRealTime( recvStartTime - sendStartTime ) );

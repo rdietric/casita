@@ -133,7 +133,8 @@ namespace casita
           if ( myStartTime != recvRankStartTime && myStartTime < recvRankEndTime )
           {
             distributeBlame( commonAnalysis, sendRecvEnter,
-                             myStartTime - recvRankStartTime, streamWalkCallback );
+                             myStartTime - recvRankStartTime, 
+                             streamWalkCallback, REASON_MPI_LATE_SENDRECV );
           }
           
           return true;
@@ -266,7 +267,8 @@ namespace casita
           if( blame > 0 )
           {
             distributeBlame( commonAnalysis, sendRecvEnter,
-                             blame, streamWalkCallback );
+                             blame, streamWalkCallback, 
+                             REASON_MPI_LATE_SENDRECV );
           }
         }
 

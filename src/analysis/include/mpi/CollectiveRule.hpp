@@ -161,7 +161,8 @@ namespace casita
           distributeBlame( analysis,
                            colEnter,
                            total_blame,
-                           streamWalkCallback );
+                           streamWalkCallback,
+                           REASON_MPI_COLLECTIVE );
         }
 
         delete[] recvBuffer;
