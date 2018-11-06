@@ -238,10 +238,10 @@ namespace casita
             {
               syncEdge->addBlame( waitingTime, REASON_OFLD_BLOCKING_TRANSFER );
             }
-            else
+            /*else
             {
               syncEdge->addBlame( waitingTime );
-            }
+            }*/
           }
           else
           {
