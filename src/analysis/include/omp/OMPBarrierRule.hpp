@@ -94,7 +94,7 @@ namespace casita
             // for blocking barrier regions
             if ( barrier.first != latestEnterNode )
             {
-              Edge* barrierEdge = commonAnalysis->getEdge( barrier.first,
+              Edge* barrierEdge = commonAnalysis->getEdge( barrierEnter,
                                                            barrier.second );
               
               if( barrierEdge )

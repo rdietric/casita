@@ -1751,11 +1751,10 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
         
         
       } // END: special handling for offloading
-      else
-      // reset consecutive communication count at MPI leave nodes 
-      // (assumes that offloading is used in between MPI operations) 
-      if( currentNode->isMPI() /*&& currentNode->isLeave()*/ )
+      else if( currentNode->isMPI() /*&& currentNode->isLeave()*/ )
       {
+        // reset consecutive communication count at MPI leave nodes 
+        // (assumes that offloading is used in between MPI operations) 
         deviceConsecutiveComCount = 0;
         deviceConsecutiveComSDCount = 0;
       }
@@ -1794,7 +1793,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       // preprocess current internal node (mark open edges to blame following events)
       const Graph::EdgeList *edges = graph->getOutEdgesPtr( currentNode );
       if ( edges && edges->size() > 0 )
-      {        
+      {
         for ( Graph::EdgeList::const_iterator edgeIter = edges->begin();
               edgeIter != edges->end(); edgeIter++ )
         {

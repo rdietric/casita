@@ -1949,6 +1949,9 @@ Runner::printAllActivities()
         fprintf( ratingFile, "\n" );
       }
       
+      UTILS_WARNING("Add %lf waiting time for %s", 
+            analysis.getRealTime( iter->waitingTime), definitions.getRegionName( iter->functionId ) );
+      
       sumWaitingTime += iter->waitingTime;
     }
     
@@ -2083,10 +2086,11 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WAIT];
       if( patternCount )
       {
-        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
-          " Early blocking wait (kernel)",
-          analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL] ),
-          patternCount );
+        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences, on kernel: %lf s)\n",
+          " Early blocking wait",
+          analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME] ),
+          patternCount,
+          analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL] ));
       }
 
       patternCount = stats.getStats()[OFLD_STAT_EARLY_TEST];

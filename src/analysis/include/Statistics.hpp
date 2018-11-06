@@ -24,36 +24,37 @@ namespace casita
      STAT_OFLD_BLOCKING_COM_TIME  = 1, // accumulated blocking communication time
      OFLD_STAT_BLOCKING_COM_EXCL_TIME = 2, // time a blocking communication is communicating
      OFLD_STAT_EARLY_BLOCKING_WAIT = 3,   // number of early blocking waits
-     OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL = 4, // accumulated early blocking wait time on kernel
-     OFLD_STAT_EARLY_TEST = 5,       // number of early tests
-     OFLD_STAT_EARLY_TEST_TIME  = 6, // accumulated time of early tests
-     OFLD_STAT_IDLE_TIME = 7,         // time an offloading device is idle
-     OFLD_STAT_COMPUTE_IDLE_TIME = 8, // compute idle time
-     OFLD_STAT_OFLD_TIME = 9, // duration of the offloading interval
-     OFLD_STAT_MULTIPLE_COM = 10,      // multiple consecutive communication count
-     OFLD_STAT_MULTIPLE_COM_TIME = 11,  // multiple consecutive communication time
-     OFLD_STAT_MULTIPLE_COM_SD = 12,      // multiple consecutive communication count
-     OFLD_STAT_MULTIPLE_COM_SD_TIME = 13,  // multiple consecutive communication time
-     OFLD_STAT_KERNEL_START_DELAY = 14,
-     OFLD_STAT_KERNEL_START_DELAY_TIME = 15,
+     OFLD_STAT_EARLY_BLOCKING_WTIME = 4,  // accumulated early blocking wait time
+     OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL = 5, // accumulated early blocking wait time on kernel
+     OFLD_STAT_EARLY_TEST = 6,       // number of early tests
+     OFLD_STAT_EARLY_TEST_TIME  = 7, // accumulated time of early tests
+     OFLD_STAT_IDLE_TIME = 8,         // time an offloading device is idle
+     OFLD_STAT_COMPUTE_IDLE_TIME = 9, // compute idle time
+     OFLD_STAT_OFLD_TIME = 10, // duration of the offloading interval
+     OFLD_STAT_MULTIPLE_COM = 11,      // multiple consecutive communication count
+     OFLD_STAT_MULTIPLE_COM_TIME = 12,  // multiple consecutive communication time
+     OFLD_STAT_MULTIPLE_COM_SD = 13,      // multiple consecutive communication count
+     OFLD_STAT_MULTIPLE_COM_SD_TIME = 14,  // multiple consecutive communication time
+     OFLD_STAT_KERNEL_START_DELAY = 15,
+     OFLD_STAT_KERNEL_START_DELAY_TIME = 16,
 
      //MPI (are written in rules, could also be evaluated in OTF2TraceWriter by 
      //     reading leave node counter values)
-     MPI_STAT_LATE_SENDER = 16,       // number of late senders
-     MPI_STAT_LATE_SENDER_WTIME = 17, // late sender waiting time
-     MPI_STAT_LATE_RECEIVER = 18,       // number of late receivers
-     MPI_STAT_LATE_RECEIVER_WTIME = 19, // late receiver waiting time
-     MPI_STAT_SENDRECV = 20,
-     MPI_STAT_SENDRECV_WTIME = 21,
-     MPI_STAT_COLLECTIVE = 22,       // number of (unbalanced) collectives
-     MPI_STAT_COLLECTIVE_WTIME = 23, // waiting time in collectives
-     MPI_STAT_WAITALL_LATEPARTNER = 24,
-     MPI_STAT_WAITALL_LATEPARTNER_WTIME = 25,
+     MPI_STAT_LATE_SENDER = 17,       // number of late senders
+     MPI_STAT_LATE_SENDER_WTIME = 18, // late sender waiting time
+     MPI_STAT_LATE_RECEIVER = 19,       // number of late receivers
+     MPI_STAT_LATE_RECEIVER_WTIME = 20, // late receiver waiting time
+     MPI_STAT_SENDRECV = 21,
+     MPI_STAT_SENDRECV_WTIME = 22,
+     MPI_STAT_COLLECTIVE = 23,       // number of (unbalanced) collectives
+     MPI_STAT_COLLECTIVE_WTIME = 24, // waiting time in collectives
+     MPI_STAT_WAITALL_LATEPARTNER = 25,
+     MPI_STAT_WAITALL_LATEPARTNER_WTIME = 26,
 
      //OpenMP
-     OMP_STAT_BARRIER = 26,      // OpenMP barriers
-     OMP_STAT_BARRIER_WTIME = 27, // waiting time in OpenMP barriers
-     STAT_NUMBER = 28
+     OMP_STAT_BARRIER = 27,      // OpenMP barriers
+     OMP_STAT_BARRIER_WTIME = 28, // waiting time in OpenMP barriers
+     STAT_NUMBER = 29
   };
 
   enum ActivityType
