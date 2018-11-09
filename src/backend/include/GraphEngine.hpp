@@ -169,6 +169,12 @@ namespace casita
 
      uint64_t
      getTimerResolution();
+     
+     double
+     getRealTime( uint64_t t );
+     
+     const std::string
+     getNodeInfo( Node* node );
 
      uint64_t
      getDeltaTicks();

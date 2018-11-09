@@ -31,7 +31,7 @@ namespace casita
        startNode( start ),
        endNode( end ),
        blocking( blocking ),
-       edgeParadigm( edgeParadigm )//,
+       paradigm( edgeParadigm )//,
        //blame ( 0 )
      {
        if ( isReverseEdge() )
@@ -40,25 +40,25 @@ namespace casita
          duration = 0;
        }
 
-       this->edgeDuration = duration;      
+       this->duration = duration;      
      }
 
      bool
      hasEdgeType( Paradigm edgeParadigm ) const
      {
-       return edgeParadigm & this->edgeParadigm;
+       return edgeParadigm & this->paradigm;
      }
 
      uint64_t
      getDuration() const
      {
-       return this->edgeDuration;
+       return this->duration;
      }
 
      uint64_t
      getWeight() const
      {
-       return computeWeight( this->edgeDuration, this->blocking );
+       return computeWeight( this->duration, this->blocking );
      }
 
      const std::string
@@ -76,21 +76,21 @@ namespace casita
          name << endNode->getUniqueName() << ", (";
        }
 
-       if ( edgeParadigm == PARADIGM_ALL )
+       if ( paradigm == PARADIGM_ALL )
        {
          name << "ALL";
        }
        else
        {
-         if ( edgeParadigm & PARADIGM_CUDA )
+         if ( paradigm & PARADIGM_CUDA )
          {
            name << "CUDA";
          }
-         if ( edgeParadigm & PARADIGM_MPI )
+         if ( paradigm & PARADIGM_MPI )
          {
            name << ",MPI";
          }
-         if ( edgeParadigm & PARADIGM_OMP )
+         if ( paradigm & PARADIGM_OMP )
          {
            name << ",OMP";
          }
@@ -138,6 +138,19 @@ namespace casita
      unblock()
      {
        this->blocking = false;
+       
+       // reset duration
+       if( this->duration == 0)
+       {
+         if( startNode->getTime() > endNode->getTime() )
+         {
+           this->duration = startNode->getTime() - endNode->getTime();
+         }
+         else
+         {
+           this->duration = endNode->getTime() - startNode->getTime();
+         }
+       }
      }
 
      GraphNode*
@@ -225,9 +238,9 @@ namespace casita
      GraphNode* startNode;
      GraphNode* endNode;
      
-     uint64_t edgeDuration;
+     uint64_t duration;
      bool     blocking;
-     Paradigm edgeParadigm;
+     Paradigm paradigm;
 
      //double blame;
      

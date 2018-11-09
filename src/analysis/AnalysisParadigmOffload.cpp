@@ -25,6 +25,7 @@
 #include "offload/cuda/EventQueryRule.hpp"
 #include "offload/cuda/StreamWaitRule.hpp"
 #include "offload/DeviceIdleRule.hpp"
+#include "offload/KernelOverlapRule.hpp"
 
 using namespace casita;
 using namespace casita::offload;
@@ -32,17 +33,28 @@ using namespace casita::io;
 
 AnalysisParadigmOffload::AnalysisParadigmOffload( AnalysisEngine* analysisEngine ) :
   IAnalysisParadigm( analysisEngine ),
-  pendingKernels( 0 ) 
+  pendingKernels( 0 )
 {
   // triggered on offload kernel leave
-  addRule( new KernelExecutionRule( 2 ) );
+  addRule( new KernelExecutionRule( 3 ) );
   
   if( Parser::getInstance().getProgramOptions().blame4deviceIdle )
   {
-    addRule( new DeviceIdleRule( 1 ) );
+    addRule( new DeviceIdleRule( 2 ) );
     active_tasks = 0;
+    
+    //\todo: this rule should not depend on the DeviceIdleRule
+    if( Parser::getInstance().getProgramOptions().linkKernels > 1 )
+    {
+      addRule( new KernelOverlapRule( 1 ) );
+      
+      UTILS_MSG( analysisEngine->getMPIRank() == 0, 
+                 "Enabling edges between overlapping kernels might cause the "
+                 "critical path to be at the same time on two streams of the "
+                 "same device!" );
+    }
   }
-  
+ 
   // note: rule clears the list of pending kernels when finished
   addRule( new SyncRule( 1 ) ); // triggered on cudaSync and clFinish
   
@@ -54,6 +66,8 @@ AnalysisParadigmOffload::AnalysisParadigmOffload( AnalysisEngine* analysisEngine
     addRule( new EventQueryRule( 1 ) );
     addRule( new StreamWaitRule( 1 ) );
   }
+  
+  this->oKernelEnter = NULL;
 }
 
 AnalysisParadigmOffload::~AnalysisParadigmOffload()
@@ -768,7 +782,7 @@ AnalysisParadigmOffload::removeEventQuery( uint64_t eventId )
 void
 AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelNode ) const
 {
-  if( Parser::getInstance().getProgramOptions().linkKernels == false )
+  if( Parser::getInstance().getProgramOptions().linkKernels == 0 )
   {
     return;
   }
@@ -799,38 +813,38 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelNode ) const
     }
   }
   
-  // get kernel enter node
-  GraphNode *kernelEnter = NULL;
   if( NULL == kernelNode )
   {
     return;
   }
-  else
-  {
-    kernelEnter = kernelNode->getGraphPair().first;
-  }
   
+  // get kernel enter node
+  GraphNode* kernelEnter = kernelNode->getGraphPair().first;
   if( NULL == kernelEnter )
   {
     return;
   }
   
-  // kernel enter found ...
+  // kernel enter of last synchronized kernel found ...
   
   //UTILS_OUT( "Create kernel dependency edges from %s", 
   //                 commonAnalysis->getNodeInfo( kernelEnter ).c_str() );
   
+  // get launch of last synchronized kernel
   GraphNode* kernelLaunchEnter = ( GraphNode* ) kernelEnter->getLink();
-  //GraphNode* prevKernelEnter = NULL;
   
   while( true )
   {
     // get a preceding kernel via link left
-    GraphNode* prevKernelEnter = kernelEnter->getLinkLeft();
-    if( !prevKernelEnter )
+    GraphNode* prevKernelLeave = kernelEnter->getLinkLeft();
+    
+    // if no previous kernel is available, make sure that there is at least one
+    // edge to follow
+    if( !prevKernelLeave )
     {
-      // create edge to kernel Launch if necessary
-      if( kernelEnter->getLink() != kernelLaunchEnter )
+      // create edge to kernel launch if necessary (should exist)
+      if( kernelEnter->getLink() != kernelLaunchEnter && 
+         commonAnalysis->getEdge( kernelLaunchEnter, kernelEnter ) == NULL )
       {
         commonAnalysis->newEdge( kernelLaunchEnter, kernelEnter );
       }
@@ -838,25 +852,64 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelNode ) const
       break;
     }
     
-    prevKernelEnter = kernelEnter->getLinkLeft()->getGraphPair().first;
+    GraphNode* prevKernelEnter = 
+      kernelEnter->getLinkLeft()->getGraphPair().first;
     if( !prevKernelEnter )
     {
       break;
     }
     
     //\todo: prevKernelEnter->getTime() can cause a segmentation fault
-    // probably because a kernel has been deleted during intermediate flush
+    //       probably because a kernel has been deleted during intermediate flush
+    // if previous kernel starts after the current kernels launch enter
     if( prevKernelEnter->getTime() > kernelLaunchEnter->getTime() )
     {
       // create dependency edge
-      //UTILS_WARNING( "Create edge between kernels: %s -> %s", 
-      //               commonAnalysis->getNodeInfo( prevKernelEnter->getGraphPair().second ).c_str(),
-      //               commonAnalysis->getNodeInfo( kernelEnter ).c_str());
-      commonAnalysis->newEdge( prevKernelEnter->getGraphPair().second, kernelEnter );
+//      UTILS_MSG( commonAnalysis->getMPIRank() == 0 && 
+//                 commonAnalysis->getRealTime( prevKernelEnter->getTime() ) > 78.975 &&
+//                 commonAnalysis->getRealTime( prevKernelEnter->getTime() ) < 78.98,
+//        "Create edge between kernels: %s -> %s", 
+//        commonAnalysis->getNodeInfo( prevKernelEnter ).c_str(),
+//        commonAnalysis->getNodeInfo( kernelEnter ).c_str());
+      if( commonAnalysis->getEdge( prevKernelLeave, kernelEnter ) == NULL )
+      {
+        Edge* e = commonAnalysis->newEdge( prevKernelLeave, kernelEnter );
+        
+        // unblock edge if edges between overlapping kernels are allowed
+        if( e->isBlocking() )
+        {
+          if( Parser::getInstance().getProgramOptions().linkKernels > 1 )
+          {
+            e->unblock();
+          }
+          else
+          {
+            if( commonAnalysis->getEdge( kernelLaunchEnter, kernelEnter ) == NULL )
+            {
+              Edge *e = commonAnalysis->newEdge( kernelLaunchEnter, kernelEnter );
+        
+              if( e->isBlocking() )
+              {
+                e->unblock();
+              }
+            }
+            break;
+          }
+        }
+      }
     }
     else
     {
-      commonAnalysis->newEdge( kernelLaunchEnter, kernelEnter );
+      if( commonAnalysis->getEdge( kernelLaunchEnter, kernelEnter ) == NULL )
+      {
+        Edge *e = commonAnalysis->newEdge( kernelLaunchEnter, kernelEnter );
+        
+        if( e->isBlocking() )
+        {
+          e->unblock();
+        }
+      }
+      
       break;
     }
     

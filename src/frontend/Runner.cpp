@@ -1949,9 +1949,6 @@ Runner::printAllActivities()
         fprintf( ratingFile, "\n" );
       }
       
-      UTILS_WARNING("Add %lf waiting time for %s", 
-            analysis.getRealTime( iter->waitingTime), definitions.getRegionName( iter->functionId ) );
-      
       sumWaitingTime += iter->waitingTime;
     }
     

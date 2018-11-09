@@ -122,16 +122,19 @@ namespace casita
       void 
       printDebugInformation( uint64_t eventId );
       
-      void
-      printKernelLaunchMap();
-      
-      //!< number of active device tasks (currently only kernels)
+      //!< number of active device tasks (currently only kernels) -- analysis time
       uint8_t active_tasks;
       
       //!< time when device idle starts
       uint64_t idle_start_time;
+      
+      //!< overlapping kernel (with earliest start), evaluated at analysis time
+      GraphNode* oKernelEnter;
 
-    private:      
+    private:
+      void
+      printKernelLaunchMap();
+      
       // number of pending kernels (between launch and kernel end) during trace reading
       size_t pendingKernels;
       

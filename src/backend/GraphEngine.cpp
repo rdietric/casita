@@ -601,7 +601,6 @@ GraphEngine::runSanityCheck( uint32_t mpiRank )
 
       if ( hasInEdges( node ) )
       {
-
         Graph::EdgeList inEdges = getInEdges( node );
         for ( Graph::EdgeList::const_iterator eIter = inEdges.begin();
               eIter != inEdges.end(); ++eIter )
@@ -913,15 +912,16 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
   
   // create edges from device kernel enter nodes to previous nodes on the device
   // (implicit task dependencies)
-  if( Parser::getInstance().getProgramOptions().linkKernels &&
+  // \todo: move into TaskDependencyRule
+  if( Parser::getInstance().getProgramOptions().linkKernels > 0 &&
       node->isEnter() && node->isOffloadKernel() )
   {
-    GraphNode* directPredKernel = NULL;
-    // direct predecessor (on the same stream) should be a leave
+    GraphNode* predKernelLeave = NULL;
+    // direct predecessor (on the same stream) should be a kernel leave
     if( directPredecessor && directPredecessor->isLeave() )
     {
       // set it as direct predecessor if no closer one on another stream is found
-      directPredKernel = directPredecessor;
+      predKernelLeave = directPredecessor;
     }
     
     if( !stream->isDeviceStream() )
@@ -973,18 +973,17 @@ GraphEngine::addNewGraphNodeInternal( GraphNode* node, EventStream* stream )
 
       // if no direct predecessor is found yet or the current last kernel
       // is after the current predecessor
-      if( !directPredKernel || Node::compareLess( directPredKernel, predKernel ) )
+      if( !predKernelLeave || Node::compareLess( predKernelLeave, predKernel ) )
       {
-        directPredKernel = predKernel;
+        predKernelLeave = predKernel;
       }
     }
 
-    // if we found a direct predecessor that is different from the one on the
-    // same stream and does not link to the current source kernel itself
-    if( directPredKernel && directPredKernel != directPredecessor 
-        && node != directPredKernel )
+    // set left link to direct predecessor
+    if( predKernelLeave /* && directPredKernel != directPredecessor */
+        && node != predKernelLeave )
     {
-      node->setLinkLeft( directPredKernel );
+      node->setLinkLeft( predKernelLeave );
       
       //UTILS_WARNING( "%s link left to %s", node->getUniqueName().c_str(),
       //               directPredKernel->getUniqueName().c_str() );
@@ -1042,4 +1041,30 @@ void
 GraphEngine::pushGraphNodeStack( GraphNode* node, uint64_t streamId )
 {
   pendingGraphNodeStackMap[streamId].push( node );
+}
+
+double
+GraphEngine::getRealTime( uint64_t t )
+{
+  return (double)t / (double)getTimerResolution();
+}
+
+/**
+ * Get information on a node as char pointer (similar to Node getUniqueName).
+ * Includes stream ID, node name, node type, and elapsed time.
+ * 
+ * @param node
+ * 
+ * @return node information as char pointer
+ */
+const std::string
+GraphEngine::getNodeInfo( Node* node )
+{
+  std::stringstream sstream;
+  
+  sstream.precision(6);
+  
+  sstream << fixed << node->getUniqueName() << ":" << getRealTime( node->getTime() );
+
+  return sstream.str();
 }

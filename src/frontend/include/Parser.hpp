@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013 - 2014, 2016, 2017
+ * Copyright (c) 2013 - 2014, 2016 - 2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -33,7 +33,7 @@ namespace casita
    size_t      topX;
    string      predictionFilter;
    int         deviceIdle;
-   bool        linkKernels;
+   int         linkKernels;
    int         nullStream;
    bool        printCriticalPath;
    bool        cpaLoopCheck;

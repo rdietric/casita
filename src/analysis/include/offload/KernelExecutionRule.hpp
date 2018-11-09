@@ -144,7 +144,7 @@ namespace casita
               }
             }
 
-            // create edge between kernel end and synchonization end
+            // create edge between kernel end and synchronization end
             analysis->newEdge( kernelLeave, syncEvtLeave );
             
             //commonAnalysis->getStream( kernelStrmId )->consumePendingKernel();

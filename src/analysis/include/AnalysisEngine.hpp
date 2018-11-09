@@ -140,12 +140,6 @@ namespace casita
 
      void
      reset();
-
-     double
-     getRealTime( uint64_t t );
-     
-     const std::string
-     getNodeInfo( Node* node );
      
      /**
       * Get elapsed time from an event time stamp, e.g. to spot an event in Vampir.

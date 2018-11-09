@@ -105,7 +105,7 @@ namespace casita
          << "                          (0=no, 1=device idle(default), 2=compute idle, 3=both)" << endl;
     cout << "    [--blame4device-idle] blame the host for not keeping the device computing" << endl;
     cout << " -e [--extended-blame]    divide blame into different types" << endl;
-    cout << " -l  --link-kernels       create inter-stream kernel dependencies (default: off)" << endl;
+    cout << " -l  --link-kernels=[0,1,2]  create inter-stream kernel dependencies (default: off)" << endl;
     cout << "     --nullstream=INT     use null stream semantic for the given stream" << endl;
     cout << " -p [--path]              print critical paths" << endl;
     cout << "    [--cpa-loop-check]    detect circular loops in process-local critical path" << endl
@@ -113,7 +113,7 @@ namespace casita
     cout << "    [--no-errors]         ignore non-fatal errors" << endl;
     cout << "    [--ignore-impi]       handle non-blocking MPI functions as CPU functions" << endl;
     cout << "    [--ignore-offloading] handle CUDA/OpenCL functions as CPU functions" << endl;
-    cout << " -c [--interval-analysis=]UINT  Run analysis in intervals (between global MPI" << endl
+    cout << " -c [--interval-analysis=]UINT  run analysis in intervals (between global MPI" << endl
          << "                          collectives) to reduce memory footprint. The value" << endl
          << "                          (default: 64) sets the number of pending graph nodes" << endl
          << "                          before an analysis run is started." << endl;
@@ -295,10 +295,17 @@ namespace casita
       }
       
       // create dependencies between kernels from different streams
-      else if( opt.compare( string( "-l" ) ) == 0 || 
-               opt.find( "--link-kernels" ) != string::npos )
+      else if( opt.compare( string( "-l" ) ) == 0 /*|| 
+               opt.find( "--link-kernels" ) != string::npos*/ )
       {
-        options.linkKernels = true;
+        options.linkKernels = 1;
+      }
+      
+      // try to link overlapping kernels
+      else if( opt.find( "--link-kernels=" ) != string::npos )
+      {
+        options.linkKernels = 
+          atoi( opt.erase( 0, string( "--link-kernels=" ).length() ).c_str() );
       }
       
       // handle the given stream (by ID) as null stream
@@ -513,7 +520,7 @@ namespace casita
     options.topX = 20;
     options.predictionFilter = "";
     options.deviceIdle = 1;
-    options.linkKernels =false;
+    options.linkKernels = 0;
     options.nullStream = -1;
     options.ignoreAsyncMpi = false;
     options.ignoreOffload = false;

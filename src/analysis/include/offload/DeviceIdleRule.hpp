@@ -24,9 +24,9 @@ namespace casita
   {
     public:
       /**
-       * The device idle rule is triggered at kernel leave nodes, as it requires
-       * that the kernel execution rule has already been triggered and generated
-       * the link to the kernel.
+       * The device idle rule is triggered at kernel enter and leave nodes.  
+       * It requires the kernel execution rule to be triggered and the kernel
+       * launch link to be available.
        * 
        * @param priority
        */
@@ -50,12 +50,13 @@ namespace casita
                      ofldAnalysis->getCommon()->getNodeInfo( kernelNode ).c_str() );
         }*/
         
-        // applied at kernel enter (potential idle leave)
+        // applied at kernel nodes 
         if ( !kernelNode->isOffloadKernel() )
         {
           return false;
         }
         
+        // potential idle leave
         if ( kernelNode->isEnter() )
         {
           // ignore initial idle
@@ -281,7 +282,7 @@ namespace casita
             UTILS_WARNING( "Active device tasks cannot be less than zero!" );
             ofldAnalysis->active_tasks = 0;
           }
-        }
+            }
         
         return true;
       }

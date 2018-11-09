@@ -226,17 +226,17 @@ AnalysisEngine::runAnalysis()
   // apply rules on pending nodes
   //analysis.processDeferredNodes( paradigm );
 
-#ifdef DEBUG
-  clock_t time_sanity_check = clock();
-  
-  runSanityCheck( mpiAnalysis.getMPIRank() );
-  
-  UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME && 
-             mpiAnalysis.getMPIRank() == 0 && 
-             !Parser::getOptions().analysisInterval,
-             "[0] Sanity check: %f sec", 
-             ( (float) ( clock() - time_sanity_check ) ) / CLOCKS_PER_SEC );
-#endif
+//#ifdef DEBUG
+//  clock_t time_sanity_check = clock();
+//  
+//  runSanityCheck( mpiAnalysis.getMPIRank() );
+//  
+//  UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME && 
+//             mpiAnalysis.getMPIRank() == 0 && 
+//             !Parser::getOptions().analysisInterval,
+//             "[0] Sanity check: %f sec", 
+//             ( (float) ( clock() - time_sanity_check ) ) / CLOCKS_PER_SEC );
+//#endif
   
   allNodes.clear();
 }
@@ -648,32 +648,6 @@ AnalysisEngine::reset()
   {
     iter->second->reset();
   }
-}
-
-double
-AnalysisEngine::getRealTime( uint64_t t )
-{
-  return (double)t / (double)getTimerResolution();
-}
-
-/**
- * Get information on a node as char pointer (similar to Node getUniqueName).
- * Includes stream ID, node name, node type, and elapsed time.
- * 
- * @param node
- * 
- * @return node information as char pointer
- */
-const std::string
-AnalysisEngine::getNodeInfo( Node* node )
-{
-  std::stringstream sstream;
-  
-  sstream.precision(6);
-  
-  sstream << fixed << node->getUniqueName() << ":" << getRealTime( node->getTime() );
-
-  return sstream.str();
 }
 
 /**
