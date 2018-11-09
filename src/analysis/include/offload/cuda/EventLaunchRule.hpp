@@ -45,7 +45,7 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon();
+        AnalysisEngine* commonAnalysis = analysis->getAnalysisEngine();
 
         //GraphNode* evtRecEnter = evtRecLeave->getGraphPair().first;
         EventStream* refProcess = commonAnalysis->getStream(

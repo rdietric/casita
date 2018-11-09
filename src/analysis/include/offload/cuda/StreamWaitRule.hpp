@@ -44,7 +44,7 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* analysis = ofldAnalysis->getCommon();
+        AnalysisEngine* analysis = ofldAnalysis->getAnalysisEngine();
 
         ////////////////////////////////////////////////////////////////////////
         // applied at streamWaitEvent leave

@@ -37,24 +37,25 @@ namespace casita
      OFLD_STAT_MULTIPLE_COM_SD_TIME = 14,  // multiple consecutive communication time
      OFLD_STAT_KERNEL_START_DELAY = 15,
      OFLD_STAT_KERNEL_START_DELAY_TIME = 16,
+     STAT_OFLD_COMPUTE_OVERLAP_TIME = 17,
 
      //MPI (are written in rules, could also be evaluated in OTF2TraceWriter by 
      //     reading leave node counter values)
-     MPI_STAT_LATE_SENDER = 17,       // number of late senders
-     MPI_STAT_LATE_SENDER_WTIME = 18, // late sender waiting time
-     MPI_STAT_LATE_RECEIVER = 19,       // number of late receivers
-     MPI_STAT_LATE_RECEIVER_WTIME = 20, // late receiver waiting time
-     MPI_STAT_SENDRECV = 21,
-     MPI_STAT_SENDRECV_WTIME = 22,
-     MPI_STAT_COLLECTIVE = 23,       // number of (unbalanced) collectives
-     MPI_STAT_COLLECTIVE_WTIME = 24, // waiting time in collectives
-     MPI_STAT_WAITALL_LATEPARTNER = 25,
-     MPI_STAT_WAITALL_LATEPARTNER_WTIME = 26,
+     MPI_STAT_LATE_SENDER = 18,       // number of late senders
+     MPI_STAT_LATE_SENDER_WTIME = 19, // late sender waiting time
+     MPI_STAT_LATE_RECEIVER = 20,       // number of late receivers
+     MPI_STAT_LATE_RECEIVER_WTIME = 21, // late receiver waiting time
+     MPI_STAT_SENDRECV = 22,
+     MPI_STAT_SENDRECV_WTIME = 23,
+     MPI_STAT_COLLECTIVE = 24,       // number of (unbalanced) collectives
+     MPI_STAT_COLLECTIVE_WTIME = 25, // waiting time in collectives
+     MPI_STAT_WAITALL_LATEPARTNER = 26,
+     MPI_STAT_WAITALL_LATEPARTNER_WTIME = 27,
 
      //OpenMP
-     OMP_STAT_BARRIER = 27,      // OpenMP barriers
-     OMP_STAT_BARRIER_WTIME = 28, // waiting time in OpenMP barriers
-     STAT_NUMBER = 29
+     OMP_STAT_BARRIER = 28,      // OpenMP barriers
+     OMP_STAT_BARRIER_WTIME = 29, // waiting time in OpenMP barriers
+     STAT_NUMBER = 30
   };
 
   enum ActivityType

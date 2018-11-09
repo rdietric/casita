@@ -47,7 +47,7 @@ namespace casita
           MpiStream::MPIIcommRecord* record = 
             (MpiStream::MPIIcommRecord* ) waitLeave->getData(); 
           
-          AnalysisEngine* analysis = analysisParadigmMPI->getCommon();
+          AnalysisEngine* analysis = analysisParadigmMPI->getAnalysisEngine();
           
           analysis->getStatistics().countActivity( STAT_MPI_WAIT );
           

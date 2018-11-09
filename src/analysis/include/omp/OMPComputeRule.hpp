@@ -61,7 +61,7 @@ namespace casita
             GraphNode* kernelEnter = node->getGraphPair().first;
 
             // create edge from pending fork to OpenMP compute enter node
-            analysis->getCommon()->newEdge( pForkJoin, kernelEnter );
+            analysis->getAnalysisEngine()->newEdge( pForkJoin, kernelEnter );
             /*UTILS_MSG(analysis->getCommon()->getMPIRank() == 0 &&
                       node->getTime() < 781313516,
                       "Added OpenMP dependency: %s -> %s",

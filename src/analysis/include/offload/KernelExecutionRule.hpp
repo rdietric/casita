@@ -50,7 +50,7 @@ namespace casita
         
         //UTILS_OUT("Kernel Execution Rule");
         
-        AnalysisEngine* analysis = ofldAnalysis->getCommon();
+        AnalysisEngine* analysis = ofldAnalysis->getAnalysisEngine();
         
         // count occurrence
         analysis->getStatistics().countActivity( STAT_OFLD_KERNEL );

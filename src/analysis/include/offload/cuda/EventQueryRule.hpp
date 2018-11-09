@@ -46,7 +46,7 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon();
+        AnalysisEngine* commonAnalysis = analysis->getAnalysisEngine();
 
         EventNode* evQueryLeave = (EventNode*)queryLeave;
 

@@ -2141,12 +2141,24 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[OFLD_STAT_KERNEL_START_DELAY];
       if( patternCount )
       {
-        fprintf( sFile, " %-30.30s: %11lf ms/kernel (%" PRIu64 " occurrences), total delay: %lf s\n\n",
+        fprintf( sFile, " %-30.30s: %11lf ms/kernel (%" PRIu64 " occurrences), total delay: %lf s\n",
           " Kernel Startup Delay",
           analysis.getRealTime( stats.getStats()[OFLD_STAT_KERNEL_START_DELAY_TIME] ) / patternCount *1000,
           patternCount,
           analysis.getRealTime( stats.getStats()[OFLD_STAT_KERNEL_START_DELAY_TIME] )
         );
+      }
+      
+      patternCount = stats.getStats()[STAT_OFLD_COMPUTE_OVERLAP_TIME];
+      if( patternCount )
+      {
+        fprintf( sFile, " %-30.30s: %11lf s \n\n",
+          " Compute Overlap",
+          analysis.getRealTime( stats.getStats()[STAT_OFLD_COMPUTE_OVERLAP_TIME] ) );
+      }
+      else
+      {
+        fprintf( sFile, "  No overlap between compute tasks! \n\n" );
       }
     }
 

@@ -327,7 +327,6 @@ EventStream::addGraphNode( GraphNode*                  node,
             unlinkedMPINodes.begin();
           iter != unlinkedMPINodes.end(); ++iter )
     {
-      //std::cerr << "XXXXXRight  " << ( *iter )->getUniqueName() << " -> " << node->getUniqueName() << std::endl;
       ( *iter )->setLinkRight( node );
     }
     unlinkedMPINodes.clear();

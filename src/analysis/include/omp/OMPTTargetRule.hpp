@@ -42,7 +42,7 @@ namespace casita
       bool
       apply( AnalysisParadigmOMP* ompAnalysis, GraphNode* node )
       {
-        AnalysisEngine* analysis = ompAnalysis->getCommon();
+        AnalysisEngine* analysis = ompAnalysis->getAnalysisEngine();
         
         // remember enter node
         if( node->isEnter() )

@@ -57,6 +57,23 @@ namespace casita
         
         if ( kernelNode->isLeave() )
         {
+          //// STATS ////
+          // at least one compute task is active
+          if( ofldAnalysis->active_compute_tasks > 0 )
+          {
+            //assert( ofldAnalysis->overlapIntervalStart != 0 );
+              
+            // active task counter has already been decreased
+            ofldAnalysis->getAnalysisEngine()->getStatistics().addStatValue( 
+              STAT_OFLD_COMPUTE_OVERLAP_TIME, 
+              ( kernelNode->getTime() - ofldAnalysis->overlapIntervalStart ) 
+              * ofldAnalysis->active_compute_tasks );
+              
+            // set new overlap interval start
+            ofldAnalysis->overlapIntervalStart = kernelNode->getTime();
+          }
+          //// END: STATS ////
+          
           // return, if no overlapping kernel is available
           GraphNode *oKernelEnter = ofldAnalysis->oKernelEnter;
           if( !oKernelEnter )
@@ -117,7 +134,7 @@ namespace casita
               uint64_t oLaunchEndTime = oLaunchLeave->getTime();
               if( oKernelStartTime > oLaunchEndTime )
               {
-                AnalysisEngine* analysis = ofldAnalysis->getCommon();
+                AnalysisEngine* analysis = ofldAnalysis->getAnalysisEngine();
                 double oKernelStartDelay = 
                   analysis->getRealTime( oKernelStartTime - oLaunchEndTime );
                 
@@ -190,15 +207,33 @@ namespace casita
         {
           // active tasks are counted in DeviceIdleRule
           // current kernel has already increased active_task counter
-          if( ofldAnalysis->active_tasks > 1 )
-          {
+          if( ofldAnalysis->active_compute_tasks > 1 )
+          {        
+            //// STATS ////
+            
+            // if at least two compute tasks were active
+            if( ofldAnalysis->active_compute_tasks > 2 )
+            {
+              //assert( ofldAnalysis->overlapIntervalStart != 0 );
+              
+              // active task counter has already been increased
+              ofldAnalysis->getAnalysisEngine()->getStatistics().addStatValue( 
+                STAT_OFLD_COMPUTE_OVERLAP_TIME, 
+                ( kernelNode->getTime() - ofldAnalysis->overlapIntervalStart ) 
+                * ( ofldAnalysis->active_compute_tasks - 2 ) );
+            }
+            
+            // set new overlap interval start
+            ofldAnalysis->overlapIntervalStart = kernelNode->getTime();
+            
+            //// END: STATS ////
+            
             // set this kernel enter as overlapping
             ofldAnalysis->oKernelEnter = kernelNode;
-            UTILS_MSG( false && ofldAnalysis->getCommon()->getMPIRank() == 0 && 
-              ofldAnalysis->getCommon()->getRealTime( kernelNode->getTime() ) > 79.245,
-              "### Set overlapping kernel: %s", 
-              ofldAnalysis->getCommon()->getNodeInfo( kernelNode ).c_str() );
-
+//            UTILS_MSG( ofldAnalysis->getCommon()->getMPIRank() == 0 && 
+//              ofldAnalysis->getCommon()->getRealTime( kernelNode->getTime() ) > 79.245,
+//              "### Set overlapping kernel: %s", 
+//              ofldAnalysis->getCommon()->getNodeInfo( kernelNode ).c_str() );
           }
           else
           {

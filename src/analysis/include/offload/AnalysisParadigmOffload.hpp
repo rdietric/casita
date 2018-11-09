@@ -122,14 +122,17 @@ namespace casita
       void 
       printDebugInformation( uint64_t eventId );
       
-      //!< number of active device tasks (currently only kernels) -- analysis time
-      uint8_t active_tasks;
+      //!< number of active compute tasks -- analysis time
+      uint8_t active_compute_tasks;
       
       //!< time when device idle starts
       uint64_t idle_start_time;
       
-      //!< overlapping kernel (with earliest start), evaluated at analysis time
+      //!< last overlapping kernel enter, evaluated at analysis time
       GraphNode* oKernelEnter;
+
+      //!< compute overlap interval start time
+      uint64_t overlapIntervalStart;      
 
     private:
       void

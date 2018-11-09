@@ -41,7 +41,7 @@ AnalysisParadigmOffload::AnalysisParadigmOffload( AnalysisEngine* analysisEngine
   if( Parser::getInstance().getProgramOptions().blame4deviceIdle )
   {
     addRule( new DeviceIdleRule( 2 ) );
-    active_tasks = 0;
+    active_compute_tasks = 0;
     
     //\todo: this rule should not depend on the DeviceIdleRule
     if( Parser::getInstance().getProgramOptions().linkKernels > 1 )
@@ -68,6 +68,7 @@ AnalysisParadigmOffload::AnalysisParadigmOffload( AnalysisEngine* analysisEngine
   }
   
   this->oKernelEnter = NULL;
+  this->overlapIntervalStart = 0; // 0 is invalid
 }
 
 AnalysisParadigmOffload::~AnalysisParadigmOffload()
@@ -871,6 +872,8 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelNode ) const
 //        "Create edge between kernels: %s -> %s", 
 //        commonAnalysis->getNodeInfo( prevKernelEnter ).c_str(),
 //        commonAnalysis->getNodeInfo( kernelEnter ).c_str());
+      
+      // if edge does not exist
       if( commonAnalysis->getEdge( prevKernelLeave, kernelEnter ) == NULL )
       {
         Edge* e = commonAnalysis->newEdge( prevKernelLeave, kernelEnter );

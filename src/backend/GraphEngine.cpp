@@ -296,8 +296,7 @@ GraphEngine::newEdge( GraphNode* source, GraphNode* target,
  * Get the edge (object) between the source and the target node.
  * Search the out edges only as both, in- and out-edge vectors should contain 
  * the edge (see addEdge()).
- * 
- *   
+ *
  * @param source start node of the edge
  * @param target end node of the edge
  * 
@@ -308,6 +307,12 @@ GraphEngine::getEdge( GraphNode* source, GraphNode* target )
 {
   // iterate over outgoing edges of source node
   const Graph::EdgeList *edges = graph.getOutEdgesPtr( source );
+  
+  if( NULL == edges )
+  {
+    return NULL;
+  }
+  
   for ( Graph::EdgeList::const_iterator iter = edges->begin();
         iter != edges->end(); ++iter )
   {

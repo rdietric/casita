@@ -65,7 +65,7 @@ namespace casita
             //UTILS_OUT("Ignore initial idle");
             
             // increase device usage count
-            ofldAnalysis->active_tasks++;
+            ofldAnalysis->active_compute_tasks++;
             
             return true;
           }
@@ -73,10 +73,10 @@ namespace casita
           //UTILS_OUT("Device Idle Rule");
           
           // if device was idle
-          if ( ofldAnalysis->active_tasks == 0 )
+          if ( ofldAnalysis->active_compute_tasks == 0 )
           {
             // start blame distribution on the host
-            AnalysisEngine* analysis = ofldAnalysis->getCommon();
+            AnalysisEngine* analysis = ofldAnalysis->getAnalysisEngine();
             /*
             UTILS_OUT( "[DeviceIdleRule] Blame %d host streams for device idle "
                        "before kernel %s", 
@@ -264,23 +264,23 @@ namespace casita
           }
           
           // increase device usage count
-          ofldAnalysis->active_tasks++;
+          ofldAnalysis->active_compute_tasks++;
         }
         else /* kernel leave node */
         {
           // decrease device usage count
-          ofldAnalysis->active_tasks--;
+          ofldAnalysis->active_compute_tasks--;
           
           // if there are no active tasks, the device is idle
-          if ( ofldAnalysis->active_tasks == 0 )
+          if ( ofldAnalysis->active_compute_tasks == 0 )
           {
             // remember idle start time (to compute blame for host later)
             ofldAnalysis->idle_start_time = kernelNode->getTime();
           }
-          else if ( ofldAnalysis->active_tasks < 0 )
+          else if ( ofldAnalysis->active_compute_tasks < 0 )
           {
             UTILS_WARNING( "Active device tasks cannot be less than zero!" );
-            ofldAnalysis->active_tasks = 0;
+            ofldAnalysis->active_compute_tasks = 0;
           }
             }
         

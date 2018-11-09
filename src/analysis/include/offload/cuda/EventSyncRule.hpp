@@ -59,7 +59,7 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* analysis = ofldAnalysis->getCommon();
+        AnalysisEngine* analysis = ofldAnalysis->getAnalysisEngine();
         
         // count occurrence
         analysis->getStatistics().countActivity( STAT_OFLD_SYNC_EVT );

@@ -50,7 +50,7 @@ namespace casita
         ////////////////////////////////////////////////////////////////////////
         // this is an OpenMP join node
         
-        AnalysisEngine* analysisEngine = analysis->getCommon();
+        AnalysisEngine* analysisEngine = analysis->getAnalysisEngine();
         
         analysisEngine->getStatistics().countActivity( STAT_OMP_JOIN );
         

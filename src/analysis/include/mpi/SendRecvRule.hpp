@@ -43,7 +43,7 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon();
+        AnalysisEngine* commonAnalysis = analysis->getAnalysisEngine();
         
         // count occurrence
         commonAnalysis->getStatistics().countActivity( STAT_MPI_P2P );
