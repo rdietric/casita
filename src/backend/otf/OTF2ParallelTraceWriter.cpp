@@ -107,21 +107,6 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter(
   
   flush_callbacks.otf2_post_flush = postFlush;
   flush_callbacks.otf2_pre_flush  = preFlush;
-  
-  /* get trace length in seconds
-  double traceLen = (double) defHandler->getTraceLength() 
-                  / (double) defHandler->getTimerResolution();
-  
-  if( traceLen > 5 )
-  {
-    timeConversionFactor = (double) 1 
-                         / (double) defHandler->getTimerResolution();
-    if( traceLen > 100 )
-    {
-      
-    }
-  }*/
-  //UTILS_OUT("Conversion factor %lf", timeConversionFactor );
 
   commGroup = MPI_COMM_WORLD;
   
@@ -131,8 +116,9 @@ OTF2ParallelTraceWriter::OTF2ParallelTraceWriter(
   
   // set consecutive device communication count to zero
   deviceConsecutiveComSDCount = 0;
-  //previousDeviceComTaskH2D = true;
-  //currentDeviceComTaskH2D = true;
+  
+  // set initial transfer start to zero (invalid)
+  this->transferStart = 0;
   
   firstOffloadApiEvtTime = UINT64_MAX;
   lastOffloadApiEvtTime = 0;
@@ -1459,7 +1445,8 @@ OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time,
   
   // if this is a device compute task
   if( isCompute )
-  {
+  {  
+    // this is the only compute task
     if( deviceComputeRefCount == 0 )
     {
       // add device idle time to statistics
@@ -1487,11 +1474,17 @@ OTF2ParallelTraceWriter::handleDeviceTaskEnter( uint64_t time,
     deviceConsecutiveComCount = 0;
     deviceConsecutiveComSDCount = 0;
   }
-  else
+  else // transfer begin task
   {
     previousDeviceComTaskH2D   = currentDeviceComTaskH2D;
     currentDeviceComTaskH2D    = isH2D;
     lastDeviceComTaskEnterTime = time;
+    
+    // this is the only transfer (deviceRefCount already increased)
+    if( ( deviceRefCount - deviceComputeRefCount ) == 1 )
+    {
+      transferStart = time;
+    }
   }
   
   // remember last event on offloading stream to keep order of timestamps for
@@ -1517,9 +1510,10 @@ OTF2ParallelTraceWriter::handleDeviceTaskLeave( uint64_t time,
   {
     deviceComputeRefCount--;
 
+    // no more kernels are running
     if( deviceComputeRefCount == 0 )
     {
-      //save time
+      // save idle start time
       lastComputeIdleStart = time;
       
       if( writeToFile && Parser::getOptions().deviceIdle  
@@ -1537,8 +1531,15 @@ OTF2ParallelTraceWriter::handleDeviceTaskLeave( uint64_t time,
     deviceConsecutiveComCount = 0;
     deviceConsecutiveComSDCount = 0;
   }
-  else // communication task
+  else // transfer leave task
   {
+    // no more transfer task active (deviceRefCount not yet decreased)
+    if( deviceRefCount - deviceComputeRefCount == 1 )
+    {
+      analysis->getStatistics().addStatValue(
+        STAT_OFLD_TOTAL_TRANSFER_TIME, time - transferStart );
+    }
+    
     // the previous device communication task has the same direction
     if( currentDeviceComTaskH2D == previousDeviceComTaskH2D )
     {

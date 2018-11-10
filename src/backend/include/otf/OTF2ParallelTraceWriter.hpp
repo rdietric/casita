@@ -239,6 +239,9 @@ namespace casita
       int deviceComputeRefCount;
       uint64_t lastComputeIdleStart;
       
+      //<! time when data host-device transfers start (to acquire total communication time=
+      uint64_t transferStart;
+      
       //<! consecutive device communication 
       // \todo: does not work for concurrent communication
       uint64_t lastDeviceComTaskEnterTime;

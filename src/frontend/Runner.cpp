@@ -2096,12 +2096,49 @@ Runner::printAllActivities()
         fprintf( sFile, "  Early test for completion: %" PRIu64 " (%lf s)\n", patternCount,
           analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_TEST_TIME] ) );
       }
+      
+      patternCount = stats.getStats()[STAT_OFLD_TOTAL_TRANSFER_TIME];
+      if( patternCount )
+      {
+        fprintf( sFile, " %-30.30s: %11lf s (%2.2lf%% of offload time)\n",
+                 " Total communication time", 
+                 analysis.getRealTime( patternCount ),
+                 (double) stats.getStats()[STAT_OFLD_TOTAL_TRANSFER_TIME] / 
+                   (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100 );
+      }
+      
+      patternCount = stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME]
+                   - stats.getStats()[OFLD_STAT_IDLE_TIME];
+      if( patternCount )
+      {
+        fprintf( sFile, " %-30.30s: %11lf s (%2.2lf%% of total communication time)\n",
+                 " -Exclusive communication", 
+                 analysis.getRealTime( patternCount ),
+                 (double) patternCount / 
+                   (double) stats.getStats()[STAT_OFLD_TOTAL_TRANSFER_TIME] * 100 );
+      }
+              
+      patternCount = stats.getStats()[STAT_OFLD_TOTAL_TRANSFER_TIME]
+                   - ( stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME]
+                       - stats.getStats()[OFLD_STAT_IDLE_TIME] );
+      if( patternCount )
+      {
+        fprintf( sFile, " %-30.30s: %11lf s (%2.2lf%% of total communication time)\n",
+                 " -Copy-compute overlap", 
+                 analysis.getRealTime( patternCount ),
+                 (double) patternCount / 
+                   (double) stats.getStats()[STAT_OFLD_TOTAL_TRANSFER_TIME] * 100 );
+      }
+      else
+      {
+        fprintf( sFile, "  No overlap between copy and compute tasks!\n\n" );
+      }
 
       patternCount = stats.getStats()[STAT_OFLD_BLOCKING_COM];
       if( patternCount )
       {
         fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences)",
-                " Blocking communication",
+                " -Blocking communication",
           analysis.getRealTime( stats.getStats()[STAT_OFLD_BLOCKING_COM_TIME] ),
           patternCount );
         
@@ -2121,7 +2158,7 @@ Runner::printAllActivities()
       if( patternCount )
       {
         fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences)",
-                " Consecutive communication",
+                " -Consecutive communication",
           analysis.getRealTime( stats.getStats()[OFLD_STAT_MULTIPLE_COM_TIME] ),
           patternCount );
       }
@@ -2142,7 +2179,7 @@ Runner::printAllActivities()
       if( patternCount )
       {
         fprintf( sFile, " %-30.30s: %11lf ms/kernel (%" PRIu64 " occurrences), total delay: %lf s\n",
-          " Kernel Startup Delay",
+          " Kernel startup delay",
           analysis.getRealTime( stats.getStats()[OFLD_STAT_KERNEL_START_DELAY_TIME] ) / patternCount *1000,
           patternCount,
           analysis.getRealTime( stats.getStats()[OFLD_STAT_KERNEL_START_DELAY_TIME] )
@@ -2152,14 +2189,26 @@ Runner::printAllActivities()
       patternCount = stats.getStats()[STAT_OFLD_COMPUTE_OVERLAP_TIME];
       if( patternCount )
       {
-        fprintf( sFile, " %-30.30s: %11lf s \n\n",
-          " Compute Overlap",
+        fprintf( sFile, " %-30.30s: %11lf s\n",
+          " Compute overlap",
           analysis.getRealTime( stats.getStats()[STAT_OFLD_COMPUTE_OVERLAP_TIME] ) );
       }
       else
       {
-        fprintf( sFile, "  No overlap between compute tasks! \n\n" );
+        fprintf( sFile, "  No overlap between compute tasks!\n" );
       }
+      
+//      patternCount = stats.getStats()[STAT_OFLD_COMPUTE_TRANSFER_OVERLAP_TIME];
+//      if( patternCount )
+//      {
+//        fprintf( sFile, " %-30.30s: %11lf s\n\n",
+//          " Copy Compute Overlap",
+//          analysis.getRealTime( stats.getStats()[STAT_OFLD_COMPUTE_TRANSFER_OVERLAP_TIME] ) );
+//      }
+//      else
+//      {
+//        fprintf( sFile, "  No overlap between copy and compute tasks!\n\n" );
+//      }
     }
 
     if( sFile )
