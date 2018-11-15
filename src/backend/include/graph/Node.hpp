@@ -549,7 +549,7 @@ namespace casita
      }
 
      bool
-     isOMPForkJoinRegion() const
+     isOMPForkJoin() const
      {
        return isOMP() && ( nodeType & OMP_FORKJOIN );
      }

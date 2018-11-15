@@ -207,6 +207,10 @@ OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
   OTF2_GlobalEvtReaderCallbacks_SetThreadJoinCallback(
     event_callbacks, &OTF2_GlobalEvtReaderCallback_ThreadJoin );
   
+  // explicit for OpenMP
+  //OTF2_GlobalEvtReaderCallbacks_SetOmpForkCallback(
+  //  event_callbacks,OTF2_GlobalEvtReaderCallback_ThreadFork );
+  
   // registered because this might be the last event in a stream
   OTF2_GlobalEvtReaderCallbacks_SetRmaWinDestroyCallback(
     event_callbacks, &otf2CallbackComm_RmaWinDestroy );
@@ -1024,10 +1028,19 @@ OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadFork(
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
-  //\todo: handle numberOfRequestedThreads
-  return OTF2TraceReader::otf2CallbackEnter( locationID, time, userData,
-                                             attributeList,
-                                             tr->defHandler->getForkJoinRegionId() );
+  // handle fork node as enter event
+  OTF2_CallbackCode ret = 
+    OTF2TraceReader::otf2CallbackEnter( locationID, time, userData,
+                                        attributeList,
+                                        tr->defHandler->getForkJoinRegionId() );
+  
+  // add the requested threads to the enter event
+  if ( tr->handleThreadFork )
+  {
+    tr->handleThreadFork( tr, locationID, numberOfRequestedThreads );
+  }
+  
+  return ret;;
 }
 
 OTF2_CallbackCode

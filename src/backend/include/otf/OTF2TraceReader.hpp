@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -93,6 +93,10 @@ namespace casita
   typedef void ( *HandleRmaOpCompleteBlocking )( OTF2TraceReader* reader,
                                                  uint64_t         time,
                                                  uint64_t         streamId );
+  
+  typedef void ( *HandleThreadFork )( OTF2TraceReader* reader,
+                                      uint64_t         streamId,
+                                      uint32_t         requestedThreads );
   
   class OTF2TraceReader
   {
@@ -209,6 +213,7 @@ namespace casita
       //HandleRmaPut            handleRmaPut;
       //HandleRmaGet            handleRmaGet;
       //HandleRmaOpCompleteBlocking handleRmaOpCompleteBlocking;
+      HandleThreadFork        handleThreadFork;
 
     private:
       static OTF2_CallbackCode

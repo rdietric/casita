@@ -338,7 +338,7 @@ AnalysisParadigmOMP::getNestingLevel()
 void
 AnalysisParadigmOMP::handlePostEnter( GraphNode* ompEnter )
 {
-  if ( ompEnter->isOMPForkJoinRegion() )
+  if ( ompEnter->isOMPForkJoin() )
   {
     nestingLevel++;
   }
@@ -352,7 +352,7 @@ AnalysisParadigmOMP::handlePostEnter( GraphNode* ompEnter )
 void
 AnalysisParadigmOMP::handlePostLeave( GraphNode* ompLeave )
 {
-  if ( ompLeave->isOMPForkJoinRegion() )
+  if ( ompLeave->isOMPForkJoin() )
   {
     nestingLevel--;
   }

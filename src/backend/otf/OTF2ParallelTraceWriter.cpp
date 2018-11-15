@@ -1771,7 +1771,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
                     event.regionRef, currentNode->getFunctionId() );
 
       // model fork/join nodes as the currently running activity
-      if ( currentNode->isOMPForkJoinRegion() )
+      if ( currentNode->isOMPForkJoin() )
       {
         UTILS_ASSERT( event.regionRef == defHandler->getForkJoinRegionId(),
                       "ForkJoin must have regionRef %u", defHandler->getForkJoinRegionId() );

@@ -350,8 +350,6 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
     stream->isDeviceStream(), analysis.getStreamGroup().deviceWithNullStreamOnly(), 
     analysis.getMPISize() == 1 );
 
-  // for CPU functions no graph node is created
-  // only start time, end time and number of CPU events between nodes is stored
   // do not create nodes for CPU events and MPI events in 1-Process-Programs
   if( !generateNode )
   {    
@@ -530,6 +528,38 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   }
   
   return false;
+}
+
+/**
+ * Add the requested threads to the fork node. Assumes that the respective 
+ * enter node is the last created node.
+ * 
+ * @param reader the trace reader object
+ * @param streamId the OTF2 location ID, which is internally used as stream ID
+ * @param requestedThreads the number of requested threads
+ */
+void
+CallbackHandler::handleThreadFork( OTF2TraceReader* reader,
+                                   uint64_t         streamId,
+                                   uint32_t         requestedThreads )
+{
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
+  EventStream*     stream  = handler->getAnalysis().getStream( streamId );
+  
+  if ( !stream )
+  {
+    throw RTException( "Stream %" PRIu64 " not found!", streamId );
+  }
+  
+  GraphNode* forkNode = stream->getLastNode();
+  if( forkNode && forkNode->isOMPForkJoin() )
+  {
+    forkNode->setReferencedStreamId( requestedThreads );
+  }
+  else
+  {
+    UTILS_WARNING( "Could not handle fork node!" );
+  }
 }
 
 /**

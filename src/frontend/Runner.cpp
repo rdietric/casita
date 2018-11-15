@@ -458,20 +458,21 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     
     summaryFile.close();
     
-    // print summary file to console
+    /* print summary file to console
 	  ifstream fin( sFileName );
     string temp;
 	  while( getline( fin, temp ) )
     {
       std::cerr << temp << std::endl;
     }
-	  fin.close();
+	  fin.close();*/
     
     UTILS_MSG( options.analysisInterval, "- Number of analysis intervals: %" PRIu32
                " (Cleanup nodes took %f seconds)", ++analysis_intervals, 
                ( (float) time_events_flush ) / CLOCKS_PER_SEC );
   }
   
+  analysis.getStatistics().setActivityCount( STAT_TOTAL_TRACE_EVENTS, total_events_read );
   UTILS_MSG( options.verbose >= VERBOSE_SOME, 
              "  [%u] Total number of processed events (per process): %" PRIu64, 
              mpiRank, total_events_read );
@@ -727,7 +728,7 @@ Runner::mergeStatistics()
   }
   //////////////////////////////////////////////////////////////
   
-  // print the total number of processed events over all processes
+  /* print the total number of processed events over all processes
   if( options.verbose >= VERBOSE_TIME )
   {
     uint64_t total_events = 0;
@@ -735,7 +736,7 @@ Runner::mergeStatistics()
                            MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD ) );
     
     total_events_read = total_events;
-  }
+  }*/
 }
 
 /**
@@ -1754,26 +1755,26 @@ Runner::printAllActivities()
     {
       sFile = stdout;
     }
-    
-//    std::cout << "- Total number of processed events: "
-//              << std::setw(19) << total_events_read << std::endl;
-    
-    fprintf( sFile, "- Total number of processed events: %19" PRIu64 "\n",
-             total_events_read );
-    
+
     ///////////// print information on activity occurrences ///////////
     Statistics& stats = analysis.getStatistics();
-    for(int i = 0; i < STAT_ACTIVITY_TYPE_NUMBER; i++)
+    
+    fprintf( sFile, "- %s: %19" PRIu64 "\n",
+             casita::typeStrTableActivity[ STAT_TOTAL_TRACE_EVENTS ].str, 
+             //total_events_read, 
+             stats.getActivityCounts()[ STAT_TOTAL_TRACE_EVENTS ] );
+    
+    for(int i = 0; i < STAT_ACTIVITY_TYPE_NUMBER-1; i++)
     {
       uint64_t actCount = stats.getActivityCounts()[ i ];
       if( actCount )
       {
-        for(int j = 0; j < STAT_ACTIVITY_TYPE_NUMBER; j++)
+        for(int j = 0; j < STAT_ACTIVITY_TYPE_NUMBER-1; j++)
         {
           if( casita::typeStrTableActivity[ i ].type == 
               casita::typeStrTableActivity[ j ].type )
           {
-            fprintf( sFile, "%34s: %19" PRIu64 "\n", 
+            fprintf( sFile, "%29s: %19" PRIu64 "\n", 
                      casita::typeStrTableActivity[ i ].str, actCount );
             break;
           }
@@ -2065,7 +2066,8 @@ Runner::printAllActivities()
     }
     
     //// Offloading ////
-    if( analysis.haveParadigm( PARADIGM_CUDA ) || analysis.haveParadigm( PARADIGM_OCL ) )
+    if( !Parser::ignoreOffload() && ( analysis.haveParadigm( PARADIGM_CUDA ) || 
+                                      analysis.haveParadigm( PARADIGM_OCL ) ) )
     {
       fprintf( sFile, " Offloading\n"
               " %-30.30s: %11lf s (%2.2lf%%)\n"

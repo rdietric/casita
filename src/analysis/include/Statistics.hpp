@@ -75,8 +75,10 @@ namespace casita
      STAT_OFLD_SYNC = 6,        // any offload synchronization, except for events
      STAT_OFLD_SYNC_EVT = 7,    // offload event synchronization
      STAT_OFLD_TEST_EVT = 8,    // offload test operation
+     
+     STAT_TOTAL_TRACE_EVENTS = 9,
 
-     STAT_ACTIVITY_TYPE_NUMBER = 9
+     STAT_ACTIVITY_TYPE_NUMBER = 10
   };
   
   typedef struct
@@ -95,7 +97,8 @@ namespace casita
     { STAT_OFLD_KERNEL, "Ofld. kernels" },
     { STAT_OFLD_SYNC, "Ofld. stream/device synchr." },
     { STAT_OFLD_SYNC_EVT, "Ofld. event synchr." },
-    { STAT_OFLD_TEST_EVT, "Ofld. event queries" }
+    { STAT_OFLD_TEST_EVT, "Ofld. event queries" },
+    { STAT_TOTAL_TRACE_EVENTS, "Total number of events read" }
   };
   
   class Statistics
