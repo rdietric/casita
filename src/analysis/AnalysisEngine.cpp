@@ -509,6 +509,9 @@ AnalysisEngine::createIntermediateBegin()
             "[%" PRIu64 "] Found incomplete kernel %s at intermediate analysis start.", 
             p->getId(), getNodeInfo( nodes.back() ).c_str())
           
+          // reset left link to avoid a segmentation fault when creating kernel
+          // dependencies
+          nodes.back()->setLinkLeft( NULL );
           nodes.pop_back();
         }
         
@@ -549,6 +552,7 @@ AnalysisEngine::createIntermediateBegin()
               // do not delete kernels that have not yet been synchronized
               if( ofldAnalysis->isKernelPending( node ) )
               {
+                node->setLinkLeft( NULL ); // only needed for kernel enter
                 continue;
               }
               else

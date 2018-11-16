@@ -459,15 +459,6 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     
     summaryFile.close();
     
-    /* print summary file to console
-	  ifstream fin( sFileName );
-    string temp;
-	  while( getline( fin, temp ) )
-    {
-      std::cerr << temp << std::endl;
-    }
-	  fin.close();*/
-    
     UTILS_MSG( options.analysisInterval, "- Number of analysis intervals: %" PRIu32
                " (Cleanup nodes took %f seconds)", ++analysis_intervals, 
                ( (float) time_events_flush ) / CLOCKS_PER_SEC );
@@ -477,6 +468,12 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   UTILS_MSG( options.verbose >= VERBOSE_SOME, 
              "  [%u] Total number of processed events (per process): %" PRIu64, 
              mpiRank, total_events_read );
+  
+  // add number of host streams to statistics to get a total number for summary output
+  analysis.getStatistics().setActivityCount( STAT_HOST_STREAMS, 
+                                             analysis.getHostStreams().size() );
+  analysis.getStatistics().setActivityCount( STAT_DEVICE_NUM, 
+                                             analysis.getStreamGroup().getNumDevices() );
 }
 
 void
@@ -1765,12 +1762,12 @@ Runner::printAllActivities()
              //total_events_read, 
              stats.getActivityCounts()[ STAT_TOTAL_TRACE_EVENTS ] );
     
-    for(int i = 0; i < STAT_ACTIVITY_TYPE_NUMBER-1; i++)
+    for(int i = 0; i < STAT_ACTIVITY_TYPE_NUMBER-3; i++)
     {
       uint64_t actCount = stats.getActivityCounts()[ i ];
       if( actCount )
       {
-        for(int j = 0; j < STAT_ACTIVITY_TYPE_NUMBER-1; j++)
+        for(int j = 0; j < STAT_ACTIVITY_TYPE_NUMBER-3; j++)
         {
           if( casita::typeStrTableActivity[ i ].type == 
               casita::typeStrTableActivity[ j ].type )
@@ -1972,16 +1969,31 @@ Runner::printAllActivities()
               100.0 * sumFractionBlame, 
               sumBlameOnCP );
     
+    fprintf( sFile, "\nStream summary: %d MPI ranks, %" PRIu64 " host streams, %" PRIu64 " devices",
+             mpiSize,
+             stats.getActivityCounts()[ STAT_HOST_STREAMS ],
+             stats.getActivityCounts()[ STAT_DEVICE_NUM ]
+           );
+    
     // print inefficiency and wait statistics
-    //fprintf( sFile, "\n\033[4mPattern summary:\033[24m\n"
-    fprintf( sFile, "\nPattern summary:\n"
-            " %-30.30s: %11lf s\n"
-            " %-30.30s: %11lf s\n", 
-            "Total program runtime", 
-            (double) definitions.getTraceLength() / (double) definitions.getTimerResolution(),
-            "Total waiting time",
-            analysis.getRealTime( sumWaitingTime ) );
+    fprintf( sFile, "\n"
+             "%-31.31s: %11lf s\n"
+             "%-31.31s: %11lf s (%lf s per rank, %lf s (%2.2lf%%) per host stream)\n",
+             "Total program runtime", 
+             (double) definitions.getTraceLength() / (double) definitions.getTimerResolution(),
+             "Total waiting time (host)",
+             analysis.getRealTime( sumWaitingTime ),
+             analysis.getRealTime( sumWaitingTime ) / mpiSize,
+             analysis.getRealTime( sumWaitingTime ) / 
+               stats.getActivityCounts()[ STAT_HOST_STREAMS ],
+             analysis.getRealTime( sumWaitingTime ) / 
+               stats.getActivityCounts()[ STAT_HOST_STREAMS ] /
+                 analysis.getRealTime( definitions.getTraceLength() )
+               * 100
+            ); 
       
+    fprintf( sFile, "\nPattern summary:\n" );
+            
     //// MPI ////
     uint64_t patternCount = stats.getStats()[MPI_STAT_LATE_SENDER] + 
                             stats.getStats()[ MPI_STAT_LATE_RECEIVER ] +
@@ -2059,9 +2071,11 @@ Runner::printAllActivities()
       if( patternCount )
       {
         fprintf( sFile, " OpenMP\n"
-                " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
+                " %-30.30s: %11lf s (%lf s per host stream, %" PRIu64 " overall occurrences)\n",
                 " Wait in OpenMP barrier",
                 analysis.getRealTime( stats.getStats()[OMP_STAT_BARRIER_WTIME] ),
+                analysis.getRealTime( stats.getStats()[OMP_STAT_BARRIER_WTIME] ) /
+                  stats.getActivityCounts()[ STAT_HOST_STREAMS ],
                 patternCount );
       }
     }
@@ -2071,16 +2085,20 @@ Runner::printAllActivities()
                                       analysis.haveParadigm( PARADIGM_OCL ) ) )
     {
       fprintf( sFile, " Offloading\n"
-              " %-30.30s: %11lf s (%2.2lf%%)\n"
-              " %-30.30s: %11lf s (%2.2lf%%)\n",
+              " %-30.30s: %11lf s (%2.2lf%% -> %lf s per device)\n"
+              " %-30.30s: %11lf s (%2.2lf%% -> %lf s per device)\n",
               " Idle device",
               analysis.getRealTime( stats.getStats()[OFLD_STAT_IDLE_TIME] ),
               (double) stats.getStats()[OFLD_STAT_IDLE_TIME] / 
               (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100,
+              analysis.getRealTime( stats.getStats()[OFLD_STAT_IDLE_TIME] ) / 
+                stats.getActivityCounts()[ STAT_DEVICE_NUM ],
               " Compute idle device",
               analysis.getRealTime( stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME] ), 
               (double) stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME] / 
-              (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100
+              (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100,
+              analysis.getRealTime( stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME] ) /
+                stats.getActivityCounts()[ STAT_DEVICE_NUM ]
          );
 
       patternCount = stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WAIT];

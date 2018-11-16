@@ -78,9 +78,9 @@ namespace casita
 
       void
       getDeviceStreams( DeviceStreamList& newDeviceStreams ) const;
-
+      
       size_t
-      getNumStreams() const;
+      getNumDevices() const;
       
       DeviceStream*
       getFirstDeviceStream( int deviceId );

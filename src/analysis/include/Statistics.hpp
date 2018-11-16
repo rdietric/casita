@@ -76,9 +76,12 @@ namespace casita
      STAT_OFLD_SYNC_EVT = 7,    // offload event synchronization
      STAT_OFLD_TEST_EVT = 8,    // offload test operation
      
+     // the following three are a hack (move to extra type)
      STAT_TOTAL_TRACE_EVENTS = 9,
+     STAT_HOST_STREAMS = 10,
+     STAT_DEVICE_NUM = 11,
 
-     STAT_ACTIVITY_TYPE_NUMBER = 10
+     STAT_ACTIVITY_TYPE_NUMBER = 12
   };
   
   typedef struct
