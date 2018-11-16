@@ -126,6 +126,7 @@ Runner::prepareAnalysis()
   //traceReader->handleRmaPut            = CallbackHandler::handleRmaPut;
   //traceReader->handleRmaGet            = CallbackHandler::handleRmaGet;
   //traceReader->handleRmaOpCompleteBlocking = CallbackHandler::handleRmaOpCompleteBlocking;
+  traceReader->handleThreadFork       = CallbackHandler::handleThreadFork;
 
   traceReader->open( options.filename, 10 );
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
