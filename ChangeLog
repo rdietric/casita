@@ -5,6 +5,7 @@ MPI
 
 OpenMP
 - support different number of threads in different OpenMP regions
+- fixed detection of OpenMP directives (ignore file name)
 
 Offloading
 - added rule to blame the host for not keeping the device busy
