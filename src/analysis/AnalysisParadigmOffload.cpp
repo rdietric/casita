@@ -552,6 +552,50 @@ AnalysisParadigmOffload::getLastKernelLaunchLeave( uint64_t timestamp,
   return lastLaunchLeave;
 }
 
+/** 
+ * Search backwards from the given node until the given timestamp for the
+ * temporally first occurrence of a kernel launch.
+ * 
+ * @param lower_bound search until this time
+ * @param currentNode start node of the backwards search
+ * 
+ * @return the first kernel launch or NULL none was found
+ */
+GraphNode*
+AnalysisParadigmOffload::findFirstLaunchInIdle( uint64_t lower_bound, 
+                                                GraphNode* currentNode ) const
+{
+  GraphNode* firstLaunch = NULL;
+  
+  while( currentNode && currentNode->getTime() > lower_bound )
+  {
+    if( currentNode->isEnter() && currentNode->isOffloadEnqueueKernel() )
+    {
+      firstLaunch = currentNode;
+    }
+
+    const Graph::EdgeList& inEdges = 
+      commonAnalysis->getGraph().getInEdges( currentNode );
+    currentNode = NULL;
+    for ( Graph::EdgeList::const_iterator iter = inEdges.begin();
+          iter != inEdges.end(); ++iter )
+    {
+      Edge* intraEdge = *iter;
+      if ( intraEdge->isIntraStreamEdge() )
+      {
+        // do not jump over nodes
+        if( currentNode == NULL || 
+            currentNode->getTime() < intraEdge->getStartNode()->getTime() )
+        {
+          currentNode = intraEdge->getStartNode();
+        }
+      }
+    }
+  }
+  
+  return firstLaunch;
+}
+
 /**
  * Remove a kernel launch from the map (key is stream id) of kernel launch vectors.
  * 

@@ -88,7 +88,13 @@ namespace casita
      string
      getPathToFile()
      {
-         return pathToFile;
+       return pathToFile;
+     }
+     
+     string
+     getSummaryFileName()
+     {
+       return pathToFile + string( "/" ) + outArchiveName + string( "_summary.txt" );
      }
 
    private:

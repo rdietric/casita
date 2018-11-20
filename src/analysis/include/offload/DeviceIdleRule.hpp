@@ -69,7 +69,7 @@ namespace casita
             
             return true;
           }
-          
+
           //UTILS_OUT("Device Idle Rule");
           
           // if device was idle
@@ -87,11 +87,7 @@ namespace casita
             GraphNode* launchEnter = (GraphNode*)( kernelNode->getLink() );
             
             uint64_t idleEndTime = kernelNode->getTime();
-            
-            // blame is for all host streams the same
-            // initially set it to the total idle time
-            uint64_t blame = idleEndTime - ofldAnalysis->idle_start_time;
-            
+
             // initialize launch time with idle end time (in case we do not get
             // the launch)
             uint64_t launchTime = idleEndTime;
@@ -107,10 +103,14 @@ namespace casita
                              analysis->getNodeInfo( kernelNode ).c_str() );
             }
             
+            // blame is for all host streams the same
+            // initially set it to the total idle time
+            uint64_t blame = idleEndTime - ofldAnalysis->idle_start_time;
+            
             // get last host node for each stream
-            for ( EventStreamGroup::EventStreamList::const_iterator pIter =
-                  analysis->getHostStreams().begin(); 
-                  pIter != analysis->getHostStreams().end(); ++pIter )
+            for( EventStreamGroup::EventStreamList::const_iterator pIter =
+                 analysis->getHostStreams().begin(); 
+                 pIter != analysis->getHostStreams().end(); ++pIter )
             {
               EventStream* hostStream = *pIter;
    
@@ -124,24 +124,28 @@ namespace casita
               
               uint64_t openRegionTime = 0;
               
-              // determine start node for blame backwalk
+              // determine start node for blame distribution
               GraphNode* blameStartNode = NULL;
               if( launchEnter && ( hostStream->getId() == launchEnter->getStreamId() ) )
               {
+                // this is the launch from the kernel that ended idle
                 blameStartNode = launchEnter;
-                
-                // there is no open region
               }
-              else
-              {                
+              else // find a blame start node before the launch that ended idle
+              {
                 blameStartNode =
                   GraphNode::findLastNodeBefore( launchTime, hostStream->getNodes() );
                 
+                  // if we start at idleEndTime, we could accidently walk over 
+                  // a cuLaunchKernel which would stop blame distribution early
+                  //GraphNode::findLastNodeBefore( idleEndTime, hostStream->getNodes() );
+                
+                // if no start node for blaming was found, continue on next stream
                 if( blameStartNode == NULL || 
                     blameStartNode == hostStream->getNodes().front() )
                 {
-                  UTILS_WARN_ONCE( "[DeviceIdleRule] Node before kernel "
-                                   "launch %s on stream %s not found!", 
+                  UTILS_WARN_ONCE( "[DeviceIdleRule] No blame start node before"
+                                   " kernel launch %s on stream %s found!", 
                                    analysis->getNodeInfo( launchEnter ).c_str(),
                                    hostStream->getName() );
                   
@@ -153,39 +157,32 @@ namespace casita
                   continue;
                 }
                 
+                // if accidently a start node after the launch was found (should not happen)
                 if ( launchTime < blameStartNode->getTime() )
                 {
                   UTILS_WARNING( "[DeviceIdleRule] Error while reading trace! (%s < %s)",
                                  analysis->getNodeInfo( launchEnter ).c_str(),
                                  analysis->getNodeInfo( blameStartNode ).c_str() );
-                  openRegionTime = 0;
+                  //openRegionTime = 0;
                 }
-                else
+                /*else // this is the intended case
                 {
                   openRegionTime = launchTime - blameStartNode->getTime();
-                }
+                }*/
               }
               
-              if( blameStartNode == NULL )
-              {
-                UTILS_WARNING( "[DeviceIdleRule] No start node for blame "
-                               "distribution on stream %s found", 
-                               hostStream->getName() );
-                continue;
-              }
+              //\todo walk forward until idleEndTime, return new blameStartNode
+              // and blame forward list
               
               // set this time initially to the total idle time
               uint64_t totalTimeToBlame = blame;
               
-              // if start node is launch enter node, we cannot forward blame
-              // as the operation tries to keep the device busy
-              // blame a synchronization seems also stupid
-              if( blameStartNode->isEnter() &&
-                  ( blameStartNode->isOffloadEnqueueKernel() ||
-                    blameStartNode->isOffloadWait() ) )
+              // start blaming (backwards) from the first launch in the idle phase
+              GraphNode* newBlameStartNode = ofldAnalysis->findFirstLaunchInIdle( 
+                ofldAnalysis->idle_start_time, blameStartNode );
+              if( newBlameStartNode )
               {
-                // set the open region time to zero
-                openRegionTime = 0;
+                blameStartNode = newBlameStartNode;
               }
               
               // if blame start node is a device synchr. leave or a launch leave, 
@@ -197,23 +194,30 @@ namespace casita
               }
               else // last node is not a device sync or launch leave
               {
-                //\todo: blame at least until the begin of idle or kernel launch???
-                
-                totalTimeToBlame = 
-                  distributeBlame( analysis, blameStartNode, blame, 
-                                   streamWalkCallback,
-                                   REASON_OFLD_DEVICE_IDLE, openRegionTime );
+                // regions before the launch should not be blamed for idle time
+                // that occurs after the launch
+                if( blameStartNode->getTime() > ofldAnalysis->idle_start_time )
+                {
+                  blame = blameStartNode->getTime() - ofldAnalysis->idle_start_time;
+                  
+                  //blame at least until the device wait all or kernel launch
+                  totalTimeToBlame = 
+                    distributeBlame( analysis, blameStartNode, blame, 
+                                     streamWalkCallback,
+                                     REASON_OFLD_DEVICE_IDLE );
+                }
+                /*else{
+                  UTILS_WARN_ONCE( "[DeviceIdleRule] Blame start node %s is "
+                                   "before idle begin at %lf!\n"
+                                   "(kernel: %s, initial launch enter: %s)",
+                                   analysis->getNodeInfo(blameStartNode).c_str(),
+                                   analysis->getRealTime( ofldAnalysis->idle_start_time ),
+                                   analysis->getNodeInfo( kernelNode ).c_str(),
+                                   analysis->getNodeInfo( launchEnter ).c_str());
+                }*/
               }
-              /*
-              UTILS_OUT( "[%" PRIu32 "] Start at: %s; blame: %.9lf; time to blame: %.9lf, "
-                         "share of open region : %llu", 
-                         hostStream->getId(), 
-                         analysis->getNodeInfo( blameStartNode ).c_str(), 
-                         analysis->getRealTime(blame), 
-                         analysis->getRealTime(totalTimeToBlame), openRegionTime );
-              */
                     
-              //\todo: forward blame if another node is before idle end
+              //\todo: blame with forward walk if another node is before idle end
               
               // determine remaining blame
               if ( totalTimeToBlame > 0 && openRegionTime > 0 )

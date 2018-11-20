@@ -561,6 +561,18 @@ EventStream::walkBackward( GraphNode*         node,
   return result;
 }
 
+/**
+ * Walk forward from the given node. The StreamWalkCallback identifies the end
+ * of the forward walk.
+ * 
+ * @param node start node of the walk
+ * @param callback callback function that detects the end of the walk and 
+ *                 adds userData on the walk
+ * @param userData StreamWalkInfo that contains a node list and the list waiting 
+ *                 time
+ * 
+ * @return true, if the forward walk is successful, otherwise false.
+ */
 bool
 EventStream::walkForward( GraphNode*         node,
                           StreamWalkCallback callback,
@@ -574,6 +586,21 @@ EventStream::walkForward( GraphNode*         node,
   }
 
   SortedGraphNodeList::const_reverse_iterator iter_tmp = findNode( node );
+  
+  // print a warning if the node could not be found and use a sequential search
+  if ( *iter_tmp != node ) 
+  {
+    UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME, 
+               "Binary search did not find %s in stream %lu. "
+               "Perform sequential search for convenience ...", 
+               node->getUniqueName().c_str(), node->getStreamId() );
+    iter_tmp = find( nodes.rbegin(), nodes.rend(), node );
+  }
+  
+  // make sure that we found a node
+  UTILS_ASSERT( *iter_tmp == node, "no %s in stream %lu",
+                node->getUniqueName().c_str(), node->getStreamId() );
+  
   SortedGraphNodeList::const_iterator iter = iter_tmp.base();
 
   // iterate forward over the list of nodes

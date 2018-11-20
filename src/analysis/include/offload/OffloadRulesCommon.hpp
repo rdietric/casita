@@ -28,8 +28,8 @@ namespace casita
      * @param userData pointer to StreamWalkInfo
      * @param node the node under investigation
      * 
-     * @return false when a synchronization leave, a launch leave or a process 
-     *         start node has been found, otherwise true.
+     * @return false when a device synchronization leave, a launch leave or 
+     *         a process start node has been found, otherwise true.
      */
     static bool
     streamWalkCallback( void* userData, GraphNode* node )

@@ -418,9 +418,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   {
     // open a file in write mode.
     ofstream summaryFile;
-    std::string sFileName = Parser::getInstance().getPathToFile() 
-                           + std::string( "/" ) + Parser::getInstance().getOutArchiveName()
-                           + std::string( "_summary.txt" );
+    std::string sFileName = Parser::getInstance().getSummaryFileName();
     
     summaryFile.open( sFileName );
    
@@ -694,7 +692,7 @@ Runner::mergeStatistics()
     recvBuf = (uint64_t*)malloc( mpiSize * STAT_NUMBER * sizeof( uint64_t ) );
   }
   
-  /* MPI_Gather would enables some kind of imbalance analysis on the root process 
+  /* MPI_Gather would enable some kind of imbalance analysis on the root process 
   //MPI_CHECK( MPI_Gather( stats.getActivityCounts(), STAT_ACTIVITY_TYPE_NUMBER, 
   //                       MPI_UINT64_T, recvBuf,  STAT_ACTIVITY_TYPE_NUMBER, 
   //                       MPI_UINT64_T, 0, MPI_COMM_WORLD ) );
@@ -1743,9 +1741,7 @@ Runner::printAllActivities()
       mode[0] = 'a';
     }
     
-    std::string sFileName = Parser::getInstance().getPathToFile() 
-                           + std::string( "/" ) + Parser::getInstance().getOutArchiveName()
-                           + std::string( "_summary.txt" );
+    std::string sFileName = Parser::getInstance().getSummaryFileName();
     
     FILE *sFile = fopen( sFileName.c_str(), mode );
     

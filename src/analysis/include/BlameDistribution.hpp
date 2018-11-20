@@ -33,6 +33,8 @@ namespace casita
    * @param totalBlame blame to be distributed
    * @param callback 
    * @param unaccounted time in this stream walkback
+   * 
+   * @return total time to blame
    */
   static uint64_t
   distributeBlame( AnalysisEngine* analysis,

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2017,
+ * Copyright (c) 2017-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -109,6 +109,9 @@ namespace casita
 
       GraphNode*
       getLastKernelLaunchLeave( uint64_t timestamp, uint64_t deviceStreamId ) const;
+      
+      GraphNode*
+      findFirstLaunchInIdle( uint64_t idle_start_time, GraphNode* searchStartNode ) const;
       
       void
       removeKernelLaunch( GraphNode* kernel );
