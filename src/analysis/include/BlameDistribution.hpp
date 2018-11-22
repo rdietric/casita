@@ -41,8 +41,7 @@ namespace casita
                    GraphNode* node,
                    uint64_t totalBlame,
                    EventStream::StreamWalkCallback callback,
-                   BlameReason reason = REASON_UNCLASSIFIED, 
-                   uint64_t unaccounted = 0 )
+                   BlameReason reason = REASON_UNCLASSIFIED )
   {
     // return if there is no blame to distribute
     if ( totalBlame == 0 )
@@ -77,29 +76,19 @@ namespace casita
                   "Walk list has %lu entries. Can't walk list back from %s",
                   walkList.size(), analysis->getNodeInfo( node ).c_str() );
 
-//    GraphNode* start = walkList.front();
-    
-    // if the start node has no caller, hence is first on the stack
-//    if ( start->getCaller() == NULL )
-//    {
-//      start->setCounter(BLAME, 0);
-//    }
-
     // total time interval for blame distribution
     const uint64_t totalWalkTime = 
       walkList.front()->getTime() - walkList.back()->getTime();
 
     // time within the interval that is a wait state itself
-    const uint64_t waitTime = walkListInfo.waitStateTime;
+    const uint64_t waitTime = 0; //walkListInfo.waitStateTime;
 
     // total time for blame distribution 
     // (wait states in the interval are subtracted)
-    const uint64_t totalTimeToBlame = totalWalkTime - waitTime + unaccounted;
+    const uint64_t totalTimeToBlame = totalWalkTime - waitTime;
     
     // debug walk list
-    if( totalWalkTime < waitTime 
-       //&& strcmp( node->getName(), "MPI_Allreduce") == 0
-       )
+    if( totalWalkTime < waitTime )
     {
       UTILS_OUT( "[%u] Debug walklist from %s, totalBlame: %llu sec (%lf)",
                  analysis->getMPIRank(), analysis->getNodeInfo(node).c_str(),
