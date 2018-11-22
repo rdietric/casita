@@ -175,6 +175,10 @@ namespace casita
      
      const std::string
      getNodeInfo( Node* node );
+     
+     void
+     streamWalkBackward( GraphNode* node, EventStream::StreamWalkCallback callback, 
+                         void* userData ) const;
 
      uint64_t
      getDeltaTicks();

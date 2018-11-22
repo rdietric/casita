@@ -554,7 +554,11 @@ AnalysisParadigmOffload::getLastKernelLaunchLeave( uint64_t timestamp,
 
 /** 
  * Search backwards from the given node until the given timestamp for the
- * temporally first occurrence of a kernel launch.
+ * temporally first occurrence of a kernel launch. 
+ * This routine should be safe to call after intermediate analysis, as it uses
+ * edges to walk backwards in time (edges are deleted).
+ * 
+ * \todo: this function might cause a deadlock due to cyclic edges
  * 
  * @param lower_bound search until this time
  * @param currentNode start node of the backwards search
@@ -573,23 +577,36 @@ AnalysisParadigmOffload::findFirstLaunchInIdle( uint64_t lower_bound,
     {
       firstLaunch = currentNode;
     }
+    
+    GraphNode* prevNode = NULL;
 
+    // check all in edges of the current node
     const Graph::EdgeList& inEdges = 
       commonAnalysis->getGraph().getInEdges( currentNode );
-    currentNode = NULL;
     for ( Graph::EdgeList::const_iterator iter = inEdges.begin();
           iter != inEdges.end(); ++iter )
     {
+      // we are only looking for intra stream edges
       Edge* intraEdge = *iter;
       if ( intraEdge->isIntraStreamEdge() )
       {
-        // do not jump over nodes
-        if( currentNode == NULL || 
-            currentNode->getTime() < intraEdge->getStartNode()->getTime() )
+        // use the closest node (MPI nodes have additional edges between each other)
+        if( prevNode == NULL || 
+            prevNode->getTime() < intraEdge->getStartNode()->getTime() )
         {
-          currentNode = intraEdge->getStartNode();
+          prevNode = intraEdge->getStartNode();
         }
       }
+    }
+    
+    // check if the previous node is earlier (to avoid circular dependencies)
+    if( prevNode && prevNode->getTime() < currentNode->getTime() )
+    {
+      currentNode = prevNode;
+    }
+    else
+    {
+      return firstLaunch;
     }
   }
   

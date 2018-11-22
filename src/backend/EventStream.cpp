@@ -508,13 +508,13 @@ EventStream::isFilterOn()
  * Walk backwards from the given node. The StreamWalkCallback identifies the end
  * of the walk back.
  * 
- * @param node start node of the back walk
+ * @param node start node of the walk backwards
  * @param callback callback function that detects the end of the walk and 
  *                 adds userData on the walk
  * @param userData StreamWalkInfo that contains a node list and the list waiting 
  *                 time
  * 
- * @return true, if the walk back is successful, otherwise false.
+ * @return true, if the walk backwards is successful, otherwise false.
  */
 bool
 EventStream::walkBackward( GraphNode*         node,
@@ -528,7 +528,9 @@ EventStream::walkBackward( GraphNode*         node,
     return result;
   }
 
-  //\todo: replace with walkback via edges
+  //\todo: replace with walkback via edges as find might be very time consuming
+  // edges are deleted in intermediate analysis points
+  // !! check for circular dependencies might be required
   
   SortedGraphNodeList::const_reverse_iterator iter = findNode( node );
   
@@ -582,7 +584,7 @@ EventStream::walkForward( GraphNode*         node,
 
   if ( !node || !callback )
   {
-    return result;
+    return false;
   }
 
   SortedGraphNodeList::const_reverse_iterator iter_tmp = findNode( node );

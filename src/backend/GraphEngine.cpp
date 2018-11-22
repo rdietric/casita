@@ -628,33 +628,6 @@ GraphEngine::runSanityCheck( uint32_t mpiRank )
 }
 
 /**
- * Add information from a CPU (non-paradigm) event.
- * 
- * @param time the time stamp of the event
- * @param stream the stream the event occurred
- 
-void
-GraphEngine::addCPUEvent( uint64_t time, uint64_t stream, bool isLeave )
-{
-  EdgeCPUData& cpuData = cpuDataPerProcess[stream];
-
-  if ( cpuData.numberOfEvents == 0 )
-  {
-    cpuData.startTime = time;
-    cpuData.exclEvtRegTime = 0;
-  }
-  
-  // get the last exclusive region time at region leave
-  if( isLeave )
-  {
-    cpuData.exclEvtRegTime += cpuData.endTime - time;
-  }
-
-  cpuData.numberOfEvents++;
-  cpuData.endTime = time;
-}*/
-
-/**
  * Adds a node to the graph and edges between all nodes on the same stream. 
  * Adds also edges for implicit task dependencies on the same offloading device.
  * 
@@ -1072,4 +1045,65 @@ GraphEngine::getNodeInfo( Node* node )
   sstream << fixed << node->getUniqueName() << ":" << getRealTime( node->getTime() );
 
   return sstream.str();
+}
+
+/**
+ * Walk backwards from the given node. The StreamWalkCallback identifies the end
+ * of the walk back.
+ * 
+ * @param node start node of the walk backwards
+ * @param callback callback function that detects the end of the walk and 
+ *                 adds userData on the walk
+ * @param userData StreamWalkInfo that contains a node list and the waiting time
+ * 
+ * @return true, if the walk backwards is successful, otherwise false.
+ */
+void
+GraphEngine::streamWalkBackward( GraphNode* node,
+                                 EventStream::StreamWalkCallback callback,
+                                 void* userData ) const
+{
+  if ( !node || !callback )
+  {
+    return;
+  }
+  
+  while( node )
+  {
+    GraphNode* prevNode = NULL;
+
+    // check all in edges of the current node
+    const Graph::EdgeList& inEdges = this->graph.getInEdges( node );
+    for ( Graph::EdgeList::const_iterator iter = inEdges.begin();
+          iter != inEdges.end(); ++iter )
+    {
+      // we are only looking for intra stream edges
+      Edge* intraEdge = *iter;
+      if ( intraEdge->isIntraStreamEdge() )
+      {
+        // use the closest node (MPI nodes have additional edges between each other)
+        if( prevNode == NULL || 
+            prevNode->getTime() < intraEdge->getStartNode()->getTime() )
+        {
+          prevNode = intraEdge->getStartNode();
+        }
+      }
+    }
+    
+    // check if the previous node is earlier (to avoid circular dependencies)
+    if( prevNode && prevNode->getTime() < node->getTime() )
+    {
+      node = prevNode;
+      // stop iterating (and adding nodes to the list and increasing waiting time) 
+      // when the walk end condition via callback has been found
+      if ( callback( userData, node ) == false )
+      {
+        return;
+      }
+    }
+    else // no previous node found
+    {
+      return;
+    }
+  }
 }
