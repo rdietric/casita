@@ -1834,7 +1834,7 @@ Runner::printAllActivities()
       
       ratingFile = fopen( rFileName.c_str(), "w" );
       fprintf(ratingFile, "Region;Calls;Time [s];Time on CP [s];"
-                           "CP Ratio [%%];Global Blame Ratio [%%];"
+                           "CP Ratio [%%];Blame [s];Blame Ratio [%%];"
                            "Blame on CP [s]" );
       
       for(int i = 0; i < REASON_NUMBER; i++ )
@@ -1923,14 +1923,14 @@ Runner::printAllActivities()
 
       if( options.createRatingCSV )
       {
-        fprintf( ratingFile, "%s;%u;%lf;%lf;%lf;%lf;%lf",
+        fprintf( ratingFile, "%s;%u;%lf;%lf;%lf;%lf;%lf;%lf",
                  definitions.getRegionName( iter->functionId ),
                  iter->numInstances,
                  analysis.getRealTime( iter->totalDuration ),
                  analysis.getRealTime( iter->totalDurationOnCP ),
                  100.0 * iter->fractionCP,
+                 iter->totalBlame,
                  100.0 * iter->fractionBlame,
-                 //iter->fractionCP + iter->fractionBlame,
                  iter->blameOnCP );
         
         if( iter->totalBlame > 0 ) // avoid division by zero
