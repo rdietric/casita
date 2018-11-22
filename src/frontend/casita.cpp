@@ -75,32 +75,43 @@ main( int argc, char** argv )
       UTILS_MSG_NOBR( mpiRank == 0 && options.verbose >= VERBOSE_TIME, 
                       "- Merge process statistics:" );
       
-      clock_t ts_merge = clock() - timestamp;
-
-      runner->mergeActivityGroups();
-      
+      // get statistical values
+      clock_t ts_merge_stats = clock();
       runner->mergeStatistics();
+      ts_merge_stats = clock() - ts_merge_stats;
+
+      UTILS_MSG_NOBR( mpiRank == 0 && options.verbose >= VERBOSE_TIME, 
+                      " %f sec", ( ( float ) ts_merge_stats ) / CLOCKS_PER_SEC );
       
-      ts_merge = clock() - ts_merge;
-    
+      runner->writeStatistics();
+
+      clock_t ts_merge_acts = clock();
+      runner->mergeActivityGroups();
+      ts_merge_acts = clock() - ts_merge_acts;
+      
       UTILS_MSG( mpiRank == 0 && options.verbose >= VERBOSE_TIME, 
-                 " %f sec", ( (float) ts_merge ) / CLOCKS_PER_SEC );
-
-      runner->printAllActivities();
-
-      MPI_Barrier( MPI_COMM_WORLD );
+                 " + %f sec = %f sec", 
+                 ( ( float ) ts_merge_acts ) / CLOCKS_PER_SEC,
+                 ( ( float ) ( ts_merge_stats + ts_merge_acts ) ) / CLOCKS_PER_SEC );
+      
+      runner->writeActivityRating();
+      
+      runner->printToStdout();
+      // not needed
+      //MPI_Barrier( MPI_COMM_WORLD );
     }
 
     delete runner;
     
-    timestamp = clock() - timestamp;
-    
-    UTILS_MSG( mpiRank == 0, "Total CASITA runtime: %f seconds.\n", ( (float) timestamp ) / CLOCKS_PER_SEC );
+    UTILS_MSG( mpiRank == 0, "Total CASITA runtime: %f seconds.\n", 
+               ( ( float ) ( clock() - timestamp ) ) / CLOCKS_PER_SEC );
   }
   catch( RTException e )
   {
     status = 1;
   }
+  
   MPI_CHECK( MPI_Finalize() );
+  
   return status;
 }

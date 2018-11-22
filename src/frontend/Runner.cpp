@@ -1725,11 +1725,10 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
 }
 
 /**
- * Print the summary statistics for regions with highest blame on the critical 
- * path. 
+ * Write the summary statistics to file and stdout.
  */
 void
-Runner::printAllActivities()
+Runner::writeStatistics()
 {
   if ( mpiRank == 0 )
   {
@@ -1775,7 +1774,36 @@ Runner::printAllActivities()
         }
       }
     }
-  
+    
+    if( sFile )
+    {
+      fclose( sFile );
+    }
+  }
+}
+ 
+void
+Runner::writeActivityRating()
+{
+  if ( mpiRank == 0 )
+  {
+    char mode[1] = {'w'};
+    
+    // use append mode, if timing information have already been written
+    if( options.verbose >= VERBOSE_TIME )
+    {
+      mode[0] = 'a';
+    }
+    
+    std::string sFileName = Parser::getInstance().getSummaryFileName();
+    
+    FILE *sFile = fopen( sFileName.c_str(), mode );
+    
+    if( NULL == sFile )
+    {
+      sFile = stdout;
+    }
+    
     /////////////// Region statistics //////////////7
     OTF2ParallelTraceWriter::ActivityGroupMap* activityGroupMap =
                                                   writer->getActivityGroupMap();
@@ -1795,7 +1823,7 @@ Runner::printAllActivities()
             "Time[s]",
             "Time on CP",
             "CP[%]",
-            "Blame",
+            "Blame[s]",
             "Blame[%]",
             "Blame on CP" );
 
@@ -1965,6 +1993,8 @@ Runner::printAllActivities()
               100.0 * sumFractionBlame, 
               sumBlameOnCP );
     
+    // some more statistics
+    Statistics& stats = analysis.getStatistics();
     fprintf( sFile, "\nStream summary: %d MPI ranks, %" PRIu64 " host streams, %" PRIu64 " devices",
              mpiSize,
              stats.getActivityCounts()[ STAT_HOST_STREAMS ],
@@ -2214,32 +2244,29 @@ Runner::printAllActivities()
       {
         fprintf( sFile, "  No overlap between compute tasks!\n" );
       }
-      
-//      patternCount = stats.getStats()[STAT_OFLD_COMPUTE_TRANSFER_OVERLAP_TIME];
-//      if( patternCount )
-//      {
-//        fprintf( sFile, " %-30.30s: %11lf s\n\n",
-//          " Copy Compute Overlap",
-//          analysis.getRealTime( stats.getStats()[STAT_OFLD_COMPUTE_TRANSFER_OVERLAP_TIME] ) );
-//      }
-//      else
-//      {
-//        fprintf( sFile, "  No overlap between copy and compute tasks!\n\n" );
-//      }
     }
-
+    
     if( sFile )
     {
       fclose( sFile );
-
-      // print summary file to console
-      ifstream fin( sFileName );
-      string temp;
-      while( getline( fin, temp ) )
-      {
-        std::cerr << temp << std::endl;
-      }
-      fin.close();
     }
+  }
+}
+
+// print summary file to console
+void
+Runner::printToStdout()
+{
+  if ( mpiRank == 0 )
+  {  
+    std::string sFileName = Parser::getInstance().getSummaryFileName();
+    
+    ifstream fin( sFileName );
+    string temp;
+    while( getline( fin, temp ) )
+    {
+      std::cerr << temp << std::endl;
+    }
+    fin.close();
   }
 }

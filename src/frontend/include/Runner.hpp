@@ -52,13 +52,19 @@ namespace casita
      runAnalysis( EventStream::SortedGraphNodeList& allNodes );
 
      void
-     printAllActivities();
+     writeActivityRating();
 
      void
      mergeActivityGroups();
      
      void
      mergeStatistics();
+     
+     void
+     writeStatistics();
+     
+     void
+     printToStdout();
 
    private:
      int mpiRank;
