@@ -428,7 +428,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     
     summaryFile << std::setw(44) << std::left << "- Total analysis time: " 
                 << std::right << std::setw(12)
-                << ( (float) clock() + time_start ) / CLOCKS_PER_SEC 
+                << ( (float) clock() - time_start ) / CLOCKS_PER_SEC 
                 << std::setw(4) << " sec" << std::endl;
    
     // Time consumption output for individual analysis steps
