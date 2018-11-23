@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2017,
+ * Copyright (c) 2017, 2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -226,13 +226,40 @@ OTF2DefinitionHandler::getRegionInfo( const uint32_t regionRef )
  * @return string object containing the name of the region
  */
 const char*
-OTF2DefinitionHandler::getRegionName( uint32_t id )
+OTF2DefinitionHandler::getRegionName( uint32_t id ) const
 {
   std::map< uint32_t, RegionInfo >::const_iterator iter =
     regionInfoMap.find( id );
   if ( iter != regionInfoMap.end() )
   {
     return iter->second.name;
+  }
+  else
+  {
+    return NULL;
+  }
+}
+
+void
+OTF2DefinitionHandler::addLocationInfo( const uint64_t mpiRank, const char* nodeName )
+{
+  this->locationInfoMap[ mpiRank ] = nodeName;
+}
+
+/**
+ * Get the name of the MPI rank.
+ * 
+ * @param mpiRank MPI rank
+ * @return string object containing the name of the node it is executed on
+ */
+const char*
+OTF2DefinitionHandler::getNodeName( const int mpiRank ) const
+{
+  std::map< uint64_t, const char* >::const_iterator iter =
+    locationInfoMap.find( mpiRank );
+  if ( iter != locationInfoMap.end() )
+  {
+    return iter->second;
   }
   else
   {

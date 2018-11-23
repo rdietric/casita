@@ -2048,8 +2048,10 @@ Runner::writeActivityRating()
                  analysis.getRealTime( definitions.getTraceLength() )
                * 100
             ); 
-    fprintf( sFile, "%47c %lf s on rank %d (max. waiting time)\n", ' ',
-             analysis.getRealTime( this->maxWaitingTime ), this->maxWtimeRank );
+    
+    fprintf( sFile, "%47c %lf s on rank %d (max) - %s\n", ' ',
+             analysis.getRealTime( this->maxWaitingTime ), this->maxWtimeRank,
+             this->definitions.getNodeName( this->maxWtimeRank ) );
               
     fprintf( sFile, "\nPattern summary:\n" );
             
@@ -2292,9 +2294,9 @@ Runner::printToStdout()
 {
   if ( mpiRank == 0 )
   {  
-   const char* sFileName = Parser::getInstance().getSummaryFileName().c_str();
+    string sFileName = Parser::getInstance().getSummaryFileName();
     
-    ifstream fin( sFileName );
+    ifstream fin( sFileName.c_str() );
     string temp;
     while( getline( fin, temp ) )
     {

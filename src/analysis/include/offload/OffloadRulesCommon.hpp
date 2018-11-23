@@ -40,7 +40,7 @@ namespace casita
       // return false, if we found a process start node or a sync device or 
       // enqueue kernel leave node
       if ( node->isProcess() || ( node->isLeave() && 
-                                  ( node->isOffloadWaitAll() || 
+                                  ( /*node->isOffloadWaitAll() ||*/ 
                                     node->isOffloadEnqueueKernel() ) ) )
       {
         return false;
