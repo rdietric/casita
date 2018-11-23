@@ -393,14 +393,14 @@ OTF2TraceReader::readDefinitions()
     global_def_callbacks, &OTF2_GlobalDefReaderCallback_Location );
   
   // register for location properties, e.g. to detect CUDA null stream
-  OTF2_GlobalDefReaderCallbacks_SetLocationPropertyCallback(
+  /*OTF2_GlobalDefReaderCallbacks_SetLocationPropertyCallback(
     global_def_callbacks, &OTF2_GlobalDefReaderCallback_LocationProperty );
   
   OTF2_GlobalDefReaderCallbacks_SetLocationGroupCallback( 
     global_def_callbacks, &OTF2_GlobalDefReaderCallback_LocationGroup );
   
   OTF2_GlobalDefReaderCallbacks_SetSystemTreeNodeCallback(
-    global_def_callbacks, &OTF2_GlobalDefReaderCallback_SystemTreeNode );
+    global_def_callbacks, &OTF2_GlobalDefReaderCallback_SystemTreeNode );*/
   
 /*
   OTF2_GlobalDefReaderCallbacks_SetLocationGroupCallback(

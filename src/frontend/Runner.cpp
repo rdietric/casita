@@ -2292,7 +2292,7 @@ Runner::printToStdout()
 {
   if ( mpiRank == 0 )
   {  
-   char* sFileName = Parser::getInstance().getSummaryFileName().c_str();
+   const char* sFileName = Parser::getInstance().getSummaryFileName().c_str();
     
     ifstream fin( sFileName );
     string temp;
