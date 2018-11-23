@@ -420,7 +420,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     ofstream summaryFile;
     std::string sFileName = Parser::getInstance().getSummaryFileName();
     
-    summaryFile.open( sFileName );
+    summaryFile.open( sFileName.c_str() );
    
     summaryFile.precision(6);
     summaryFile << std::fixed;
@@ -2292,7 +2292,7 @@ Runner::printToStdout()
 {
   if ( mpiRank == 0 )
   {  
-    std::string sFileName = Parser::getInstance().getSummaryFileName();
+   char* sFileName = Parser::getInstance().getSummaryFileName().c_str();
     
     ifstream fin( sFileName );
     string temp;

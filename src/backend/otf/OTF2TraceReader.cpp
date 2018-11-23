@@ -394,7 +394,13 @@ OTF2TraceReader::readDefinitions()
   
   // register for location properties, e.g. to detect CUDA null stream
   OTF2_GlobalDefReaderCallbacks_SetLocationPropertyCallback(
-    global_def_callbacks, OTF2_GlobalDefReaderCallback_LocationProperty );
+    global_def_callbacks, &OTF2_GlobalDefReaderCallback_LocationProperty );
+  
+  OTF2_GlobalDefReaderCallbacks_SetLocationGroupCallback( 
+    global_def_callbacks, &OTF2_GlobalDefReaderCallback_LocationGroup );
+  
+  OTF2_GlobalDefReaderCallbacks_SetSystemTreeNodeCallback(
+    global_def_callbacks, &OTF2_GlobalDefReaderCallback_SystemTreeNode );
   
 /*
   OTF2_GlobalDefReaderCallbacks_SetLocationGroupCallback(
@@ -551,7 +557,6 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationProperty(
   return OTF2_CALLBACK_SUCCESS;
 }
 
-/*
 OTF2_CallbackCode
 OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationGroup( 
                                 void*                  userData,
@@ -561,16 +566,29 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationGroup(
                                 OTF2_SystemTreeNodeRef systemTreeParent)
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
-  int phase           = tr->getProcessingPhase();
 
-  if ( phase == 1 && locationGroupType == OTF2_LOCATION_GROUP_TYPE_PROCESS )
+  // if this is a process
+  if ( locationGroupType == OTF2_LOCATION_GROUP_TYPE_PROCESS )
   {
     //tr->
   }
 
   return OTF2_CALLBACK_SUCCESS;
 }
-*/
+
+OTF2_CallbackCode
+OTF2TraceReader::OTF2_GlobalDefReaderCallback_SystemTreeNode( 
+                                              void*                  userData,
+                                              OTF2_SystemTreeNodeRef self,
+                                              OTF2_StringRef         name,
+                                              OTF2_StringRef         className,
+                                              OTF2_SystemTreeNodeRef parent )
+{
+  OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+  
+  return OTF2_CALLBACK_SUCCESS;
+}
+
 
 /**
  * Callback for OTF2 group definitions (such as OPENCL, PTHREAD, etc. ).

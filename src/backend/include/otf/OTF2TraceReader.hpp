@@ -336,16 +336,7 @@ namespace casita
                                                     uint64_t timerResolution,
                                                     uint64_t globalOffset,
                                                     uint64_t traceLength );
-/*
-      static OTF2_CallbackCode
-      OTF2_GlobalDefReaderCallback_LocationGroup( void*                 userData,
-                                                  OTF2_LocationGroupRef self,
-                                                  OTF2_StringRef        name,
-                                                  OTF2_LocationGroupType
-                                                  locationGroupType,
-                                                  OTF2_SystemTreeNodeRef
-                                                  systemTreeParent );
-*/
+      
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_Location( void*             userData,
                                              OTF2_LocationRef  self,
@@ -362,6 +353,14 @@ namespace casita
                                                   OTF2_StringRef      name,
                                                   OTF2_Type           type,
                                                   OTF2_AttributeValue value );
+      
+      static OTF2_CallbackCode
+      OTF2_GlobalDefReaderCallback_LocationGroup( 
+                                      void*                  userData,
+                                      OTF2_LocationGroupRef  self,
+                                      OTF2_StringRef         name,
+                                      OTF2_LocationGroupType locationGroupType,
+                                      OTF2_SystemTreeNodeRef systemTreeParent );
 
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_Group( void*           userData,
