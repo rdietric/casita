@@ -92,7 +92,11 @@ namespace casita
      std::pair< uint64_t, uint64_t > criticalPathStart; //* < stream ID, time >
      std::pair< uint64_t, uint64_t > criticalPathEnd;   // < stream ID, time >
      
-     uint64_t total_events_read;
+     uint64_t totalEventsRead;
+     
+     // \todo: only used on rank 0
+     uint64_t maxWaitingTime;
+     int maxWtimeRank;
      
      /**
       * The function that triggers trace reading, analysis and writing.

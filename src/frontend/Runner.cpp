@@ -73,7 +73,7 @@ Runner::Runner( int mpiRank, int mpiSize ) :
     criticalPathEnd.second = 0;
   }
   
-  total_events_read = 0;
+  totalEventsRead = 0;
 }
 
 Runner::~Runner()
@@ -274,7 +274,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     uint64_t events_read = 0;
     events_available = traceReader->readEvents( &events_read );
 
-    total_events_read += events_read;
+    totalEventsRead += events_read;
     events_to_read += events_read;
     
     time_events_read += clock() - time_tmp;
@@ -462,10 +462,10 @@ Runner::processTrace( OTF2TraceReader* traceReader )
                ( (float) time_events_flush ) / CLOCKS_PER_SEC );
   }
   
-  analysis.getStatistics().setActivityCount( STAT_TOTAL_TRACE_EVENTS, total_events_read );
+  analysis.getStatistics().setActivityCount( STAT_TOTAL_TRACE_EVENTS, totalEventsRead );
   UTILS_MSG( options.verbose >= VERBOSE_SOME, 
              "  [%u] Total number of processed events (per process): %" PRIu64, 
-             mpiRank, total_events_read );
+             mpiRank, totalEventsRead );
   
   // add number of host streams to statistics to get a total number for summary output
   analysis.getStatistics().setActivityCount( STAT_HOST_STREAMS, 
@@ -482,7 +482,12 @@ Runner::mergeActivityGroups()
   
   assert( activityGroupMap );
 
-  double globalBlame      = 0;
+  // waiting time on each process
+  uint64_t processWaitingTime = 0;
+  
+  // total blame over all processes
+  double   globalBlame        = 0;
+  
   uint64_t lengthCritPath = globalLengthCP;
   
   /*UTILS_OUT( "CP length (%llu - %llu) = %llu",
@@ -502,8 +507,14 @@ Runner::mergeActivityGroups()
     groupIter->second.fractionCP =
       (double)( groupIter->second.totalDurationOnCP ) / (double)lengthCritPath;
     
-    // add the activity groups blame to the total global blame
-    globalBlame += groupIter->second.totalBlame;
+    if ( 0 == mpiRank )
+    {
+      // add the activity groups blame to the total global blame
+      globalBlame += groupIter->second.totalBlame;
+
+      // sum up waiting time of individual regions for rank 0
+      processWaitingTime += groupIter->second.waitingTime;
+    }
   }
 
   // ************* Phase 2: MPI all-reduce *************** //
@@ -522,6 +533,10 @@ Runner::mergeActivityGroups()
                            numRegionsRecv,  1, MPI_UINT32_T, 
                            0, MPI_COMM_WORLD ) );
     
+    // initially assign rank 0 with its waiting time
+    this->maxWaitingTime = processWaitingTime;
+    this->maxWtimeRank = 0;
+    
     // receive from all other MPI streams
     for ( int rank = 1; rank < mpiSize; ++rank )
     {
@@ -539,6 +554,9 @@ Runner::mergeActivityGroups()
                    numRegions * sizeof( OTF2ParallelTraceWriter::ActivityGroup ),
                    MPI_BYTE, rank, MPI_ENTRIES_TAG,
                    MPI_COMM_WORLD, MPI_STATUS_IGNORE ) );
+        
+        // total waiting time per process
+        processWaitingTime = 0;
 
         // combine with own regions and generate a global metrics
         OTF2ParallelTraceWriter::ActivityGroupMap::iterator groupIter;
@@ -584,15 +602,28 @@ Runner::mergeActivityGroups()
             }
           }
 
-          // add the region's blame to overall blame
-          globalBlame += group->totalBlame;
+          // sum up over all regions
+          {
+            // add the region's blame to overall blame
+            globalBlame += group->totalBlame;
+
+            // get the waiting time per process (\todo: could be done by each process)
+            processWaitingTime += group->waitingTime;
+          }
+        }
+        
+        // find rank with maximum waiting time
+        if( processWaitingTime > maxWaitingTime )
+        {
+          maxWaitingTime = processWaitingTime;
+          maxWtimeRank = rank;
         }
 
         delete[]buf;
       }
     }
 
-    // for all activity groups: set the global CP fraction
+    // set the global CP fraction for all program regions
     for ( OTF2ParallelTraceWriter::ActivityGroupMap::iterator groupIter =
             activityGroupMap->begin();
           groupIter != activityGroupMap->end(); ++groupIter )
@@ -2017,7 +2048,9 @@ Runner::writeActivityRating()
                  analysis.getRealTime( definitions.getTraceLength() )
                * 100
             ); 
-      
+    fprintf( sFile, "%47c %lf s on rank %d (max. waiting time)\n", ' ',
+             analysis.getRealTime( this->maxWaitingTime ), this->maxWtimeRank );
+              
     fprintf( sFile, "\nPattern summary:\n" );
             
     //// MPI ////
