@@ -96,7 +96,9 @@ namespace casita
      
      // \todo: only used on rank 0
      uint64_t maxWaitingTime;
+     uint64_t minWaitingTime;
      int maxWtimeRank;
+     int minWtimeRank;
      
      /**
       * The function that triggers trace reading, analysis and writing.

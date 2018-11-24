@@ -535,7 +535,9 @@ Runner::mergeActivityGroups()
     
     // initially assign rank 0 with its waiting time
     this->maxWaitingTime = processWaitingTime;
+    this->minWaitingTime = processWaitingTime;
     this->maxWtimeRank = 0;
+    this->minWtimeRank = 0;
     
     // receive from all other MPI streams
     for ( int rank = 1; rank < mpiSize; ++rank )
@@ -617,6 +619,13 @@ Runner::mergeActivityGroups()
         {
           maxWaitingTime = processWaitingTime;
           maxWtimeRank = rank;
+        }
+        
+        // find rank with minimum waiting time
+        if( processWaitingTime < minWaitingTime )
+        {
+          minWaitingTime = processWaitingTime;
+          minWtimeRank = rank;
         }
 
         delete[]buf;
@@ -2049,6 +2058,9 @@ Runner::writeActivityRating()
                * 100
             ); 
     
+    fprintf( sFile, "%47c %lf s on rank %d (min) - %s\n", ' ',
+             analysis.getRealTime( this->minWaitingTime ), this->minWtimeRank,
+             this->definitions.getNodeName( this->minWtimeRank ) );
     fprintf( sFile, "%47c %lf s on rank %d (max) - %s\n", ' ',
              analysis.getRealTime( this->maxWaitingTime ), this->maxWtimeRank,
              this->definitions.getNodeName( this->maxWtimeRank ) );
