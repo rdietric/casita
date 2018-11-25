@@ -98,7 +98,7 @@ Runner::prepareAnalysis()
   //OTF2DefinitionHandler* defHandler = new OTF2DefinitionHandler();
   callbacks.setDefinitionHandler( &definitions );
 
-  UTILS_MSG( mpiRank == 0, "Reading %s", options.filename.c_str() );
+  UTILS_MSG( mpiRank == 0, "Reading %s", options.inFileName.c_str() );
 
   OTF2TraceReader* traceReader = 
     new OTF2TraceReader( &callbacks, &definitions, mpiRank, mpiSize );
@@ -128,7 +128,7 @@ Runner::prepareAnalysis()
   //traceReader->handleRmaOpCompleteBlocking = CallbackHandler::handleRmaOpCompleteBlocking;
   traceReader->handleThreadFork       = CallbackHandler::handleThreadFork;
 
-  traceReader->open( options.filename, 10 );
+  traceReader->open( options.inFileName, 10 );
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
              "[0] Reading definitions ... " );
   

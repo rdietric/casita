@@ -25,9 +25,9 @@ namespace casita
 {
  typedef struct
  {
-   string      filename;
+   string      inFileName;
    bool        createTraceFile;
-   string      outOtfFile;
+   string      outFileName;
    bool        replaceCASITAoutput;
    bool        createRatingCSV;
    size_t      topX;

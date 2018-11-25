@@ -161,7 +161,7 @@ OTF2ParallelTraceWriter::open()
   
   // open OTF2 input trace
   const char* originalFilename = 
-    Parser::getOptions().filename.c_str();
+    Parser::getOptions().inFileName.c_str();
 
   otf2Reader = OTF2_Reader_Open( originalFilename );
 

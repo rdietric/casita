@@ -25,6 +25,14 @@
 
 namespace casita
 {
+  static bool replaceSubstr(std::string& str, const std::string& from, const std::string& to) {
+    size_t start_pos = str.rfind(from);
+    if(start_pos == std::string::npos)
+        return false;
+    str.replace(start_pos, from.length(), to);
+    return true;
+  }
+  
   Parser::Parser() { }
 
   Parser::Parser( Parser& ) { }
@@ -130,34 +138,42 @@ namespace casita
       // if the first argument does not start with a dash interpret as input file
       if( i == 1 && opt.find_first_of( "-" ) != 0 )
       {
-        options.filename = string( argv[1] );
+        options.inFileName = string( argv[1] );
       }
       else if( opt.compare( string( "-i" ) ) == 0 ||
                opt.compare( string( "--input" ) ) == 0 )
       {
         if( ++i < argc && argv[i][0] != '-' )
         {
-          options.filename = string( argv[i] );
+          options.inFileName = string( argv[i] );
         }
       }
       else if( opt.find( "--input=" ) != string::npos )
       {
-        options.filename = opt.erase( 0, string( "--input=" ).length() );
+        options.inFileName = opt.erase( 0, string( "--input=" ).length() );
       }
 
         //  output file
       else if( opt.compare( string( "-o" ) ) == 0 ||
                opt.compare( string( "--output" ) ) == 0 )
       {
+        // if argument to ouptput does not start with a dash, interpret it as 
+        // output trace file name
         if( ++i < argc && argv[i][0] != '-' )
         {
-          options.outOtfFile = string( argv[i] );
-          options.createTraceFile = true;
+          options.outFileName = string( argv[i] );
         }
+        else
+        {
+          i--;
+        }
+        
+        // if no output file is given use the default (casita.otf2 next to traces.otf2)
+        options.createTraceFile = true;
       }
       else if( opt.find( "--output=" ) != string::npos )
       {
-        options.outOtfFile = opt.erase( 0, string( "--output=" ).length() );
+        options.outFileName = opt.erase( 0, string( "--output=" ).length() );
         options.createTraceFile = true;
       }
       
@@ -338,16 +354,16 @@ namespace casita
       }
     }
 
-    if( options.filename.length() == 0 )
+    if( options.inFileName.length() == 0 )
     {
       cout << "No input file specified" << endl;
       return false;
     }
     
-    if ( options.filename.find( ".otf2" ) == string::npos )
+    if ( options.inFileName.find( ".otf2" ) == string::npos )
     {
       throw RTException( "No OTF2 input file specified (%s)", 
-                         options.filename.c_str() );
+                         options.inFileName.c_str() );
     }
 
     return true;
@@ -377,7 +393,7 @@ namespace casita
       string traceEvtDir = pathToFile;
       if( !pathToFile.empty() )
       {
-        traceEvtDir += string( "/");
+        traceEvtDir += string( "/" );
       }
       
       traceEvtDir += outArchiveName;
@@ -475,19 +491,39 @@ namespace casita
   void
   Parser::setOutputDirAndFile()
   {
-    string otfFilename = options.outOtfFile;
+    // do not allow to replace the original trace
+    if( options.outFileName == options.inFileName )
+    {
+      UTILS_WARNING( "The input trace cannot be replaced! "
+                     "Using default name 'casita' instead." );
+      options.outFileName = "casita.otf2";
+    }
     
-    size_t charPos = otfFilename.find_last_of("/");
+    // if the out file name is not given simply use the input file and replace 
+    // the last occurrence of traces with casita
+    if( options.outFileName.empty() )
+    {
+      options.outFileName = options.inFileName;
+      if( !replaceSubstr( options.outFileName, "traces", "casita" ) )
+      {
+        options.outFileName = "casita.otf2";
+        UTILS_WARNING( "Writing output trace in current working directory!" );
+      }
+    }
+    
+    
+    
+    size_t charPos = options.outFileName.find_last_of("/");
     
     // if only a file name is given
     if( charPos == string::npos )
     {
-      outArchiveName = otfFilename;
+      outArchiveName = options.outFileName;
     }
     else // path (relative or absolute) with directory given
     {
-      pathToFile     = otfFilename.substr( 0, charPos );
-      outArchiveName = otfFilename.substr( charPos + 1 );
+      pathToFile     = options.outFileName.substr( 0, charPos );
+      outArchiveName = options.outFileName.substr( charPos + 1 );
     }
     
     // remove the .otf2 extension from OTF2 archive name
@@ -508,11 +544,11 @@ namespace casita
   {
     options.createTraceFile = false;
     options.eventsProcessed = 0;
-    options.filename = "";
+    options.inFileName = "";
     options.mergeActivities = true;
     options.noErrors = false;
     options.analysisInterval = 64;
-    options.outOtfFile = "casita.otf2";
+    //options.outOtfFile = "casita.otf2";
     options.replaceCASITAoutput = false;
     options.printCriticalPath = false;
     options.cpaLoopCheck = false;
