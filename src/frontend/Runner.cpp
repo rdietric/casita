@@ -1891,26 +1891,29 @@ Runner::writeActivityRating()
       
     // print rating in CSV file (file has to be declared in this scope for closing it)
     FILE *ratingFile;
-    if (options.createRatingCSV){
+    if ( options.createRatingCSV ){
       
       UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
                  "[0] generate rating as csv file" );
 
-      string rFileName = Parser::getInstance().getPathToFile() 
-                       + string( "/" ) + Parser::getInstance().getOutArchiveName()
-                       + string( "_rating.csv" );
+      string rFileName = Parser::getInstance().getRatingFileName();
       
       ratingFile = fopen( rFileName.c_str(), "w" );
-      fprintf(ratingFile, "Region;Calls;Time [s];Time on CP [s];"
-                           "CP Ratio [%%];Blame [s];Blame Ratio [%%];"
-                           "Blame on CP [s]" );
-      
-      for(int i = 0; i < REASON_NUMBER; i++ )
+
+      // if rating file was successfully opened
+      if( ratingFile )
       {
-        fprintf(ratingFile, "; blame for %s [%%]", casita::typeStrTableBlameReason[ i ].str );
-      }
-      
-      fprintf(ratingFile, "\n" );      
+        fprintf(ratingFile, "Region;Calls;Time [s];Time on CP [s];"
+                            "CP Ratio [%%];Blame [s];Blame Ratio [%%];"
+                            "Blame on CP [s]" );
+
+       for(int i = 0; i < REASON_NUMBER; i++ )
+       {
+         fprintf(ratingFile, "; blame for %s [%%]", casita::typeStrTableBlameReason[ i ].str );
+       }
+
+       fprintf(ratingFile, "\n" ); 
+      }    
     }
     
     uint32_t sumInstances   = 0;
@@ -1989,7 +1992,7 @@ Runner::writeActivityRating()
         ++ctr;
       }
 
-      if( options.createRatingCSV )
+      if( ratingFile && options.createRatingCSV )
       {
         fprintf( ratingFile, "%s;%u;%lf;%lf;%lf;%lf;%lf;%lf",
                  definitions.getRegionName( iter->functionId ),
@@ -2015,7 +2018,7 @@ Runner::writeActivityRating()
       sumWaitingTime += iter->waitingTime;
     }
     
-    if (options.createRatingCSV)
+    if( ratingFile && options.createRatingCSV )
     {
       fclose(ratingFile);
     }

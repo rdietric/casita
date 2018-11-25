@@ -185,7 +185,7 @@ namespace casita
                 blameStartNode = newBlameStartNode;
               }
               
-              // if blame start node is a launch leave no walkback is required
+              // if blame start node is a launch leave, no backwards walk is required
               if ( blameStartNode->isLeave() && 
                    blameStartNode->isOffloadEnqueueKernel() )
               {

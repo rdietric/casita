@@ -92,6 +92,12 @@ namespace casita
      }
      
      string
+     getRatingFileName()
+     {
+       return pathToFile + string( "/" ) + outArchiveName + string( "_rating.csv" );
+     }
+     
+     string
      getSummaryFileName()
      {
        return pathToFile + string( "/" ) + outArchiveName + string( "_summary.txt" );

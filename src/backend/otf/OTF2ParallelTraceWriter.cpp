@@ -134,10 +134,6 @@ OTF2ParallelTraceWriter::~OTF2ParallelTraceWriter()
 void
 OTF2ParallelTraceWriter::open()
 {
-  // initialize OTF2 output members
-  std::string outputFilename = Parser::getInstance().getOutArchiveName();
-  std::string pathToFile     = Parser::getInstance().getPathToFile();
-  
   writeToFile = Parser::getOptions().createTraceFile;
   
   // open OTF2 archive for writing and set flush and collective callbacks
@@ -147,7 +143,8 @@ OTF2ParallelTraceWriter::open()
     MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
     // open new otf2 file
-    otf2Archive = OTF2_Archive_Open( pathToFile.c_str(), outputFilename.c_str(),
+    otf2Archive = OTF2_Archive_Open( Parser::getInstance().getPathToFile().c_str(), 
+                                     Parser::getInstance().getOutArchiveName().c_str(),
                                      OTF2_FILEMODE_WRITE, 
                                      1024 * 1024, 4 * 1024 * 1024, 
                                      OTF2_SUBSTRATE_POSIX,

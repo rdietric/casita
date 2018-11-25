@@ -386,7 +386,7 @@ namespace casita
     }
 
     // if all arguments have been parsed and an OTF2 output shall be generated
-    if( success && options.createTraceFile )
+    if( success && ( options.createTraceFile || options.createRatingCSV ) )
     {
       setOutputDirAndFile();
       
@@ -510,8 +510,6 @@ namespace casita
         UTILS_WARNING( "Writing output trace in current working directory!" );
       }
     }
-    
-    
     
     size_t charPos = options.outFileName.find_last_of("/");
     
