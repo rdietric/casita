@@ -1750,6 +1750,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
           }
         }
         
+        // \todo: detect late synchronous transfer
         
       } // END: special handling for offloading
       else if( currentNode->isMPI() /*&& currentNode->isLeave()*/ )

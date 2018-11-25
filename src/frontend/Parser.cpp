@@ -485,8 +485,8 @@ namespace casita
     return true;
   }
 
-  /*
-   * 
+  /**
+   * Parse the output file. 
    */
   void
   Parser::setOutputDirAndFile()

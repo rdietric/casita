@@ -113,7 +113,7 @@ namespace casita
                  pIter != analysis->getHostStreams().end(); ++pIter )
             {
               EventStream* hostStream = *pIter;
-   
+
               /* create an internal node, which allows for more precise blaming
               GraphNode* virtualNode = analysis->GraphEngine::addNewGraphNode( 
                 idleEndTime, hostStream, NULL, PARADIGM_CPU, RECORD_SINGLE, 0 );
@@ -185,10 +185,9 @@ namespace casita
                 blameStartNode = newBlameStartNode;
               }
               
-              // if blame start node is a device synchr. leave or a launch leave, 
-              // no walkback is required
-              if ( blameStartNode->isLeave() && ( blameStartNode->isOffloadWait() ||
-                   blameStartNode->isOffloadEnqueueKernel() ) )
+              // if blame start node is a launch leave no walkback is required
+              if ( blameStartNode->isLeave() && 
+                   blameStartNode->isOffloadEnqueueKernel() )
               {
                 totalTimeToBlame = openRegionTime;
               }
