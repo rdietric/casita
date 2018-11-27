@@ -137,6 +137,19 @@ Runner::prepareAnalysis()
   {
     throw RTException( "Error while reading definitions!" );
   }
+  
+  // set the timer resolution in the analysis engine
+  uint64_t timerResolution = definitions.getTimerResolution();
+  analysis.setTimerResolution( timerResolution );
+  UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+             "[0] Timer resolution = %llu",
+             (long long unsigned)( timerResolution ) );
+
+  if ( timerResolution < 1000000000 ) // 1GHz
+  {
+    UTILS_MSG( mpiRank == 0, 
+               "Warning: your timer resolution is very low (< 1 GHz)!" );
+  }
 
   // OTF2 definitions have been checked for existence of CUDA. OpenCL, and OpenMP
   // MPI currently is not checked and assumed to be available
@@ -160,19 +173,6 @@ Runner::prepareAnalysis()
   
   // create MPI communicators according to the OTF2 trace definitions
   analysis.getMPIAnalysis().createMPICommunicatorsFromMap();
-
-  // set the timer resolution in the analysis engine
-  uint64_t timerResolution = definitions.getTimerResolution();
-  analysis.setTimerResolution( timerResolution );
-  UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-             "[0] Timer resolution = %llu",
-             (long long unsigned)( timerResolution ) );
-
-  if ( timerResolution < 1000000000 ) // 1GHz
-  {
-    UTILS_MSG( mpiRank == 0, 
-               "Warning: your timer resolution is very low (< 1 GHz)!" );
-  }
 
   // setup reading events
   traceReader->setupEventReader( options.ignoreAsyncMpi );

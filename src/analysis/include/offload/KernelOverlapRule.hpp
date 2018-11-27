@@ -134,9 +134,8 @@ namespace casita
               uint64_t oLaunchEndTime = oLaunchLeave->getTime();
               if( oKernelStartTime > oLaunchEndTime )
               {
-                AnalysisEngine* analysis = ofldAnalysis->getAnalysisEngine();
-                double oKernelStartDelay = 
-                  analysis->getRealTime( oKernelStartTime - oLaunchEndTime );
+                //AnalysisEngine* analysis = ofldAnalysis->getAnalysisEngine();
+                uint64_t oKernelStartDelay = oKernelStartTime - oLaunchEndTime;
                 
                 /*UTILS_MSG( analysis->getMPIRank() == 0 && 
                            analysis->getRealTime( kernelNode->getTime() ) > 53.328 &&
@@ -146,7 +145,7 @@ namespace casita
 
                 // \todo: if the startup delay is more than 500us, 
                 //        a delayed start is assumed
-                if( oKernelStartDelay > 0.0005 )
+                if( oKernelStartDelay > ofldAnalysis->delay500us )
                 {
                   bool addEdge = false;
 

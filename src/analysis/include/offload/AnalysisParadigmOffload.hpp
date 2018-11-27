@@ -135,7 +135,10 @@ namespace casita
       GraphNode* oKernelEnter;
 
       //!< compute overlap interval start time
-      uint64_t overlapIntervalStart;      
+      uint64_t overlapIntervalStart;
+      
+      // 500us
+      uint64_t delay500us;
 
     private:
       void

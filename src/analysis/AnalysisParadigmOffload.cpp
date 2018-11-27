@@ -43,6 +43,9 @@ AnalysisParadigmOffload::AnalysisParadigmOffload( AnalysisEngine* analysisEngine
     addRule( new DeviceIdleRule( 2 ) );
     active_compute_tasks = 0;
     
+    // get a delay of 500us in ticks (avoids divisions)
+    delay500us = analysisEngine->getTimerResolution() * 0.0005; // 500us
+    
     //\todo: this rule should not depend on the DeviceIdleRule
     if( Parser::getInstance().getProgramOptions().linkKernels > 1 )
     {
@@ -892,11 +895,11 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelNode ) const
   //UTILS_OUT( "Create kernel dependency edges from %s", 
   //                 commonAnalysis->getNodeInfo( kernelEnter ).c_str() );
   
-  // get launch of last synchronized kernel
-  GraphNode* kernelLaunchEnter = ( GraphNode* ) kernelEnter->getLink();
-  
   while( true )
   {
+    // get launch of last synchronized kernel
+    GraphNode* kernelLaunchEnter = ( GraphNode* ) kernelEnter->getLink();
+  
     // get a preceding kernel via link left
     GraphNode* prevKernelLeave = kernelEnter->getLinkLeft();
     
@@ -921,15 +924,20 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelNode ) const
       break;
     }
     
+    uint64_t kernelStartDelay = kernelEnter->getTime() - kernelLaunchEnter->getTime();
+    uint64_t prevKernelSoloTime = kernelEnter->getTime() - prevKernelEnter->getTime();
+    
     //\todo: prevKernelEnter->getTime() can cause a segmentation fault
     //       probably because a kernel has been deleted during intermediate flush
     // if previous kernel starts after the current kernels launch enter
-    if( prevKernelEnter->getTime() > kernelLaunchEnter->getTime() )
+    if( prevKernelEnter->getTime() > kernelLaunchEnter->getTime() || 
+        ( kernelEnter->getTime() < prevKernelLeave->getTime() && 
+          kernelStartDelay > delay500us && prevKernelSoloTime > delay500us ) )
     {
       // create dependency edge
-//      UTILS_MSG( commonAnalysis->getMPIRank() == 0 && 
-//                 commonAnalysis->getRealTime( prevKernelEnter->getTime() ) > 78.975 &&
-//                 commonAnalysis->getRealTime( prevKernelEnter->getTime() ) < 78.98,
+//      UTILS_MSG( commonAnalysis->getMPIRank() == 3 && 
+//                 commonAnalysis->getRealTime( prevKernelEnter->getTime() ) > 4.3 &&
+//                 commonAnalysis->getRealTime( prevKernelEnter->getTime() ) < 4.42,
 //        "Create edge between kernels: %s -> %s", 
 //        commonAnalysis->getNodeInfo( prevKernelEnter ).c_str(),
 //        commonAnalysis->getNodeInfo( kernelEnter ).c_str());
