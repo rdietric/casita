@@ -2284,11 +2284,13 @@ Runner::writeActivityRating()
       }
       
       patternCount = stats.getStats()[STAT_OFLD_COMPUTE_OVERLAP_TIME];
-      if( patternCount )
+      if( patternCount ) 
       {
-        fprintf( sFile, " %-30.30s: %11lf s\n",
+        fprintf( sFile, " %-30.30s: %11lf s (%lf s per device)\n",
           " Compute overlap",
-          analysis.getRealTime( stats.getStats()[STAT_OFLD_COMPUTE_OVERLAP_TIME] ) );
+          analysis.getRealTime( stats.getStats()[STAT_OFLD_COMPUTE_OVERLAP_TIME] ),
+          analysis.getRealTime( stats.getStats()[STAT_OFLD_COMPUTE_OVERLAP_TIME] 
+            / stats.getActivityCounts()[ STAT_DEVICE_NUM ] ) );
       }
       else
       {
