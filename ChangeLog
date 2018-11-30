@@ -23,6 +23,7 @@ MISC
 - generate summary file
 - added Score-P user instrumentation to analyze CASITA's performance
 - reduced memory footprint by removing members from Node and Edge classes
+- improved merging of activity groups (program regions)
 
 
 ---------------------------------- CASITA 1.8 ----------------------------------
