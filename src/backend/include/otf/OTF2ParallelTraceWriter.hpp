@@ -66,8 +66,6 @@ namespace casita
         double   blame4[ REASON_NUMBER ]; //index is blame reason
         double   totalBlame;
         double   blameOnCP;
-        double   fractionCP;
-        double   fractionBlame;
       } ActivityGroup;
       
       // key: OTF2 region reference (function ID), value: activity group

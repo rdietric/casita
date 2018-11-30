@@ -58,6 +58,9 @@ namespace casita
      mergeActivityGroups();
      
      void
+     mergeActivityGroupsP2P();
+     
+     void
      mergeStatistics();
      
      void
@@ -94,11 +97,16 @@ namespace casita
      
      uint64_t totalEventsRead;
      
-     // \todo: only used on rank 0
+     /////// \todo: only used on rank 0 /////
      uint64_t maxWaitingTime;
      uint64_t minWaitingTime;
      int maxWtimeRank;
      int minWtimeRank;
+     
+     // total blame over all processes
+     double globalBlame;
+     
+     ////////////////////////////////////////
      
      /**
       * The function that triggers trace reading, analysis and writing.

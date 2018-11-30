@@ -147,6 +147,9 @@ namespace casita
       void
       addAllStats( uint64_t* stats );
       
+      void
+      setAllStats( uint64_t* stats );
+      
       uint64_t*
       getStats();
       
