@@ -752,7 +752,7 @@ OTF2ParallelTraceWriter::writeLocations( const uint64_t eventsToRead )
       // the following node is for MPI streams the atomic node of the MPI
       // collective (previously the leave node), which we do not want to write
       // but some special handling, e.g. for CP and blame is needed
-      while( (*currentNodeIter)->isAtomic() )
+      while( *currentNodeIter && (*currentNodeIter)->isAtomic() )
       {
         GraphNode* currentNode = *currentNodeIter;
         
