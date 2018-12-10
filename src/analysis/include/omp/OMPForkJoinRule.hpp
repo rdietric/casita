@@ -35,12 +35,12 @@ namespace casita
       bool
       apply( AnalysisParadigmOMP* analysis, GraphNode* node )
       {
-        if ( !node->isOMPForkJoinRegion() )
+        if ( !node->isOMPForkJoin() )
         {
           return false;
         }
         
-        if( node->isOMPForkJoinRegion() && node->isEnter())
+        if( node->isOMPForkJoin() && node->isEnter())
         {
           analysis->pushFork( node );
           
@@ -50,7 +50,7 @@ namespace casita
         ////////////////////////////////////////////////////////////////////////
         // this is an OpenMP join node
         
-        AnalysisEngine* analysisEngine = analysis->getCommon();
+        AnalysisEngine* analysisEngine = analysis->getAnalysisEngine();
         
         analysisEngine->getStatistics().countActivity( STAT_OMP_JOIN );
         
@@ -88,13 +88,16 @@ namespace casita
                 streams.begin(); pIter != streams.end(); ++pIter )
         {
           EventStream* p      = *pIter;
-          GraphNode*   kernel = analysis->getOmpCompute( p->getId( ) );
+          GraphNode*   kernel = analysis->getOmpCompute( p->getId() );
+          
+          // no edge on the same stream needed
           if ( ( kernel != NULL ) && ( kernel->getStreamId() != node->getStreamId( ) ) )
           {
             analysisEngine->newEdge( kernel, node );
           }
 
-          analysis->setOmpCompute( NULL, p->getId( ) );
+          // set the last OpenMP compute node on this stream to NULL (joined)
+          analysis->setOmpCompute( NULL, p->getId() );
         }
 
         // close forkjoin

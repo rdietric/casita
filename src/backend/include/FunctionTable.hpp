@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -491,7 +491,7 @@ namespace casita
              switch ( descr->functionType )
              {
                case OFLD_BLOCKING_DATA:
-                 descr->functionType |= OFLD_WAIT_ALL | OFLD_WAIT;
+                 descr->functionType |= OFLD_WAIT_ALL | OFLD_WAIT | OFLD_ENQUEUE_DATA;
                  return true;
                  
                case OFLD_WAIT_ALL:
@@ -501,7 +501,7 @@ namespace casita
                case OFLD_ASYNC_DATA:
                  if( deviceNullStreamOnly )
                  {
-                   descr->functionType |= OFLD_WAIT_ALL | OFLD_WAIT | OFLD_BLOCKING_DATA;
+                   descr->functionType |= OFLD_WAIT_ALL | OFLD_WAIT | OFLD_BLOCKING_DATA | OFLD_ENQUEUE_DATA;
                    return true;
                  }
                  else
@@ -570,6 +570,10 @@ namespace casita
        {
          descr->paradigm = PARADIGM_OMP;
          
+         // search for directive only until @ (not the file name) 
+         char* directive_end = strchr( (char*)(name+6), '@' );
+         //printf("Directive %s -> %s\n", name+6, directive_end );
+         
          /*if ( strstr( name+5, "wait_barrier" ) ) // exclude wait_barrier
          {
            descr->functionType = OMP_MISC;
@@ -577,42 +581,56 @@ namespace casita
            return false;
          }
          else */
-         if ( strstr( name+6, "barrier" ) ) // this includes wait_barrier
+         char* directive = strstr( (char*)(name+6), "barrier" );
+         if( directive && directive < directive_end ) // this includes wait_barrier, implicit barrier
          {
            descr->functionType = OMP_SYNC;
          }
          else // not a barrier
          {
-           // target regions (ignore target data regions)
-           if ( strstr( name+6, "target" ) && strstr( name+13, "data" ) == NULL )
+           // target regions, but no target data regions
+           directive = strstr( (char*)(name+6), "target" );
+           if( directive && directive < directive_end && 
+               ( strstr( (char*)(name+13), "data" ) == NULL ||
+                 strstr( (char*)(name+13), "data" ) > directive_end ) )
            {
              descr->functionType = OMP_TARGET;
            }
-           else if ( strstr( name+6, "offloading flush" ) )
-           {
-             descr->functionType = OMP_TARGET_FLUSH;
-           }
            else
            {
-             // threads of a parallel region start with 
-             // OPARI2: parallel begin event || OMPT: implicit task begin event
-             if( strstr( name+6, "parallel" ) )
+             directive = strstr( (char*)(name+6), "offloading flush" );
+             if( directive && directive < directive_end )
              {
-               descr->functionType = OMP_PARALLEL;
-             }
-             else if( strstr( name+6, "implicit" ) && strstr( name+14, "task" ) )
-             {
-               descr->functionType = OMP_IMPLICIT_TASK;
+                descr->functionType = OMP_TARGET_FLUSH;
              }
              else
              {
-               descr->functionType = OMP_MISC;
-               descr->paradigm = PARADIGM_CPU;
-               return false;
+               // threads of a parallel region start with 
+               // OPARI2: parallel begin event || OMPT: implicit task begin event
+               directive = strstr( (char*)(name+6), "parallel" );
+               if( directive && directive < directive_end )
+               {
+                 descr->functionType = OMP_PARALLEL;
+               }
+               else 
+               {
+                 directive = strstr( (char*)(name+6), "implicit" );
+                 if( directive && directive < directive_end && 
+                     strstr( name+14, "task" ) && 
+                     strstr( name+14, "task" ) < directive_end )
+                 {
+                   descr->functionType = OMP_IMPLICIT_TASK;
+                 }
+                 else
+                 {
+                   descr->functionType = OMP_MISC;
+                   descr->paradigm = PARADIGM_CPU;
+                   return false;
+                 }
+               }
              }
            }
-          }
-
+         }
          return true;
        }
        

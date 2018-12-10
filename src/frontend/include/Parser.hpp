@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013 - 2014, 2016, 2017
+ * Copyright (c) 2013 - 2014, 2016 - 2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -25,15 +25,15 @@ namespace casita
 {
  typedef struct
  {
-   string      filename;
+   string      inFileName;
    bool        createTraceFile;
-   string      outOtfFile;
+   string      outFileName;
    bool        replaceCASITAoutput;
    bool        createRatingCSV;
    size_t      topX;
    string      predictionFilter;
    int         deviceIdle;
-   bool        linkKernels;
+   int         linkKernels;
    int         nullStream;
    bool        printCriticalPath;
    bool        cpaLoopCheck;
@@ -41,6 +41,8 @@ namespace casita
    bool        noErrors;
    bool        ignoreAsyncMpi;
    bool        ignoreOffload;
+   bool        blame4deviceIdle;
+   bool        extendedBlame;
    uint32_t    analysisInterval;
    int         verbose;
    int         eventsProcessed;
@@ -86,7 +88,19 @@ namespace casita
      string
      getPathToFile()
      {
-         return pathToFile;
+       return pathToFile;
+     }
+     
+     string
+     getRatingFileName()
+     {
+       return pathToFile + string( "/" ) + outArchiveName + string( "_rating.csv" );
+     }
+     
+     string
+     getSummaryFileName()
+     {
+       return pathToFile + string( "/" ) + outArchiveName + string( "_summary.txt" );
      }
 
    private:

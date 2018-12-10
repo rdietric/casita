@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2014, 2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -20,99 +20,77 @@
 
 namespace casita
 {
-
- enum EdgeProperties
- {
-   EDGE_NONE             = 0,
-   EDGE_IS_BLOCKING      = ( 1 << 0 ) // edge is a wait state
- };
-
+  
+ typedef std::map< BlameReason, double > BlameMap;
+  
  class Edge
  {
    public:
-     typedef std::map< uint32_t, uint64_t > TimeProfileMap;
-     typedef std::map< Paradigm, Edge* > ParadigmEdgeMap;
-
      Edge( GraphNode* start, GraphNode* end, uint64_t duration,
-           int properties, Paradigm edgeParadigm ) :
-       properties( EDGE_NONE )
+           bool blocking, Paradigm edgeParadigm ) :
+       startNode( start ),
+       endNode( end ),
+       blocking( blocking ),
+       paradigm( edgeParadigm )//,
+       //blame ( 0 )
      {
-       pair = std::make_pair( start, end );
        if ( isReverseEdge() )
        {
-         properties |= EDGE_IS_BLOCKING;
-         duration    = 0;
+         blocking = true;
+         duration = 0;
        }
 
-       this->cpuNodes     = 0;
-       this->blame        = 0;
-       this->properties   = properties;
-       this->edgeDuration = duration;
-       this->edgeWeight   = computeWeight( duration, isBlocking() );
-       this->edgeParadigm = edgeParadigm;
-       
-       if( start->getId() == 5122 && end->getId() == 5112 )
-       {
-         UTILS_MSG( start->getId() == 5122 && end->getId() == 5112,
-                  "xxxxxxxxx Create edge %s", this->getName().c_str() );
-       }
-       
+       this->duration = duration;      
      }
 
      bool
      hasEdgeType( Paradigm edgeParadigm ) const
      {
-       return edgeParadigm & this->edgeParadigm;
-     }
-
-     Paradigm
-     getEdgeType( ) const
-     {
-       return edgeParadigm;
+       return edgeParadigm & this->paradigm;
      }
 
      uint64_t
-     getDuration( ) const
+     getDuration() const
      {
-       return edgeDuration;
+       return this->duration;
      }
 
      uint64_t
-     getWeight( ) const
+     getWeight() const
      {
-       return edgeWeight;
+       return computeWeight( this->duration, this->blocking );
      }
 
      const std::string
-     getName( ) const
+     getName() const
      {
        std::stringstream name;
        
-       if( pair.first != NULL )
+       if( startNode != NULL )
        {
-         name << "[" << pair.first->getUniqueName() << ", ";
+         name << "[" << startNode->getUniqueName() << ", ";
        }
        
-       if( pair.second != NULL )
+       if( endNode != NULL )
        {
-         name << pair.second->getUniqueName() << ", (";
+         name << endNode->getUniqueName() << ", (";
        }
 
-       if ( edgeParadigm == PARADIGM_ALL )
+       if ( paradigm == PARADIGM_ALL )
        {
          name << "ALL";
        }
        else
        {
-         if ( edgeParadigm & PARADIGM_CUDA )
+         if ( paradigm & PARADIGM_CUDA )
          {
            name << "CUDA";
          }
-         if ( edgeParadigm & PARADIGM_MPI )
+         if ( paradigm & PARADIGM_MPI )
          {
            name << ",MPI";
          }
-         if ( edgeParadigm & PARADIGM_OMP )
+         if ( paradigm & PARADIGM_OMP )
          {
            name << ",OMP";
          }
@@ -129,7 +107,7 @@ namespace casita
          name << "(intra)";
        }
        
-       if( isBlocking() )
+       if( blocking )
        {
          name << " is blocking";
        }
@@ -141,155 +119,133 @@ namespace casita
 
        name << "]";
        
-       return name.str( );
+       return name.str();
      }
 
      bool
      isBlocking() const
      {
-       return properties & EDGE_IS_BLOCKING;
+       return this->blocking;
      }
 
      void
      makeBlocking()
      {
-       edgeWeight  = std::numeric_limits< uint64_t >::max();
-       properties |= EDGE_IS_BLOCKING;
+       this->blocking = true;
      }
      
      void
      unblock()
      {
-       properties &= !EDGE_IS_BLOCKING;
+       this->blocking = false;
+       
+       // reset duration
+       if( this->duration == 0)
+       {
+         if( startNode->getTime() > endNode->getTime() )
+         {
+           this->duration = startNode->getTime() - endNode->getTime();
+         }
+         else
+         {
+           this->duration = endNode->getTime() - startNode->getTime();
+         }
+       }
      }
 
      GraphNode*
      getStartNode() const
      {
-       return pair.first;
+       return startNode;
      }
 
      GraphNode*
      getEndNode() const
      {
-       return pair.second;
-     }
-
-     GraphNode::GraphNodePair&
-     getNodes()
-     {
-       return pair;
+       return endNode;
      }
 
      bool
      isReverseEdge() const
      {
-       return pair.first->getTime() > pair.second->getTime();
+       return startNode->getTime() > endNode->getTime();
      }
 
      bool
      isIntraStreamEdge() const
      {
-       return pair.first->getStreamId() == pair.second->getStreamId();
+       return startNode->getStreamId() == endNode->getStreamId();
      }
 
      bool
      isInterProcessEdge() const
      {
-       return pair.first->getStreamId() != pair.second->getStreamId();
+       return startNode->getStreamId() != endNode->getStreamId();
      }
-     
-     /**
-      * Determine whether this is an edge representing a region/function or 
-      * an edge between functions.
-      * 
-      * @return 
-      
-     bool
-     isRegion() const
-     {      
-       if( isIntraStreamEdge() )
-       {
-         // if either of the nodes is atomic this cannot be a region
-         if( pair.first->isAtomic() || pair.second->isAtomic() )
-         {
-           return false;
-         }
-         
-         bool result = false;
-         
-         // for forward edges
-         if( pair.first->isEnter() && pair.second->isLeave() )
-         {
-           result = true;
-         }
-         else
-         {
-           result = false;
-         }
-
-         // for reverse edges negate the result
-         if( isReverseEdge() )
-         {
-           return !result;
-         }
-       }
-       return false;
-     }*/
-
-     void
-     addCPUData( uint32_t nodes, uint64_t exclCPUEvtTime )
+          
+     void addBlame( double value, BlameReason type = REASON_UNCLASSIFIED )
      {
-       UTILS_ASSERT( cpuNodes == 0, "Can not set CPU data multiple times" );
-
-       if ( nodes > 0 )
+       BlameMap::iterator blameIt = this->blame.find( type );
+       if ( blameIt == this->blame.end() )
        {
-         cpuNodes = nodes;
-         cpuEvtExclTime = exclCPUEvtTime;
+         this->blame[ type ] = value;
+       }
+       else
+       {
+         blameIt->second += value;
+       }
+     }
+     
+     double getBlame( BlameReason type = REASON_UNCLASSIFIED )
+     {
+       BlameMap::const_iterator iter = this->blame.find( type );
+       if ( iter == this->blame.end() )
+       {
+         return 0;
+       }
+       else
+       {
+         return iter->second;
        }
      }
      
      /**
-      * Get the time of regions that are explicitly created by CPU events for this edge. 
-      * 
+      * Get the accumulated blame, independent of the blame reason.
       * @return 
       */
-     uint64_t
-     getCPUNodesExclTime()
+     double getTotalBlame()
      {
-       return cpuEvtExclTime;
+       double total_blame = 0;
+       for( BlameMap::const_iterator it = this->blame.begin();
+           it != this->blame.end(); it++)
+       {
+         total_blame += it->second;
+       }
+       return total_blame;
      }
-
-     void
-     addBlame( double blame )
+     
+     /**
+      * Return the address of the blame map.
+      * 
+      * @return address of the blame map
+      */
+     BlameMap* getBlameMap()
      {
-       this->blame += blame;
-     }
-
-     double
-     getBlame()
-     {
-       return blame;
+       return &(this->blame);
      }
 
    private:
-     int      properties;
-     uint64_t edgeDuration;
-     uint64_t edgeWeight;
-     Paradigm edgeParadigm;
+     GraphNode* startNode;
+     GraphNode* endNode;
      
-     GraphNode::GraphNodePair pair;
+     uint64_t duration;
+     bool     blocking;
+     Paradigm paradigm;
 
-     uint32_t cpuNodes;
-     uint64_t cpuEvtExclTime; //<! time of regions from CPU events between the edge nodes
+     //double blame;
      
-     double blame;
-
-     void
-     setWeight( uint64_t weight )
-     {
-       edgeWeight = weight;
-     }
+     //!< blame type, blame value
+     BlameMap blame;
 
      static uint64_t
      computeWeight( uint64_t duration, bool blocking )
@@ -302,11 +258,11 @@ namespace casita
            tmpDuration = 1;
          }
 
-         return std::numeric_limits< uint64_t >::max( ) - tmpDuration;
+         return std::numeric_limits< uint64_t >::max() - tmpDuration;
        }
        else
        {
-         return std::numeric_limits< uint64_t >::max( );
+         return std::numeric_limits< uint64_t >::max();
        }
 
      }

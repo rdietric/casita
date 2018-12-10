@@ -61,31 +61,13 @@ OTF2TraceReader::OTF2TraceReader( void*                  userData,
   defHandler( defHandler ),
   mpiRank( mpiRank ),
   mpiSize( mpiSize ),
-  mpiProcessId( 1 ),
-  reader( NULL ),
-  ompForkJoinRef( 0 )
+  reader( NULL )
 {
 
 }
 
 OTF2TraceReader::~OTF2TraceReader()
 {
-  /* delete process groups */
-  for ( ProcessGroupMap::iterator iter = processGroupMap.begin();
-        iter != processGroupMap.end(); ++iter )
-  {
-    ProcessGroup* pg = iter->second;
-    if ( pg->name != NULL )
-    {
-      delete[]pg->name;
-    }
-    if ( pg->procs != NULL )
-    {
-      delete[]pg->procs;
-    }
-    delete pg;
-  }
-
   /* delete members of mpi-groups */
   for ( CommGroupMap::iterator iter = groupMap.begin();
         iter != groupMap.end(); iter++ )
@@ -100,34 +82,10 @@ OTF2TraceReader::getNameKeysMap()
   return nameKeysMap;
 }
 
-OTF2TraceReader::TokenNameMap&
-OTF2TraceReader::getKeyNameMap()
-{
-  return kNameMap;
-}
-
-OTF2TraceReader::TokenTokenMap64&
-OTF2TraceReader::getProcessFamilyMap()
-{
-  return processFamilyMap;
-}
-
 OTF2KeyValueList&
 OTF2TraceReader::getKVList()
 {
   return kvList;
-}
-
-uint64_t
-OTF2TraceReader::getMPIProcessId()
-{
-  return mpiProcessId;
-}
-
-void
-OTF2TraceReader::setMPIStreamId( uint64_t processId )
-{
-  mpiProcessId = processId;
 }
 
 void
@@ -206,6 +164,10 @@ OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
     event_callbacks, &OTF2_GlobalEvtReaderCallback_ThreadFork );
   OTF2_GlobalEvtReaderCallbacks_SetThreadJoinCallback(
     event_callbacks, &OTF2_GlobalEvtReaderCallback_ThreadJoin );
+  
+  // explicit for OpenMP
+  //OTF2_GlobalEvtReaderCallbacks_SetOmpForkCallback(
+  //  event_callbacks,OTF2_GlobalEvtReaderCallback_ThreadFork );
   
   // registered because this might be the last event in a stream
   OTF2_GlobalEvtReaderCallbacks_SetRmaWinDestroyCallback(
@@ -390,7 +352,17 @@ OTF2TraceReader::readDefinitions()
   
   // register for location properties, e.g. to detect CUDA null stream
   OTF2_GlobalDefReaderCallbacks_SetLocationPropertyCallback(
-    global_def_callbacks, OTF2_GlobalDefReaderCallback_LocationProperty );
+    global_def_callbacks, &OTF2_GlobalDefReaderCallback_LocationProperty );
+  
+  // only root rank evaluates these information
+  if( mpiRank == 0 )
+  {
+    OTF2_GlobalDefReaderCallbacks_SetLocationGroupCallback( 
+    global_def_callbacks, &OTF2_GlobalDefReaderCallback_LocationGroup );
+  
+    OTF2_GlobalDefReaderCallbacks_SetSystemTreeNodeCallback(
+      global_def_callbacks, &OTF2_GlobalDefReaderCallback_SystemTreeNode );
+  }
   
 /*
   OTF2_GlobalDefReaderCallbacks_SetLocationGroupCallback(
@@ -480,9 +452,19 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(
                                           OTF2_LocationGroupRef locationGroup )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
-
-  // store all locations with their parent
-  tr->processFamilyMap[ self ] = locationGroup;
+  
+  OTF2_SystemTreeNodeRef nodeRef = tr->locationGrpSysNodeRefMap[ locationGroup ];
+  OTF2_StringRef nodeStringRef = tr->sysNodeStringRefMap[ nodeRef ];
+  
+  // used for statistics output
+  if( tr->mpiRank == 0 && tr->defHandler->haveStringRef( nodeStringRef ) &&
+      self == locationGroup )
+  {
+    const char* nodeName = tr->defHandler->getName( nodeStringRef );
+    //UTILS_OUT( "Location %" PRIu64 " on node %s", self, nodeName );
+    
+    tr->defHandler->addLocationInfo( self, nodeName ); 
+  }
   
   // generate mapping of stream IDs to MPI ranks for all processes/streams
   if ( tr->handleProcessMPIMapping )
@@ -490,7 +472,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(
     tr->handleProcessMPIMapping( tr, self, locationGroup );
   }
   
-  // for all locations of this MPI rank
+  // for all locations of this MPI rank (this analysis process)
   if( tr->mpiRank == locationGroup )
   {
     tr->locationStringRefMap[ self ] = name;
@@ -499,7 +481,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Location(
     {
       tr->handleDefProcess( tr, self, locationGroup, 
                             tr->defHandler->getName( name ), NULL, 
-                            locationType == OTF2_LOCATION_TYPE_GPU ? true : false );
+                            locationType );
     }
   }
   
@@ -547,7 +529,6 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationProperty(
   return OTF2_CALLBACK_SUCCESS;
 }
 
-/*
 OTF2_CallbackCode
 OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationGroup( 
                                 void*                  userData,
@@ -557,16 +538,45 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationGroup(
                                 OTF2_SystemTreeNodeRef systemTreeParent)
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
-  int phase           = tr->getProcessingPhase();
 
-  if ( phase == 1 && locationGroupType == OTF2_LOCATION_GROUP_TYPE_PROCESS )
+  // if this is a process  
+  if ( locationGroupType == OTF2_LOCATION_GROUP_TYPE_PROCESS )
   {
-    //tr->
+    tr->locationGrpSysNodeRefMap[ self ] = systemTreeParent;
+    
+//    if( tr->defHandler->haveStringRef( name ) )
+//    {
+//      UTILS_OUT( "Location group: %s", tr->defHandler->getName( name ) );
+//    }
   }
 
   return OTF2_CALLBACK_SUCCESS;
 }
-*/
+
+OTF2_CallbackCode
+OTF2TraceReader::OTF2_GlobalDefReaderCallback_SystemTreeNode( 
+                                              void*                  userData,
+                                              OTF2_SystemTreeNodeRef self,
+                                              OTF2_StringRef         name,
+                                              OTF2_StringRef         className,
+                                              OTF2_SystemTreeNodeRef parent )
+{
+  OTF2TraceReader* tr = (OTF2TraceReader*)userData;
+  
+  if( tr->defHandler->haveStringRef( name ) )
+  {
+    //UTILS_OUT( "System tree node: %s", tr->defHandler->getName( name ) );
+    tr->sysNodeStringRefMap[ self ] = name;
+  }
+  
+//  if( tr->defHandler->haveStringRef( className ) )
+//  {
+//    UTILS_OUT( "System tree node class: %s", tr->defHandler->getName( className ) );
+//  }
+
+  return OTF2_CALLBACK_SUCCESS;
+}
+
 
 /**
  * Callback for OTF2 group definitions (such as OPENCL, PTHREAD, etc. ).
@@ -635,9 +645,6 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Group( void*           userData,
           "Process group MPI_COMM_WORLD has no process for this MPI rank (%u)",
           tr->mpiRank );
       }
-
-      // set the trace reader's stream ID
-      tr->setMPIStreamId( members[ tr->mpiRank ] );
 
       // save all members of the global MPI group with their rank
       for ( uint32_t i = 0; i < numberOfMembers; ++i )
@@ -763,7 +770,6 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Attribute( void*             userD
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
   std::string      s  = tr->defHandler->getName( name );
   tr->getNameKeysMap().insert( std::make_pair( s, self ) );
-  tr->getKeyNameMap().insert( std::make_pair( self, s ) );
 
   if ( tr->handleDefAttribute )
   {
@@ -1024,10 +1030,19 @@ OTF2TraceReader::OTF2_GlobalEvtReaderCallback_ThreadFork(
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
-  //\todo: handle numberOfRequestedThreads
-  return OTF2TraceReader::otf2CallbackEnter( locationID, time, userData,
-                                             attributeList,
-                                             tr->defHandler->getForkJoinRegionId() );
+  // handle fork node as enter event
+  OTF2_CallbackCode ret = 
+    OTF2TraceReader::otf2CallbackEnter( locationID, time, userData,
+                                        attributeList,
+                                        tr->defHandler->getForkJoinRegionId() );
+  
+  // add the requested threads to the enter event
+  if ( tr->handleThreadFork )
+  {
+    tr->handleThreadFork( tr, locationID, numberOfRequestedThreads );
+  }
+  
+  return ret;;
 }
 
 OTF2_CallbackCode
@@ -1124,12 +1139,6 @@ OTF2TraceReader::otf2CallbackComm_RmaGet( OTF2_LocationRef location,
   return OTF2_CALLBACK_SUCCESS;
 }
 */
-
-OTF2TraceReader::ProcessGroupMap&
-OTF2TraceReader::getProcGoupMap()
-{
-  return processGroupMap;
-}
 
 std::vector< uint32_t >
 OTF2TraceReader::getKeys( const std::string keyName )

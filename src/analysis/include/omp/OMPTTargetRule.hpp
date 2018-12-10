@@ -42,7 +42,7 @@ namespace casita
       bool
       apply( AnalysisParadigmOMP* ompAnalysis, GraphNode* node )
       {
-        AnalysisEngine* analysis = ompAnalysis->getCommon();
+        AnalysisEngine* analysis = ompAnalysis->getAnalysisEngine();
         
         // remember enter node
         if( node->isEnter() )
@@ -70,7 +70,7 @@ namespace casita
               if( targetEnter )
               {
                 // add dependency edge
-                analysis->newEdge( targetEnter, node, EDGE_NONE );
+                analysis->newEdge( targetEnter, node, false );
               }
               else
               {
@@ -117,7 +117,7 @@ namespace casita
               //            analysis->getNodeInfo( lastOffloadNode ).c_str(),
               //            analysis->getRealTime( node->getTime() ) );
               
-              analysis->newEdge( lastOffloadNode->getGraphPair().second, node, EDGE_NONE );
+              analysis->newEdge( lastOffloadNode->getGraphPair().second, node, false );
               
               // set the last offload node for the current target region (over streams)
               // use only leave nodes
@@ -162,7 +162,7 @@ namespace casita
 
               // add waiting time to offloading statistics
               analysis->getStatistics().addStatWithCount( 
-                STAT_OFLD_EARLY_BLOCKING_WAIT, waiting_time );
+                OFLD_STAT_EARLY_BLOCKING_WAIT, waiting_time );
               
               node->setCounter( WAITING_TIME, waiting_time );
 
@@ -170,7 +170,8 @@ namespace casita
               distributeBlame( analysis,
                                lastTargetOffloadNode,
                                waiting_time, // total blame
-                               deviceStreamWalkCallback );
+                               deviceStreamWalkCallback,
+                               REASON_OFLD_WAIT4DEVICE );
             }
             else
             {

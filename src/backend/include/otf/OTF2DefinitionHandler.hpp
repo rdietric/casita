@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2017,
+ * Copyright (c) 2017, 2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -80,7 +80,13 @@ namespace casita
         getRegionInfo( const uint32_t regionRef );
      
         const char*
-        getRegionName( uint32_t id );
+        getRegionName( uint32_t id ) const;
+        
+        void
+        addLocationInfo( const uint64_t mpiRank, const char* nodeName );
+        
+        const char*
+        getNodeName( const int mpiRank ) const;
         
         void
         setInternalRegions();
@@ -105,6 +111,9 @@ namespace casita
         
         //!< store required definitions for a function ID (OTF2 region reference)
         std::map< uint32_t, RegionInfo > regionInfoMap;
+        
+        //!< maps rank to node name (currently)
+        std::map< uint64_t, const char* > locationInfoMap;
         
         //!< OTF2 region reference for internal wait state region
         uint32_t waitStateFuncId;

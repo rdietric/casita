@@ -42,7 +42,7 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon();
+        AnalysisEngine* commonAnalysis = analysis->getAnalysisEngine();
         
         commonAnalysis->getStatistics().countActivity(STAT_MPI_P2P);
         
@@ -156,7 +156,8 @@ namespace casita
           {
             distributeBlame( commonAnalysis, sendEnter,
                              sendStartTime - recvStartTime, 
-                             streamWalkCallback );
+                             streamWalkCallback,
+                             REASON_MPI_LATE_SENDER );
             //UTILS_WARNING( "Send blame: %lf", 
             //               commonAnalysis->getRealTime( sendStartTime - recvStartTime ) );
           }

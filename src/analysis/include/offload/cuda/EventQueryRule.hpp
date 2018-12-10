@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -40,13 +40,12 @@ namespace casita
       bool
       apply( AnalysisParadigmOffload* analysis, GraphNode* queryLeave )
       {
-
         if ( !queryLeave->isCUDAEventQuery() || !queryLeave->isLeave() )
         {
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon();
+        AnalysisEngine* commonAnalysis = analysis->getAnalysisEngine();
 
         EventNode* evQueryLeave = (EventNode*)queryLeave;
 
@@ -113,9 +112,11 @@ namespace casita
 
           if ( queryLeave->getTime() < kernelLeave->getTime() )
           {
-            throw RTException( "Incorrect timing between %s and %s\n",
-                               queryLeave->getUniqueName().c_str(),
-                               kernelLeave->getUniqueName().c_str() );
+            UTILS_WARNING( "[EventQueryRule] Successful event query %s ends"
+                           " before kernel end %s.\n",
+                           commonAnalysis->getNodeInfo( queryLeave ).c_str(),
+                           commonAnalysis->getNodeInfo( kernelLeave ).c_str() );
+            //return false;
           }
           
           DeviceStream* devStrm = 
@@ -138,7 +139,6 @@ namespace casita
             // if kernel is running during the query
             if ( kernelEnter->getTime() <= prevQueryEnter->getTime() )
             {
-              //\todo: why?
               // make query edge blocking
               Edge* qEdge = 
                 commonAnalysis->getEdge( prevQueryEnter, prevQueryLeave );
@@ -156,10 +156,11 @@ namespace casita
               //kernelLeave->incCounter( BLAME, waitingTime );
               
               // blame the kernel for the query waiting time
-              Edge* kernelEdge = commonAnalysis->getEdge( kernelEnter, kernelLeave );
+              Edge* kernelEdge = 
+                commonAnalysis->getEdge( kernelEnter, kernelLeave );
               if( kernelEdge )
               {
-                kernelEdge->addBlame( waitingTime );
+                kernelEdge->addBlame( waitingTime, REASON_OFLD_WAIT4DEVICE );
               }
               else
               {
@@ -170,12 +171,6 @@ namespace casita
               
               commonAnalysis->getStatistics().addStatWithCount( 
                 OFLD_STAT_EARLY_TEST, waitingTime );
-
-              // add a blocking dependency, so it cannot be used for critical path analysis
-              // \todo: needed anymore?
-              commonAnalysis->newEdge( kernelLeave,
-                                       prevQueryLeave,
-                                       EDGE_IS_BLOCKING );
             }
 
             firstEventQueryLeave = prev;

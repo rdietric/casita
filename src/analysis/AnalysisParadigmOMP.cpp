@@ -95,7 +95,7 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
         // if this is the last barrier in the parallel region
         if( lastBarrier )
         {
-          Edge *edge = commonAnalysis->newEdge( 
+          Edge *edge = commonAnalysis->newEdge(
             latestBarrierEnter, ( GraphNode * )parallelEnter->getData() );
 
           // in case this edge was a reverse edge, unblock it
@@ -115,7 +115,7 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
             if( !lastBarrier )
             {
               // create inter stream edge
-              Edge *edge = commonAnalysis->newEdge( 
+              Edge *edge = commonAnalysis->newEdge(
                 latestBarrierEnter, ( GraphNode * )parallelEnter->getData() );
               
               // in case this edge was a reverse edge, unblock it
@@ -140,7 +140,8 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
         distributeBlame( commonAnalysis,
                          latestBarrierEnter,
                          blame,
-                         streamWalkCallback );
+                         streamWalkCallback,
+                         REASON_OMP_BARRIER );
 
         // clear barrier vector after processing the respective barrier
         itParallel->clear();
@@ -337,7 +338,7 @@ AnalysisParadigmOMP::getNestingLevel()
 void
 AnalysisParadigmOMP::handlePostEnter( GraphNode* ompEnter )
 {
-  if ( ompEnter->isOMPForkJoinRegion() )
+  if ( ompEnter->isOMPForkJoin() )
   {
     nestingLevel++;
   }
@@ -351,7 +352,7 @@ AnalysisParadigmOMP::handlePostEnter( GraphNode* ompEnter )
 void
 AnalysisParadigmOMP::handlePostLeave( GraphNode* ompLeave )
 {
-  if ( ompLeave->isOMPForkJoinRegion() )
+  if ( ompLeave->isOMPForkJoin() )
   {
     nestingLevel--;
   }

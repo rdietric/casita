@@ -52,13 +52,22 @@ namespace casita
      runAnalysis( EventStream::SortedGraphNodeList& allNodes );
 
      void
-     printAllActivities();
+     writeActivityRating();
 
      void
      mergeActivityGroups();
      
      void
+     mergeActivityGroupsP2P();
+     
+     void
      mergeStatistics();
+     
+     void
+     writeStatistics();
+     
+     void
+     printToStdout();
 
    private:
      int mpiRank;
@@ -86,7 +95,18 @@ namespace casita
      std::pair< uint64_t, uint64_t > criticalPathStart; //* < stream ID, time >
      std::pair< uint64_t, uint64_t > criticalPathEnd;   // < stream ID, time >
      
-     uint64_t total_events_read;
+     uint64_t totalEventsRead;
+     
+     /////// \todo: only used on rank 0 /////
+     uint64_t maxWaitingTime;
+     uint64_t minWaitingTime;
+     int maxWtimeRank;
+     int minWtimeRank;
+     
+     // total blame over all processes
+     double globalBlame;
+     
+     ////////////////////////////////////////
      
      /**
       * The function that triggers trace reading, analysis and writing.

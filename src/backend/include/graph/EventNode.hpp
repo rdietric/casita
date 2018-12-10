@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2014, 2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -34,7 +34,7 @@ namespace casita
      };
 
      EventNode( uint64_t time, uint64_t streamId, uint64_t eventId,
-                FunctionResultType fResult, const std::string name,
+                FunctionResultType fResult, const char* name,
                 Paradigm paradigm, RecordType recordType, int nodeType ) :
        GraphNode( time, streamId, name, paradigm, recordType, nodeType ),
        eventId( eventId ),

@@ -88,7 +88,7 @@ namespace casita
 
      GraphNode*
      newGraphNode( uint64_t time, uint64_t streamId,
-                   const std::string name, Paradigm paradigm,
+                   const char* name, Paradigm paradigm,
                    RecordType recordType, int nodeType );
 
      GraphNode*
@@ -140,12 +140,6 @@ namespace casita
 
      void
      reset();
-
-     double
-     getRealTime( uint64_t t );
-     
-     const std::string
-     getNodeInfo( Node* node );
      
      /**
       * Get elapsed time from an event time stamp, e.g. to spot an event in Vampir.

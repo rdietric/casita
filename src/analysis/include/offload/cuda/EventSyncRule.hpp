@@ -59,7 +59,7 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* analysis = ofldAnalysis->getCommon();
+        AnalysisEngine* analysis = ofldAnalysis->getAnalysisEngine();
         
         // count occurrence
         analysis->getStatistics().countActivity( STAT_OFLD_SYNC_EVT );
@@ -227,17 +227,17 @@ namespace casita
                 
                 // early blocking wait statistics
                 analysis->getStatistics().addStatWithCount( 
-                  STAT_OFLD_EARLY_BLOCKING_WAIT, 
+                  OFLD_STAT_EARLY_BLOCKING_WAIT, 
                   syncLeave->getTime() - syncEnter->getTime() );
               }
             }
             else
             {
-              analysis->newEdge( syncEnter, syncLeave, EDGE_IS_BLOCKING );
+              analysis->newEdge( syncEnter, syncLeave, true );
               
               // early blocking wait statistics
               analysis->getStatistics().addStatWithCount( 
-                STAT_OFLD_EARLY_BLOCKING_WAIT, 
+                OFLD_STAT_EARLY_BLOCKING_WAIT, 
                 syncLeave->getTime() - syncEnter->getTime() );
             }
             
@@ -259,7 +259,7 @@ namespace casita
             Edge* kernelEdge = analysis->getEdge( kernelEnter, kernelLeave );
             if( kernelEdge )
             {
-              kernelEdge->addBlame( waitingTime );
+              kernelEdge->addBlame( waitingTime, REASON_OFLD_WAIT4DEVICE );
             }
             else
             {

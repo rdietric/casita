@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2017,
+ * Copyright (c) 2017-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -110,6 +110,9 @@ namespace casita
       GraphNode*
       getLastKernelLaunchLeave( uint64_t timestamp, uint64_t deviceStreamId ) const;
       
+      GraphNode*
+      findFirstLaunchInIdle( uint64_t idle_start_time, GraphNode* searchStartNode ) const;
+      
       void
       removeKernelLaunch( GraphNode* kernel );
       
@@ -122,10 +125,25 @@ namespace casita
       void 
       printDebugInformation( uint64_t eventId );
       
+      //!< number of active compute tasks -- analysis time
+      uint8_t active_compute_tasks;
+      
+      //!< time when device idle starts
+      uint64_t idle_start_time;
+      
+      //!< last overlapping kernel enter, evaluated at analysis time
+      GraphNode* oKernelEnter;
+
+      //!< compute overlap interval start time
+      uint64_t overlapIntervalStart;
+      
+      // 500us
+      uint64_t delay500us;
+
+    private:
       void
       printKernelLaunchMap();
-
-    private:      
+      
       // number of pending kernels (between launch and kernel end) during trace reading
       size_t pendingKernels;
       

@@ -26,24 +26,27 @@ namespace casita
 
   /**
    * Distribute the blame by walking backwards from the given node.
-   * Blame is assigned to all nodes in the blame interval and to edges between 
-   * the nodes to blame CPU functions later.
+   * Blame is assigned to edges in the blame interval.
    * 
    * @param analysis pointer to analysis engine
    * @param node start node of the stream walk back
    * @param totalBlame blame to be distributed
    * @param callback 
+   * @param unaccounted time in this stream walkback
+   * 
+   * @return total time to blame
    */
-  static void
+  static uint64_t
   distributeBlame( AnalysisEngine* analysis,
                    GraphNode* node,
                    uint64_t totalBlame,
-                   EventStream::StreamWalkCallback callback )
+                   EventStream::StreamWalkCallback callback,
+                   BlameReason reason = REASON_UNCLASSIFIED )
   {
     // return if there is no blame to distribute
     if ( totalBlame == 0 )
     {
-      return;
+      return 0;
     }
 
     // walk backwards from node using callback
@@ -73,29 +76,19 @@ namespace casita
                   "Walk list has %lu entries. Can't walk list back from %s",
                   walkList.size(), analysis->getNodeInfo( node ).c_str() );
 
-    GraphNode* start = walkList.front();
-    
-    // if the start node has no caller, hence is first on the stack
-    if ( start->getCaller() == NULL )
-    {
-      start->setCounter(BLAME, 0);
-    }
-
     // total time interval for blame distribution
     const uint64_t totalWalkTime = 
       walkList.front()->getTime() - walkList.back()->getTime();
 
     // time within the interval that is a wait state itself
-    const uint64_t waitTime = walkListInfo.waitStateTime;
+    const uint64_t waitTime = 0; //walkListInfo.waitStateTime;
 
     // total time for blame distribution 
     // (wait states in the interval are subtracted)
     const uint64_t totalTimeToBlame = totalWalkTime - waitTime;
     
     // debug walk list
-    if( totalWalkTime < waitTime 
-       //&& strcmp( node->getName(), "MPI_Allreduce") == 0
-       )
+    if( totalWalkTime < waitTime )
     {
       UTILS_OUT( "[%u] Debug walklist from %s, totalBlame: %llu sec (%lf)",
                  analysis->getMPIRank(), analysis->getNodeInfo(node).c_str(),
@@ -106,7 +99,7 @@ namespace casita
       {
         GraphNode* currentWalkNode = *iter;
        
-        uint64_t wtime = currentWalkNode->getCounter( WAITING_TIME, NULL );
+        uint64_t wtime = currentWalkNode->getWaitingTime();
        
         UTILS_OUT( " -> %s with waiting time: %llu (%lf sec)", 
                    analysis->getNodeInfo( currentWalkNode ).c_str(), 
@@ -149,9 +142,11 @@ namespace casita
                    * (double) edge->getDuration()
                    / (double) totalTimeToBlame;
 
-      edge->addBlame( blame );
+      edge->addBlame( blame, reason );
 
       lastWalkNode = currentWalkNode;
     }
+    
+    return totalTimeToBlame;
   }
 }

@@ -58,6 +58,16 @@ Statistics::addAllStats( uint64_t* stats )
   }
 }
 
+void
+Statistics::setAllStats( uint64_t* stats )
+{
+  //#pragma omp parallel for
+  for( int i = 0; i < STAT_NUMBER; ++i )
+  {
+    this->stats[ i ] = stats[ i ];
+  }
+}
+
 uint64_t*
 Statistics::getStats()
 {

@@ -217,6 +217,17 @@ EventStreamGroup::getDeviceStreams( int deviceId )
 }
 
 /**
+ * Get the number of devices, which are associated with the process group.
+ * 
+ * @return number of attached devices
+ */
+size_t
+EventStreamGroup::getNumDevices() const
+{
+  return deviceIdStreamsMap.size();
+}
+
+/**
  * Return the null stream for the given device. If device id is left empty,
  * only a single device is assumed to be present.
  * 

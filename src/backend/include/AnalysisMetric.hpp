@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2015-2017,
+ * Copyright (c) 2015-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -26,19 +26,53 @@
 
 namespace casita
 {
-  
-  #define NUM_OUTPUT_METRICS 3 // number of output metrics in the METRIC_TABLE
-
   enum MetricType
   {
     BLAME = 0,         // amount of caused waiting time
     WAITING_TIME = 1,  // waiting time of a region
     CRITICAL_PATH = 2, // is a location/stream on the critical path
-    OMP_BARRIER_ERROR = 3,     // correctness
-    OMPT_REGION_ID = 4,        // internal
-    OMP_PARENT_REGION_ID = 5,  // internal
+    
+    NUM_OUTPUT_METRICS = 3,
+    
+    BLAME4IDLE = 4,    // blame received for not keeping the device busy (internal)
+    OMPT_REGION_ID = 5,        // internal
     OMP_IGNORE_BARRIER = 6,    // internal
     OMP_FIRST_OFFLOAD_EVT = 7  // internal
+  };
+  
+  /* Reasons of blame (mostly corresponds to inefficiency patterns) */
+  enum BlameReason
+  {
+    REASON_OFLD_DEVICE_IDLE = 0,
+    REASON_OFLD_WAIT4DEVICE = 1,
+    REASON_OFLD_BLOCKING_TRANSFER = 2,
+    REASON_MPI_COLLECTIVE = 3,
+    REASON_MPI_LATE_SENDER = 4,
+    REASON_MPI_LATE_RECEIVER = 5,
+    REASON_MPI_LATE_SENDRECV = 6,
+    REASON_OMP_BARRIER = 7,
+    REASON_UNCLASSIFIED = 8,
+    REASON_NUMBER = 9
+  };
+  
+  typedef struct
+  {
+    BlameReason type;
+    const char* str;
+  } TypeStrBlameReason;
+  
+  // correct ordering is important for table header of csv file
+  static const TypeStrBlameReason typeStrTableBlameReason[ REASON_NUMBER ] =
+  {
+    { REASON_OFLD_DEVICE_IDLE, "device idle" },
+    { REASON_OFLD_WAIT4DEVICE, "host wait" },
+    { REASON_OFLD_BLOCKING_TRANSFER, "blocking transfer" },
+    { REASON_MPI_COLLECTIVE, "MPI collective" },
+    { REASON_MPI_LATE_SENDER, "MPI late sender" },
+    { REASON_MPI_LATE_RECEIVER, "MPI late receiver" },
+    { REASON_MPI_LATE_SENDRECV, "MPI sendrecv" },
+    { REASON_OMP_BARRIER, "OpenMP barrier" },
+    { REASON_UNCLASSIFIED, "unclassified reason" }
   };
   
   enum MetricMode
@@ -83,22 +117,17 @@ namespace casita
    { BLAME,         "Blame",         
                     "Amount of caused waiting time", 
                     COUNTER_ABSOLUT_LAST, OTF2_TYPE_DOUBLE, "seconds", false },
-   { WAITING_TIME,  "Waiting Time",  
-                    "Time in a wait state",          
+   { WAITING_TIME,  "Waiting Time",
+                    "Time in a wait state",
                     ATTRIBUTE, OTF2_TYPE_DOUBLE, "seconds", false },
    { CRITICAL_PATH, "Critical Path", 
-                    "On the critical path boolean",  
+                    "On the critical path boolean",
                     COUNTER_ABSOLUT_NEXT, OTF2_TYPE_UINT64, "boolean", false },
-                    
-   // correctness
-   { OMP_BARRIER_ERROR,   "MUST correctness check", 
-                           "Error: Thread passes a different barrier than other threads of the same team!", 
-                           ATTRIBUTE, true },
-                    
    // internal metrics
-   { OMPT_REGION_ID,       "OMPT Region ID",         
-                           "", METRIC_MODE_UNKNOWN, OTF2_TYPE_UINT64, "", true },
-   { OMP_PARENT_REGION_ID, "OpenMP Target Parent Region ID",  
+   { BLAME4IDLE,    "Blame4DeviceIdle",         
+                    "Amount of caused idle time on the device", 
+                    COUNTER_ABSOLUT_LAST, OTF2_TYPE_DOUBLE, "seconds", false },
+   { OMPT_REGION_ID,       "OMPT Region ID",
                            "", METRIC_MODE_UNKNOWN, OTF2_TYPE_UINT64, "", true },
    { OMP_IGNORE_BARRIER,   "OpenMP Target Collapsed Barrier", 
                            "", METRIC_MODE_UNKNOWN, OTF2_TYPE_UINT8, "", true }

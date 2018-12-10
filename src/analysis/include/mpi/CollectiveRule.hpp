@@ -49,7 +49,7 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* analysis = mAnalysis->getCommon();
+        AnalysisEngine* analysis = mAnalysis->getAnalysisEngine();
         
         // count occurrences
         analysis->getStatistics().countActivity( STAT_MPI_COLLECTIVE );
@@ -161,7 +161,8 @@ namespace casita
           distributeBlame( analysis,
                            colEnter,
                            total_blame,
-                           streamWalkCallback );
+                           streamWalkCallback,
+                           REASON_MPI_COLLECTIVE );
         }
 
         delete[] recvBuffer;

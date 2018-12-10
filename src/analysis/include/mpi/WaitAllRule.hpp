@@ -48,7 +48,7 @@ namespace casita
             (MpiStream::MPIIcommRequestList* ) waitAllLeave->getData();
 
           // variables that are constant for every request
-          AnalysisEngine* analysis = mpiAnalysis->getCommon();
+          AnalysisEngine* analysis = mpiAnalysis->getAnalysisEngine();
           
           analysis->getStatistics().countActivity( STAT_MPI_WAIT );
           

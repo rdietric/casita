@@ -62,6 +62,9 @@ namespace casita
 
      const EdgeList&
      getInEdges( GraphNode* node ) const;
+     
+     const EdgeList*
+     getInEdgesPtr( GraphNode* node ) const;
 
      EdgeList
      getInEdges( GraphNode* node, Paradigm paradigm ) const;
@@ -77,6 +80,9 @@ namespace casita
 
      const EdgeList&
      getOutEdges( GraphNode* node ) const;
+     
+     const EdgeList*
+     getOutEdgesPtr( GraphNode* node ) const;
 
      EdgeList
      getOutEdges( GraphNode* node, Paradigm paradigm ) const;

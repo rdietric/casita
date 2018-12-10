@@ -63,10 +63,9 @@ namespace casita
         uint64_t totalDuration;
         uint64_t totalDurationOnCP;
         uint64_t waitingTime;
+        double   blame4[ REASON_NUMBER ]; //index is blame reason
         double   totalBlame;
         double   blameOnCP;
-        double   fractionCP;
-        double   fractionBlame;
       } ActivityGroup;
       
       // key: OTF2 region reference (function ID), value: activity group
@@ -173,9 +172,6 @@ namespace casita
       
       //!< ticks per nano second (timer resolution (ticks per second) divided by nano seconds)
       double timeConversionFactor;
-      
-      double
-      getRealTime( uint64_t time );
 
       //!< maps each process to corresponding evtWriter
       std::map< uint64_t, OTF2_EvtWriter* > evt_writerMap;
@@ -206,9 +202,17 @@ namespace casita
       updateActivityGroupMap( OTF2Event event, bool evtOnCP, 
                               uint64_t waitingTime, double blame,
                               bool graphNodesAvailable );
+      
+      void
+      updateActivityGroupMap( OTF2Event event, bool evtOnCP, 
+                              uint64_t waitingTime, double blame, 
+                              BlameMap* blameMap, bool graphNodesAvailable );
 
       double
       computeBlame( OTF2Event event );
+      
+      double
+      computeBlameMap ( OTF2Event event, BlameMap* blameMap );
       
       void
       writeEventsWithWaitingTime( OTF2Event event, 
@@ -233,11 +237,15 @@ namespace casita
       int deviceComputeRefCount;
       uint64_t lastComputeIdleStart;
       
+      //<! time when data host-device transfers start (to acquire total communication time=
+      uint64_t transferStart;
+      
       //<! consecutive device communication 
       // \todo: does not work for concurrent communication
       uint64_t lastDeviceComTaskEnterTime;
       bool     currentDeviceComTaskH2D;
       bool     previousDeviceComTaskH2D;
+      size_t   deviceConsecutiveComSDCount; // communication with same direction
       size_t   deviceConsecutiveComCount;
       
       //////////////////////////////////////////////////////////////

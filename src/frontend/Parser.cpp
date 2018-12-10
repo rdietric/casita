@@ -25,6 +25,14 @@
 
 namespace casita
 {
+  static bool replaceSubstr(std::string& str, const std::string& from, const std::string& to) {
+    size_t start_pos = str.rfind(from);
+    if(start_pos == std::string::npos)
+        return false;
+    str.replace(start_pos, from.length(), to);
+    return true;
+  }
+  
   Parser::Parser() { }
 
   Parser::Parser( Parser& ) { }
@@ -103,7 +111,9 @@ namespace casita
     cout << " -f  --filter=List        filter regions (ignored in analysis and output trace)" << endl;
     cout << "     --idle=[0,1,2,3]     write device idle regions to output trace" << endl
          << "                          (0=no, 1=device idle(default), 2=compute idle, 3=both)" << endl;
-    cout << " -l  --link-kernels       create inter-stream kernel dependencies (default: off)" << endl;
+    cout << "    [--blame4device-idle] blame the host for not keeping the device computing" << endl;
+    cout << " -e [--extended-blame]    divide blame into different types" << endl;
+    cout << " -l  --link-kernels=[0,1,2]  create inter-stream kernel dependencies (default: off)" << endl;
     cout << "     --nullstream=INT     use null stream semantic for the given stream" << endl;
     cout << " -p [--path]              print critical paths" << endl;
     cout << "    [--cpa-loop-check]    detect circular loops in process-local critical path" << endl
@@ -111,7 +121,7 @@ namespace casita
     cout << "    [--no-errors]         ignore non-fatal errors" << endl;
     cout << "    [--ignore-impi]       handle non-blocking MPI functions as CPU functions" << endl;
     cout << "    [--ignore-offloading] handle CUDA/OpenCL functions as CPU functions" << endl;
-    cout << " -c [--interval-analysis=]UINT  Run analysis in intervals (between global MPI" << endl
+    cout << " -c [--interval-analysis=]UINT  run analysis in intervals (between global MPI" << endl
          << "                          collectives) to reduce memory footprint. The value" << endl
          << "                          (default: 64) sets the number of pending graph nodes" << endl
          << "                          before an analysis run is started." << endl;
@@ -128,34 +138,42 @@ namespace casita
       // if the first argument does not start with a dash interpret as input file
       if( i == 1 && opt.find_first_of( "-" ) != 0 )
       {
-        options.filename = string( argv[1] );
+        options.inFileName = string( argv[1] );
       }
       else if( opt.compare( string( "-i" ) ) == 0 ||
                opt.compare( string( "--input" ) ) == 0 )
       {
         if( ++i < argc && argv[i][0] != '-' )
         {
-          options.filename = string( argv[i] );
+          options.inFileName = string( argv[i] );
         }
       }
       else if( opt.find( "--input=" ) != string::npos )
       {
-        options.filename = opt.erase( 0, string( "--input=" ).length() );
+        options.inFileName = opt.erase( 0, string( "--input=" ).length() );
       }
 
         //  output file
       else if( opt.compare( string( "-o" ) ) == 0 ||
                opt.compare( string( "--output" ) ) == 0 )
       {
+        // if argument to ouptput does not start with a dash, interpret it as 
+        // output trace file name
         if( ++i < argc && argv[i][0] != '-' )
         {
-          options.outOtfFile = string( argv[i] );
-          options.createTraceFile = true;
+          options.outFileName = string( argv[i] );
         }
+        else
+        {
+          i--;
+        }
+        
+        // if no output file is given use the default (casita.otf2 next to traces.otf2)
+        options.createTraceFile = true;
       }
       else if( opt.find( "--output=" ) != string::npos )
       {
-        options.outOtfFile = opt.erase( 0, string( "--output=" ).length() );
+        options.outFileName = opt.erase( 0, string( "--output=" ).length() );
         options.createTraceFile = true;
       }
       
@@ -250,7 +268,7 @@ namespace casita
 
       // print path
       else if( opt.compare( string( "-p" ) ) == 0 ||
-               opt.find( "--path=" ) != string::npos )
+               opt.find( "--path" ) != string::npos )
       {
         options.printCriticalPath = true;
       }
@@ -273,17 +291,37 @@ namespace casita
         options.ignoreAsyncMpi = true;
       }
       
-      // do not run CUDA analysis
+      // do not run offloading analysis
       else if( opt.find( "--ignore-offloading" ) != string::npos )
       {
         options.ignoreOffload = true;
       }
       
-      // create dependencies between kernels from different streams
-      else if( opt.compare( string( "-l" ) ) == 0 || 
-               opt.find( "--link-kernels" ) != string::npos )
+      // enable blaming host activities for not keeping the device busy
+      else if( opt.find( "--blame4device-idle" ) != string::npos )
       {
-        options.linkKernels = true;
+        options.blame4deviceIdle = true;
+      }
+      
+      // print path
+      else if( opt.compare( string( "-e" ) ) == 0 ||
+               opt.find( "--extended-blame" ) != string::npos )
+      {
+        options.extendedBlame = true;
+      }
+      
+      // create dependencies between kernels from different streams
+      else if( opt.compare( string( "-l" ) ) == 0 /*|| 
+               opt.find( "--link-kernels" ) != string::npos*/ )
+      {
+        options.linkKernels = 1;
+      }
+      
+      // try to link overlapping kernels
+      else if( opt.find( "--link-kernels=" ) != string::npos )
+      {
+        options.linkKernels = 
+          atoi( opt.erase( 0, string( "--link-kernels=" ).length() ).c_str() );
       }
       
       // handle the given stream (by ID) as null stream
@@ -316,16 +354,16 @@ namespace casita
       }
     }
 
-    if( options.filename.length() == 0 )
+    if( options.inFileName.length() == 0 )
     {
       cout << "No input file specified" << endl;
       return false;
     }
     
-    if ( options.filename.find( ".otf2" ) == string::npos )
+    if ( options.inFileName.find( ".otf2" ) == string::npos )
     {
       throw RTException( "No OTF2 input file specified (%s)", 
-                         options.filename.c_str() );
+                         options.inFileName.c_str() );
     }
 
     return true;
@@ -348,14 +386,14 @@ namespace casita
     }
 
     // if all arguments have been parsed and an OTF2 output shall be generated
-    if( success && options.createTraceFile )
+    if( success && ( options.createTraceFile || options.createRatingCSV ) )
     {
       setOutputDirAndFile();
       
       string traceEvtDir = pathToFile;
       if( !pathToFile.empty() )
       {
-        traceEvtDir += string( "/");
+        traceEvtDir += string( "/" );
       }
       
       traceEvtDir += outArchiveName;
@@ -447,25 +485,43 @@ namespace casita
     return true;
   }
 
-  /*
-   * 
+  /**
+   * Parse the output file. 
    */
   void
   Parser::setOutputDirAndFile()
   {
-    string otfFilename = options.outOtfFile;
+    // do not allow to replace the original trace
+    if( options.outFileName == options.inFileName )
+    {
+      UTILS_WARNING( "The input trace cannot be replaced! "
+                     "Using default name 'casita' instead." );
+      options.outFileName = "casita.otf2";
+    }
     
-    size_t charPos = otfFilename.find_last_of("/");
+    // if the out file name is not given simply use the input file and replace 
+    // the last occurrence of traces with casita
+    if( options.outFileName.empty() )
+    {
+      options.outFileName = options.inFileName;
+      if( !replaceSubstr( options.outFileName, "traces", "casita" ) )
+      {
+        options.outFileName = "casita.otf2";
+        UTILS_WARNING( "Writing output trace in current working directory!" );
+      }
+    }
+    
+    size_t charPos = options.outFileName.find_last_of("/");
     
     // if only a file name is given
     if( charPos == string::npos )
     {
-      outArchiveName = otfFilename;
+      outArchiveName = options.outFileName;
     }
     else // path (relative or absolute) with directory given
     {
-      pathToFile     = otfFilename.substr( 0, charPos );
-      outArchiveName = otfFilename.substr( charPos + 1 );
+      pathToFile     = options.outFileName.substr( 0, charPos );
+      outArchiveName = options.outFileName.substr( charPos + 1 );
     }
     
     // remove the .otf2 extension from OTF2 archive name
@@ -486,11 +542,11 @@ namespace casita
   {
     options.createTraceFile = false;
     options.eventsProcessed = 0;
-    options.filename = "";
+    options.inFileName = "";
     options.mergeActivities = true;
     options.noErrors = false;
     options.analysisInterval = 64;
-    options.outOtfFile = "casita.otf2";
+    //options.outOtfFile = "casita.otf2";
     options.replaceCASITAoutput = false;
     options.printCriticalPath = false;
     options.cpaLoopCheck = false;
@@ -498,10 +554,12 @@ namespace casita
     options.topX = 20;
     options.predictionFilter = "";
     options.deviceIdle = 1;
-    options.linkKernels =false;
+    options.linkKernels = 0;
     options.nullStream = -1;
     options.ignoreAsyncMpi = false;
     options.ignoreOffload = false;
+    options.blame4deviceIdle = false;
+    options.extendedBlame = false;
     options.createRatingCSV = true;
   }
 

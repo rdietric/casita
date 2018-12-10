@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,2016, 2017
+ * Copyright (c) 2013-2014, 2016-2018
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -61,12 +61,12 @@ namespace casita
             GraphNode* kernelEnter = node->getGraphPair().first;
 
             // create edge from pending fork to OpenMP compute enter node
-            analysis->getCommon()->newEdge( pForkJoin, kernelEnter );
-            /*UTILS_MSG(analysis->getCommon()->getMPIRank() == 0 &&
+            analysis->getAnalysisEngine()->newEdge( pForkJoin, kernelEnter );
+            /*UTILS_MSG(analysis->getAnalysisEngine()->getMPIRank() == 0 &&
                       node->getTime() < 781313516,
                       "Added OpenMP dependency: %s -> %s",
-                      analysis->getCommon()->getNodeInfo( pForkJoin ).c_str(),
-                      analysis->getCommon()->getNodeInfo( node ).c_str() );*/
+                      analysis->getAnalysisEngine()->getNodeInfo( pForkJoin ).c_str(),
+                      analysis->getAnalysisEngine()->getNodeInfo( node ).c_str() );*/
           }
           /*else
           {

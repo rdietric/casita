@@ -3,15 +3,27 @@
 MPI
 - do not allow to assign more waiting time to MPI_Wait[all] than its duration
 
+OpenMP
+- support different number of threads in different OpenMP regions
+- fixed detection of OpenMP directives (ignore file name)
+
+Offloading
+- added rule to blame the host for not keeping the device busy
+- refined consecutive transfer detection
+
 MISC
+- distinguish between different types/reasons of blame
 - improved implementation of blame distribution (only use edges to store blame)
 - avoid writing of zero values for the OTF2 blame counter
 - write blame and waiting time in seconds instead of ticks
 - simplified writing of the critical path
 - added units for critical path, waiting time, and blame in OTF2 output
 - improved rating output for long region names
-- beautified pattern summary output
+- corrected and beautified pattern summary output
+- generate summary file
 - added Score-P user instrumentation to analyze CASITA's performance
+- reduced memory footprint by removing members from Node and Edge classes
+- improved merging of activity groups (program regions)
 
 
 ---------------------------------- CASITA 1.8 ----------------------------------

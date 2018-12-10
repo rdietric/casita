@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -41,7 +41,8 @@ namespace casita
   typedef void ( *HandleDefProcess )( OTF2TraceReader* reader, 
                                       uint64_t processId, uint64_t parentId,
                                       const char* name,
-                                      OTF2KeyValueList* list, bool isGPU );
+                                      OTF2KeyValueList* list, 
+                                      OTF2_LocationType locationType );
   typedef void ( *HandleProcessMPIMapping )( OTF2TraceReader* reader,
                                              uint64_t      processId,
                                              uint32_t      mpiRank );
@@ -93,18 +94,13 @@ namespace casita
                                                  uint64_t         time,
                                                  uint64_t         streamId );
   
+  typedef void ( *HandleThreadFork )( OTF2TraceReader* reader,
+                                      uint64_t         streamId,
+                                      uint32_t         requestedThreads );
+  
   class OTF2TraceReader
   {
     public:
-
-      typedef struct
-      {
-        char*     name;
-        bool      isCUDA;
-        bool      isCUDAMaster;
-        uint32_t  numProcs;
-        uint64_t* procs;
-      } ProcessGroup;
 
       typedef struct
       {
@@ -119,35 +115,17 @@ namespace casita
 
       typedef uint32_t Token;
       typedef std::multimap< std::string, Token > NameTokenMap;
-      typedef std::map< Token, std::string > TokenNameMap;
-      typedef std::map< Token, Token > TokenTokenMap;
-      typedef std::map< uint64_t, uint64_t > TokenTokenMap64;
-      typedef std::map< uint64_t, Token > IdTokenMap;
-      typedef std::set< Token > TokenSet;
-      typedef std::map< Token, TokenSet > TokenSetMap;
       typedef std::map< uint32_t, OTF2Group > CommGroupMap;
       typedef std::map< uint32_t, uint64_t > RankStreamIdMap;
       typedef std::map< uint64_t, uint32_t > LocationStringRefMap;
+      typedef std::map< OTF2_SystemTreeNodeRef, OTF2_StringRef > SysNodeStringRefMap;
+      typedef std::map< OTF2_LocationGroupRef, OTF2_SystemTreeNodeRef > LocationGrpSysNodeRefMap;
       typedef std::map< OTF2_StringRef, const char* > StringRefNameMap;
-
-      typedef std::map< Token, ProcessGroup* > ProcessGroupMap;
 
       OTF2TraceReader( void* userData, OTF2DefinitionHandler* defHandler,
                        uint32_t mpiRank, uint32_t mpiSize );
       
       ~OTF2TraceReader();
-
-      uint64_t
-      getMPIProcessId();
-
-      void
-      setMPIStreamId( uint64_t processId );
-
-      //IdTokenMap&
-      //getProcessRankMap( );
-
-      TokenTokenMap64&
-      getProcessFamilyMap();
 
       void
       open( const std::string otfFilename, uint32_t maxFiles );
@@ -172,12 +150,6 @@ namespace casita
 
       NameTokenMap&
       getNameKeysMap();
-
-      TokenNameMap&
-      getKeyNameMap();
-
-      ProcessGroupMap&
-      getProcGoupMap();
 
       OTF2KeyValueList&
       getKVList();
@@ -208,6 +180,7 @@ namespace casita
       //HandleRmaPut            handleRmaPut;
       //HandleRmaGet            handleRmaGet;
       //HandleRmaOpCompleteBlocking handleRmaOpCompleteBlocking;
+      HandleThreadFork        handleThreadFork;
 
     private:
       static OTF2_CallbackCode
@@ -330,16 +303,7 @@ namespace casita
                                                     uint64_t timerResolution,
                                                     uint64_t globalOffset,
                                                     uint64_t traceLength );
-/*
-      static OTF2_CallbackCode
-      OTF2_GlobalDefReaderCallback_LocationGroup( void*                 userData,
-                                                  OTF2_LocationGroupRef self,
-                                                  OTF2_StringRef        name,
-                                                  OTF2_LocationGroupType
-                                                  locationGroupType,
-                                                  OTF2_SystemTreeNodeRef
-                                                  systemTreeParent );
-*/
+      
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_Location( void*             userData,
                                              OTF2_LocationRef  self,
@@ -356,6 +320,14 @@ namespace casita
                                                   OTF2_StringRef      name,
                                                   OTF2_Type           type,
                                                   OTF2_AttributeValue value );
+      
+      static OTF2_CallbackCode
+      OTF2_GlobalDefReaderCallback_LocationGroup( 
+                                      void*                  userData,
+                                      OTF2_LocationGroupRef  self,
+                                      OTF2_StringRef         name,
+                                      OTF2_LocationGroupType locationGroupType,
+                                      OTF2_SystemTreeNodeRef systemTreeParent );
 
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_Group( void*           userData,
@@ -507,30 +479,28 @@ namespace casita
       uint32_t         mpiRank;
       uint32_t         mpiSize;
       
-      //<! location ID (OTF2 location reference) for this MPI rank 
-      uint64_t         mpiProcessId;
-
-      
       // Map of MPI ranks with its corresponding stream IDs / OTF2 location references
       RankStreamIdMap  rankStreamMap; 
       
-      // tracks for each process its direct parent
-      TokenTokenMap64  processFamilyMap; 
+      // tracks for each location its direct parent (location group)
+      //LocationGroupMap  locationParentMap; 
 
       OTF2_Reader*     reader;
       OTF2KeyValueList kvList;
 
       std::string      baseFilename;
       NameTokenMap     nameKeysMap;
-      TokenNameMap     kNameMap;
       
       //!< maps OTF2 location references to OTF2 string references
       LocationStringRefMap locationStringRefMap;
+      
+      //!< maps OTF2 system tree nodes to OTF2 string references
+      SysNodeStringRefMap sysNodeStringRefMap;
+      
+      //!< maps OTF2 location group references to OTF2 string references of system tree nodes
+      LocationGrpSysNodeRefMap locationGrpSysNodeRefMap;
 
       CommGroupMap     groupMap;
-
-      ProcessGroupMap  processGroupMap;
-      uint32_t         ompForkJoinRef;
   };
  }
 }

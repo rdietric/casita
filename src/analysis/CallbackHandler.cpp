@@ -148,10 +148,12 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
                                    uint64_t          parentId, //location group
                                    const char*       name,
                                    OTF2KeyValueList* list,
-                                   bool              isGPU )
+                                   OTF2_LocationType locationType )
 {
   CallbackHandler* handler  = (CallbackHandler*)( reader->getUserData() );
   AnalysisEngine&  analysis = handler->getAnalysis();
+  
+  bool isGPU = locationType == OTF2_LOCATION_TYPE_GPU ? true : false;
   
   EventStream::EventStreamType streamType = EventStream::ES_HOST;
   
@@ -181,9 +183,18 @@ CallbackHandler::handleDefProcess( OTF2TraceReader*  reader,
   {
     analysis.addDetectedParadigm( PARADIGM_OMP );
   }
+  
+  if ( locationType == OTF2_LOCATION_TYPE_METRIC )
+  {
+    UTILS_OUT( "  [%u] Ignore metric stream '%s' (%" PRIu64 
+               ") with type %u, parent %" PRIu64,
+               analysis.getMPIRank(), name, streamId, streamType, parentId );
+    
+    return;
+  }
 
   UTILS_MSG( Parser::getInstance().getVerboseLevel() >= VERBOSE_BASIC,
-             "  [%u] Found stream %s (%" PRIu64 ") with type %u, parent %" PRIu64,
+             "  [%u] Found stream '%s' (%" PRIu64 ") with type %u, parent %" PRIu64,
              analysis.getMPIRank(), name, streamId, streamType, parentId );
 
   analysis.newEventStream( streamId, parentId, name, streamType );
@@ -339,13 +350,11 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
     stream->isDeviceStream(), analysis.getStreamGroup().deviceWithNullStreamOnly(), 
     analysis.getMPISize() == 1 );
 
-  // for CPU functions no graph node is created
-  // only start time, end time and number of CPU events between nodes is stored
   // do not create nodes for CPU events and MPI events in 1-Process-Programs
   if( !generateNode )
   {    
     //UTILS_OUT( "CPU event: %s", funcName );
-    analysis.addCPUEvent( time, streamId, false );
+//    analysis.addCPUEvent( time, streamId, false );
     return;
   }
 
@@ -433,7 +442,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   if( !generateNode )
   {
     //std::cout << " skipping " << funcName << std::endl;
-    analysis.addCPUEvent( time, streamId, true );
+//    analysis.addCPUEvent( time, streamId, true );
     return false;
   }
 
@@ -483,14 +492,6 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   
   // additional handling for special nodes (e.g. MPI communication and OpenMP)
   analysis.handlePostLeave( leaveNode );
-  
-  // statistics on blocking CUDA/OpenCL communication
-  if( ( regionDesc.functionType & OFLD_BLOCKING_DATA ) && 
-      regionDesc.paradigm & PARADIGM_OFFLOAD )
-  {
-    analysis.getStatistics().addStatWithCount( STAT_OFLD_BLOCKING_COM, 
-      leaveNode->getTime() - enterNode->getTime() );
-  }
 
   // for debugging
   handler->printNode( leaveNode, stream );
@@ -501,7 +502,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   
   // if analysis should be run in intervals (between global collectives)
   if ( analysis.getMPISize() > 1 && 
-       Parser::getInstance().getProgramOptions().analysisInterval &&
+       Parser::getOptions().analysisInterval &&
       // if we have read a global blocking collective, we can start the analysis
        ( leaveNode->isMPICollective() /*|| leaveNode->isMPIAllToOne() || leaveNode->isMPIOneToAll()*/ ) &&
        !( leaveNode->isMPIInit() ) && !( leaveNode->isMPIFinalize() ) )
@@ -527,6 +528,38 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   }
   
   return false;
+}
+
+/**
+ * Add the requested threads to the fork node. Assumes that the respective 
+ * enter node is the last created node.
+ * 
+ * @param reader the trace reader object
+ * @param streamId the OTF2 location ID, which is internally used as stream ID
+ * @param requestedThreads the number of requested threads
+ */
+void
+CallbackHandler::handleThreadFork( OTF2TraceReader* reader,
+                                   uint64_t         streamId,
+                                   uint32_t         requestedThreads )
+{
+  CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
+  EventStream*     stream  = handler->getAnalysis().getStream( streamId );
+  
+  if ( !stream )
+  {
+    throw RTException( "Stream %" PRIu64 " not found!", streamId );
+  }
+  
+  GraphNode* forkNode = stream->getLastNode();
+  if( forkNode && forkNode->isOMPForkJoin() )
+  {
+    forkNode->setReferencedStreamId( requestedThreads );
+  }
+  else
+  {
+    UTILS_WARNING( "Could not handle fork node!" );
+  }
 }
 
 /**

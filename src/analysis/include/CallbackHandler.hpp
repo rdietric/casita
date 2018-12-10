@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -46,7 +46,7 @@ namespace casita
      static void
      handleDefProcess( io::OTF2TraceReader* reader, uint64_t streamId, 
                        uint64_t parentId, const char* name,
-                       io::OTF2KeyValueList* list, bool isGPU );
+                       io::OTF2KeyValueList* list, OTF2_LocationType isGPU );
      
      static void
      handleLocationProperty( OTF2TraceReader* reader, uint64_t streamId,
@@ -76,6 +76,11 @@ namespace casita
                   uint32_t              functionId,
                   uint64_t              streamId,
                   io::OTF2KeyValueList* list );
+     
+     static void
+     handleThreadFork( io::OTF2TraceReader* reader,
+                       uint64_t             streamId,
+                       uint32_t             requestedThreads );
      
      /**
       * Handle RMA window destroy events as they are most often the last events in a 

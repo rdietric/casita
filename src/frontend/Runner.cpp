@@ -73,7 +73,7 @@ Runner::Runner( int mpiRank, int mpiSize ) :
     criticalPathEnd.second = 0;
   }
   
-  total_events_read = 0;
+  totalEventsRead = 0;
 }
 
 Runner::~Runner()
@@ -98,7 +98,7 @@ Runner::prepareAnalysis()
   //OTF2DefinitionHandler* defHandler = new OTF2DefinitionHandler();
   callbacks.setDefinitionHandler( &definitions );
 
-  UTILS_MSG( mpiRank == 0, "Reading %s", options.filename.c_str() );
+  UTILS_MSG( mpiRank == 0, "Reading %s", options.inFileName.c_str() );
 
   OTF2TraceReader* traceReader = 
     new OTF2TraceReader( &callbacks, &definitions, mpiRank, mpiSize );
@@ -126,8 +126,9 @@ Runner::prepareAnalysis()
   //traceReader->handleRmaPut            = CallbackHandler::handleRmaPut;
   //traceReader->handleRmaGet            = CallbackHandler::handleRmaGet;
   //traceReader->handleRmaOpCompleteBlocking = CallbackHandler::handleRmaOpCompleteBlocking;
+  traceReader->handleThreadFork       = CallbackHandler::handleThreadFork;
 
-  traceReader->open( options.filename, 10 );
+  traceReader->open( options.inFileName, 10 );
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
              "[0] Reading definitions ... " );
   
@@ -135,6 +136,19 @@ Runner::prepareAnalysis()
   if( false == traceReader->readDefinitions() )
   {
     throw RTException( "Error while reading definitions!" );
+  }
+  
+  // set the timer resolution in the analysis engine
+  uint64_t timerResolution = definitions.getTimerResolution();
+  analysis.setTimerResolution( timerResolution );
+  UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
+             "[0] Timer resolution = %llu",
+             (long long unsigned)( timerResolution ) );
+
+  if ( timerResolution < 1000000000 ) // 1GHz
+  {
+    UTILS_MSG( mpiRank == 0, 
+               "Warning: your timer resolution is very low (< 1 GHz)!" );
   }
 
   // OTF2 definitions have been checked for existence of CUDA. OpenCL, and OpenMP
@@ -159,19 +173,6 @@ Runner::prepareAnalysis()
   
   // create MPI communicators according to the OTF2 trace definitions
   analysis.getMPIAnalysis().createMPICommunicatorsFromMap();
-
-  // set the timer resolution in the analysis engine
-  uint64_t timerResolution = definitions.getTimerResolution();
-  analysis.setTimerResolution( timerResolution );
-  UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
-             "[0] Timer resolution = %llu",
-             (long long unsigned)( timerResolution ) );
-
-  if ( timerResolution < 1000000000 ) // 1GHz
-  {
-    UTILS_MSG( mpiRank == 0, 
-               "Warning: your timer resolution is very low (< 1 GHz)!" );
-  }
 
   // setup reading events
   traceReader->setupEventReader( options.ignoreAsyncMpi );
@@ -273,7 +274,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     uint64_t events_read = 0;
     events_available = traceReader->readEvents( &events_read );
 
-    total_events_read += events_read;
+    totalEventsRead += events_read;
     events_to_read += events_read;
     
     time_events_read += clock() - time_tmp;
@@ -417,11 +418,9 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   {
     // open a file in write mode.
     ofstream summaryFile;
-    std::string sFileName = Parser::getInstance().getPathToFile() 
-                           + std::string( "/" ) + Parser::getInstance().getOutArchiveName()
-                           + std::string( "_summary.txt" );
+    std::string sFileName = Parser::getInstance().getSummaryFileName();
     
-    summaryFile.open( sFileName );
+    summaryFile.open( sFileName.c_str() );
    
     summaryFile.precision(6);
     summaryFile << std::fixed;
@@ -458,56 +457,47 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     
     summaryFile.close();
     
-    // print summary file to console
-	  ifstream fin( sFileName );
-    string temp;
-	  while( getline( fin, temp ) )
-    {
-      std::cerr << temp << std::endl;
-    }
-	  fin.close();
-    
     UTILS_MSG( options.analysisInterval, "- Number of analysis intervals: %" PRIu32
                " (Cleanup nodes took %f seconds)", ++analysis_intervals, 
                ( (float) time_events_flush ) / CLOCKS_PER_SEC );
   }
   
+  analysis.getStatistics().setActivityCount( STAT_TOTAL_TRACE_EVENTS, totalEventsRead );
   UTILS_MSG( options.verbose >= VERBOSE_SOME, 
              "  [%u] Total number of processed events (per process): %" PRIu64, 
-             mpiRank, total_events_read );
+             mpiRank, totalEventsRead );
+  
+  // add number of host streams to statistics to get a total number for summary output
+  analysis.getStatistics().setActivityCount( STAT_HOST_STREAMS, 
+                                             analysis.getHostStreams().size() );
+  analysis.getStatistics().setActivityCount( STAT_DEVICE_NUM, 
+                                             analysis.getStreamGroup().getNumDevices() );
 }
 
 void
-Runner::mergeActivityGroups()
+Runner::mergeActivityGroupsP2P()
 {
   OTF2ParallelTraceWriter::ActivityGroupMap* activityGroupMap =
     writer->getActivityGroupMap();
   
   assert( activityGroupMap );
 
-  double globalBlame      = 0;
-  uint64_t lengthCritPath = globalLengthCP;
-  //  analysis.getLastNode()->getTime() - analysis.getSourceNode()->getTime();
-  
-  /*UTILS_OUT( "CP length (%llu - %llu) = %llu",
-             analysis.getLastGraphNode( PARADIGM_COMPUTE_LOCAL )->getTime(),
-             analysis.getSourceNode()->getTime(),
-             lengthCritPath );*/
+  // waiting time on each process
+  uint64_t processWaitingTime = 0;
 
-  // compute total process-local blame and process-local CP fraction of activity groups
-  for ( OTF2ParallelTraceWriter::ActivityGroupMap::iterator groupIter =
-          activityGroupMap->begin(); groupIter != activityGroupMap->end(); 
-        ++groupIter )
+  if ( 0 == mpiRank )
   {
-    //IParallelTraceWriter::ActivityGroupMap::iterator iter = groupIter;
-    //UTILS_OUT( "Group ID %u", groupIter->second.functionId);
-    
-    // set the local CP fraction for this activity type
-    groupIter->second.fractionCP =
-      (double)( groupIter->second.totalDurationOnCP ) / (double)lengthCritPath;
-    
-    // add the activity groups blame to the total global blame
-    globalBlame += groupIter->second.totalBlame;
+  // compute total process-local blame and process-local CP fraction of activity groups
+    for ( OTF2ParallelTraceWriter::ActivityGroupMap::iterator groupIter =
+            activityGroupMap->begin(); groupIter != activityGroupMap->end(); 
+          ++groupIter )
+    {
+      // add the activity groups blame to the total global blame
+      globalBlame += groupIter->second.totalBlame;
+
+      // sum up waiting time of individual regions for rank 0
+      processWaitingTime += groupIter->second.waitingTime;
+    }
   }
 
   // ************* Phase 2: MPI all-reduce *************** //
@@ -526,6 +516,12 @@ Runner::mergeActivityGroups()
                            numRegionsRecv,  1, MPI_UINT32_T, 
                            0, MPI_COMM_WORLD ) );
     
+    // initially assign rank 0 with its waiting time
+    this->maxWaitingTime = processWaitingTime;
+    this->minWaitingTime = processWaitingTime;
+    this->maxWtimeRank = 0;
+    this->minWtimeRank = 0;
+    
     // receive from all other MPI streams
     for ( int rank = 1; rank < mpiSize; ++rank )
     {
@@ -543,6 +539,9 @@ Runner::mergeActivityGroups()
                    numRegions * sizeof( OTF2ParallelTraceWriter::ActivityGroup ),
                    MPI_BYTE, rank, MPI_ENTRIES_TAG,
                    MPI_COMM_WORLD, MPI_STATUS_IGNORE ) );
+        
+        // total waiting time per process
+        processWaitingTime = 0;
 
         // combine with own regions and generate a global metrics
         OTF2ParallelTraceWriter::ActivityGroupMap::iterator groupIter;
@@ -558,53 +557,59 @@ Runner::mergeActivityGroups()
             groupIter->second.totalBlame        += group->totalBlame;
             groupIter->second.totalDuration     += group->totalDuration;
             groupIter->second.totalDurationOnCP += group->totalDurationOnCP;
-            groupIter->second.fractionCP        += group->fractionCP;
             groupIter->second.blameOnCP         += group->blameOnCP;
             groupIter->second.waitingTime       += group->waitingTime;
+            
+            for( int i = 0; i < REASON_NUMBER; i++ )
+            {
+              groupIter->second.blame4[ i ] += group->blame4[ i ];
+            }
+            
             groupIter->second.numUnifyStreams++;
           }
           else // create region and set region information
           {
             ( *activityGroupMap )[fId].functionId        = fId;
             ( *activityGroupMap )[fId].numInstances      = group->numInstances;
-            ( *activityGroupMap )[fId].fractionCP        = group->fractionCP;
             ( *activityGroupMap )[fId].totalBlame        = group->totalBlame;
             ( *activityGroupMap )[fId].totalDuration     = group->totalDuration;
             ( *activityGroupMap )[fId].totalDurationOnCP = group->totalDurationOnCP;
             ( *activityGroupMap )[fId].blameOnCP         = group->blameOnCP;
             ( *activityGroupMap )[fId].waitingTime       = group->waitingTime;
             ( *activityGroupMap )[fId].numUnifyStreams   = group->numUnifyStreams;
+            
+            for( int i = 0; i < REASON_NUMBER; i++ )
+            {
+              ( *activityGroupMap )[ fId ].blame4[ i ]  = 
+                group->blame4[ i ];
+            }
           }
 
-          // add the region's blame to overall blame
-          globalBlame += group->totalBlame;
+          // sum up over all regions
+          {
+            // add the region's blame to overall blame
+            globalBlame += group->totalBlame;
+
+            // get the waiting time per process (\todo: could be done by each process)
+            processWaitingTime += group->waitingTime;
+          }
+        }
+        
+        // find rank with maximum waiting time
+        if( processWaitingTime > maxWaitingTime )
+        {
+          maxWaitingTime = processWaitingTime;
+          maxWtimeRank = rank;
+        }
+        
+        // find rank with minimum waiting time
+        if( processWaitingTime < minWaitingTime )
+        {
+          minWaitingTime = processWaitingTime;
+          minWtimeRank = rank;
         }
 
         delete[]buf;
-      }
-    }
-
-    // for all activity groups: set the global CP fraction
-    for ( OTF2ParallelTraceWriter::ActivityGroupMap::iterator groupIter =
-            activityGroupMap->begin();
-          groupIter != activityGroupMap->end(); ++groupIter )
-    {
-      // if we have at least two streams combined
-      if( groupIter->second.numUnifyStreams > 1 )
-        groupIter->second.fractionCP /= (double)( groupIter->second.numUnifyStreams );
-      
-      //UTILS_MSG(true, "CP fraction (%s): %lf", 
-      //          callbacks.getAnalysis().getFunctionName(groupIter->first), 
-      //          groupIter->second.fractionCP);
-      
-      if ( globalBlame > 0 )
-      {
-        groupIter->second.fractionBlame = groupIter->second.totalBlame 
-                                        / globalBlame;
-      }
-      else
-      {
-        groupIter->second.fractionBlame = 0.0;
       }
     }
   }
@@ -642,6 +647,192 @@ Runner::mergeActivityGroups()
   }
 }
 
+/**
+ * MPI_Gather: root gets number of regions on each rank to figure out offset 
+ *               and receive buffer size
+ * MPI_Gatherv: each rank sends its regions
+ */
+void
+Runner::mergeActivityGroups()
+{
+  OTF2ParallelTraceWriter::ActivityGroupMap* activityGroupMap =
+    writer->getActivityGroupMap();
+  
+  assert( activityGroupMap );
+
+  // waiting time on each process
+  uint64_t processWaitingTime = 0;
+
+  if ( 0 == mpiRank )
+  {
+    // compute total process-local blame
+    for ( OTF2ParallelTraceWriter::ActivityGroupMap::iterator groupIter =
+            activityGroupMap->begin(); groupIter != activityGroupMap->end(); 
+          ++groupIter )
+    {
+        // add the activity groups blame to the total global blame
+        globalBlame += groupIter->second.totalBlame;
+
+        // sum up waiting time of individual regions for rank 0
+        processWaitingTime += groupIter->second.waitingTime;
+    }
+  }
+  
+  int numLocalRegions = activityGroupMap->size(); // number of local regions
+  int* localRegions = NULL;
+  
+  if( 0 == mpiRank )
+  {
+    UTILS_MSG( options.verbose >= VERBOSE_BASIC,
+               " Combining regions from %d analysis processes", mpiSize );
+    
+    localRegions = ( int* ) malloc( mpiSize * sizeof( int ) );
+  }
+  
+  MPI_CHECK( MPI_Gather( &numLocalRegions, 1, MPI_INT, 
+                         localRegions, 1, MPI_INT, 
+                         0, MPI_COMM_WORLD ) );
+  
+  // root constructs the offsets and receive bytes count arrays
+  int* offsets = NULL;
+  int allRegionsRecvBufSize = 0;
+  OTF2ParallelTraceWriter::ActivityGroup* allRegionsRecvBuf = NULL;
+  if( 0 == mpiRank )
+  {
+    offsets = ( int* ) malloc( mpiSize * sizeof( int ) );
+    offsets[ 0 ] = 0;
+    localRegions[ 0 ] *= sizeof( OTF2ParallelTraceWriter::ActivityGroup );
+    
+    for ( int rank = 1; rank < mpiSize; ++rank )
+    {
+      localRegions[ rank ] *= sizeof( OTF2ParallelTraceWriter::ActivityGroup );
+      offsets[ rank ] = offsets[ rank -1 ] + localRegions[ rank - 1 ];
+    }
+    
+    // allocate receive buffer for root rank
+    allRegionsRecvBufSize = offsets[ mpiSize - 1 ] + localRegions[ mpiSize - 1 ];
+    allRegionsRecvBuf = ( OTF2ParallelTraceWriter::ActivityGroup* )
+      malloc( allRegionsRecvBufSize );
+  }
+  
+  // copy region information from map into array
+  OTF2ParallelTraceWriter::ActivityGroup* localRegionBuf =
+    new OTF2ParallelTraceWriter::ActivityGroup[ numLocalRegions ];
+  
+  uint32_t i = 0;
+  for ( OTF2ParallelTraceWriter::ActivityGroupMap::iterator groupIter =
+          activityGroupMap->begin();
+        groupIter != activityGroupMap->end(); ++groupIter )
+  {
+    memcpy( &( localRegionBuf[ i ] ), &( groupIter->second ),
+            sizeof( OTF2ParallelTraceWriter::ActivityGroup ) );
+    ++i;
+  } 
+  
+  MPI_CHECK( MPI_Gatherv( localRegionBuf, 
+    numLocalRegions * sizeof( OTF2ParallelTraceWriter::ActivityGroup ), MPI_BYTE, 
+    allRegionsRecvBuf, localRegions, offsets, 
+    MPI_BYTE, 0, MPI_COMM_WORLD ) );
+
+  // send/receive groups to master/from other MPI streams
+  if ( 0 == mpiRank )
+  {
+    // initially assign rank 0 with its waiting time
+    this->maxWaitingTime = processWaitingTime;
+    this->minWaitingTime = processWaitingTime;
+    this->maxWtimeRank = 0;
+    this->minWtimeRank = 0;
+    
+    // receive from all other MPI streams
+    for ( int rank = 1; rank < mpiSize; ++rank )
+    {
+      // convert the received bytes to region number
+      uint32_t numRegions = localRegions[ rank ]
+                          / sizeof( OTF2ParallelTraceWriter::ActivityGroup );
+      
+      // convert the offset in bytes to region groups
+      OTF2ParallelTraceWriter::ActivityGroup* rankRegionBuf = allRegionsRecvBuf 
+        + ( offsets[ rank ] / sizeof( OTF2ParallelTraceWriter::ActivityGroup ) );
+
+      // receive the regions from current rank
+      if ( numRegions > 0 )
+      {        
+        // total waiting time per process
+        processWaitingTime = 0;
+
+        // combine with own regions and generate a global metrics
+        OTF2ParallelTraceWriter::ActivityGroupMap::iterator groupIter;
+        for ( uint32_t i = 0; i < numRegions; ++i )
+        {
+          OTF2ParallelTraceWriter::ActivityGroup* group = &( rankRegionBuf[ i ] );
+          uint32_t fId = group->functionId;
+          groupIter = activityGroupMap->find( fId );
+
+          if ( groupIter != activityGroupMap->end() )
+          {
+            groupIter->second.numInstances      += group->numInstances;
+            groupIter->second.totalBlame        += group->totalBlame;
+            groupIter->second.totalDuration     += group->totalDuration;
+            groupIter->second.totalDurationOnCP += group->totalDurationOnCP;
+            groupIter->second.blameOnCP         += group->blameOnCP;
+            groupIter->second.waitingTime       += group->waitingTime;
+            
+            for( int i = 0; i < REASON_NUMBER; i++ )
+            {
+              groupIter->second.blame4[ i ] += group->blame4[ i ];
+            }
+            
+            groupIter->second.numUnifyStreams++;
+          }
+          else // create region and set region information
+          {
+            ( *activityGroupMap )[fId].functionId        = fId;
+            ( *activityGroupMap )[fId].numInstances      = group->numInstances;
+            ( *activityGroupMap )[fId].totalBlame        = group->totalBlame;
+            ( *activityGroupMap )[fId].totalDuration     = group->totalDuration;
+            ( *activityGroupMap )[fId].totalDurationOnCP = group->totalDurationOnCP;
+            ( *activityGroupMap )[fId].blameOnCP         = group->blameOnCP;
+            ( *activityGroupMap )[fId].waitingTime       = group->waitingTime;
+            ( *activityGroupMap )[fId].numUnifyStreams   = group->numUnifyStreams;
+            
+            for( int i = 0; i < REASON_NUMBER; i++ )
+            {
+              ( *activityGroupMap )[ fId ].blame4[ i ]  = 
+                group->blame4[ i ];
+            }
+          }
+
+          // sum up over all regions
+          {
+            // add the region's blame to overall blame
+            globalBlame += group->totalBlame;
+
+            // get the waiting time per process (\todo: could be done by each process)
+            processWaitingTime += group->waitingTime;
+          }
+        }
+        
+        // find rank with maximum waiting time
+        if( processWaitingTime > maxWaitingTime )
+        {
+          maxWaitingTime = processWaitingTime;
+          maxWtimeRank = rank;
+        }
+        
+        // find rank with minimum waiting time
+        if( processWaitingTime < minWaitingTime )
+        {
+          minWaitingTime = processWaitingTime;
+          minWtimeRank = rank;
+        }
+      }
+    }
+    
+    free( allRegionsRecvBuf );
+    free( localRegions );
+  }
+}
+
 void
 Runner::mergeStatistics()
 {
@@ -653,23 +844,31 @@ Runner::mergeStatistics()
   //// summarize inefficiency patterns and wait statistics ////
   uint64_t statsRecvBuf[ mpiSize * STAT_NUMBER ];
   
-  //\todo: MPI_Reduce was more efficient, but we might detect imbalances
-  MPI_CHECK( MPI_Gather( stats.getStats(), STAT_NUMBER, MPI_UINT64_T, 
-                         statsRecvBuf,  STAT_NUMBER, MPI_UINT64_T, 
-                         0, MPI_COMM_WORLD ) );
-
+//  MPI_CHECK( MPI_Gather( stats.getStats(), STAT_NUMBER, MPI_UINT64_T, 
+//                         statsRecvBuf,  STAT_NUMBER, MPI_UINT64_T, 
+//                         0, MPI_COMM_WORLD ) );
+//
+//  if( 0 == mpiRank )
+//  {
+//    // add for each MPI stream
+//    // \todo: here we might detect imbalances
+//    #pragma omp parallel for
+//    for ( int rank = STAT_NUMBER; // ignore own values
+//          rank < mpiSize * STAT_NUMBER; 
+//          rank += STAT_NUMBER )
+//    {
+//      stats.addAllStats( &statsRecvBuf[ rank ] );
+//    }
+//  }
+//
+  // MPI_Reduce is more efficient than MPI_Gather, 
+  // but it does not allow min, max, and sum
+  MPI_CHECK( MPI_Reduce( stats.getStats(), statsRecvBuf, STAT_NUMBER, 
+                         MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD ) );
   if( 0 == mpiRank )
   {
-    // add for each MPI stream
-    // \todo: here we might detect imbalances
-    #pragma omp parallel for
-    for ( int rank = STAT_NUMBER; // ignore own values
-          rank < mpiSize * STAT_NUMBER; 
-          rank += STAT_NUMBER )
-    {
-      stats.addAllStats( &statsRecvBuf[ rank ] );
-    }
-  }
+    stats.setAllStats( statsRecvBuf );
+  }    
   
   //// aggregate number of activity occurrences over all processes ////
   uint64_t *recvBuf = NULL;
@@ -684,7 +883,7 @@ Runner::mergeStatistics()
     recvBuf = (uint64_t*)malloc( mpiSize * STAT_NUMBER * sizeof( uint64_t ) );
   }
   
-  /* MPI_Gather would enables some kind of imbalance analysis on the root process 
+  /* MPI_Gather would enable some kind of imbalance analysis on the root process 
   //MPI_CHECK( MPI_Gather( stats.getActivityCounts(), STAT_ACTIVITY_TYPE_NUMBER, 
   //                       MPI_UINT64_T, recvBuf,  STAT_ACTIVITY_TYPE_NUMBER, 
   //                       MPI_UINT64_T, 0, MPI_COMM_WORLD ) );
@@ -716,7 +915,7 @@ Runner::mergeStatistics()
   }
   //////////////////////////////////////////////////////////////
   
-  // print the total number of processed events over all processes
+  /* print the total number of processed events over all processes
   if( options.verbose >= VERBOSE_TIME )
   {
     uint64_t total_events = 0;
@@ -724,7 +923,7 @@ Runner::mergeStatistics()
                            MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD ) );
     
     total_events_read = total_events;
-  }
+  }*/
 }
 
 /**
@@ -1461,7 +1660,7 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
           // transfer blame for MPI_Wait[all]
           if( currentNode->isMPIWait() || currentNode->isMPIWaitall() )
           {
-            sendBfr[2] = currentNode->getCounter( WAITING_TIME, NULL );
+            sendBfr[2] = currentNode->getWaitingTime();
           }
           else
           {
@@ -1717,38 +1916,85 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
 }
 
 /**
- * Print the summary statistics for regions with highest critical blame
+ * Write the summary statistics to file and stdout.
  */
 void
-Runner::printAllActivities()
+Runner::writeStatistics()
 {
   if ( mpiRank == 0 )
   {
-    std::cout << "- Total number of processed events: "
-              << std::setw(19) << total_events_read << std::endl;
+    char mode[1] = {'w'};
     
+    // use append mode, if timing information have already been written
+    if( options.verbose >= VERBOSE_TIME )
+    {
+      mode[0] = 'a';
+    }
+    
+    std::string sFileName = Parser::getInstance().getSummaryFileName();
+    
+    FILE *sFile = fopen( sFileName.c_str(), mode );
+    
+    if( NULL == sFile )
+    {
+      sFile = stdout;
+    }
+
     ///////////// print information on activity occurrences ///////////
     Statistics& stats = analysis.getStatistics();
-    for(int i = 0; i < STAT_ACTIVITY_TYPE_NUMBER; i++)
+    
+    fprintf( sFile, "- %s: %19" PRIu64 "\n",
+             casita::typeStrTableActivity[ STAT_TOTAL_TRACE_EVENTS ].str, 
+             //total_events_read, 
+             stats.getActivityCounts()[ STAT_TOTAL_TRACE_EVENTS ] );
+    
+    for(int i = 0; i < STAT_ACTIVITY_TYPE_NUMBER-3; i++)
     {
       uint64_t actCount = stats.getActivityCounts()[ i ];
       if( actCount )
       {
-        for(int j = 0; j < STAT_ACTIVITY_TYPE_NUMBER; j++)
+        for(int j = 0; j < STAT_ACTIVITY_TYPE_NUMBER-3; j++)
         {
           if( casita::typeStrTableActivity[ i ].type == 
               casita::typeStrTableActivity[ j ].type )
           {
-            //printf( "  %32s: %" PRIu64 "\n", casita::typeStrTableActivity[ i ].str, actCount );
-            std::cout << std::setw(34) << casita::typeStrTableActivity[ i ].str 
-                      << ": "
-                      << std::setw(19) << actCount << std::endl;
+            fprintf( sFile, "%29s: %19" PRIu64 "\n", 
+                     casita::typeStrTableActivity[ i ].str, actCount );
             break;
           }
         }
       }
     }
-  
+    
+    if( sFile )
+    {
+      fclose( sFile );
+    }
+  }
+}
+ 
+void
+Runner::writeActivityRating()
+{
+  if ( mpiRank == 0 )
+  {
+    char mode[1] = {'w'};
+    
+    // use append mode, if timing information have already been written
+    if( options.verbose >= VERBOSE_TIME )
+    {
+      mode[0] = 'a';
+    }
+    
+    std::string sFileName = Parser::getInstance().getSummaryFileName();
+    
+    FILE *sFile = fopen( sFileName.c_str(), mode );
+    
+    if( NULL == sFile )
+    {
+      sFile = stdout;
+    }
+    
     /////////////// Region statistics //////////////7
     OTF2ParallelTraceWriter::ActivityGroupMap* activityGroupMap =
                                                   writer->getActivityGroupMap();
@@ -1761,34 +2007,15 @@ Runner::printAllActivities()
       UTILS_OUT( "Global critical path length is 0. Skipping output ..." );
       return;
     }
-    
-    std::string sFileName = Parser::getInstance().getPathToFile() 
-                           + std::string( "/" ) + Parser::getInstance().getOutArchiveName()
-                           + std::string( "_summary.txt" );
-    
-    char mode[1] = {'w'};
-    
-    // use append mode, if timing information have already been written
-    if( mpiRank == 0 && options.verbose >= VERBOSE_TIME )
-    {
-      mode[0] = 'a';
-    }
-    
-    FILE *sFile = fopen( sFileName.c_str(), mode );
-    
-    if( NULL == sFile )
-    {
-      sFile = stdout;
-    }
 
-    fprintf( sFile, "\n%*s %10s %11s %11s %6s %8s %8s %10s\n",
+    fprintf( sFile, "\n%*s %10s %11s %11s %6s %11s %8s %10s\n",
             RNAMELEN, "Region",
             "Calls",
             "Time[s]",
             "Time on CP",
             "CP[%]",
+            "Blame[s]",
             "Blame[%]",
-            "Blame+CP",
             "Blame on CP" );
 
     fprintf( sFile, "%.*s", 
@@ -1798,44 +2025,46 @@ Runner::printAllActivities()
     std::set< OTF2ParallelTraceWriter::ActivityGroup,
               OTF2ParallelTraceWriter::ActivityGroupCompare > sortedActivityGroups;
       
-    // for all activity groups
+    // create a region map, sorted by blame on critical path
     for ( OTF2ParallelTraceWriter::ActivityGroupMap::iterator iter =
             activityGroupMap->begin();
           iter != activityGroupMap->end(); ++iter )
-    {
-      iter->second.fractionCP = 0.0;
-      if ( iter->second.totalDurationOnCP > 0 )
-      {
-        iter->second.fractionCP =
-          (double)iter->second.totalDurationOnCP / (double)globalLengthCP;
-      }
-      
+    {   
       sortedActivityGroups.insert( iter->second );
     }
       
     // print rating in CSV file (file has to be declared in this scope for closing it)
     FILE *ratingFile;
-    if (options.createRatingCSV){
+    if ( options.createRatingCSV ){
       
       UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
                  "[0] generate rating as csv file" );
 
-      string rFileName = Parser::getInstance().getPathToFile() 
-                       + string( "/" ) + Parser::getInstance().getOutArchiveName()
-                       + string( "_rating.csv" );
+      string rFileName = Parser::getInstance().getRatingFileName();
       
       ratingFile = fopen( rFileName.c_str(), "w" );
-      fprintf(ratingFile, "Region;Calls;Time [s];Time on CP [s];"
-                           "CP Ratio [%%];Global Blame Ratio [%%];"
-                           "Blame+CP;Blame on CP [s]\n" );
+
+      // if rating file was successfully opened
+      if( ratingFile )
+      {
+        fprintf(ratingFile, "Region;Calls;Time [s];Time on CP [s];"
+                            "CP Ratio [%%];Blame [s];Blame Ratio [%%];"
+                            "Blame on CP [s]" );
+
+       for(int i = 0; i < REASON_NUMBER; i++ )
+       {
+         fprintf(ratingFile, "; blame for %s [%%]", casita::typeStrTableBlameReason[ i ].str );
+       }
+
+       fprintf(ratingFile, "\n" ); 
+      }
     }
     
     uint32_t sumInstances   = 0;
     uint64_t sumDuration    = 0;
     uint64_t sumDurationCP  = 0;
     double sumBlameOnCP     = 0.0;  
-    double sumFractionCP    = 0.0;
-    double sumFractionBlame = 0.0;
+    double sumBlame         = 0.0;
     uint64_t sumWaitingTime = 0;
     
     size_t ctr = 0;
@@ -1851,10 +2080,16 @@ Runner::printAllActivities()
         sumDuration      += iter->totalDuration;
         sumDurationCP    += iter->totalDurationOnCP;
         sumBlameOnCP     += iter->blameOnCP;
-        sumFractionCP    += iter->fractionCP;
-        sumFractionBlame += iter->fractionBlame;
+        sumBlame         += iter->totalBlame;
         
         const char* regName = definitions.getRegionName( iter->functionId );
+        if( NULL == regName )
+        {
+          UTILS_WARNING( "Could not get region name for region id %" PRIu64 ".",
+                         iter->functionId );
+          continue;
+        }
+        
         size_t regNameLen = strlen( regName );
         size_t regShift = 0;
         
@@ -1867,61 +2102,121 @@ Runner::printAllActivities()
           } while( ( regNameLen - regShift ) > ( size_t ) RNAMELEN );
         }
 
-        fprintf( sFile, "%*.*s %10u %11f %11f %6.2f %8.4f %6.6f %11.6f\n",
+        fprintf( sFile, "%*.*s %10u %11f %11f %6.2f %11f %8.4f %11.6f",
                 RNAMELEN, RNAMELEN, regName + regShift,
                 iter->numInstances,
                 analysis.getRealTime( iter->totalDuration ),
                 analysis.getRealTime( iter->totalDurationOnCP ),
-                100.0 * iter->fractionCP,
-                100.0 * iter->fractionBlame,
-                iter->fractionCP + iter->fractionBlame,
+                100.0 * iter->totalDurationOnCP / (double)globalLengthCP,
+                iter->totalBlame,
+                100.0 * iter->totalBlame / globalBlame,
                 iter->blameOnCP );
+        
+        // blame reasons
+        if( options.extendedBlame && iter->totalBlame > 0 ) // avoid division by zero
+        {        
+          for(int i = 0; i < REASON_NUMBER; i++ )
+          {
+            double blameShare = 100*iter->blame4[ i ] / iter->totalBlame;
+            if( iter->blame4[ i ] > 0 && blameShare >= 1.0 )
+            {
+              for(int j = 0; j < REASON_NUMBER; j++)
+              {
+                if( casita::typeStrTableBlameReason[ i ].type == 
+                    casita::typeStrTableBlameReason[ j ].type )
+                {
+                  fprintf( sFile, "\n -> %3.2f%% (%.6f s) blame for %s", 
+                    blameShare, iter->blame4[i], 
+                    casita::typeStrTableBlameReason[ i ].str );
+                  break;
+                }
+              }
+            }
+          }
+        }
+        fprintf( sFile, "\n" );
         
         ++ctr;
       }
 
-      if( options.createRatingCSV )
+      if( ratingFile && options.createRatingCSV )
       {
-        fprintf( ratingFile, "%s;%u;%lf;%lf;%lf;%lf;%lf;%lf\n",
+        fprintf( ratingFile, "%s;%u;%lf;%lf;%lf;%lf;%lf;%lf",
                  definitions.getRegionName( iter->functionId ),
                  iter->numInstances,
                  analysis.getRealTime( iter->totalDuration ),
                  analysis.getRealTime( iter->totalDurationOnCP ),
-                 100.0 * iter->fractionCP,
-                 100.0 * iter->fractionBlame,
-                 iter->fractionCP + iter->fractionBlame,
+                 100.0 * iter->totalDurationOnCP / (double)globalLengthCP,
+                 iter->totalBlame,
+                 100.0 * iter->totalBlame / globalBlame,
                  iter->blameOnCP );
+        
+        if( iter->totalBlame > 0 ) // avoid division by zero
+        {
+          for(int i = 0; i < REASON_NUMBER; i++ )
+          {
+            fprintf( ratingFile, ";%lf", 100*iter->blame4[ i ] / iter->totalBlame );
+          }
+        }
+        
+        fprintf( ratingFile, "\n" );
       }
       
       sumWaitingTime += iter->waitingTime;
     }
     
-    if (options.createRatingCSV)
+    if( ratingFile && options.createRatingCSV )
     {
       fclose(ratingFile);
     }
     
     fprintf( sFile, "%.*s", 
             RNAMELEN, "-----------------------------------------------------" );
-    fprintf( sFile, "\n%*.*s%2lu %10u %11lf %11lf %6.2lf %8.4lf %20.6lf\n",
+    fprintf( sFile, "\n%*.*s%2lu %10u %11lf %11lf %6.2lf %11lf %8.4lf %11.6lf\n",
               RNAMELEN - 2, RNAMELEN - 2, "Sum of Top ",
               ctr,
               sumInstances,
               analysis.getRealTime( sumDuration ),
               analysis.getRealTime( sumDurationCP ),
-              100.0 * sumFractionCP,
-              100.0 * sumFractionBlame, 
+              100.0 * (double)sumDurationCP / (double)globalLengthCP,
+              sumBlame,
+              100.0 * sumBlame / globalBlame, 
               sumBlameOnCP );
     
+    // some more statistics
+    Statistics& stats = analysis.getStatistics();
+    fprintf( sFile, "\nStream summary: %d MPI ranks, %" PRIu64 " host streams, %" PRIu64 " devices",
+             mpiSize,
+             stats.getActivityCounts()[ STAT_HOST_STREAMS ],
+             stats.getActivityCounts()[ STAT_DEVICE_NUM ]
+           );
+    
     // print inefficiency and wait statistics
-    fprintf( sFile, "\n\033[4mPattern summary:\033[24m\n"
-            " %-30.30s: %11lf s\n"
-            " %-30.30s: %11lf s\n", 
-            "Total program runtime", 
-            (double) definitions.getTraceLength() / (double) definitions.getTimerResolution(),
-            "Total waiting time",
-            analysis.getRealTime( sumWaitingTime ) );
-      
+    fprintf( sFile, "\n"
+             "%-31.31s: %11lf s\n"
+             "%-31.31s: %11lf s (%lf s per rank, %lf s (%2.2lf%%) per host stream)\n",
+             "Total program runtime", 
+             (double) definitions.getTraceLength() / (double) definitions.getTimerResolution(),
+             "Total waiting time (host)",
+             analysis.getRealTime( sumWaitingTime ),
+             analysis.getRealTime( sumWaitingTime ) / mpiSize,
+             analysis.getRealTime( sumWaitingTime ) / 
+               stats.getActivityCounts()[ STAT_HOST_STREAMS ],
+             analysis.getRealTime( sumWaitingTime ) / 
+               stats.getActivityCounts()[ STAT_HOST_STREAMS ] /
+                 analysis.getRealTime( definitions.getTraceLength() )
+               * 100
+            ); 
+    
+    fprintf( sFile, "%47c %lf s on rank %d (min) - %s\n", ' ',
+             analysis.getRealTime( this->minWaitingTime ), this->minWtimeRank,
+             this->definitions.getNodeName( this->minWtimeRank ) );
+    fprintf( sFile, "%47c %lf s on rank %d (max) - %s\n", ' ',
+             analysis.getRealTime( this->maxWaitingTime ), this->maxWtimeRank,
+             this->definitions.getNodeName( this->maxWtimeRank ) );
+              
+    fprintf( sFile, "\nPattern summary:\n" );
+            
     //// MPI ////
     uint64_t patternCount = stats.getStats()[MPI_STAT_LATE_SENDER] + 
                             stats.getStats()[ MPI_STAT_LATE_RECEIVER ] +
@@ -1999,37 +2294,44 @@ Runner::printAllActivities()
       if( patternCount )
       {
         fprintf( sFile, " OpenMP\n"
-                " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
+                " %-30.30s: %11lf s (%lf s per host stream, %" PRIu64 " overall occurrences)\n",
                 " Wait in OpenMP barrier",
                 analysis.getRealTime( stats.getStats()[OMP_STAT_BARRIER_WTIME] ),
+                analysis.getRealTime( stats.getStats()[OMP_STAT_BARRIER_WTIME] ) /
+                  stats.getActivityCounts()[ STAT_HOST_STREAMS ],
                 patternCount );
       }
     }
     
     //// Offloading ////
-    if( analysis.haveParadigm( PARADIGM_CUDA ) || analysis.haveParadigm( PARADIGM_OCL ) )
+    if( !Parser::ignoreOffload() && ( analysis.haveParadigm( PARADIGM_CUDA ) || 
+                                      analysis.haveParadigm( PARADIGM_OCL ) ) )
     {
       fprintf( sFile, " Offloading\n"
-              " %-30.30s: %11lf s (%2.2lf%%)\n"
-              " %-30.30s: %11lf s (%2.2lf%%)\n",
+              " %-30.30s: %11lf s (%2.2lf%% -> %lf s per device)\n"
+              " %-30.30s: %11lf s (%2.2lf%% -> %lf s per device)\n",
               " Idle device",
               analysis.getRealTime( stats.getStats()[OFLD_STAT_IDLE_TIME] ),
               (double) stats.getStats()[OFLD_STAT_IDLE_TIME] / 
               (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100,
+              analysis.getRealTime( stats.getStats()[OFLD_STAT_IDLE_TIME] ) / 
+                stats.getActivityCounts()[ STAT_DEVICE_NUM ],
               " Compute idle device",
               analysis.getRealTime( stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME] ), 
               (double) stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME] / 
-              (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100
+              (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100,
+              analysis.getRealTime( stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME] ) /
+                stats.getActivityCounts()[ STAT_DEVICE_NUM ]
          );
 
-      patternCount = stats.getStats()[STAT_OFLD_EARLY_BLOCKING_WAIT];
+      patternCount = stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WAIT];
       if( patternCount )
       {
-        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences), on kernel: %lf s\n",
+        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences, on kernel: %lf s)\n",
           " Early blocking wait",
           analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME] ),
-          patternCount, 
-          analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL] ) );
+          patternCount,
+          analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL] ));
       }
 
       patternCount = stats.getStats()[OFLD_STAT_EARLY_TEST];
@@ -2038,49 +2340,132 @@ Runner::printAllActivities()
         fprintf( sFile, "  Early test for completion: %" PRIu64 " (%lf s)\n", patternCount,
           analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_TEST_TIME] ) );
       }
+      
+      patternCount = stats.getStats()[STAT_OFLD_TOTAL_TRANSFER_TIME];
+      if( patternCount )
+      {
+        fprintf( sFile, " %-30.30s: %11lf s (%2.2lf%% of offload time)\n",
+                 " Total communication time", 
+                 analysis.getRealTime( patternCount ),
+                 (double) stats.getStats()[STAT_OFLD_TOTAL_TRANSFER_TIME] / 
+                   (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100 );
+      }
+      
+      patternCount = stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME]
+                   - stats.getStats()[OFLD_STAT_IDLE_TIME];
+      if( patternCount )
+      {
+        fprintf( sFile, " %-30.30s: %11lf s (%2.2lf%% of total communication time)\n",
+                 " -Exclusive communication", 
+                 analysis.getRealTime( patternCount ),
+                 (double) patternCount / 
+                   (double) stats.getStats()[STAT_OFLD_TOTAL_TRANSFER_TIME] * 100 );
+      }
+              
+      patternCount = stats.getStats()[STAT_OFLD_TOTAL_TRANSFER_TIME]
+                   - ( stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME]
+                       - stats.getStats()[OFLD_STAT_IDLE_TIME] );
+      if( patternCount )
+      {
+        fprintf( sFile, " %-30.30s: %11lf s (%2.2lf%% of total communication time)\n",
+                 " -Copy-compute overlap", 
+                 analysis.getRealTime( patternCount ),
+                 (double) patternCount / 
+                   (double) stats.getStats()[STAT_OFLD_TOTAL_TRANSFER_TIME] * 100 );
+      }
+      else
+      {
+        fprintf( sFile, "  No overlap between copy and compute tasks!\n\n" );
+      }
 
       patternCount = stats.getStats()[STAT_OFLD_BLOCKING_COM];
       if( patternCount )
       {
-        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
-                " Blocking communication",
+        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences)",
+                " -Blocking communication",
           analysis.getRealTime( stats.getStats()[STAT_OFLD_BLOCKING_COM_TIME] ),
           patternCount );
+        
+        patternCount = stats.getStats()[OFLD_STAT_BLOCKING_COM_EXCL_TIME];
+        if( patternCount )
+        {
+          fprintf( sFile, ", exclusive: %lf s\n",
+            analysis.getRealTime( patternCount ) );
+        }
+        else
+        {
+          fprintf( sFile, "\n" );
+        }
       }
 
       patternCount = stats.getStats()[OFLD_STAT_MULTIPLE_COM];
       if( patternCount )
       {
-        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences)\n",
-                " Consecutive communication",
+        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences)",
+                " -Consecutive communication",
           analysis.getRealTime( stats.getStats()[OFLD_STAT_MULTIPLE_COM_TIME] ),
           patternCount );
+      }
+      
+      patternCount = stats.getStats()[OFLD_STAT_MULTIPLE_COM_SD];
+      if( patternCount )
+      {
+        fprintf( sFile, ", same direction: %lf s (%" PRIu64 " occurrences)",
+          analysis.getRealTime( stats.getStats()[OFLD_STAT_MULTIPLE_COM_SD_TIME] ),
+          patternCount );
+      }
+      if( stats.getStats()[OFLD_STAT_MULTIPLE_COM] || patternCount )
+      {
+        fprintf( sFile, "\n" );
       }
       
       patternCount = stats.getStats()[OFLD_STAT_KERNEL_START_DELAY];
       if( patternCount )
       {
-        fprintf( sFile, " %-30.30s: %11lf ms/kernel (%" PRIu64 " occurrences), total delay: %lf s\n\n",
-          " Kernel Startup Delay",
+        fprintf( sFile, " %-30.30s: %11lf ms/kernel (%" PRIu64 " occurrences), total delay: %lf s\n",
+          " Kernel startup delay",
           analysis.getRealTime( stats.getStats()[OFLD_STAT_KERNEL_START_DELAY_TIME] ) / patternCount *1000,
           patternCount,
           analysis.getRealTime( stats.getStats()[OFLD_STAT_KERNEL_START_DELAY_TIME] )
         );
       }
+      
+      patternCount = stats.getStats()[STAT_OFLD_COMPUTE_OVERLAP_TIME];
+      if( patternCount ) 
+      {
+        fprintf( sFile, " %-30.30s: %11lf s (%lf s per device)\n",
+          " Compute overlap",
+          analysis.getRealTime( stats.getStats()[STAT_OFLD_COMPUTE_OVERLAP_TIME] ),
+          analysis.getRealTime( stats.getStats()[STAT_OFLD_COMPUTE_OVERLAP_TIME] 
+            / stats.getActivityCounts()[ STAT_DEVICE_NUM ] ) );
+      }
+      else
+      {
+        fprintf( sFile, "  No overlap between compute tasks!\n" );
+      }
     }
-
+    
     if( sFile )
     {
       fclose( sFile );
-
-      // print summary file to console
-      ifstream fin( sFileName );
-      string temp;
-      while( getline( fin, temp ) )
-      {
-        std::cerr << temp << std::endl;
-      }
-      fin.close();
     }
+  }
+}
+
+// print summary file to console
+void
+Runner::printToStdout()
+{
+  if ( mpiRank == 0 )
+  {  
+    string sFileName = Parser::getInstance().getSummaryFileName();
+    
+    ifstream fin( sFileName.c_str() );
+    string temp;
+    while( getline( fin, temp ) )
+    {
+      std::cerr << temp << std::endl;
+    }
+    fin.close();
   }
 }

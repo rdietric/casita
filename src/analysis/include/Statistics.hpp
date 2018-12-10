@@ -22,36 +22,41 @@ namespace casita
     // offloading
      STAT_OFLD_BLOCKING_COM = 0,       // number of blocking communications
      STAT_OFLD_BLOCKING_COM_TIME  = 1, // accumulated blocking communication time
-     STAT_OFLD_EARLY_BLOCKING_WAIT = 2,   // number of early blocking waits
-     OFLD_STAT_EARLY_BLOCKING_WTIME  = 3, // accumulated early blocking wait time
-     OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL = 4, // accumulated early blocking wait time
-     OFLD_STAT_EARLY_TEST = 5,       // number of early tests
-     OFLD_STAT_EARLY_TEST_TIME  = 6, // accumulated time of early tests
-     OFLD_STAT_IDLE_TIME = 7,         // time an offloading device is idle
-     OFLD_STAT_COMPUTE_IDLE_TIME = 8, // compute idle time
-     OFLD_STAT_OFLD_TIME = 9, // duration of the offloading interval
-     OFLD_STAT_MULTIPLE_COM = 10,      // multiple consecutive communication count
-     OFLD_STAT_MULTIPLE_COM_TIME = 11,  // multiple consecutive communication time
-     OFLD_STAT_KERNEL_START_DELAY = 12,
-     OFLD_STAT_KERNEL_START_DELAY_TIME = 13,
+     OFLD_STAT_BLOCKING_COM_EXCL_TIME = 2, // time a blocking communication is communicating
+     OFLD_STAT_EARLY_BLOCKING_WAIT = 3,   // number of early blocking waits
+     OFLD_STAT_EARLY_BLOCKING_WTIME = 4,  // accumulated early blocking wait time
+     OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL = 5, // accumulated early blocking wait time on kernel
+     OFLD_STAT_EARLY_TEST = 6,       // number of early tests
+     OFLD_STAT_EARLY_TEST_TIME  = 7, // accumulated time of early tests
+     OFLD_STAT_IDLE_TIME = 8,         // time an offloading device is idle
+     OFLD_STAT_COMPUTE_IDLE_TIME = 9, // compute idle time
+     OFLD_STAT_OFLD_TIME = 10, // duration of the offloading interval
+     OFLD_STAT_MULTIPLE_COM = 11,      // multiple consecutive communication count
+     OFLD_STAT_MULTIPLE_COM_TIME = 12,  // multiple consecutive communication time
+     OFLD_STAT_MULTIPLE_COM_SD = 13,      // multiple consecutive communication count
+     OFLD_STAT_MULTIPLE_COM_SD_TIME = 14,  // multiple consecutive communication time
+     OFLD_STAT_KERNEL_START_DELAY = 15,
+     OFLD_STAT_KERNEL_START_DELAY_TIME = 16,
+     STAT_OFLD_COMPUTE_OVERLAP_TIME = 17,  // time when compute kernels overlap with each other
+     STAT_OFLD_TOTAL_TRANSFER_TIME = 18,   // total transfer time
 
      //MPI (are written in rules, could also be evaluated in OTF2TraceWriter by 
      //     reading leave node counter values)
-     MPI_STAT_LATE_SENDER = 14,       // number of late senders
-     MPI_STAT_LATE_SENDER_WTIME = 15, // late sender waiting time
-     MPI_STAT_LATE_RECEIVER = 16,       // number of late receivers
-     MPI_STAT_LATE_RECEIVER_WTIME = 17, // late receiver waiting time
-     MPI_STAT_SENDRECV = 18,
-     MPI_STAT_SENDRECV_WTIME = 19,
-     MPI_STAT_COLLECTIVE = 20,       // number of (unbalanced) collectives
-     MPI_STAT_COLLECTIVE_WTIME = 21, // waiting time in collectives
-     MPI_STAT_WAITALL_LATEPARTNER = 22,
-     MPI_STAT_WAITALL_LATEPARTNER_WTIME = 23,
+     MPI_STAT_LATE_SENDER = 19,       // number of late senders
+     MPI_STAT_LATE_SENDER_WTIME = 20, // late sender waiting time
+     MPI_STAT_LATE_RECEIVER = 21,       // number of late receivers
+     MPI_STAT_LATE_RECEIVER_WTIME = 22, // late receiver waiting time
+     MPI_STAT_SENDRECV = 23,
+     MPI_STAT_SENDRECV_WTIME = 24,
+     MPI_STAT_COLLECTIVE = 25,       // number of (unbalanced) collectives
+     MPI_STAT_COLLECTIVE_WTIME = 26, // waiting time in collectives
+     MPI_STAT_WAITALL_LATEPARTNER = 27,
+     MPI_STAT_WAITALL_LATEPARTNER_WTIME = 28,
 
      //OpenMP
-     OMP_STAT_BARRIER = 24,      // OpenMP barriers
-     OMP_STAT_BARRIER_WTIME = 25, // waiting time in OpenMP barriers
-     STAT_NUMBER = 26
+     OMP_STAT_BARRIER = 29,      // OpenMP barriers
+     OMP_STAT_BARRIER_WTIME = 30, // waiting time in OpenMP barriers
+     STAT_NUMBER = 31
   };
 
   enum ActivityType
@@ -70,8 +75,13 @@ namespace casita
      STAT_OFLD_SYNC = 6,        // any offload synchronization, except for events
      STAT_OFLD_SYNC_EVT = 7,    // offload event synchronization
      STAT_OFLD_TEST_EVT = 8,    // offload test operation
+     
+     // the following three are a hack (move to extra type)
+     STAT_TOTAL_TRACE_EVENTS = 9,
+     STAT_HOST_STREAMS = 10,
+     STAT_DEVICE_NUM = 11,
 
-     STAT_ACTIVITY_TYPE_NUMBER = 9
+     STAT_ACTIVITY_TYPE_NUMBER = 12
   };
   
   typedef struct
@@ -90,7 +100,8 @@ namespace casita
     { STAT_OFLD_KERNEL, "Ofld. kernels" },
     { STAT_OFLD_SYNC, "Ofld. stream/device synchr." },
     { STAT_OFLD_SYNC_EVT, "Ofld. event synchr." },
-    { STAT_OFLD_TEST_EVT, "Ofld. event queries" }
+    { STAT_OFLD_TEST_EVT, "Ofld. event queries" },
+    { STAT_TOTAL_TRACE_EVENTS, "Total number of events read" }
   };
   
   class Statistics
@@ -135,6 +146,9 @@ namespace casita
       
       void
       addAllStats( uint64_t* stats );
+      
+      void
+      setAllStats( uint64_t* stats );
       
       uint64_t*
       getStats();

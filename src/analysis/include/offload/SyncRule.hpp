@@ -55,7 +55,7 @@ namespace casita
           return false;
         }
         
-        AnalysisEngine* analysis = ofldAnalysis->getCommon();
+        AnalysisEngine* analysis = ofldAnalysis->getAnalysisEngine();
         
         // count occurrence
         analysis->getStatistics().countActivity( STAT_OFLD_SYNC );
@@ -135,43 +135,49 @@ namespace casita
               // if the edge is not available, create a blocking edge
               if( !syncEdge )
               {
-                analysis->newEdge( syncEnter, syncLeave, EDGE_IS_BLOCKING );
+                analysis->newEdge( syncEnter, syncLeave, true );
                 
-                // early blocking wait statistics
+                uint64_t totalWaitingTime = 
+                 syncLeave->getTime() - syncEnter->getTime();
+              
+                // early blocking wait (\todo: considers only kernels yet)
                 analysis->getStatistics().addStatWithCount( 
-                  STAT_OFLD_EARLY_BLOCKING_WAIT, 
-                  syncLeave->getTime() - syncEnter->getTime() );
+                  OFLD_STAT_EARLY_BLOCKING_WAIT, totalWaitingTime );
+
+                // attribute waiting time to sync leave node
+                syncLeave->incCounter( WAITING_TIME, totalWaitingTime );
               }
               else if( !syncEdge->isBlocking() )
               {
                 syncEdge->makeBlocking();
                 
-                // early blocking wait statistics
+                uint64_t totalWaitingTime = 
+                 syncLeave->getTime() - syncEnter->getTime();
+              
+                // early blocking wait (\todo: considers only kernels yet)
                 analysis->getStatistics().addStatWithCount( 
-                  STAT_OFLD_EARLY_BLOCKING_WAIT, 
-                  syncLeave->getTime() - syncEnter->getTime() );
+                  OFLD_STAT_EARLY_BLOCKING_WAIT, totalWaitingTime );
+
+                // attribute waiting time to sync leave node
+                syncLeave->incCounter( WAITING_TIME, totalWaitingTime );
               }
 
               GraphNode* kernelEnter = kernelLeave->getGraphPair().first;
 
-              uint64_t waitingTime = std::min( syncLeave->getTime(),
+              uint64_t waitOnKernel = std::min( syncLeave->getTime(),
                                                kernelLeave->getTime() ) -
                                      std::max( syncEnter->getTime(),
                                                kernelEnter->getTime() );
 
-              // time statistics
+              // early blocking wait for kernel (accounts only kernel runtime)
               analysis->getStatistics().addStatValue( 
-                OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL, waitingTime );
-            
-              // attribute waiting time to sync leave node
-              syncLeave->incCounter( WAITING_TIME, waitingTime );
-              //kernelLeave->incCounter( BLAME, waitingTime );
-              
+                OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL, waitOnKernel );
+
               // blame the kernel
               Edge* kernelEdge = analysis->getEdge( kernelEnter, kernelLeave );
               if( kernelEdge )
               {
-                kernelEdge->addBlame( waitingTime );
+                kernelEdge->addBlame( waitOnKernel, REASON_OFLD_WAIT4DEVICE );
               }
               else
               {
@@ -223,11 +229,19 @@ namespace casita
           syncLeave->setCounter( WAITING_TIME, waitingTime );
           //syncLeave->incCounter( BLAME, waitingTime );
           
-          // blame the synchronization for being useless
           Edge* syncEdge = analysis->getEdge( syncEnter, syncLeave );
           if( syncEdge )
           {
-            syncEdge->addBlame( waitingTime );
+            // blame the synchronization for being useless if it is not a 
+            // blocking data transfer
+            if( syncLeave->isOffloadEnqueueTransfer() )
+            {
+              syncEdge->addBlame( waitingTime, REASON_OFLD_BLOCKING_TRANSFER );
+            }
+            /*else
+            {
+              syncEdge->addBlame( waitingTime );
+            }*/
           }
           else
           {

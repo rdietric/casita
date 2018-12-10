@@ -35,20 +35,20 @@ namespace casita
     private:
 
       bool
-      apply( AnalysisParadigmOMP* analysis, GraphNode* barrierLeave )
+      apply( AnalysisParadigmOMP* ompAnalysis, GraphNode* barrierLeave )
       {
         if ( !barrierLeave->isOMPSync() || !barrierLeave->isLeave() )
         {
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon();
+        AnalysisEngine* analysisEngine = ompAnalysis->getAnalysisEngine();
         
         // count occurrence
-        commonAnalysis->getStatistics().countActivity( STAT_OMP_BARRIER );
+        analysisEngine->getStatistics().countActivity( STAT_OMP_BARRIER );
         
-        GraphNode*      barrierEnter   = barrierLeave->getGraphPair().first;
-        EventStream*    nodeStream     = commonAnalysis->getStream(
+        GraphNode*   barrierEnter = barrierLeave->getGraphPair().first;
+        EventStream* nodeStream   = analysisEngine->getStream(
           barrierLeave->getStreamId() );
 
         // this rule ignores device streams (see target barrier rule)
@@ -58,18 +58,23 @@ namespace casita
         }
         
         // save barrier enter events to BarrierEventList on the host
-        analysis->addBarrierEventToList( barrierEnter, false );
-
-        const EventStreamGroup::EventStreamList& streams =
-          commonAnalysis->getHostStreams();
+        ompAnalysis->addBarrierEventToList( barrierEnter, false );
         
         // get list with all barrier enter events on the host
         const GraphNode::GraphNodeList& barrierList =
-          analysis->getBarrierEventList( false );
+          ompAnalysis->getBarrierEventList( false );
 
+        GraphNode *fork = ompAnalysis->getInnerMostFork();
+        if( NULL == fork )
+        {
+          UTILS_WARNING( "[OMPBarrierRule] Could not find fork node." );
+          return false;
+        }
+        
         // check if all barriers were passed
-        //\todo: this does not work for nested parallel regions
-        if ( streams.size() == barrierList.size() )
+        //\todo: this might not work for nested parallel regions
+        //if ( streams.size() == barrierList.size() )
+        if( barrierList.size() == fork->getReferencedStreamId() )
         {
           GraphNode::GraphNodeList::const_iterator iter = barrierList.begin();
         
@@ -94,7 +99,7 @@ namespace casita
             // for blocking barrier regions
             if ( barrier.first != latestEnterNode )
             {
-              Edge* barrierEdge = commonAnalysis->getEdge( barrier.first,
+              Edge* barrierEdge = analysisEngine->getEdge( barrierEnter,
                                                            barrier.second );
               
               if( barrierEdge )
@@ -103,14 +108,13 @@ namespace casita
               }
               else
               {
-                commonAnalysis->newEdge( barrier.first, barrier.second,
-                                         EDGE_IS_BLOCKING );
+                analysisEngine->newEdge( barrier.first, barrier.second, true );
               }              
               
               uint64_t wtime = 
                 latestEnterNode->getTime() - barrier.first->getTime();
               
-              commonAnalysis->getStatistics().addStatWithCount( 
+              analysisEngine->getStatistics().addStatWithCount( 
                 OMP_STAT_BARRIER, wtime );
               
               // compute waiting time for this barrier region
@@ -118,20 +122,21 @@ namespace casita
 
               // create edge from latest barrier enter to other leaves
               // (non-blocking edge from blocking barrier leave node)
-              commonAnalysis->newEdge( latestEnterNode, barrier.second );
+              analysisEngine->newEdge( latestEnterNode, barrier.second );
 
               blame += latestEnterNode->getTime() - barrier.first->getTime();
             }
           }
 
           // set blame
-          distributeBlame( commonAnalysis,
+          distributeBlame( analysisEngine,
                            latestEnterNode,
                            blame,
-                           streamWalkCallback );
+                           streamWalkCallback,
+                           REASON_OMP_BARRIER );
 
           // clear list of buffered barriers
-          analysis->clearBarrierEventList( false );
+          ompAnalysis->clearBarrierEventList( false );
 
           return true;
         }

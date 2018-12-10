@@ -49,7 +49,7 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon( );
+        AnalysisEngine* commonAnalysis = analysis->getAnalysisEngine( );
 
         // get the complete execution
         GraphNode* oneToAllEnter = oneToAllLeave->getGraphPair().first;
@@ -136,7 +136,8 @@ namespace casita
           distributeBlame( commonAnalysis,
                            oneToAllEnter,
                            total_blame,
-                           streamWalkCallback );
+                           streamWalkCallback,
+                           REASON_MPI_COLLECTIVE );
           
           delete[] recvBuffer;
         }

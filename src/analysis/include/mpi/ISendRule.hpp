@@ -50,7 +50,7 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getCommon();
+        AnalysisEngine* commonAnalysis = analysis->getAnalysisEngine();
 
         MpiStream::MPIIcommRecord* record = 
                 (MpiStream::MPIIcommRecord* ) isendLeave->getData();

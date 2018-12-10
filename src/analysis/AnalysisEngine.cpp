@@ -198,7 +198,7 @@ AnalysisEngine::runAnalysis()
   
   bool printStatus = mpiAnalysis.getMPIRank() == 0  
                   && Parser::getVerboseLevel() >= VERBOSE_BASIC 
-                  && !Parser::getInstance().getProgramOptions().analysisInterval;
+                  && !Parser::getOptions().analysisInterval;
   
   size_t ctr       = 0, last_ctr = 0;
   size_t num_nodes = allNodes.size();
@@ -226,17 +226,17 @@ AnalysisEngine::runAnalysis()
   // apply rules on pending nodes
   //analysis.processDeferredNodes( paradigm );
 
-#ifdef DEBUG
-  clock_t time_sanity_check = clock();
-  
-  runSanityCheck( mpiAnalysis.getMPIRank() );
-  
-  UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME && 
-             mpiAnalysis.getMPIRank() == 0 && 
-             !Parser::getInstance().getProgramOptions().analysisInterval,
-             "[0] Sanity check: %f sec", 
-             ( (float) ( clock() - time_sanity_check ) ) / CLOCKS_PER_SEC );
-#endif
+//#ifdef DEBUG
+//  clock_t time_sanity_check = clock();
+//  
+//  runSanityCheck( mpiAnalysis.getMPIRank() );
+//  
+//  UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_TIME && 
+//             mpiAnalysis.getMPIRank() == 0 && 
+//             !Parser::getOptions().analysisInterval,
+//             "[0] Sanity check: %f sec", 
+//             ( (float) ( clock() - time_sanity_check ) ) / CLOCKS_PER_SEC );
+//#endif
   
   allNodes.clear();
 }
@@ -411,7 +411,7 @@ AnalysisEngine::getLastLeaveNode( uint64_t timestamp, uint64_t streamId ) const
 GraphNode*
 AnalysisEngine::newGraphNode( uint64_t          time,
                               uint64_t          streamId,
-                              const std::string name,
+                              const char*       name,
                               Paradigm          paradigm,
                               RecordType        recordType,
                               int               nodeType )
@@ -509,6 +509,9 @@ AnalysisEngine::createIntermediateBegin()
             "[%" PRIu64 "] Found incomplete kernel %s at intermediate analysis start.", 
             p->getId(), getNodeInfo( nodes.back() ).c_str())
           
+          // reset left link to avoid a segmentation fault when creating kernel
+          // dependencies
+          nodes.back()->setLinkLeft( NULL );
           nodes.pop_back();
         }
         
@@ -549,6 +552,7 @@ AnalysisEngine::createIntermediateBegin()
               // do not delete kernels that have not yet been synchronized
               if( ofldAnalysis->isKernelPending( node ) )
               {
+                node->setLinkLeft( NULL ); // only needed for kernel enter
                 continue;
               }
               else
@@ -623,8 +627,6 @@ AnalysisEngine::createIntermediateBegin()
       graph.addNode( lastNode );
       
       // create and add a new edge (with paradigm MPI) between the above added nodes
-      //Paradigm paradigm_mpi = PARADIGM_MPI;
-      //newEdge( startNode, lastNode, EDGE_NONE, &paradigm_mpi );
       newEdge( globalSourceNode, lastNode ); 
       
       UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
@@ -650,32 +652,6 @@ AnalysisEngine::reset()
   {
     iter->second->reset();
   }
-}
-
-double
-AnalysisEngine::getRealTime( uint64_t t )
-{
-  return (double)t / (double)getTimerResolution();
-}
-
-/**
- * Get information on a node as char pointer (similar to Node getUniqueName).
- * Includes stream ID, node name, node type, and elapsed time.
- * 
- * @param node
- * 
- * @return node information as char pointer
- */
-const std::string
-AnalysisEngine::getNodeInfo( Node* node )
-{
-  std::stringstream sstream;
-  
-  sstream.precision(6);
-  
-  sstream << fixed << node->getUniqueName() << ":" << getRealTime( node->getTime() );
-
-  return sstream.str();
 }
 
 /**
