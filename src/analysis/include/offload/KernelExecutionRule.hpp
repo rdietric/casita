@@ -81,6 +81,11 @@ namespace casita
           // add dependency
           analysis->newEdge( launchEnterEvent, kernelNode );
           
+          // set currently running kernel on device stream
+          DeviceStream *devStream = 
+            analysis->getStreamGroup().getDeviceStream( kernelStrmId );
+          devStream->setRunningKernel( kernelNode );
+          
           ////////////////////////////////////////////////////////////////////////
           // \todo: check if this also works when triggered at kernel enter event!
           // EXTRA handling for imperfect traces:
@@ -144,19 +149,27 @@ namespace casita
 
               // create edge between kernel end and synchronization end
               analysis->newEdge( kernelLeave, syncEvtLeave );
-
+              
               //commonAnalysis->getStream( kernelStrmId )->consumePendingKernel();
               // clear all pending kernels before that kernel
-              analysis->getStreamGroup().getDeviceStream( kernelLeave->getStreamId() )
-                                           ->consumePendingKernels( kernelLeave );
+              devStream->consumePendingKernels( kernelLeave );
             }
           }
         }
         else // kernel leave node
         {
-          // add pending kernel
-          analysis->getStreamGroup().getDeviceStream( kernelNode->getStreamId() )
-            ->addPendingKernel( kernelNode );
+          DeviceStream *devStream = 
+            analysis->getStreamGroup().getDeviceStream( kernelNode->getStreamId() );
+            
+          // if kernel is not yet synchronized 
+          // (sync ended while kernel was still running)
+          if( NULL == kernelNode->getLink() )
+          {
+            // add as pending kernel
+            devStream->addPendingKernel( kernelNode );
+          }
+          
+          devStream->setRunningKernel( NULL );
         }
 
         return true;

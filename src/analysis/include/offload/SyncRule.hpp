@@ -102,13 +102,34 @@ namespace casita
                 deviceStreams.begin(); pIter != deviceStreams.end(); ++pIter )
         {
           DeviceStream* deviceStream = *pIter;
-        
+
+          // kernels cannot be running on streams that are synchronized
+          // extra handling for time displacement (inaccurate measurement)
+          // this actually returns an enter node
+          GraphNode *kernelLeave = deviceStream->getRunningKernel();
+          if( kernelLeave )
+          {
+            kernelLeave = kernelLeave->getGraphPair().second;
+            
+            UTILS_WARN_ONCE( "[SyncRule] Synchronization ends, but kernel is "
+                             "still running! (%s < %s)", 
+                             analysis->getNodeInfo( syncLeave ).c_str(),
+                             analysis->getNodeInfo( kernelLeave ).c_str() );
+          }
+          
           // test that there is a pending kernel (leave)
           bool isLastKernel = true;
           while ( true )
           {
             // check if there is a pending kernel left, start from the latest pending kernel
-            GraphNode* kernelLeave = deviceStream->getLastPendingKernel();
+            
+            // for accurate traces, no kernel is running here -> condition is true
+            if( NULL == kernelLeave )
+            {
+              //kernelLeave = deviceStream->getLastPendingKernel();
+              kernelLeave = deviceStream->consumeLastPendingKernel();
+            }
+            
             if ( !kernelLeave )
             {
               break;
@@ -200,9 +221,10 @@ namespace casita
               break;
             }
             
-            // consume the last pending kernel to reverse iterate over the list
-            // of pending kernels
-            deviceStream->consumeLastPendingKernel();
+            // consume the last pending kernel
+            //deviceStream->consumeLastPendingKernel();
+            
+            kernelLeave = NULL;
           }
         }
         

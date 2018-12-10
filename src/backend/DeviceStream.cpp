@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2017, 2018
+ * Copyright (c) 2017, 2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -53,6 +53,18 @@ int
 DeviceStream::getNativeStreamId() const
 {
   return nativeStreamId;
+}
+
+void
+DeviceStream::setRunningKernel( GraphNode* kernelEnter )
+{
+  this->runningKernelEnter = kernelEnter;
+}
+      
+GraphNode*
+DeviceStream::getRunningKernel( void ) const
+{
+  return this->runningKernelEnter;
 }
 
 void

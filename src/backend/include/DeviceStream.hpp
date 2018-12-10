@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2017,
+ * Copyright (c) 2017, 2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -38,6 +38,12 @@ namespace casita
       getNativeStreamId( void ) const;
       
       void
+      setRunningKernel( GraphNode* kernelEnter );
+      
+      GraphNode*
+      getRunningKernel( void ) const;
+      
+      void
       addPendingKernel( GraphNode* kernelLeave );
 
       GraphNode*
@@ -65,9 +71,11 @@ namespace casita
       //!< native stream ID (only CUDA)
       int nativeStreamId;
       
+      //!< currently running kernel (enter node)
+      GraphNode* runningKernelEnter;
+      
       //!< list of unsynchronized CUDA kernels (leave nodes only)
       SortedGraphNodeList pendingKernels;
-
   };
   
 }
