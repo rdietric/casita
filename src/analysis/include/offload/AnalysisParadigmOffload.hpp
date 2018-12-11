@@ -81,7 +81,7 @@ namespace casita
       getEventRecordLeave( uint64_t eventId ) const;
 
       void
-      setEventProcessId( uint64_t eventId, uint64_t streamId );
+      addEventProcessId( uint64_t eventId, uint64_t streamId );
 
       uint64_t
       getEventProcessId( uint64_t eventId ) const;

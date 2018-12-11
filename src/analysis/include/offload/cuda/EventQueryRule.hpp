@@ -45,7 +45,7 @@ namespace casita
           return false;
         }
 
-        AnalysisEngine* commonAnalysis = analysis->getAnalysisEngine();
+        AnalysisEngine* analysisEngine = analysis->getAnalysisEngine();
 
         EventNode* evQueryLeave = (EventNode*)queryLeave;
 
@@ -68,9 +68,9 @@ namespace casita
                                                   evQueryLeave->getEventId() );
         if ( !refDeviceProcessId )
         {
-          UTILS_WARNING( "Could not process CUDA event query %s. "
+          UTILS_WARNING( "[EventQueryRule] Could not process CUDA event query %s. "
             "Device stream not found! No event with ID %" PRIu64 " recorded?",
-            commonAnalysis->getNodeInfo(evQueryLeave).c_str(),
+            analysisEngine->getNodeInfo( evQueryLeave ).c_str(),
             evQueryLeave->getEventId() );
           return false;
         }
@@ -80,9 +80,9 @@ namespace casita
                                                    evQueryLeave->getEventId() );
         if ( !eventLaunchLeave )
         {
-          UTILS_WARNING( "Could not process CUDA event query %s. "
+          UTILS_WARNING( "[EventQueryRule] Could not process CUDA event query %s. "
             "Event record not found! No event with ID %" PRIu64 " recorded?",
-            commonAnalysis->getNodeInfo(evQueryLeave).c_str(),
+            analysisEngine->getNodeInfo( evQueryLeave ).c_str(),
             evQueryLeave->getEventId() );
           return false;
         }
@@ -94,15 +94,13 @@ namespace casita
         if ( kernelLaunchLeave )
         {
           GraphNode* kernelLaunchEnter = kernelLaunchLeave->getGraphPair().first;
-          GraphNode* kernelEnter = (GraphNode*)kernelLaunchEnter->getLink();
+          GraphNode* kernelEnter = ( GraphNode* )kernelLaunchEnter->getLink();
           if ( !kernelEnter )
-          {
-            ErrorUtils::getInstance().throwError(
-              "Event query %s (%f) returns success but kernel from %s (%f) did not finish yet",
-              evQueryLeave->getUniqueName().c_str(),
-              commonAnalysis->getRealTime( evQueryLeave->getTime() ),
-              kernelLaunchEnter->getUniqueName().c_str(),
-              commonAnalysis->getRealTime( kernelLaunchEnter->getTime() ) );
+          {           
+            UTILS_WARNING( 
+              "[EventQueryRule] %s returns success but kernel from %s is not linked!",
+              analysisEngine->getNodeInfo( evQueryLeave ).c_str(),
+              analysisEngine->getNodeInfo( kernelLaunchEnter ).c_str() );
             return false;
           }
 
@@ -114,13 +112,13 @@ namespace casita
           {
             UTILS_WARNING( "[EventQueryRule] Successful event query %s ends"
                            " before kernel end %s.\n",
-                           commonAnalysis->getNodeInfo( queryLeave ).c_str(),
-                           commonAnalysis->getNodeInfo( kernelLeave ).c_str() );
+                           analysisEngine->getNodeInfo( queryLeave ).c_str(),
+                           analysisEngine->getNodeInfo( kernelLeave ).c_str() );
             //return false;
           }
           
           DeviceStream* devStrm = 
-            ( DeviceStream* )commonAnalysis->getStream( kernelLeave->getStreamId() );
+            ( DeviceStream* )analysisEngine->getStream( refDeviceProcessId );
 
           // process all event query nodes and make blocking if they depend on 
           // the kernel
@@ -141,7 +139,7 @@ namespace casita
             {
               // make query edge blocking
               Edge* qEdge = 
-                commonAnalysis->getEdge( prevQueryEnter, prevQueryLeave );
+                analysisEngine->getEdge( prevQueryEnter, prevQueryLeave );
               if( qEdge )
               {
                 qEdge->makeBlocking();
@@ -157,7 +155,7 @@ namespace casita
               
               // blame the kernel for the query waiting time
               Edge* kernelEdge = 
-                commonAnalysis->getEdge( kernelEnter, kernelLeave );
+                analysisEngine->getEdge( kernelEnter, kernelLeave );
               if( kernelEdge )
               {
                 kernelEdge->addBlame( waitingTime, REASON_OFLD_WAIT4DEVICE );
@@ -165,11 +163,11 @@ namespace casita
               else
               {
                 UTILS_WARNING( "CUDA EventQueryRule: Could not find kernel edge %s -> %s",
-                               commonAnalysis->getNodeInfo( kernelEnter ).c_str(),
-                               commonAnalysis->getNodeInfo( kernelLeave ).c_str() );
+                               analysisEngine->getNodeInfo( kernelEnter ).c_str(),
+                               analysisEngine->getNodeInfo( kernelLeave ).c_str() );
               }
               
-              commonAnalysis->getStatistics().addStatWithCount( 
+              analysisEngine->getStatistics().addStatWithCount( 
                 OFLD_STAT_EARLY_TEST, waitingTime );
             }
 
@@ -177,7 +175,7 @@ namespace casita
           }
 
           // add kernel/last event query leave dependency
-          commonAnalysis->newEdge( kernelLeave, queryLeave );
+          analysisEngine->newEdge( kernelLeave, queryLeave );
           
           //commonAnalysis->getStream( kernelEnter->getStreamId() )->consumePendingKernel();
           // consume all pending kernels before this kernel
@@ -195,7 +193,7 @@ namespace casita
           //queryLeave->incCounter( BLAME, waitingTime );
           
           // blame this redundant event query
-          Edge* queryEdge = commonAnalysis->getEdge( queryEnter, queryLeave );
+          Edge* queryEdge = analysisEngine->getEdge( queryEnter, queryLeave );
           if( queryEdge )
           {
             queryEdge->addBlame( waitingTime );
@@ -203,8 +201,8 @@ namespace casita
           else
           {
             UTILS_WARNING( "CUDA EventQueryRule: Could not find query edge %s -> %s",
-                           commonAnalysis->getNodeInfo( queryEnter ).c_str(),
-                           commonAnalysis->getNodeInfo( queryLeave ).c_str() );
+                           analysisEngine->getNodeInfo( queryEnter ).c_str(),
+                           analysisEngine->getNodeInfo( queryLeave ).c_str() );
           }
         }
         

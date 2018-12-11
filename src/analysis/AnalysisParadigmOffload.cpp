@@ -416,9 +416,9 @@ AnalysisParadigmOffload::printDebugInformation( uint64_t eventId )
 }
 
 void
-AnalysisParadigmOffload::setEventProcessId( uint64_t eventId, uint64_t streamId )
+AnalysisParadigmOffload::addEventProcessId( uint64_t eventId, uint64_t streamId )
 {
-  eventProcessMap[eventId] = streamId;
+  eventProcessMap[ eventId ] = streamId;
 }
 
 uint64_t

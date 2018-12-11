@@ -67,7 +67,7 @@ namespace casita
             refProcess->getName(), evtRecLeave->getUniqueName().c_str() );
         }
 
-        analysis->setEventProcessId(
+        analysis->addEventProcessId(
           ( (EventNode*)evtRecLeave )->getEventId(), refProcess->getId() );
 
         // if event is not on NULL stream, set link to 
