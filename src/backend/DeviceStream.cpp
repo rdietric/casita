@@ -18,7 +18,8 @@ DeviceStream::DeviceStream( uint64_t id,
                             const std::string name ) :
   EventStream( id, parentId, name, ES_DEVICE ),
   deviceId ( -1 ),
-  nativeStreamId ( -1 )
+  nativeStreamId ( -1 ),
+  runningKernelEnter ( NULL )
   { 
   
   }
