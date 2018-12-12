@@ -1671,27 +1671,31 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
 
           lastIdleStart = event.time;
           lastComputeIdleStart = event.time;
-
-          // compute idle has to be written first (includes device idle)
-          if( Parser::getOptions().deviceIdle & (1 << 1) )
+          
+          if( writeToFile )
           {
-            // write compute idle enter
-            //\todo: deviceId will be -1
-            int deviceId = -1; //analysis->getStream( event.location )->getDeviceId();
-            EventStream* stream = 
-              analysis->getStreamGroup().getFirstDeviceStream( deviceId );
-            OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
-                                              event.time, devComputeIdleRegRef ) );
-          }
+            // compute idle has to be written first (includes device idle)
+            if( Parser::getOptions().deviceIdle & (1 << 1) )
+            {
+              // write compute idle enter
+              //\todo: deviceId will be -1
+              int deviceId = -1; //analysis->getStream( event.location )->getDeviceId();
+              EventStream* stream = 
+                analysis->getStreamGroup().getFirstDeviceStream( deviceId );
+              OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
+                                                event.time, devComputeIdleRegRef ) );
+            }
 
-          // device idle
-          if( Parser::getOptions().deviceIdle & 1 )
-          {
-            // write OTF2 idle enter
-            int deviceId = -1;//analysis->getStream( event.location )->getDeviceId();
-            EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
-            OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
-                                              event.time, devIdleRegRef ) );
+            // device idle
+            if( Parser::getOptions().deviceIdle & 1 )
+            {
+              // write OTF2 idle enter
+              int deviceId = -1;//analysis->getStream( event.location )->getDeviceId();
+              EventStream* stream = analysis->getStreamGroup().getFirstDeviceStream( deviceId );
+
+              OTF2_CHECK( OTF2_EvtWriter_Enter( evt_writerMap[ stream->getId() ], NULL, 
+                                                event.time, devIdleRegRef ) );
+            }
           }
 
           firstOffloadApiEvtTime = event.time;

@@ -2185,7 +2185,7 @@ Runner::writeActivityRating()
     
     // some more statistics
     Statistics& stats = analysis.getStatistics();
-    fprintf( sFile, "\nStream summary: %d MPI ranks, %" PRIu64 " host streams, %" PRIu64 " devices",
+    fprintf( sFile, "\nStream summary: %d MPI rank(s), %" PRIu64 " host stream(s), %" PRIu64 " device(s)",
              mpiSize,
              stats.getActivityCounts()[ STAT_HOST_STREAMS ],
              stats.getActivityCounts()[ STAT_DEVICE_NUM ]
@@ -2193,27 +2193,44 @@ Runner::writeActivityRating()
     
     // print inefficiency and wait statistics
     fprintf( sFile, "\n"
-             "%-31.31s: %11lf s\n"
-             "%-31.31s: %11lf s (%lf s per rank, %lf s (%2.2lf%%) per host stream)\n",
-             "Total program runtime", 
-             (double) definitions.getTraceLength() / (double) definitions.getTimerResolution(),
-             "Total waiting time (host)",
-             analysis.getRealTime( sumWaitingTime ),
-             analysis.getRealTime( sumWaitingTime ) / mpiSize,
-             analysis.getRealTime( sumWaitingTime ) / 
-               stats.getActivityCounts()[ STAT_HOST_STREAMS ],
-             analysis.getRealTime( sumWaitingTime ) / 
-               stats.getActivityCounts()[ STAT_HOST_STREAMS ] /
-                 analysis.getRealTime( definitions.getTraceLength() )
-               * 100
-            ); 
+             "%-31.31s: %11lf s\n", "Total program runtime", 
+             (double) definitions.getTraceLength() 
+               / (double) definitions.getTimerResolution() ); 
     
-    fprintf( sFile, "%47c %lf s on rank %d (min) - %s\n", ' ',
-             analysis.getRealTime( this->minWaitingTime ), this->minWtimeRank,
-             this->definitions.getNodeName( this->minWtimeRank ) );
-    fprintf( sFile, "%47c %lf s on rank %d (max) - %s\n", ' ',
-             analysis.getRealTime( this->maxWaitingTime ), this->maxWtimeRank,
-             this->definitions.getNodeName( this->maxWtimeRank ) );
+    fprintf( sFile, 
+             "%-31.31s: %11lf s",
+             "Total waiting time (host)",
+             analysis.getRealTime( sumWaitingTime ) );
+    
+    if( stats.getActivityCounts()[ STAT_HOST_STREAMS ] > 1 )
+    {
+      fprintf( sFile, " (" );
+      if( mpiSize > 1 )
+      {
+        fprintf( sFile, "%lf s per rank, ",
+                 analysis.getRealTime( sumWaitingTime ) / mpiSize );
+      }
+      
+      fprintf( sFile, 
+               "%lf s (%2.2lf%%) per host stream)\n",
+               analysis.getRealTime( sumWaitingTime ) / 
+                 stats.getActivityCounts()[ STAT_HOST_STREAMS ],
+               analysis.getRealTime( sumWaitingTime ) / 
+                 stats.getActivityCounts()[ STAT_HOST_STREAMS ] /
+                   analysis.getRealTime( definitions.getTraceLength() )
+                 * 100
+              );
+    }
+
+    if( mpiSize > 1 )
+    {
+      fprintf( sFile, "%47c %lf s on rank %d (min) - %s\n", ' ',
+               analysis.getRealTime( this->minWaitingTime ), this->minWtimeRank,
+               this->definitions.getNodeName( this->minWtimeRank ) );
+      fprintf( sFile, "%47c %lf s on rank %d (max) - %s\n", ' ',
+               analysis.getRealTime( this->maxWaitingTime ), this->maxWtimeRank,
+               this->definitions.getNodeName( this->maxWtimeRank ) );
+    }
               
     fprintf( sFile, "\nPattern summary:\n" );
             
