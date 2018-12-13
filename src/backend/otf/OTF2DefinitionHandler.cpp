@@ -210,13 +210,20 @@ OTF2DefinitionHandler::getForkJoinRegionId() const
  * @param regionRef     ID of region the name is requested for
  * @return              region information (name, paradigm, role)
  */
-RegionInfo&
-OTF2DefinitionHandler::getRegionInfo( const uint32_t regionRef )
+const RegionInfo&
+OTF2DefinitionHandler::getRegionInfo( const uint32_t regionRef ) const
 {
-  UTILS_ASSERT( regionInfoMap.count( regionRef ) > 0,
+  // commented out, as count requires a find and [] access too
+  /*UTILS_ASSERT( regionInfoMap.count( regionRef ) > 0,
                 "Could not find region reference!" );
   
-  return regionInfoMap[ regionRef ];
+  return regionInfoMap[ regionRef ];*/
+  std::map< uint32_t, RegionInfo >::const_iterator it = 
+    regionInfoMap.find( regionRef );
+  
+  UTILS_ASSERT( it != regionInfoMap.end(), "Could not find region reference!" );
+
+  return it->second;
 }
 
 /**
@@ -228,15 +235,29 @@ OTF2DefinitionHandler::getRegionInfo( const uint32_t regionRef )
 const char*
 OTF2DefinitionHandler::getRegionName( uint32_t id ) const
 {
-  std::map< uint32_t, RegionInfo >::const_iterator iter =
-    regionInfoMap.find( id );
-  if ( iter != regionInfoMap.end() )
+  return this->getRegionInfo( id ).name;
+}
+
+/**
+ * Determine whether the region with the given ID is a device function (e.g.
+ * a CUDA kernel).
+ * 
+ * @param id OTF2 region ID (reference)
+ * @return true if the given region ID refers to a device function
+ */
+bool
+OTF2DefinitionHandler::isDeviceFunction( uint32_t id ) const
+{
+  const RegionInfo& regInfo = this->getRegionInfo( id );
+  if( regInfo.role == OTF2_REGION_ROLE_FUNCTION &&
+      ( regInfo.paradigm == OTF2_PARADIGM_CUDA || 
+        regInfo.paradigm == OTF2_PARADIGM_OPENCL ) )
   {
-    return iter->second.name;
+    return true;
   }
   else
   {
-    return NULL;
+    return false;
   }
 }
 

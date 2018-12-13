@@ -76,11 +76,14 @@ namespace casita
         uint32_t
         createNewRegion( const char* string, OTF2_Paradigm paradigm );
         
-        RegionInfo&
-        getRegionInfo( const uint32_t regionRef );
+        const RegionInfo&
+        getRegionInfo( const uint32_t regionRef ) const;
      
         const char*
         getRegionName( uint32_t id ) const;
+        
+        bool
+        isDeviceFunction( uint32_t id ) const;
         
         void
         addLocationInfo( const uint64_t mpiRank, const char* nodeName );

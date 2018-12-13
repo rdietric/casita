@@ -34,6 +34,16 @@ namespace casita
  {
    private:
      typedef std::vector< MPIAnalysis::CriticalPathSection > SectionsList;
+     
+     typedef struct
+     {
+       uint32_t instances;
+       uint64_t duration;
+       uint64_t durationCP;
+       double   blameOnCP;  
+       double   blame;
+       uint32_t count;
+     } AddUpValues;
 
    public:
 

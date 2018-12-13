@@ -19,6 +19,7 @@ MISC
 - simplified writing of the critical path
 - added units for critical path, waiting time, and blame in OTF2 output
 - improved rating output for long region names
+- the rating output distinguishes between host and device functions
 - corrected and beautified pattern summary output
 - generate summary file
 - added Score-P user instrumentation to analyze CASITA's performance

@@ -315,7 +315,7 @@ CallbackHandler::handleEnter( OTF2TraceReader*  reader,
     stream->getPeriod().second = time;
   }
 
-  RegionInfo& regionInfo = handler->defHandler->getRegionInfo( functionId );
+  const RegionInfo& regionInfo = handler->defHandler->getRegionInfo( functionId );
   const char* funcName   = regionInfo.name;
   
   if( stream->isFilterOn() )
@@ -416,7 +416,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
     stream->getPeriod().second = time;
   }
 
-  RegionInfo& regionInfo = handler->defHandler->getRegionInfo( functionId );
+  const RegionInfo& regionInfo = handler->defHandler->getRegionInfo( functionId );
   const char* funcName   = regionInfo.name;
   
   if( analysis.isRegionFiltered( functionId ) )

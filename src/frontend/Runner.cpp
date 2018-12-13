@@ -1995,7 +1995,7 @@ Runner::writeActivityRating()
       sFile = stdout;
     }
     
-    /////////////// Region statistics //////////////7
+    /////////////// Region statistics //////////////
     OTF2ParallelTraceWriter::ActivityGroupMap* activityGroupMap =
                                                   writer->getActivityGroupMap();
     
@@ -2060,14 +2060,19 @@ Runner::writeActivityRating()
       }
     }
     
-    uint32_t sumInstances   = 0;
-    uint64_t sumDuration    = 0;
-    uint64_t sumDurationCP  = 0;
-    double sumBlameOnCP     = 0.0;  
-    double sumBlame         = 0.0;
+    const short float_width = 11;
+    
+    // initialize values for host and device with zero
+    AddUpValues hostRegions   = {};
+    AddUpValues deviceRegions = {};
+    AddUpValues topXhostRegions   = {};
+    AddUpValues topXdeviceRegions = {};
+    
     uint64_t sumWaitingTime = 0;
     
     size_t ctr = 0;
+    
+    // iterate over all defined regions
     for ( std::set< OTF2ParallelTraceWriter::ActivityGroup,
                     OTF2ParallelTraceWriter::ActivityGroupCompare >::
           const_iterator iter = sortedActivityGroups.begin();
@@ -2075,20 +2080,7 @@ Runner::writeActivityRating()
     {
       if( ctr < options.topX )
       {
-        // generate a sum of the TOP rated functions
-        sumInstances     += iter->numInstances;
-        sumDuration      += iter->totalDuration;
-        sumDurationCP    += iter->totalDurationOnCP;
-        sumBlameOnCP     += iter->blameOnCP;
-        sumBlame         += iter->totalBlame;
-        
         const char* regName = definitions.getRegionName( iter->functionId );
-        if( NULL == regName )
-        {
-          UTILS_WARNING( "Could not get region name for region id %" PRIu64 ".",
-                         iter->functionId );
-          continue;
-        }
         
         size_t regNameLen = strlen( regName );
         size_t regShift = 0;
@@ -2102,13 +2094,13 @@ Runner::writeActivityRating()
           } while( ( regNameLen - regShift ) > ( size_t ) RNAMELEN );
         }
 
-        fprintf( sFile, "%*.*s %10u %11f %11f %6.2f %11f %8.4f %11.6f",
+        fprintf( sFile, "%*.*s %10u %*f %*f %6.2f %*f %8.4f %11.6f",
                 RNAMELEN, RNAMELEN, regName + regShift,
                 iter->numInstances,
-                analysis.getRealTime( iter->totalDuration ),
-                analysis.getRealTime( iter->totalDurationOnCP ),
+                float_width, analysis.getRealTime( iter->totalDuration ),
+                float_width, analysis.getRealTime( iter->totalDurationOnCP ),
                 100.0 * iter->totalDurationOnCP / (double)globalLengthCP,
-                iter->totalBlame,
+                float_width, iter->totalBlame,
                 100.0 * iter->totalBlame / globalBlame,
                 iter->blameOnCP );
         
@@ -2138,6 +2130,33 @@ Runner::writeActivityRating()
         
         ++ctr;
       }
+      else if( topXhostRegions.instances == 0 ) // remember topX values, if not set
+      {
+        topXhostRegions   = hostRegions;
+        topXdeviceRegions = deviceRegions;
+      }
+      
+      // generate a sum of the TOP rated functions
+      if( definitions.isDeviceFunction( iter->functionId ) )
+      {
+        deviceRegions.instances  += iter->numInstances;
+        deviceRegions.duration   += iter->totalDuration;
+        deviceRegions.durationCP += iter->totalDurationOnCP;
+        deviceRegions.blame      += iter->totalBlame;
+        deviceRegions.blameOnCP  += iter->blameOnCP;
+
+        deviceRegions.count++;
+      }
+      else
+      {
+        hostRegions.instances  += iter->numInstances;
+        hostRegions.duration   += iter->totalDuration;
+        hostRegions.durationCP += iter->totalDurationOnCP;
+        hostRegions.blame      += iter->totalBlame;
+        hostRegions.blameOnCP  += iter->blameOnCP;
+
+        hostRegions.count++;
+      }
 
       if( ratingFile && options.createRatingCSV )
       {
@@ -2162,28 +2181,97 @@ Runner::writeActivityRating()
         fprintf( ratingFile, "\n" );
       }
       
+      // determine the total waiting time over all regions
       sumWaitingTime += iter->waitingTime;
     }
     
+    // write sum up values and close rating file
     if( ratingFile && options.createRatingCSV )
     {
+      fprintf( ratingFile, 
+               "\nSum of %" PRIu32 ";%" PRIu32 ";%lf;%lf;%lf;%lf;%lf;%lf\n",
+               hostRegions.count + deviceRegions.count,
+               hostRegions.instances + deviceRegions.instances,
+               analysis.getRealTime( hostRegions.duration + deviceRegions.duration ),
+               analysis.getRealTime( hostRegions.durationCP + deviceRegions.durationCP ),
+               100.0 * (double)( hostRegions.durationCP + deviceRegions.durationCP ) 
+                     / (double)globalLengthCP,
+               hostRegions.blame + deviceRegions.blame,
+               100.0 * ( hostRegions.blame + deviceRegions.blame ) / globalBlame, 
+               hostRegions.blameOnCP + deviceRegions.blameOnCP );
+
+      // split into host and device sums, if device regions are available
+      if( deviceRegions.instances > 0 )
+      {
+        fprintf( ratingFile, 
+                 "%" PRIu32 " on host;%" PRIu32 ";%lf;%lf;%lf;%lf;%lf;%lf\n",
+                 hostRegions.count, hostRegions.instances,
+                 analysis.getRealTime( hostRegions.duration ),
+                 analysis.getRealTime( hostRegions.durationCP ),
+                 100.0 * (double)( hostRegions.durationCP ) 
+                       / (double)globalLengthCP,
+                 hostRegions.blame,
+                 100.0 * ( hostRegions.blame ) / globalBlame, 
+                 hostRegions.blameOnCP );
+
+       fprintf( ratingFile, 
+                "%" PRIu32 " on device;%" PRIu32 ";%lf;%lf;%lf;%lf;%lf;%lf\n",
+                deviceRegions.count, deviceRegions.instances,
+                analysis.getRealTime( deviceRegions.duration ),
+                analysis.getRealTime( deviceRegions.durationCP ),
+                100.0 * (double)( deviceRegions.durationCP ) / (double)globalLengthCP,
+                deviceRegions.blame,
+                100.0 * ( deviceRegions.blame ) / globalBlame, 
+                deviceRegions.blameOnCP );    
+     }
+      
       fclose(ratingFile);
     }
     
+    // write the sum values
     fprintf( sFile, "%.*s", 
-            RNAMELEN, "-----------------------------------------------------" );
-    fprintf( sFile, "\n%*.*s%2lu %10u %11lf %11lf %6.2lf %11lf %8.4lf %11.6lf\n",
-              RNAMELEN - 2, RNAMELEN - 2, "Sum of Top ",
-              ctr,
-              sumInstances,
-              analysis.getRealTime( sumDuration ),
-              analysis.getRealTime( sumDurationCP ),
-              100.0 * (double)sumDurationCP / (double)globalLengthCP,
-              sumBlame,
-              100.0 * sumBlame / globalBlame, 
-              sumBlameOnCP );
+             RNAMELEN, "-----------------------------------------------------" );
+    fprintf( sFile, "\n%*.*s%2lu %10u %*lf %*lf %6.2lf %*lf %8.4lf %11.6lf\n",
+             RNAMELEN - 2, RNAMELEN - 2, "Sum of Top ", ctr,
+             topXhostRegions.instances + topXdeviceRegions.instances,
+             float_width, 
+             analysis.getRealTime( topXhostRegions.duration + topXdeviceRegions.duration ),
+             float_width, 
+             analysis.getRealTime( topXhostRegions.durationCP + topXdeviceRegions.durationCP ),
+             100.0 * (double)( topXhostRegions.durationCP + topXdeviceRegions.durationCP ) 
+                   / (double)globalLengthCP,
+             float_width, topXhostRegions.blame + topXdeviceRegions.blame,
+             100.0 * ( topXhostRegions.blame + topXdeviceRegions.blame ) / globalBlame, 
+             topXhostRegions.blameOnCP + topXdeviceRegions.blameOnCP );
     
-    // some more statistics
+    // split the output into host and device, if device regions are available
+    if( topXdeviceRegions.instances > 0 )
+    {
+      fprintf( sFile, "%*.*s%2" PRIu32 " %10u %*lf %*lf %6.2lf %*lf %8.4lf %11.6lf\n",
+               RNAMELEN - 2, RNAMELEN - 2, "on host: ", topXhostRegions.count,
+               topXhostRegions.instances,
+               float_width, analysis.getRealTime( topXhostRegions.duration ),
+               float_width, analysis.getRealTime( topXhostRegions.durationCP ),
+               100.0 * (double)( topXhostRegions.durationCP ) 
+                     / (double)globalLengthCP,
+               float_width, topXhostRegions.blame,
+               100.0 * ( topXhostRegions.blame ) / globalBlame, 
+               topXhostRegions.blameOnCP );
+
+      fprintf( sFile, "%*.*s%2" PRIu32 " %10u %*lf %*lf %6.2lf %*lf %8.4lf %11.6lf\n",
+               RNAMELEN - 2, RNAMELEN - 2, "on device: ", topXdeviceRegions.count,
+               topXdeviceRegions.instances,
+               float_width, analysis.getRealTime( topXdeviceRegions.duration ),
+               float_width, analysis.getRealTime( topXdeviceRegions.durationCP ),
+               100.0 * (double)( topXdeviceRegions.durationCP ) 
+                    / (double)globalLengthCP,
+               float_width, topXdeviceRegions.blame,
+               100.0 * ( topXdeviceRegions.blame ) / globalBlame, 
+               topXdeviceRegions.blameOnCP );    
+    }
+    /////////////////////// END of writing region rating ////////////////
+    
+    ///////////////// some more statistics ///////////////
     Statistics& stats = analysis.getStatistics();
     fprintf( sFile, "\nStream summary: %d MPI rank(s), %" PRIu64 " host stream(s), %" PRIu64 " device(s)",
              mpiSize,
@@ -2193,7 +2281,7 @@ Runner::writeActivityRating()
     
     // print inefficiency and wait statistics
     fprintf( sFile, "\n"
-             "%-31.31s: %11lf s\n", "Total program runtime", 
+             "%-31.31s: %*lf s\n", "Total program runtime", float_width,
              (double) definitions.getTraceLength() 
                / (double) definitions.getTimerResolution() ); 
     

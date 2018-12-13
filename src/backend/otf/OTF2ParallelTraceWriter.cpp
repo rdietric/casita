@@ -1601,7 +1601,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
 {
   //SCOREP_USER_REGION( "writer::processEvent", SCOREP_USER_REGION_TYPE_FUNCTION )
     
-  RegionInfo& regionInfo = defHandler->getRegionInfo( event.regionRef );  
+  const RegionInfo& regionInfo = defHandler->getRegionInfo( event.regionRef );  
   const char* eventName  = regionInfo.name;
   
   UTILS_ASSERT( streamStatusMap.count( event.location ) > 0, 
