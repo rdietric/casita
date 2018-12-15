@@ -2070,6 +2070,11 @@ Runner::writeActivityRating()
     
     uint64_t sumWaitingTime = 0;
     
+    if( sortedActivityGroups.size() < options.topX )
+    {
+      options.topX = sortedActivityGroups.size();
+    }
+    
     size_t ctr = 0;
     
     // iterate over all defined regions
@@ -2130,12 +2135,7 @@ Runner::writeActivityRating()
         
         ++ctr;
       }
-      else if( topXhostRegions.instances == 0 ) // remember topX values, if not set
-      {
-        topXhostRegions   = hostRegions;
-        topXdeviceRegions = deviceRegions;
-      }
-      
+   
       // generate a sum of the TOP rated functions
       if( definitions.isDeviceFunction( iter->functionId ) )
       {
@@ -2156,6 +2156,13 @@ Runner::writeActivityRating()
         hostRegions.blameOnCP  += iter->blameOnCP;
 
         hostRegions.count++;
+      }
+      
+      // save the topX sum with the last top rated region
+      if( ctr - 1 == options.topX - 1 && topXhostRegions.instances == 0 )
+      {
+        topXhostRegions   = hostRegions;
+        topXdeviceRegions = deviceRegions;
       }
 
       if( ratingFile && options.createRatingCSV )
@@ -2432,32 +2439,39 @@ Runner::writeActivityRating()
       patternCount = stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WAIT];
       if( patternCount )
       {
-        fprintf( sFile, " %-30.30s: %11lf s (%" PRIu64 " occurrences, on kernel: %lf s)\n",
+        fprintf( sFile, " %-30.30s: %11lf s (%lf s per device, %" PRIu64 " overall occurrences)\n",
           " Early blocking wait",
           analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME] ),
-          patternCount,
-          analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL] ));
+          analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME] ) 
+            / stats.getActivityCounts()[ STAT_DEVICE_NUM ],
+          patternCount );
+        
+        fprintf( sFile, " %-30.30s: %11lf s (%lf s per device)\n",
+                        " ... on compute kernels",
+          analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL] ),
+          analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL] ) 
+            / stats.getActivityCounts()[ STAT_DEVICE_NUM ] );
       }
 
-      patternCount = stats.getStats()[OFLD_STAT_EARLY_TEST];
+      patternCount = stats.getStats()[ OFLD_STAT_EARLY_TEST ];
       if( patternCount )
       {
         fprintf( sFile, "  Early test for completion: %" PRIu64 " (%lf s)\n", patternCount,
-          analysis.getRealTime( stats.getStats()[OFLD_STAT_EARLY_TEST_TIME] ) );
+          analysis.getRealTime( stats.getStats()[ OFLD_STAT_EARLY_TEST_TIME ] ) );
       }
       
-      patternCount = stats.getStats()[STAT_OFLD_TOTAL_TRANSFER_TIME];
+      patternCount = stats.getStats()[ STAT_OFLD_TOTAL_TRANSFER_TIME ];
       if( patternCount )
       {
         fprintf( sFile, " %-30.30s: %11lf s (%2.2lf%% of offload time)\n",
                  " Total communication time", 
                  analysis.getRealTime( patternCount ),
-                 (double) stats.getStats()[STAT_OFLD_TOTAL_TRANSFER_TIME] / 
+                 (double) stats.getStats()[ STAT_OFLD_TOTAL_TRANSFER_TIME ] / 
                    (double) stats.getStats()[OFLD_STAT_OFLD_TIME] * 100 );
       }
       
-      patternCount = stats.getStats()[OFLD_STAT_COMPUTE_IDLE_TIME]
-                   - stats.getStats()[OFLD_STAT_IDLE_TIME];
+      patternCount = stats.getStats()[ OFLD_STAT_COMPUTE_IDLE_TIME ]
+                   - stats.getStats()[ OFLD_STAT_IDLE_TIME ];
       if( patternCount )
       {
         fprintf( sFile, " %-30.30s: %11lf s (%2.2lf%% of total communication time)\n",
