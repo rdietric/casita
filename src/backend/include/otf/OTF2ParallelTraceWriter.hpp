@@ -122,7 +122,7 @@ namespace casita
       clearOpenEdges();
       
       void
-      handleFinalDeviceIdleLeave();
+      finalizeStreams();
       
       void
       writeDeviceIdleDefinitions( void );
@@ -249,6 +249,9 @@ namespace casita
       size_t   deviceConsecutiveComCount;
       
       //////////////////////////////////////////////////////////////
+
+      void
+      handleFinalDeviceIdleLeave();
 
       void
       handleDeviceTaskEnter( uint64_t time, DeviceStream* devStream, 

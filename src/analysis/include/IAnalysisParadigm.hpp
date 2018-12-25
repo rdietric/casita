@@ -40,7 +40,7 @@ namespace casita
    public:
 
      IAnalysisParadigm( AnalysisEngine* analysisEngine ) :
-       commonAnalysis( analysisEngine )
+       analysisEngine( analysisEngine )
      {
      }
 
@@ -56,7 +56,7 @@ namespace casita
      AnalysisEngine*
      getAnalysisEngine()
      {
-       return commonAnalysis;
+       return analysisEngine;
      }
 
      virtual void
@@ -71,7 +71,7 @@ namespace casita
        for ( std::vector< AbstractRule* >::iterator iter = rules.begin();
              iter != rules.end(); ++iter )
        {
-         if ( ( *iter )->applyRule( commonAnalysis, node ) )
+         if ( ( *iter )->applyRule( analysisEngine, node ) )
          {
            ruleResult = true;
          }
@@ -105,7 +105,7 @@ namespace casita
      }
 
    protected:
-     AnalysisEngine* commonAnalysis;
+     AnalysisEngine* analysisEngine;
      std::vector< AbstractRule* > rules;
      
      static bool

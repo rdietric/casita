@@ -161,18 +161,6 @@ Graph::removeEdge( Edge* edge )
   }
 }
 
-bool
-Graph::hasInEdges( GraphNode* node ) const
-{
-  return inEdges.find( node ) != inEdges.end();
-}
-
-bool
-Graph::hasOutEdges( GraphNode* node ) const
-{
-  return outEdges.find( node ) != outEdges.end();
-}
-
 const Graph::EdgeList&
 Graph::getInEdges( GraphNode* node ) const
 {
@@ -206,50 +194,13 @@ Graph::getInEdgesPtr( GraphNode* node ) const
   }
 }
 
-Graph::EdgeList
-Graph::getInEdges( GraphNode* node, Paradigm paradigm ) const
-{
-  EdgeList edges;
-  NodeEdges::const_iterator iter = inEdges.find( node );
-  if ( iter != inEdges.end() )
-  {
-    for ( EdgeList::const_iterator eIter = iter->second.begin();
-          eIter != iter->second.end(); ++eIter )
-    {
-      if ( ( *eIter )->getStartNode()->hasParadigm( paradigm ) )
-      {
-        edges.push_back( *eIter );
-      }
-    }
-  }
-
-  return edges;
-}
-
-/**
- * 
- * @param node
- * @return 
- */
-const Graph::EdgeList&
-Graph::getOutEdges( GraphNode* node ) const
-{
-  NodeEdges::const_iterator iter = outEdges.find( node );
-  if ( iter != outEdges.end() )
-  {
-    return iter->second;
-  }
-  throw RTException( "Node %s not found in out-edge list",
-                     node->getUniqueName().c_str() );
-}
-
 /**
  * 
  * @param node
  * @return 
  */
 const Graph::EdgeList*
-Graph::getOutEdgesPtr( GraphNode* node ) const
+Graph::getOutEdges( GraphNode* node ) const
 {
   NodeEdges::const_iterator iter = outEdges.find( node );
   if ( iter != outEdges.end() )
@@ -260,26 +211,6 @@ Graph::getOutEdgesPtr( GraphNode* node ) const
   {
     return NULL;
   }
-}
-
-Graph::EdgeList
-Graph::getOutEdges( GraphNode* node, Paradigm paradigm ) const
-{
-  EdgeList edges;
-  NodeEdges::const_iterator iter = outEdges.find( node );
-  if ( iter != outEdges.end() )
-  {
-    for ( EdgeList::const_iterator eIter = iter->second.begin();
-          eIter != iter->second.end(); ++eIter )
-    {
-      if ( ( *eIter )->getEndNode()->hasParadigm( paradigm ) )
-      {
-        edges.push_back( *eIter );
-      }
-    }
-  }
-
-  return edges;
 }
 
 const Graph::NodeList&
@@ -314,15 +245,17 @@ Graph::getSubGraph( Paradigm paradigm )
 
     subGraph->addNode( node );
 
-    if ( hasOutEdges( node ) )
+    const EdgeList* edges = getOutEdges( node );
+    if( edges )
     {
-      EdgeList edges = getOutEdges( node, paradigm );
-      for ( EdgeList::const_iterator eIter = edges.begin();
-            eIter != edges.end(); ++eIter )
+      for ( EdgeList::const_iterator eIter = edges->begin();
+              eIter != edges->end(); ++eIter )
       {
         Edge* edge = *eIter;
 
-        if ( edge->hasEdgeType( paradigm ) )
+        // add only edges with the requested paradigm
+        if ( edge->hasEdgeType( paradigm ) &&
+               edge->getEndNode()->hasParadigm( paradigm ) )
         {
           subGraph->addEdge( edge );
         }
@@ -438,6 +371,7 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
                         GraphNode::GraphNodeList& path ) const
 {
   const uint64_t INFINITE = UINT64_MAX;
+  bool loop_check = Parser::getInstance().getProgramOptions().cpaLoopCheck;
 
   // assume that the node list nodes is sorted by time
 
@@ -472,10 +406,17 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
         */       
         // if edge is not blocking AND weight is more than current but not infinite
         // (weight is complementary to duration)
-        // revert edges have to be inter process to avoid endless loops
+        // reverse edges have to be inter process to avoid endless loops
         if ( ( edge->isReverseEdge() && edge->isInterProcessEdge() ) || 
              ( !edge->isBlocking() && curWeight > maxWeight && curWeight != INFINITE ) )
         {
+          // force loop check, if we find a reverse edge
+          if( edge->isReverseEdge() )
+          {
+            UTILS_WARN_ONCE( "Force critical path loop check!" );
+            loop_check = true;
+          }
+          
           maxWeight = curWeight;
           predecessorNode = edge->getStartNode();
         }
@@ -489,8 +430,7 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
                    currentNode->getUniqueName().c_str(),
                    predecessorNode->getUniqueName().c_str(), maxWeight);*/
 
-        if( Parser::getInstance().getProgramOptions().cpaLoopCheck && 
-            GraphNode::search( currentNode, path ) )
+        if( loop_check && GraphNode::search( currentNode, path ) )
         {
           //UTILS_WARNING( "Circular loop detected in local critical path analysis at %s! ",
           //               currentNode->getUniqueName().c_str() );
@@ -541,8 +481,7 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
                predecessorNode->getUniqueName().c_str() );
     
     // add the current node to the critical nodes
-    if( Parser::getInstance().getProgramOptions().cpaLoopCheck && 
-        GraphNode::search( currentNode, path ) )
+    if( loop_check && GraphNode::search( currentNode, path ) )
     {
       UTILS_WARNING( "Try to insert %s twice on the critical path!",
                      currentNode->getUniqueName().c_str() );

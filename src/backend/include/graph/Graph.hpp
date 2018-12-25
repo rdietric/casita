@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014,
+ * Copyright (c) 2013-2014, 2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -51,12 +51,6 @@ namespace casita
      void
      removeEdge( Edge* edge );
 
-     bool
-     hasInEdges( GraphNode* node ) const;
-
-     bool
-     hasOutEdges( GraphNode* node ) const;
-
      Graph*
      getSubGraph( Paradigm paradigm );
 
@@ -65,9 +59,6 @@ namespace casita
      
      const EdgeList*
      getInEdgesPtr( GraphNode* node ) const;
-
-     EdgeList
-     getInEdges( GraphNode* node, Paradigm paradigm ) const;
      
      void
      printPath( const GraphNode::GraphNodeList& path ) const;
@@ -77,15 +68,9 @@ namespace casita
      
      void
      printCircle( GraphNode* node, GraphNode::GraphNodeList& nodeList ) const;
-
-     const EdgeList&
-     getOutEdges( GraphNode* node ) const;
      
      const EdgeList*
-     getOutEdgesPtr( GraphNode* node ) const;
-
-     EdgeList
-     getOutEdges( GraphNode* node, Paradigm paradigm ) const;
+     getOutEdges( GraphNode* node ) const;
 
      const NodeList&
      getNodes( ) const;

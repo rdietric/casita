@@ -229,7 +229,7 @@ namespace casita
                 if( openBlame > 0 )
                 {
                   const Graph::EdgeList* edges =
-                    analysis->getGraph().getOutEdgesPtr( blameStartNode );
+                    analysis->getGraph().getOutEdges( blameStartNode );
                   
                   if( edges && edges->size() == 1 )
                   {

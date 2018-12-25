@@ -412,7 +412,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   } while( events_available );
   
   // write the last device idle leave events
-  writer->handleFinalDeviceIdleLeave();
+  writer->finalizeStreams();
   
   if( mpiRank == 0 && options.verbose >= VERBOSE_TIME )
   {

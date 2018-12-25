@@ -305,7 +305,7 @@ AnalysisParadigmOffload::isKernelPending( GraphNode* kernelNode )
       UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC, 
                  "[%" PRIu64 "] Do not delete unsynchronized kernel %s", 
                  kernelNode->getStreamId(), 
-                 this->commonAnalysis->getNodeInfo( kernelNode ).c_str() );
+                 this->analysisEngine->getNodeInfo( kernelNode ).c_str() );
       return true;
     }
   }
@@ -315,7 +315,7 @@ AnalysisParadigmOffload::isKernelPending( GraphNode* kernelNode )
     UTILS_MSG_ONCE_OR( Parser::getVerboseLevel() > VERBOSE_BASIC, 
                "[%" PRIu64 "] Do not delete incomplete kernel %s", 
                kernelNode->getStreamId(), 
-               this->commonAnalysis->getNodeInfo( kernelNode ).c_str() );
+               this->analysisEngine->getNodeInfo( kernelNode ).c_str() );
     return true;
   }
   
@@ -371,9 +371,9 @@ AnalysisParadigmOffload::printKernelLaunchMap()
     if( mapIter->second.size() )
     {
       UTILS_OUT( "[%" PRIu32 "] %llu pending kernel launches for device stream %" PRIu64,
-                 commonAnalysis->getMPIRank(), mapIter->second.size(), mapIter->first );
+                 analysisEngine->getMPIRank(), mapIter->second.size(), mapIter->first );
       
-      EventStream* evtStream = this->commonAnalysis->getStream( mapIter->first );
+      EventStream* evtStream = this->analysisEngine->getStream( mapIter->first );
       if( evtStream )
       {
         UTILS_OUT( "  ... with stream name: %s", evtStream->getName() );
@@ -387,14 +387,14 @@ AnalysisParadigmOffload::printKernelLaunchMap()
            itList != mapIter->second.end(); ++itList )
       {
         UTILS_WARNING( "[%" PRIu32 "] Pending kernel launch %s",
-                       commonAnalysis->getMPIRank(),
-                       commonAnalysis->getNodeInfo( *itList ).c_str() );
+                       analysisEngine->getMPIRank(),
+                       analysisEngine->getNodeInfo( *itList ).c_str() );
       }
       
     }
   }
   UTILS_OUT( "[%" PRIu32 "] %" PRIu64 " pending kernel launches on %llu different device streams",
-             commonAnalysis->getMPIRank(),pendingKernelLaunchCount, pendingKernelLaunchMap.size() );
+             analysisEngine->getMPIRank(),pendingKernelLaunchCount, pendingKernelLaunchMap.size() );
 }
 
 void
@@ -410,7 +410,7 @@ AnalysisParadigmOffload::printDebugInformation( uint64_t eventId )
   uint64_t streamId = eventRecordLeave->getStreamId( );
   
   UTILS_OUT( "Host stream: %llu (%s)", streamId,
-             this->commonAnalysis->getStream( streamId )->getName() );
+             this->analysisEngine->getStream( streamId )->getName() );
   
   printKernelLaunchMap();
 }
@@ -481,6 +481,7 @@ AnalysisParadigmOffload::consumeFirstPendingKernelLaunchEnter(
   GraphNode::GraphNodeList::iterator launchIter = mapIter->second.begin();
   
   // skip leading leave nodes, as only enter nodes are erased
+  //\todo: potential endless loop
   while ( ( launchIter != mapIter->second.end() ) &&
           ( ( *launchIter )->isLeave() ) )
   {
@@ -585,7 +586,7 @@ AnalysisParadigmOffload::findFirstLaunchInIdle( uint64_t lower_bound,
 
     // check all in edges of the current node
     const Graph::EdgeList& inEdges = 
-      commonAnalysis->getGraph().getInEdges( currentNode );
+      analysisEngine->getGraph().getInEdges( currentNode );
     for ( Graph::EdgeList::const_iterator iter = inEdges.begin();
           iter != inEdges.end(); ++iter )
     {
@@ -644,8 +645,8 @@ AnalysisParadigmOffload::removeKernelLaunch( GraphNode* kernel )
                          Parser::getVerboseLevel() > VERBOSE_TIME,
                  "[%" PRIu32 "] Removed %s referencing %" PRIu64 " from kernel "
                  "launch map (new list size %llu)", 
-                 commonAnalysis->getMPIRank(),
-                 commonAnalysis->getNodeInfo( kernelLaunchLeave ).c_str(),
+                 analysisEngine->getMPIRank(),
+                 analysisEngine->getNodeInfo( kernelLaunchLeave ).c_str(),
                  streamId,
                  pendingKernelLaunchMap[ streamId ].size() );
     }
@@ -666,7 +667,7 @@ AnalysisParadigmOffload::clearKernelEnqueues( uint64_t streamId )
     {
       UTILS_MSG( Parser::getVerboseLevel() >= VERBOSE_BASIC, 
         "[%" PRIu32 "] Clear list of %llu pending kernel launches for stream %" PRIu64, 
-        commonAnalysis->getMPIRank(), 
+        analysisEngine->getMPIRank(), 
         (unsigned long long)pendingKernelLaunchMap[ streamId ].size(), streamId );
       
       pendingKernelLaunchMap[ streamId ].clear();
@@ -679,7 +680,7 @@ AnalysisParadigmOffload::addStreamWaitEvent( uint64_t   streamId,
                                              EventNode* streamWaitLeave )
 {
   const DeviceStream* strm = 
-    commonAnalysis->getStreamGroup().getDeviceStream( streamId );
+    analysisEngine->getStreamGroup().getDeviceStream( streamId );
   
   if( !strm )
   {
@@ -687,7 +688,7 @@ AnalysisParadigmOffload::addStreamWaitEvent( uint64_t   streamId,
   }
   
   const DeviceStream* nullStream = 
-    commonAnalysis->getStreamGroup().getDeviceNullStream( strm->getDeviceId() );
+    analysisEngine->getStreamGroup().getDeviceNullStream( strm->getDeviceId() );
   
   if ( nullStream && nullStream->getId() == streamId )
   {
@@ -730,7 +731,7 @@ AnalysisParadigmOffload::getFirstStreamWaitEvent( uint64_t deviceStreamId )
   if ( iter == streamWaitMap.end( ) )
   {
     // test if a streamWaitEvent on NULL is not tagged for this device stream
-    size_t numAllDevProcs = commonAnalysis->getNumDeviceStreams( );
+    size_t numAllDevProcs = analysisEngine->getNumDeviceStreams( );
     for ( NullStreamWaitList::iterator nullIter = nullStreamWaits.begin( );
           nullIter != nullStreamWaits.end( ); )
     {
@@ -775,7 +776,7 @@ AnalysisParadigmOffload::consumeFirstStreamWaitEvent( uint64_t deviceStreamId )
   {
     /* test if a streamWaitEvent on NULL is not tagged for this device
      * stream */
-    size_t numAllDevProcs = commonAnalysis->getNumDeviceStreams();
+    size_t numAllDevProcs = analysisEngine->getNumDeviceStreams();
     for ( NullStreamWaitList::iterator nullIter = nullStreamWaits.begin();
           nullIter != nullStreamWaits.end(); )
     {
@@ -856,7 +857,7 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelNode ) const
   if( kernelNode == NULL )
   {
     const EventStreamGroup::DeviceStreamList& deviceStreams = 
-      commonAnalysis->getDeviceStreams();
+      analysisEngine->getDeviceStreams();
   
     if( deviceStreams.size() == 0 )
     {
@@ -906,12 +907,13 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelNode ) const
     // if no previous kernel is available, make sure that there is at least one
     // edge to follow
     if( !prevKernelLeave )
-    {
+    {      
       // create edge to kernel launch if necessary (should exist)
       if( kernelEnter->getLink() != kernelLaunchEnter && 
-         commonAnalysis->getEdge( kernelLaunchEnter, kernelEnter ) == NULL )
+         analysisEngine->getEdge( kernelLaunchEnter, kernelEnter ) == NULL )
       {
-        commonAnalysis->newEdge( kernelLaunchEnter, kernelEnter );
+        //\todo: check for reverse edge
+        analysisEngine->newEdge( kernelLaunchEnter, kernelEnter );
       }
 
       break;
@@ -943,9 +945,9 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelNode ) const
 //        commonAnalysis->getNodeInfo( kernelEnter ).c_str());
       
       // if edge does not exist
-      if( commonAnalysis->getEdge( prevKernelLeave, kernelEnter ) == NULL )
+      if( analysisEngine->getEdge( prevKernelLeave, kernelEnter ) == NULL )
       {
-        Edge* e = commonAnalysis->newEdge( prevKernelLeave, kernelEnter );
+        Edge* e = analysisEngine->newEdge( prevKernelLeave, kernelEnter );
         
         // unblock edge if edges between overlapping kernels are allowed
         if( e->isBlocking() )
@@ -956,9 +958,10 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelNode ) const
           }
           else
           {
-            if( commonAnalysis->getEdge( kernelLaunchEnter, kernelEnter ) == NULL )
+            if( analysisEngine->getEdge( kernelLaunchEnter, kernelEnter ) == NULL )
             {
-              Edge *e = commonAnalysis->newEdge( kernelLaunchEnter, kernelEnter );
+              //\todo: check for reverse edges
+              Edge *e = analysisEngine->newEdge( kernelLaunchEnter, kernelEnter );
         
               if( e->isBlocking() )
               {
@@ -972,9 +975,9 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelNode ) const
     }
     else
     {
-      if( commonAnalysis->getEdge( kernelLaunchEnter, kernelEnter ) == NULL )
+      if( analysisEngine->getEdge( kernelLaunchEnter, kernelEnter ) == NULL )
       {
-        Edge *e = commonAnalysis->newEdge( kernelLaunchEnter, kernelEnter );
+        Edge *e = analysisEngine->newEdge( kernelLaunchEnter, kernelEnter );
         
         if( e->isBlocking() )
         {
