@@ -121,6 +121,7 @@ namespace casita
     cout << "    [--no-errors]         ignore non-fatal errors" << endl;
     cout << "    [--ignore-impi]       handle non-blocking MPI functions as CPU functions" << endl;
     cout << "    [--ignore-offloading] handle CUDA/OpenCL functions as CPU functions" << endl;
+    cout << "    [--ignore-cuda-events] do not handle CUDA-event-related functions" << endl;
     cout << " -c [--interval-analysis=]UINT  run analysis in intervals (between global MPI" << endl
          << "                          collectives) to reduce memory footprint. The value" << endl
          << "                          (default: 64) sets the number of pending graph nodes" << endl
@@ -295,6 +296,12 @@ namespace casita
       else if( opt.find( "--ignore-offloading" ) != string::npos )
       {
         options.ignoreOffload = true;
+      }
+      
+      // do not run offloading analysis
+      else if( opt.find( "--ignore-cuda-events" ) != string::npos )
+      {
+        options.ignoreCUDAevents = true;
       }
       
       // enable blaming host activities for not keeping the device busy
@@ -558,6 +565,7 @@ namespace casita
     options.nullStream = -1;
     options.ignoreAsyncMpi = false;
     options.ignoreOffload = false;
+    options.ignoreCUDAevents = false;
     options.blame4deviceIdle = false;
     options.extendedBlame = false;
     options.createRatingCSV = true;

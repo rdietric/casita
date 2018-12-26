@@ -62,7 +62,8 @@ AnalysisParadigmOffload::AnalysisParadigmOffload( AnalysisEngine* analysisEngine
   addRule( new SyncRule( 1 ) ); // triggered on cudaSync and clFinish
   
   // add rules that are related to CUDA events only if necessary
-  if( analysisEngine->haveAnalysisFeature( CUDA_EVENTS ) )
+  if( analysisEngine->haveAnalysisFeature( CUDA_EVENTS ) && 
+      !Parser::getInstance().getProgramOptions().ignoreCUDAevents )
   {
     addRule( new EventLaunchRule( 1 ) );
     addRule( new EventSyncRule( 1 ) );
@@ -201,7 +202,8 @@ AnalysisParadigmOffload::handlePostLeave( GraphNode* leaveNode )
     return;
   }
   
-  if ( leaveNode->isOffloadEnqueueKernel() )
+  if ( leaveNode->isOffloadEnqueueKernel() && 
+       !Parser::getInstance().getProgramOptions().ignoreCUDAevents )
   {
     addPendingKernelLaunch( leaveNode );
   }
