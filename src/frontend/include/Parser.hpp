@@ -36,7 +36,7 @@ namespace casita
    int         linkKernels;
    int         nullStream;
    bool        printCriticalPath;
-   bool        cpaLoopCheck;
+   uint32_t    cpaLoopCheck;
    bool        mergeActivities;
    bool        noErrors;
    bool        ignoreAsyncMpi;

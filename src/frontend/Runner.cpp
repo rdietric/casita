@@ -1275,10 +1275,10 @@ Runner::getCriticalPathIntern( GraphNode*                        start,
              end->getUniqueName().c_str() );
 
   Graph& subGraph = analysis.getGraph();
-  GraphNode::GraphNodeList criticalPath;
+  GraphNodeQueue criticalPath;
   subGraph.getCriticalPath( start, end, criticalPath );
 
-  for ( GraphNode::GraphNodeList::const_iterator cpNode = criticalPath.begin();
+  for ( GraphNodeQueue::const_iterator cpNode = criticalPath.begin();
         cpNode != criticalPath.end(); ++cpNode )
   {
     GraphNode* node = *cpNode;

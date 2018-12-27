@@ -17,6 +17,7 @@
 #include <map>
 #include <vector>
 #include <set>
+#include <deque>
 
 #include "GraphNode.hpp"
 #include "Edge.hpp"
@@ -31,10 +32,10 @@ namespace casita
      typedef std::vector< GraphNode* > NodeList;
      typedef std::map< GraphNode*, EdgeList > NodeEdges;
 
-     Graph( );
+     Graph();
      Graph( bool isSubGraph );
      virtual
-     ~Graph( );
+     ~Graph();
      
      /**
       * Clear all lists in this graph object and deallocate/delete edges.
@@ -63,25 +64,15 @@ namespace casita
      void
      printPath( const GraphNode::GraphNodeList& path ) const;
      
-     void
-     printInEdges( GraphNode* node ) const;
-     
-     void
-     printCircle( GraphNode* node, GraphNode::GraphNodeList& nodeList ) const;
-     
      const EdgeList*
      getOutEdges( GraphNode* node ) const;
 
      const NodeList&
-     getNodes( ) const;
-
-     void
-     getLongestPath( GraphNode* start, GraphNode* end,
-                     GraphNode::GraphNodeList& path ) const;
+     getNodes() const;
      
      void
      getCriticalPath( GraphNode* start, GraphNode* end,
-                      GraphNode::GraphNodeList& path ) const;
+                      GraphNodeQueue& path ) const;
 
    protected:
      NodeList  nodes;
@@ -97,6 +88,13 @@ namespace casita
      static void
      sortedInsert( GraphNode* n, std::list< GraphNode* >& nodes,
                    DistanceMap& distanceMap );
+   
+   private:     
+     void
+     printInEdges( GraphNode* node ) const;
+     
+     void
+     printCircle( GraphNode* node, GraphNodeQueue& nodeList ) const;
  };
 
 }

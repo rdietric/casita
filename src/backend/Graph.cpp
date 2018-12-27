@@ -343,11 +343,11 @@ Graph::printInEdges( GraphNode* node ) const
 }
 
 void
-Graph::printCircle( GraphNode* node, GraphNode::GraphNodeList& nodeList ) const
+Graph::printCircle( GraphNode* node, GraphNodeQueue& nodeList ) const
 {
   UTILS_OUT( "Detected circular dependency in local critical path analysis"
              " at %s. Print node list: " , node->getUniqueName().c_str() );
-  for( GraphNode::GraphNodeList::const_iterator it = nodeList.begin();
+  for( GraphNodeQueue::const_iterator it = nodeList.begin();
        it != nodeList.end(); ++it )
   {
     printInEdges( *it );
@@ -364,14 +364,14 @@ Graph::printCircle( GraphNode* node, GraphNode::GraphNodeList& nodeList ) const
  * 
  * @param startNode start node
  * @param endNode end node
- * @param path the list of critical nodes / the longest path
+ * @param path queue of critical nodes / the longest path
  */
 void
 Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
-                        GraphNode::GraphNodeList& path ) const
+                        GraphNodeQueue& path ) const
 {
   const uint64_t INFINITE = UINT64_MAX;
-  bool loop_check = Parser::getInstance().getProgramOptions().cpaLoopCheck;
+  uint32_t loop_check = Parser::getInstance().getProgramOptions().cpaLoopCheck;
 
   // assume that the node list nodes is sorted by time
 
@@ -414,7 +414,7 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
           if( edge->isReverseEdge() )
           {
             UTILS_WARN_ONCE( "Force critical path loop check!" );
-            loop_check = true;
+            loop_check = 10;
           }
           
           maxWeight = curWeight;
@@ -430,7 +430,7 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
                    currentNode->getUniqueName().c_str(),
                    predecessorNode->getUniqueName().c_str(), maxWeight);*/
 
-        if( loop_check && GraphNode::search( currentNode, path ) )
+        if( loop_check && GraphNode::findInFirst( currentNode, path, loop_check ) )
         {
           //UTILS_WARNING( "Circular loop detected in local critical path analysis at %s! ",
           //               currentNode->getUniqueName().c_str() );
@@ -481,7 +481,7 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
                predecessorNode->getUniqueName().c_str() );
     
     // add the current node to the critical nodes
-    if( loop_check && GraphNode::search( currentNode, path ) )
+    if( loop_check && GraphNode::findInFirst( currentNode, path, loop_check ) )
     {
       UTILS_WARNING( "Try to insert %s twice on the critical path!",
                      currentNode->getUniqueName().c_str() );

@@ -111,18 +111,18 @@ namespace casita
     cout << " -f  --filter=List        filter regions (ignored in analysis and output trace)" << endl;
     cout << "     --idle=[0,1,2,3]     write device idle regions to output trace" << endl
          << "                          (0=no, 1=device idle(default), 2=compute idle, 3=both)" << endl;
-    cout << "    [--blame4device-idle] blame the host for not keeping the device computing" << endl;
+    cout << "     --blame4device-idle  blame the host for not keeping the device computing" << endl;
     cout << " -e [--extended-blame]    divide blame into different types" << endl;
-    cout << " -l  --link-kernels=[0,1,2]  create inter-stream kernel dependencies (default: off)" << endl;
+    cout << " -l  --link-kernels[=0,1,2]  create inter-stream kernel dependencies (default: off)" << endl;
     cout << "     --nullstream=INT     use null stream semantic for the given stream" << endl;
     cout << " -p [--path]              print critical paths" << endl;
-    cout << "    [--cpa-loop-check]    detect circular loops in process-local critical path" << endl
+    cout << "     --cpa-loop-check[=UINT] detect circular loops in process-local critical path (parameter is check length)" << endl
          << "                          (default: off)" << endl;
-    cout << "    [--no-errors]         ignore non-fatal errors" << endl;
-    cout << "    [--ignore-impi]       handle non-blocking MPI functions as CPU functions" << endl;
-    cout << "    [--ignore-offloading] handle CUDA/OpenCL functions as CPU functions" << endl;
-    cout << "    [--ignore-cuda-events] do not handle CUDA-event-related functions" << endl;
-    cout << " -c [--interval-analysis=]UINT  run analysis in intervals (between global MPI" << endl
+    cout << "     --no-errors          ignore non-fatal errors" << endl;
+    cout << "     --ignore-impi        handle non-blocking MPI functions as CPU functions" << endl;
+    cout << "     --ignore-offloading  handle CUDA/OpenCL functions as CPU functions" << endl;
+    cout << "     --ignore-cuda-events do not handle CUDA-event-related functions" << endl;
+    cout << " -c  --interval-analysis=UINT  run analysis in intervals (between global MPI" << endl
          << "                          collectives) to reduce memory footprint. The value" << endl
          << "                          (default: 64) sets the number of pending graph nodes" << endl
          << "                          before an analysis run is started." << endl;
@@ -274,10 +274,24 @@ namespace casita
         options.printCriticalPath = true;
       }
       
+      else if( opt.find( "--cpa-loop-check=" ) != string::npos )
+      {
+        options.cpaLoopCheck = atoi( opt.erase( 0, string( "--cpa-loop-check=" ).length() ).c_str() );
+      }
+      
       // detect and avoid circular loops in process-local CPA
       else if( opt.find( "--cpa-loop-check" ) != string::npos )
       {
-        options.cpaLoopCheck = true;
+        if( ++i < argc && argv[i][0] != '-' )
+        {
+          // set the user specified value
+          options.cpaLoopCheck = atoi( argv[i] );
+        }
+        else
+        {
+          options.cpaLoopCheck = 10;
+          i--;
+        }
       }
 
       // no error
@@ -556,7 +570,7 @@ namespace casita
     //options.outOtfFile = "casita.otf2";
     options.replaceCASITAoutput = false;
     options.printCriticalPath = false;
-    options.cpaLoopCheck = false;
+    options.cpaLoopCheck = 0;
     options.verbose = 0;
     options.topX = 20;
     options.predictionFilter = "";
