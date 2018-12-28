@@ -113,7 +113,7 @@ namespace casita
      setOutputDirAndFile();
      
      bool
-     processArgs( int argc, char** argv);
+     processArgs( int mpiRank, int argc, char** argv);
      
      bool
      endsWith( string const& str, string const& ext );
