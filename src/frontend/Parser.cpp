@@ -277,6 +277,8 @@ namespace casita
       else if( opt.find( "--force-cp-check=" ) != string::npos )
       {
         options.cpaLoopCheck = atoi( opt.erase( 0, string( "--force-cp-check=" ).length() ).c_str() );
+        UTILS_OUT( "[Force loop check in critical-path detection (depth: %" PRIu32 ")]",
+                   options.cpaLoopCheck );
       }
       
       // detect and avoid circular loops in process-local CPA
@@ -292,6 +294,8 @@ namespace casita
           options.cpaLoopCheck = 10;
           i--;
         }
+        UTILS_OUT( "[Force loop check in critical-path detection (depth: %" PRIu32 ")]",
+                   options.cpaLoopCheck );
       }
 
       // no error
@@ -304,24 +308,31 @@ namespace casita
       else if( opt.find( "--ignore-impi" ) != string::npos )
       {
         options.ignoreAsyncMpi = true;
+        
+        UTILS_OUT( "[Ignore non-blocking MPI calls.]" );
       }
       
       // do not run offloading analysis
       else if( opt.find( "--ignore-offloading" ) != string::npos )
       {
         options.ignoreOffload = true;
+        
+        UTILS_OUT( "[Ignore offloading events.]" );
       }
       
       // do not run offloading analysis
       else if( opt.find( "--ignore-cuda-events" ) != string::npos )
       {
         options.ignoreCUDAevents = true;
+        
+        UTILS_OUT( "[Ignore CUDA events.]" );
       }
       
       // enable blaming host activities for not keeping the device busy
       else if( opt.find( "--blame4device-idle" ) != string::npos )
       {
         options.blame4deviceIdle = true;
+        UTILS_OUT( "[Blame host streams for device idle.]" )
       }
       
       // print path
@@ -336,6 +347,8 @@ namespace casita
                opt.find( "--link-kernels" ) != string::npos*/ )
       {
         options.linkKernels = 1;
+        
+        UTILS_OUT( "[Link non-overlapping device kernels.]" );
       }
       
       // try to link overlapping kernels
@@ -343,6 +356,8 @@ namespace casita
       {
         options.linkKernels = 
           atoi( opt.erase( 0, string( "--link-kernels=" ).length() ).c_str() );
+        
+        UTILS_OUT( "[Link device kernels (mode %d).]", options.linkKernels );
       }
       
       // handle the given stream (by ID) as null stream
@@ -350,6 +365,9 @@ namespace casita
       {
         options.nullStream = 
           atoi( opt.erase( 0, string( "--nullstream=" ).length() ).c_str() );
+        
+        UTILS_OUT( "[Handle device stream %d as default stream.]", 
+                   options.nullStream );
       }
 
       // interval analysis

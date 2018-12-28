@@ -411,9 +411,9 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
              ( !edge->isBlocking() && curWeight > maxWeight && curWeight != INFINITE ) )
         {
           // force loop check, if we find a reverse edge
-          if( edge->isReverseEdge() )
+          if( edge->isReverseEdge() && loop_check < 10 )
           {
-            UTILS_WARN_ONCE( "Force critical path loop check!" );
+            UTILS_WARN_ONCE( "Force critical path loop check (depth: 10)!" );
             loop_check = 10;
           }
           
