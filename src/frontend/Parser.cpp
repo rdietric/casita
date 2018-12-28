@@ -116,8 +116,8 @@ namespace casita
     cout << " -l  --link-kernels[=0,1,2]  create inter-stream kernel dependencies (default: off)" << endl;
     cout << "     --nullstream=INT     use null stream semantic for the given stream" << endl;
     cout << " -p [--path]              print critical paths" << endl;
-    cout << "     --cpa-loop-check[=UINT] detect circular loops in process-local critical path (parameter is check length)" << endl
-         << "                          (default: off)" << endl;
+    cout << "     --force-cp-check[=UINT] check for circular loops during process-local" << endl; 
+    cout << "                             critical path detection (value determines depth)" << endl;
     cout << "     --no-errors          ignore non-fatal errors" << endl;
     cout << "     --ignore-impi        handle non-blocking MPI functions as CPU functions" << endl;
     cout << "     --ignore-offloading  handle CUDA/OpenCL functions as CPU functions" << endl;
@@ -274,13 +274,13 @@ namespace casita
         options.printCriticalPath = true;
       }
       
-      else if( opt.find( "--cpa-loop-check=" ) != string::npos )
+      else if( opt.find( "--force-cp-check=" ) != string::npos )
       {
-        options.cpaLoopCheck = atoi( opt.erase( 0, string( "--cpa-loop-check=" ).length() ).c_str() );
+        options.cpaLoopCheck = atoi( opt.erase( 0, string( "--force-cp-check=" ).length() ).c_str() );
       }
       
       // detect and avoid circular loops in process-local CPA
-      else if( opt.find( "--cpa-loop-check" ) != string::npos )
+      else if( opt.find( "--force-cp-check" ) != string::npos )
       {
         if( ++i < argc && argv[i][0] != '-' )
         {
