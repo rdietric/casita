@@ -701,6 +701,17 @@ OTF2ParallelTraceWriter::registerEventCallbacks()
     event_callbacks, &otf2EvtCallbackThreadFork );
   OTF2_GlobalEvtReaderCallbacks_SetThreadJoinCallback(
     event_callbacks, &otf2EvtCallbackThreadJoin );
+  OTF2_GlobalEvtReaderCallbacks_SetThreadTeamEndCallback(
+      event_callbacks, &otf2CallbackComm_ThreadTeamEnd );
+  
+  OTF2_GlobalEvtReaderCallbacks_SetRmaGetCallback( event_callbacks, 
+                                                   &otf2CallbackComm_RmaGet );
+  OTF2_GlobalEvtReaderCallbacks_SetRmaPutCallback( event_callbacks, 
+                                                   &otf2CallbackComm_RmaPut );
+  OTF2_GlobalEvtReaderCallbacks_SetRmaOpCompleteBlockingCallback(
+      event_callbacks, &otf2CallbackComm_RmaOpCompleteBlocking );
+  OTF2_GlobalEvtReaderCallbacks_SetRmaWinDestroyCallback(
+      event_callbacks, &otf2CallbackComm_RmaWinDestroy );
   
   // the following callback events are just written back to the output trace
   if( writeToFile )
@@ -725,20 +736,12 @@ OTF2ParallelTraceWriter::registerEventCallbacks()
     OTF2_GlobalEvtReaderCallbacks_SetMpiIsendCompleteCallback( 
       event_callbacks, &otf2Callback_MpiIsendComplete );
 
-    OTF2_GlobalEvtReaderCallbacks_SetRmaOpCompleteBlockingCallback(
-      event_callbacks, &otf2CallbackComm_RmaOpCompleteBlocking );
+    
     OTF2_GlobalEvtReaderCallbacks_SetRmaWinCreateCallback(
       event_callbacks, &otf2CallbackComm_RmaWinCreate );
-    OTF2_GlobalEvtReaderCallbacks_SetRmaWinDestroyCallback(
-      event_callbacks, &otf2CallbackComm_RmaWinDestroy );
-    OTF2_GlobalEvtReaderCallbacks_SetRmaGetCallback( event_callbacks, 
-                                               &otf2CallbackComm_RmaGet );
-    OTF2_GlobalEvtReaderCallbacks_SetRmaPutCallback( event_callbacks, 
-                                               &otf2CallbackComm_RmaPut );
+    
     OTF2_GlobalEvtReaderCallbacks_SetThreadTeamBeginCallback(
       event_callbacks, &otf2CallbackComm_ThreadTeamBegin );
-    OTF2_GlobalEvtReaderCallbacks_SetThreadTeamEndCallback(
-      event_callbacks, &otf2CallbackComm_ThreadTeamEnd );
   }
 
   OTF2_Reader_RegisterGlobalEvtCallbacks( otf2Reader, evt_reader, event_callbacks, this );
@@ -2432,7 +2435,7 @@ OTF2ParallelTraceWriter::otf2CallbackComm_MpiCollectiveEnd(
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  if ( tw->writeToFile )
+  //if ( tw->writeToFile )
   {
     OTF2_CHECK( OTF2_EvtWriter_MpiCollectiveEnd( tw->evt_writerMap[locationID],
                                                  attributeList, time,
@@ -2454,7 +2457,7 @@ OTF2ParallelTraceWriter::otf2CallbackComm_MpiCollectiveBegin( OTF2_LocationRef l
 
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  if ( tw->writeToFile )
+  //if ( tw->writeToFile )
   {
     OTF2_CHECK( OTF2_EvtWriter_MpiCollectiveBegin( tw->evt_writerMap[locationID],
                                                    attributeList, time ) );
@@ -2473,7 +2476,7 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaWinCreate( OTF2_LocationRef locatio
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  if ( tw->writeToFile )
+  //if ( tw->writeToFile )
   {
     OTF2_CHECK( OTF2_EvtWriter_RmaWinCreate( tw->evt_writerMap[location],
                                              attributeList, time,
@@ -2492,25 +2495,25 @@ OTF2ParallelTraceWriter::otf2CallbackComm_RmaWinDestroy( OTF2_LocationRef locati
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
+  // handle last device idle leave
+  if( tw->lastOffloadApiEvtTime != 0 )
+  {
+    StreamStatus& streamState = tw->streamStatusMap[ location ];
+    EventStream* currentStream = streamState.stream;
+    if( currentStream->isDeviceStream() )
+    {
+      tw->handleFinalDeviceIdleLeave();
+    }
+  }
+  
   if ( tw->writeToFile )
   {
-    // handle last device idle leave
-    if( tw->lastOffloadApiEvtTime != 0 )
-    {
-      StreamStatus& streamState = tw->streamStatusMap[ location ];
-      EventStream* currentStream = streamState.stream;
-      if( currentStream->isDeviceStream() )
-      {
-        tw->handleFinalDeviceIdleLeave();
-      }
-    }
-    
     OTF2_CHECK( OTF2_EvtWriter_RmaWinDestroy( tw->evt_writerMap[location],
-                                              attributeList, time,
-                                              win ) );
-    
-    tw->streamStatusMap[ location ].lastEventTime = time;
+                                              attributeList, time, win ) );
   }
+  
+  tw->streamStatusMap[ location ].lastEventTime = time;
+  
   return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -2618,7 +2621,7 @@ OTF2ParallelTraceWriter::otf2CallbackComm_ThreadTeamBegin( OTF2_LocationRef loca
 
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
-  if ( tw->writeToFile )
+  //if ( tw->writeToFile )
   {
     OTF2_CHECK( OTF2_EvtWriter_ThreadTeamBegin( tw->evt_writerMap[locationID],
                                                 attributeList, time,
@@ -2644,8 +2647,9 @@ OTF2ParallelTraceWriter::otf2CallbackComm_ThreadTeamEnd( OTF2_LocationRef locati
     OTF2_CHECK( OTF2_EvtWriter_ThreadTeamEnd( tw->evt_writerMap[ locationID ],
                                               attributeList, time,
                                               threadTeam ) );
-    tw->streamStatusMap[ locationID ].lastEventTime = time;
   }
+  
+  tw->streamStatusMap[ locationID ].lastEventTime = time;
 
   return OTF2_CALLBACK_SUCCESS;
 }
