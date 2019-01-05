@@ -112,6 +112,7 @@ namespace casita
     cout << "     --idle=[0,1,2,3]     write device idle regions to output trace" << endl
          << "                          (0=no, 1=device idle(default), 2=compute idle, 3=both)" << endl;
     cout << "     --blame4device-idle  blame the host for not keeping the device computing" << endl;
+    cout << "     --propagate-blame    Wait states propagate their blame" << endl;
     cout << " -e [--extended-blame]    divide blame into different types" << endl;
     cout << " -l  --link-kernels[=0,1,2]  create inter-stream kernel dependencies (default: off)" << endl;
     cout << "     --nullstream=INT     use null stream semantic for the given stream" << endl;
@@ -335,6 +336,13 @@ namespace casita
       {
         options.blame4deviceIdle = true;
         UTILS_MSG( mpiRank == 0, "[Blame host streams for device idle.]" )
+      }
+      
+      // enable blaming host activities for not keeping the device busy
+      else if( opt.find( "--propagate-blame" ) != string::npos )
+      {
+        options.propagateBlame = true;
+        UTILS_MSG( mpiRank == 0, "[Propagate blame.]" )
       }
       
       // print path
@@ -602,6 +610,7 @@ namespace casita
     options.ignoreOffload = false;
     options.ignoreCUDAevents = false;
     options.blame4deviceIdle = false;
+    options.propagateBlame = false;
     options.extendedBlame = false;
     options.createRatingCSV = true;
   }

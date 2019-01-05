@@ -43,6 +43,7 @@ namespace casita
    bool        ignoreOffload;
    bool        ignoreCUDAevents;
    bool        blame4deviceIdle;
+   bool        propagateBlame;
    bool        extendedBlame;
    uint32_t    analysisInterval;
    int         verbose;

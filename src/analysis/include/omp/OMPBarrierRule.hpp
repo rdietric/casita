@@ -132,7 +132,7 @@ namespace casita
           distributeBlame( analysisEngine,
                            latestEnterNode,
                            blame,
-                           streamWalkCallback,
+                           ompHostStreamWalkCallback,
                            REASON_OMP_BARRIER );
 
           // clear list of buffered barriers

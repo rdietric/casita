@@ -202,7 +202,7 @@ namespace casita
                   //blame at least until the device wait all or kernel launch
                   totalTimeToBlame = 
                     distributeBlame( analysis, blameStartNode, blame, 
-                                     streamWalkCallback,
+                                     ofldStreamWalkCallback,
                                      REASON_OFLD_DEVICE_IDLE );
                 }
                 /*else{

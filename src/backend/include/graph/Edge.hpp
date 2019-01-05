@@ -98,7 +98,7 @@ namespace casita
 
        name << ") ";
 
-       if ( isInterProcessEdge() )
+       if ( isInterStreamEdge() )
        {
          name << "(inter)";
        }
@@ -178,7 +178,7 @@ namespace casita
      }
 
      bool
-     isInterProcessEdge() const
+     isInterStreamEdge() const
      {
        return startNode->getStreamId() != endNode->getStreamId();
      }

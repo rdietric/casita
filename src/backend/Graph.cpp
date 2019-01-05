@@ -407,7 +407,7 @@ Graph::getCriticalPath( GraphNode* startNode, GraphNode* endNode,
         // if edge is not blocking AND weight is more than current but not infinite
         // (weight is complementary to duration)
         // reverse edges have to be inter process to avoid endless loops
-        if ( ( edge->isReverseEdge() && edge->isInterProcessEdge() ) || 
+        if ( ( edge->isReverseEdge() && edge->isInterStreamEdge() ) || 
              ( !edge->isBlocking() && curWeight > maxWeight && curWeight != INFINITE ) )
         {
           // force loop check, if we find a reverse edge

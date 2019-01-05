@@ -250,7 +250,7 @@ AnalysisEngine::clearNodes()
 void
 AnalysisEngine::handlePostEnter( GraphNode* node )
 {
-  if( node->isOffload() && analysisParadigms.count( PARADIGM_OFFLOAD ) > 0 )
+  if( node->isOfld() && analysisParadigms.count( PARADIGM_OFFLOAD ) > 0 )
   {
     analysisParadigms[ PARADIGM_OFFLOAD ]->handlePostEnter( node );
     return;
@@ -266,7 +266,7 @@ AnalysisEngine::handlePostEnter( GraphNode* node )
 void
 AnalysisEngine::handlePostLeave( GraphNode* node )
 {
-  if( node->isOffload() && analysisParadigms.count( PARADIGM_OFFLOAD ) > 0 )
+  if( node->isOfld() && analysisParadigms.count( PARADIGM_OFFLOAD ) > 0 )
   {
     analysisParadigms[ PARADIGM_OFFLOAD ]->handlePostLeave( node );
     return;
@@ -284,7 +284,7 @@ AnalysisEngine::handleKeyValuesEnter( OTF2TraceReader*  reader,
                                       GraphNode*        node,
                                       OTF2KeyValueList* list )
 {
-  if( node->isOffload() && analysisParadigms.count( PARADIGM_OFFLOAD ) > 0 )
+  if( node->isOfld() && analysisParadigms.count( PARADIGM_OFFLOAD ) > 0 )
   {
     analysisParadigms[ PARADIGM_OFFLOAD ]->handleKeyValuesEnter( 
       reader, node, list );
@@ -304,7 +304,7 @@ AnalysisEngine::handleKeyValuesLeave( OTF2TraceReader*  reader,
                                       GraphNode*        oldNode,
                                       OTF2KeyValueList* list )
 {
-  if( node->isOffload() && analysisParadigms.count( PARADIGM_OFFLOAD ) > 0 )
+  if( node->isOfld() && analysisParadigms.count( PARADIGM_OFFLOAD ) > 0 )
   {
     analysisParadigms[ PARADIGM_OFFLOAD ]->handleKeyValuesLeave( 
       reader, node, oldNode, list );
@@ -542,7 +542,7 @@ AnalysisEngine::createIntermediateBegin()
         
         ////////////////////// Offload /////////////////////
         // do not remove offload nodes that might be required later
-        if( node->isOffload() )
+        if( node->isOfld() )
         {
           if( havePendingKernels )
           {

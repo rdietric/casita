@@ -170,7 +170,7 @@ namespace casita
               distributeBlame( analysis,
                                lastTargetOffloadNode,
                                waiting_time, // total blame
-                               deviceStreamWalkCallback,
+                               ompDeviceStreamWalkCallback,
                                REASON_OFLD_WAIT4DEVICE );
             }
             else

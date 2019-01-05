@@ -1734,7 +1734,7 @@ OTF2ParallelTraceWriter::processNextEvent( OTF2Event event,
       GraphNode* currentNode = *currentNodeIter;
       
       // special handling for offloading API routines
-      if( currentNode->isOffload() )
+      if( currentNode->isOfld() )
       {
         // do not write attributes from CUDA and OpenCL nodes
         OTF2_AttributeList_RemoveAllAttributes( attributeList );

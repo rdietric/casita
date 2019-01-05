@@ -161,7 +161,7 @@ namespace casita
           distributeBlame( analysis,
                            colEnter,
                            total_blame,
-                           streamWalkCallback,
+                           mpiStreamWalkCallback,
                            REASON_MPI_COLLECTIVE );
         }
 
