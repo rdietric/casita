@@ -88,11 +88,19 @@ namespace casita
          }
          if ( paradigm & PARADIGM_MPI )
          {
-           name << ",MPI";
+           if( paradigm != PARADIGM_MPI )
+           {
+             name << ",";
+           }
+           name << "MPI";
          }
          if ( paradigm & PARADIGM_OMP )
          {
-           name << ",OMP";
+           if( paradigm != PARADIGM_OMP )
+           {
+             name << ",";
+           }
+           name << "OMP";
          }
        }
 

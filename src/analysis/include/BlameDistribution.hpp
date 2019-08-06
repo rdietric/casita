@@ -62,8 +62,8 @@ namespace casita
     StreamWalkInfo walkListInfo;
     walkListInfo.waitStateTime = 0;
     walkListInfo.analysis = analysis;
-    analysis->getStream(node->getStreamId())->walkBackward(
-                                                 node, callback, &walkListInfo);
+    analysis->getStream( node->getStreamId())->walkBackward(
+                                                node, callback, &walkListInfo );
 
     // the walk list includes the interval boundary nodes, e.g. MPI leave as 
     // start node (walklist.front()) and MPI enter as end node (walklist.back())
@@ -140,8 +140,8 @@ namespace casita
 
       UTILS_ASSERT( edge, "[%u] No edge found between %s and %s",
                     analysis->getMPIRank(),
-                    currentWalkNode->getUniqueName().c_str(),
-                    lastWalkNode->getUniqueName().c_str());
+                    analysis->getNodeInfo( currentWalkNode ).c_str(),
+                    analysis->getNodeInfo( lastWalkNode ).c_str() );
       
       //UTILS_MSG( currentWalkNode->getId() == 19, "Current walk node: %s",
       //           currentWalkNode->getUniqueName().c_str() );
@@ -192,6 +192,13 @@ namespace casita
       }
       else
       {
+//        UTILS_MSG( analysis->getMPIRank() == 0 && lastWalkNode->isLeave() && 
+//                   strcmp( lastWalkNode->getName(), "!$omp implicit barrier @calculateTauMatrix.cpp:506" ) == 0, 
+//                   "[%u] Blame %s (edge: %s, reason: %d. from %s)", 
+//                   analysis->getMPIRank(), 
+//                   analysis->getNodeInfo( lastWalkNode ).c_str(),
+//                   edge->getName().c_str(),
+//                   reason, analysis->getNodeInfo( node ).c_str());
         edge->addBlame( blame, reason );
       }
 

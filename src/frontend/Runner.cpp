@@ -25,7 +25,6 @@
 
 #include <time.h>
 #include <vector>       /* clock_t, clock, CLOCKS_PER_SEC */
-#include <iomanip>
 
 #include "otf/OTF2DefinitionHandler.hpp"
 
@@ -2007,6 +2006,8 @@ Runner::writeActivityRating()
       UTILS_OUT( "Global critical path length is 0. Skipping output ..." );
       return;
     }
+    
+    setTimeFormat( analysis.getRealTime( definitions.getTraceLength() ) );
 
     fprintf( sFile, "\n%*s %10s %11s %11s %6s %11s %8s %10s\n",
             RNAMELEN, "Region",
@@ -2289,8 +2290,9 @@ Runner::writeActivityRating()
     // print inefficiency and wait statistics
     fprintf( sFile, "\n"
              "%-31.31s: %*lf s\n", "Total program runtime", float_width,
-             (double) definitions.getTraceLength() 
-               / (double) definitions.getTimerResolution() ); 
+             analysis.getRealTime( definitions.getTraceLength() ) );
+             //"%-31.31s: %s\n", "Total program runtime",
+             //convertSecondsToStr( analysis.getRealTime( definitions.getTraceLength() ) ) ); 
     
     fprintf( sFile, 
              "%-31.31s: %11lf s",
@@ -2400,8 +2402,8 @@ Runner::writeActivityRating()
     }
     
     //// OpenMP ////
-    if( analysis.haveParadigm( PARADIGM_OMP ) )
-    {
+    //if( analysis.haveParadigm( PARADIGM_OMP ) )
+    //{
       patternCount = stats.getStats()[ OMP_STAT_BARRIER ];
       if( patternCount )
       {
@@ -2413,7 +2415,7 @@ Runner::writeActivityRating()
                   stats.getActivityCounts()[ STAT_HOST_STREAMS ],
                 patternCount );
       }
-    }
+    //}
     
     //// Offloading ////
     if( !Parser::ignoreOffload() && ( analysis.haveParadigm( PARADIGM_CUDA ) || 

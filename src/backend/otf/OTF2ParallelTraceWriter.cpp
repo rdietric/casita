@@ -180,8 +180,8 @@ OTF2ParallelTraceWriter::open()
     
     writeAnalysisMetricDefinitions();
     
-    // if offloading is available and enabled
-    if( Parser::ignoreOffload() == false )
+    // if device idle time shall be determined
+    if( Parser::getOptions().deviceIdle > 0 )
     {
       writeDeviceIdleDefinitions();
     }

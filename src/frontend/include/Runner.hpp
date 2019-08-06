@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -13,6 +13,7 @@
 #pragma once
 
 #include <string>
+#include <iomanip>
 #include <stdio.h>
 #include <stdint.h>
 #include <mpi.h>
@@ -29,6 +30,65 @@
 
 namespace casita
 {
+  static int timeFormat = 0;
+  
+  static void
+  setTimeFormat( double runtime )
+  {
+    if( runtime > 3600 ) // more than 1 hour
+    {
+      timeFormat = 2;
+    }
+    else if( runtime > 60 ) //more than 1 minute
+    {
+      timeFormat = 1;
+    }
+  }
+  
+  static const char*
+  convertSecondsToStr( double seconds )
+  {
+    stringstream sout;
+
+    if( timeFormat == 2 ) // force h:m:s
+    {
+      uint32_t hours = 0;
+      if( seconds > 3600 ) // more than 1 hour
+      {
+        hours = seconds/3600;
+        seconds = seconds - ( hours * 3600 );
+      }
+      sout << hours << "h";
+    }
+    
+    if( timeFormat > 0 ) // more than 1 minute
+    {
+      uint32_t min = 0;
+      if( seconds > 60 )
+      {
+        min = seconds/60;
+        seconds = seconds - ( min * 60 );
+      }
+      sout << std::setfill('0') << std::setw(2) << min << "m";
+    }
+    
+    sout << std::fixed << std::right;
+    
+    if( timeFormat == 0 )
+    {
+      sout.precision(6);
+      sout << std::setw(12) << seconds << " s";
+    }
+    else
+    {
+      sout << std::setw(13) << seconds << "s";
+    }
+    
+    const std::string& tmp = sout.str();   
+    const char* cstr = tmp.c_str();
+    
+    return cstr;
+  }
 
  class Runner
  {
