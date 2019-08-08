@@ -487,6 +487,7 @@ CallbackHandler::handleLeave( OTF2TraceReader*  reader,
   leaveNode->setFunctionId( functionId );
 
   GraphNode* enterNode = leaveNode->getGraphPair().first;
+  
   // applied for offloading paradigms only
   analysis.handleKeyValuesLeave( reader, leaveNode, enterNode, list );
   
@@ -592,7 +593,7 @@ CallbackHandler::handleRmaWinDestroy( OTF2TraceReader* reader,
     stream->setLastEventTime( time );
   }
 }
-/*
+
 void
 CallbackHandler::handleRmaPut( OTF2TraceReader* reader,
                                uint64_t         time,
@@ -600,6 +601,13 @@ CallbackHandler::handleRmaPut( OTF2TraceReader* reader,
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
   EventStream*     stream  = handler->getAnalysis().getStream( streamId );
+  
+  // handle host-device transfers as device transfer tasks
+  if( stream->isDeviceStream() )
+  {
+    handler->handleEnter( reader, time, handler->defHandler->getD2HRegionId(), 
+                          streamId, NULL );
+  }
 }
 
 void
@@ -609,6 +617,13 @@ CallbackHandler::handleRmaGet( OTF2TraceReader* reader,
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
   EventStream*     stream  = handler->getAnalysis().getStream( streamId );
+  
+  // handle host-device transfers as device transfer tasks
+  if( stream->isDeviceStream() )
+  {
+    handler->handleEnter( reader, time, handler->defHandler->getH2DRegionId(), 
+                          streamId, NULL );
+  }
 }
 
 void
@@ -618,8 +633,15 @@ CallbackHandler::handleRmaOpCompleteBlocking( OTF2TraceReader* reader,
 {
   CallbackHandler* handler = (CallbackHandler*)( reader->getUserData() );
   EventStream*     stream  = handler->getAnalysis().getStream( streamId );
+  
+  if( stream->isDeviceStream() )
+  {
+    uint32_t matchingRegionId = handler->defHandler->getH2DRegionId();
+    
+    handler->handleLeave( reader, time, matchingRegionId, streamId, NULL );
+  }
 }
-*/
+
 
 /**
  * Handle blocking MPI communication.

@@ -189,6 +189,8 @@ OTF2DefinitionHandler::setInternalRegions()
 {
   ompForkJoinRef  = createNewRegion( OTF2_OMP_FORKJOIN_INTERNAL, OTF2_PARADIGM_OPENMP );
   waitStateFuncId = createNewRegion( "WaitState", OTF2_PARADIGM_UNKNOWN );
+  ofldTransferH2DId = createNewRegion( "copyH2D", OTF2_PARADIGM_CUDA );
+  ofldTransferD2HId = createNewRegion( "copyD2H", OTF2_PARADIGM_CUDA );
 }
 
 uint32_t
@@ -201,6 +203,18 @@ uint32_t
 OTF2DefinitionHandler::getForkJoinRegionId() const
 {
   return ompForkJoinRef;
+}
+
+uint32_t
+OTF2DefinitionHandler::getH2DRegionId() const
+{
+  return ofldTransferH2DId;
+}
+
+uint32_t
+OTF2DefinitionHandler::getD2HRegionId() const
+{
+  return ofldTransferD2HId;
 }
 
 /**

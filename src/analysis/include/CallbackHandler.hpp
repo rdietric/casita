@@ -98,7 +98,7 @@ namespace casita
                           uint64_t             time,
                           uint64_t             streamId );
      
-     /*static void
+     static void
      handleRmaPut( io::OTF2TraceReader* reader,
                    uint64_t             time,
                    uint64_t             streamId );
@@ -111,7 +111,7 @@ namespace casita
      static void
      handleRmaOpCompleteBlocking( io::OTF2TraceReader* reader,
                                   uint64_t             time,
-                                  uint64_t             streamId );*/
+                                  uint64_t             streamId );
 
      static void
      handleMPIComm( io::OTF2TraceReader* reader,
