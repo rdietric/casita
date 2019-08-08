@@ -100,6 +100,12 @@ namespace casita
         uint32_t
         getForkJoinRegionId() const;
         
+        uint32_t
+        getH2DRegionId() const;
+        
+        uint32_t
+        getD2HRegionId() const;
+        
       private:
         //<! pointer to the one and only analysis engine
         //AnalysisEngine* analysis;
@@ -123,6 +129,10 @@ namespace casita
         
         //!< OTF2 region reference for internal Fork/Join
         uint32_t ompForkJoinRef;
+        
+        //!< internal region IDs for host-device transfers
+        uint32_t ofldTransferH2DId;
+        uint32_t ofldTransferD2HId;
         
         // maximum metric class and member IDs that has been read by the event reader
         uint32_t maxMetricClassId;

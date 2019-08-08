@@ -177,9 +177,9 @@ namespace casita
       HandleMPIIrecvRequest   handleMPIIrecvRequest;
       HandleMPIIsendComplete  handleMPIIsendComplete;
       HandleRmaWinDestroy     handleRmaWinDestroy;
-      //HandleRmaPut            handleRmaPut;
-      //HandleRmaGet            handleRmaGet;
-      //HandleRmaOpCompleteBlocking handleRmaOpCompleteBlocking;
+      HandleRmaPut            handleRmaPut;
+      HandleRmaGet            handleRmaGet;
+      HandleRmaOpCompleteBlocking handleRmaOpCompleteBlocking;
       HandleThreadFork        handleThreadFork;
 
     private:

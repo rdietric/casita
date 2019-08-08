@@ -173,13 +173,13 @@ OTF2TraceReader::setupEventReader( bool ignoreAsyncMPI )
   OTF2_GlobalEvtReaderCallbacks_SetRmaWinDestroyCallback(
     event_callbacks, &otf2CallbackComm_RmaWinDestroy );
   
-  /* register MPI RMA communication callbacks
+  /* register RMA communication callbacks */
   OTF2_GlobalEvtReaderCallbacks_SetRmaGetCallback(
     event_callbacks, &otf2CallbackComm_RmaGet );
   OTF2_GlobalEvtReaderCallbacks_SetRmaPutCallback(
     event_callbacks, &otf2CallbackComm_RmaPut );
   OTF2_GlobalEvtReaderCallbacks_SetRmaOpCompleteBlockingCallback(
-    event_callbacks, &otf2CallbackComm_RmaOpCompleteBlocking );*/
+    event_callbacks, &otf2CallbackComm_RmaOpCompleteBlocking );
   
   if ( !ignoreAsyncMPI )
   {
@@ -1078,7 +1078,7 @@ OTF2TraceReader::otf2CallbackComm_RmaWinDestroy(
   
   return OTF2_CALLBACK_SUCCESS;
 }
-/*
+
 OTF2_CallbackCode
 OTF2TraceReader::otf2CallbackComm_RmaPut( OTF2_LocationRef location,
                                                   OTF2_TimeStamp   time,
@@ -1093,7 +1093,7 @@ OTF2TraceReader::otf2CallbackComm_RmaPut( OTF2_LocationRef location,
 
   if ( tr->handleRmaPut )
   {
-    tr->handleRmaPut( tr, time - tr->getTimerOffset() , location );
+    tr->handleRmaPut( tr, time - tr->defHandler->getTimerOffset() , location );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -1112,7 +1112,7 @@ OTF2TraceReader::otf2CallbackComm_RmaOpCompleteBlocking(
   
   if ( tr->handleRmaOpCompleteBlocking )
   {
-    tr->handleRmaOpCompleteBlocking( tr, time - tr->getTimerOffset() , location );
+    tr->handleRmaOpCompleteBlocking( tr, time - tr->defHandler->getTimerOffset() , location );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -1133,12 +1133,12 @@ OTF2TraceReader::otf2CallbackComm_RmaGet( OTF2_LocationRef location,
 
   if ( tr->handleRmaGet )
   {
-    tr->handleRmaGet( tr, time - tr->getTimerOffset() , location );
+    tr->handleRmaGet( tr, time - tr->defHandler->getTimerOffset() , location );
   }
   
   return OTF2_CALLBACK_SUCCESS;
 }
-*/
+
 
 std::vector< uint32_t >
 OTF2TraceReader::getKeys( const std::string keyName )
