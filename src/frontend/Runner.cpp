@@ -419,7 +419,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     ofstream summaryFile;
     std::string sFileName = Parser::getInstance().getSummaryFileName();
     
-    summaryFile.open( sFileName.c_str() );
+    summaryFile.open( sFileName.c_str(), ios::out | ios::app );
    
     summaryFile.precision(6);
     summaryFile << std::fixed;
@@ -1922,17 +1922,17 @@ Runner::writeStatistics()
 {
   if ( mpiRank == 0 )
   {
-    char mode[1] = {'w'};
+    /*char mode[1] = {'w'};
     
     // use append mode, if timing information have already been written
     if( options.verbose >= VERBOSE_TIME )
     {
       mode[0] = 'a';
-    }
+    }*/
     
     std::string sFileName = Parser::getInstance().getSummaryFileName();
     
-    FILE *sFile = fopen( sFileName.c_str(), mode );
+    FILE *sFile = fopen( sFileName.c_str(), "a" );
     
     if( NULL == sFile )
     {
@@ -1977,17 +1977,17 @@ Runner::writeActivityRating()
 {
   if ( mpiRank == 0 )
   {
-    char mode[1] = {'w'};
+    /*char mode[1] = {'w'};
     
     // use append mode, if timing information have already been written
     if( options.verbose >= VERBOSE_TIME )
     {
       mode[0] = 'a';
-    }
+    }*/
     
     std::string sFileName = Parser::getInstance().getSummaryFileName();
     
-    FILE *sFile = fopen( sFileName.c_str(), mode );
+    FILE *sFile = fopen( sFileName.c_str(), "a" );
     
     if( NULL == sFile )
     {

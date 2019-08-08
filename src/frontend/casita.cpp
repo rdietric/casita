@@ -24,6 +24,8 @@
 #include <string.h>
 #include <time.h>       /* clock_t, clock, CLOCKS_PER_SEC */
 
+#include <fstream>
+
 #include "common.hpp"
 #include "Parser.hpp"
 #include "Runner.hpp"
@@ -63,6 +65,16 @@ main( int argc, char** argv )
     clock_t timestamp = clock();
     
     ProgramOptions& options = Parser::getInstance().getProgramOptions();
+    
+    // write casita command line arguments to summary file
+    ofstream summaryFile;
+    std::string sFileName = Parser::getInstance().getSummaryFileName();
+    summaryFile.open( sFileName.c_str() );
+    for(int i = 0; i < argc; i++)
+    {
+      summaryFile << argv[i] << " ";
+    }
+    summaryFile << std::endl;
 
     Runner* runner = new Runner( mpiRank, mpiSize );
     
