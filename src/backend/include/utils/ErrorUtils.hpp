@@ -139,6 +139,10 @@ namespace casita
 
 #define UTILS_OUT( fmt, ... ) \
    ErrorUtils::getInstance().outputMessage( fmt, ## __VA_ARGS__ );
+
+#define UTILS_OUT_NOBR( fmt, ... ) \
+   ErrorUtils::getInstance().outputMessageNoLineBreak( fmt, ## __VA_ARGS__ ); \
+ 
  
 #define UTILS_MSG( cond, fmt, ... ) \
   if ( cond ) { \
