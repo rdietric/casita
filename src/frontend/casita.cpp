@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2015, 2018
+ * Copyright (c) 2013-2015, 2018-2019
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -45,9 +45,23 @@ main( int argc, char** argv )
   MPI_CHECK( MPI_Comm_rank( MPI_COMM_WORLD, &mpiRank ) );
   MPI_CHECK( MPI_Comm_size( MPI_COMM_WORLD, &mpiSize ) );
 
-  UTILS_MSG( mpiRank == 0, "Running CASITA " CASITA_VERSION 
-                           " with %d analysis MPI processes and %d OpenMP threads", 
-                           mpiSize, omp_get_max_threads() );
+  // print CASITA version and parallelization configuration to console
+  if(mpiRank == 0)
+  {
+    UTILS_OUT_NOBR( "Running CASITA " CASITA_VERSION 
+                    " with %d analysis MPI process", mpiSize);
+    if( mpiSize > 1 )
+    {
+      UTILS_OUT_NOBR("es");
+    }
+#ifdef _OPENMP
+    if( omp_get_max_threads() > 1 )
+    {
+      UTILS_OUT_NOBR( " and %d OpenMP threads", omp_get_max_threads() );
+    }
+#endif
+    UTILS_OUT( ""); // line break
+  }
   
   if ( !Parser::getInstance().init( mpiRank, argc, argv ) )
   {
