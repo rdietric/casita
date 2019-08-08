@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2018,
+ * Copyright (c) 2013-2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -136,9 +136,15 @@ AnalysisEngine::isRegionFiltered( uint32_t funcId )
   return ( filteredFunctions.count( funcId ) > 0 );
 }
 
-bool
+void
 AnalysisEngine::applyRules( GraphNode* node )
 {
+#if defined(SCOREP_USER_ENABLE)
+  SCOREP_USER_REGION_DEFINE( apply_offload_rules_handle )
+  SCOREP_USER_REGION_DEFINE( apply_mpi_rules_handle )
+  SCOREP_USER_REGION_DEFINE( apply_omp_rules_handle )
+#endif
+    
   Paradigm paradigm;
     
   // handle PARADIGM_CUDA and PARADIGM_OCL nodes with offload analysis paradigm
@@ -152,14 +158,45 @@ AnalysisEngine::applyRules( GraphNode* node )
   }
   
   AnalysisParadigmsMap::const_iterator iter = analysisParadigms.find( paradigm );
-  if ( iter == analysisParadigms.end() )
+  if ( iter != analysisParadigms.end() )
   {
-    return false;
+#if defined(SCOREP_USER_ENABLE)
+    if ( paradigm == PARADIGM_OFFLOAD )
+    {
+      SCOREP_USER_REGION_BEGIN( apply_offload_rules_handle, "apply_offload_rules",
+                                SCOREP_USER_REGION_TYPE_PHASE )
+    }
+    else if(node->getParadigm() & PARADIGM_MPI)
+    {
+      SCOREP_USER_REGION_BEGIN( apply_mpi_rules_handle, "apply_mpi_rules",
+                                SCOREP_USER_REGION_TYPE_PHASE )
+    }
+    else if(node->getParadigm() & PARADIGM_OMP)
+    {
+      SCOREP_USER_REGION_BEGIN( apply_omp_rules_handle, "apply_omp_rules",
+                                SCOREP_USER_REGION_TYPE_PHASE )
+    }
+#endif
+    
+    iter->second->applyRules( node );
+    
+#if defined(SCOREP_USER_ENABLE)
+    if ( paradigm == PARADIGM_OFFLOAD )
+    {
+      SCOREP_USER_REGION_END( apply_offload_rules_handle )
+    }
+    else if(node->getParadigm() & PARADIGM_MPI)
+    {
+      SCOREP_USER_REGION_END( apply_mpi_rules_handle )
+    }
+    else if(node->getParadigm() & PARADIGM_OMP)
+    {
+      SCOREP_USER_REGION_END( apply_omp_rules_handle )
+    }
+#endif
   }
-  else
-  {
-    return iter->second->applyRules( node );
-  }
+  
+
 }
 
 void

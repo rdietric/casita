@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2018,
+ * Copyright (c) 2013-2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -17,8 +17,13 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <mpi.h>
-#include <omp.h>
 #include <map>
+
+#ifdef _OPENMP
+#include <omp.h>
+#else
+#define omp_get_max_threads() 1
+#endif
 
 #include "common.hpp"
 #include "Parser.hpp"

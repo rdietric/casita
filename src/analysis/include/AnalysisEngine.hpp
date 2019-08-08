@@ -97,7 +97,7 @@ namespace casita
                       const char*         name,
                       FunctionDescriptor* funcDesc );
 
-     bool
+     void
      applyRules( GraphNode* node );
 
      void

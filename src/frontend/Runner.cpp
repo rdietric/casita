@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2018,
+ * Copyright (c) 2013-2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -213,6 +213,7 @@ void
 Runner::processTrace( OTF2TraceReader* traceReader )
 {
 #if defined(SCOREP_USER_ENABLE)
+  SCOREP_USER_REGION_DEFINE( read_handle )
   SCOREP_USER_REGION( "processTrace", SCOREP_USER_REGION_TYPE_FUNCTION )
 #endif
     
@@ -262,7 +263,6 @@ Runner::processTrace( OTF2TraceReader* traceReader )
   do
   {
 #if defined(SCOREP_USER_ENABLE)
-    SCOREP_USER_REGION_DEFINE( read_handle )
     SCOREP_USER_REGION_BEGIN( read_handle, "processTrace::read",
                               SCOREP_USER_REGION_TYPE_PHASE )
 #endif
@@ -307,8 +307,8 @@ Runner::processTrace( OTF2TraceReader* traceReader )
         current_pending_nodes = last_node_id - interval_node_id;        
       }
       
-      // \todo: this is expensive, because we add for every global collective an
-      // additional MPI_Allreduce to gather the maximum pending nodes on all processes
+      // \todo: this is expensive, because we execute an MPI_Allreduce for every 
+      // global collective in the trace to gather the maximum pending nodes on all processes
       uint64_t maxNodes = 0;
       MPI_CHECK( MPI_Allreduce( &current_pending_nodes, &maxNodes, 1, 
                                 MPI_UINT64_T, MPI_MAX, MPI_COMM_WORLD ) );
@@ -345,7 +345,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     //runAnalysis( allNodes );
     analysis.runAnalysis();
     time_analysis += clock() - time_tmp;
-      
+
     // \todo: to run the CPA we need all nodes on all processes to be analyzed?
     //MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
 
@@ -419,7 +419,7 @@ Runner::processTrace( OTF2TraceReader* traceReader )
     ofstream summaryFile;
     std::string sFileName = Parser::getInstance().getSummaryFileName();
     
-    summaryFile.open( sFileName.c_str() );
+    summaryFile.open( sFileName.c_str(), ios::out | ios::app );
    
     summaryFile.precision(6);
     summaryFile << std::fixed;
@@ -1920,19 +1920,11 @@ Runner::detectCriticalPathMPIP2P( MPIAnalysis::CriticalSectionsList& sectionList
 void
 Runner::writeStatistics()
 {
-  if ( mpiRank == 0 )
-  {
-    char mode[1] = {'w'};
-    
-    // use append mode, if timing information have already been written
-    if( options.verbose >= VERBOSE_TIME )
-    {
-      mode[0] = 'a';
-    }
-    
+  if( mpiRank == 0 && options.verbose >= VERBOSE_TIME )
+  {   
     std::string sFileName = Parser::getInstance().getSummaryFileName();
     
-    FILE *sFile = fopen( sFileName.c_str(), mode );
+    FILE *sFile = fopen( sFileName.c_str(), "a" );
     
     if( NULL == sFile )
     {
@@ -1977,17 +1969,17 @@ Runner::writeActivityRating()
 {
   if ( mpiRank == 0 )
   {
-    char mode[1] = {'w'};
+    /*char mode[1] = {'w'};
     
     // use append mode, if timing information have already been written
     if( options.verbose >= VERBOSE_TIME )
     {
       mode[0] = 'a';
-    }
+    }*/
     
     std::string sFileName = Parser::getInstance().getSummaryFileName();
     
-    FILE *sFile = fopen( sFileName.c_str(), mode );
+    FILE *sFile = fopen( sFileName.c_str(), "a" );
     
     if( NULL == sFile )
     {
@@ -2281,11 +2273,33 @@ Runner::writeActivityRating()
     
     ///////////////// some more statistics ///////////////
     Statistics& stats = analysis.getStatistics();
-    fprintf( sFile, "\nStream summary: %d MPI rank(s), %" PRIu64 " host stream(s), %" PRIu64 " device(s)",
-             mpiSize,
-             stats.getActivityCounts()[ STAT_HOST_STREAMS ],
-             stats.getActivityCounts()[ STAT_DEVICE_NUM ]
-           );
+    
+    // print stream summary to console
+    fprintf( sFile, "\nStream summary: %d MPI rank", mpiSize);
+    if( mpiSize > 1)
+    {
+      fprintf( sFile, "s" );
+    }
+    
+    uint64_t num_streams = stats.getActivityCounts()[ STAT_HOST_STREAMS ];
+    if( mpiSize < (int)num_streams)
+    {
+      fprintf( sFile, ", %" PRIu64 " host stream", num_streams );
+      if( num_streams > 1 )
+      {
+        fprintf( sFile, "s" );
+      }
+    }
+    
+    uint64_t num_devices = stats.getActivityCounts()[ STAT_DEVICE_NUM ];
+    if( num_devices > 0 )
+    {
+      fprintf( sFile, ", %" PRIu64 " device",  num_devices );
+      if( num_devices > 1 )
+      {
+        fprintf( sFile, "s" );
+      }
+    }
     
     // print inefficiency and wait statistics
     fprintf( sFile, "\n"

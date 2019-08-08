@@ -45,7 +45,7 @@ IF(NOT RELEASE)
 ELSE()
     message("building release")
     SET(CMAKE_BUILD_TYPE Release)
-	  SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -Werror")
+	  SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 ENDIF(NOT RELEASE)
 
 # enable debugging categories
@@ -75,8 +75,8 @@ ENDIF()
 # enable gprof
 OPTION(GPROF "enable gprof" OFF)
 IF(GPROF)
-	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
-	message("building with gprof")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
+  message("building with gprof")
 ENDIF(GPROF)
 
 # include MPI
@@ -97,10 +97,14 @@ FILE(GLOB SRCFILES_BACKEND_OTF2 "src/backend/otf/OTF2*.cpp")
 ADD_DEFINITIONS(-DENABLE_OTF2=1)
 
 #OpenMP support
-FIND_PACKAGE(OpenMP)
-IF(OPENMP_FOUND)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} ${OpenMP_C_FLAGS}")
-ENDIF(OPENMP_FOUND)
+OPTION(OMP "enable OpenMP" OFF)
+IF(OMP)
+  FIND_PACKAGE(OpenMP)
+  IF(OPENMP_FOUND)
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} ${OpenMP_C_FLAGS}")
+  ENDIF(OPENMP_FOUND)
+  message("Use OpenMP parallel execution!")
+ENDIF(OMP)
 
 # include Boost
 #FIND_PACKAGE(Boost COMPONENTS program_options regex filesystem system)
