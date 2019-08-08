@@ -111,24 +111,26 @@ namespace casita
     cout << " -f  --filter=List        filter regions (ignored in analysis and output trace)" << endl;
     cout << "     --idle=[0,1,2,3]     write device idle regions to output trace" << endl
          << "                          (0=no, 1=device idle(default), 2=compute idle, 3=both)" << endl;
-    cout << "    [--blame4device-idle] blame the host for not keeping the device computing" << endl;
+    cout << "     --blame4device-idle  blame the host for not keeping the device computing" << endl;
+    cout << "     --propagate-blame    Wait states propagate their blame" << endl;
     cout << " -e [--extended-blame]    divide blame into different types" << endl;
-    cout << " -l  --link-kernels=[0,1,2]  create inter-stream kernel dependencies (default: off)" << endl;
+    cout << " -l  --link-kernels[=0,1,2]  create inter-stream kernel dependencies (default: off)" << endl;
     cout << "     --nullstream=INT     use null stream semantic for the given stream" << endl;
     cout << " -p [--path]              print critical paths" << endl;
-    cout << "    [--cpa-loop-check]    detect circular loops in process-local critical path" << endl
-         << "                          (default: off)" << endl;
-    cout << "    [--no-errors]         ignore non-fatal errors" << endl;
-    cout << "    [--ignore-impi]       handle non-blocking MPI functions as CPU functions" << endl;
-    cout << "    [--ignore-offloading] handle CUDA/OpenCL functions as CPU functions" << endl;
-    cout << " -c [--interval-analysis=]UINT  run analysis in intervals (between global MPI" << endl
+    cout << "     --force-cp-check[=UINT] check for circular loops during process-local" << endl; 
+    cout << "                             critical path detection (value determines depth)" << endl;
+    cout << "     --no-errors          ignore non-fatal errors" << endl;
+    cout << "     --ignore-impi        handle non-blocking MPI functions as CPU functions" << endl;
+    cout << "     --ignore-offloading  handle CUDA/OpenCL functions as CPU functions" << endl;
+    cout << "     --ignore-cuda-events do not handle CUDA-event-related functions" << endl;
+    cout << " -c  --interval-analysis=UINT  run analysis in intervals (between global MPI" << endl
          << "                          collectives) to reduce memory footprint. The value" << endl
          << "                          (default: 64) sets the number of pending graph nodes" << endl
          << "                          before an analysis run is started." << endl;
   }
 
   bool
-  Parser::processArgs( int argc, char** argv )
+  Parser::processArgs( int mpiRank, int argc, char** argv )
   {
     string opt;
     for( int i = 1; i < argc; i++ )
@@ -273,10 +275,30 @@ namespace casita
         options.printCriticalPath = true;
       }
       
-      // detect and avoid circular loops in process-local CPA
-      else if( opt.find( "--cpa-loop-check" ) != string::npos )
+      else if( opt.find( "--force-cp-check=" ) != string::npos )
       {
-        options.cpaLoopCheck = true;
+        options.cpaLoopCheck = atoi( opt.erase( 0, string( "--force-cp-check=" ).length() ).c_str() );
+        UTILS_MSG( mpiRank == 0, 
+                   "[Force loop check in critical-path detection (depth: %" PRIu32 ")]",
+                   options.cpaLoopCheck );
+      }
+      
+      // detect and avoid circular loops in process-local CPA
+      else if( opt.find( "--force-cp-check" ) != string::npos )
+      {
+        if( ++i < argc && argv[i][0] != '-' )
+        {
+          // set the user specified value
+          options.cpaLoopCheck = atoi( argv[i] );
+        }
+        else
+        {
+          options.cpaLoopCheck = 10;
+          i--;
+        }
+        UTILS_MSG( mpiRank == 0, 
+                   "[Force loop check in critical-path detection (depth: %" PRIu32 ")]",
+                   options.cpaLoopCheck );
       }
 
       // no error
@@ -289,18 +311,38 @@ namespace casita
       else if( opt.find( "--ignore-impi" ) != string::npos )
       {
         options.ignoreAsyncMpi = true;
+        
+        UTILS_MSG( mpiRank == 0, "[Ignore non-blocking MPI calls.]" );
       }
       
       // do not run offloading analysis
       else if( opt.find( "--ignore-offloading" ) != string::npos )
       {
         options.ignoreOffload = true;
+        
+        UTILS_MSG( mpiRank == 0, "[Ignore offloading events.]" );
+      }
+      
+      // do not run offloading analysis
+      else if( opt.find( "--ignore-cuda-events" ) != string::npos )
+      {
+        options.ignoreCUDAevents = true;
+        
+        UTILS_MSG( mpiRank == 0, "[Ignore CUDA events.]" );
       }
       
       // enable blaming host activities for not keeping the device busy
       else if( opt.find( "--blame4device-idle" ) != string::npos )
       {
         options.blame4deviceIdle = true;
+        UTILS_MSG( mpiRank == 0, "[Blame host streams for device idle.]" )
+      }
+      
+      // enable blaming host activities for not keeping the device busy
+      else if( opt.find( "--propagate-blame" ) != string::npos )
+      {
+        options.propagateBlame = true;
+        UTILS_MSG( mpiRank == 0, "[Propagate blame.]" )
       }
       
       // print path
@@ -315,6 +357,8 @@ namespace casita
                opt.find( "--link-kernels" ) != string::npos*/ )
       {
         options.linkKernels = 1;
+        
+        UTILS_MSG( mpiRank == 0, "[Link non-overlapping device kernels.]" );
       }
       
       // try to link overlapping kernels
@@ -322,6 +366,8 @@ namespace casita
       {
         options.linkKernels = 
           atoi( opt.erase( 0, string( "--link-kernels=" ).length() ).c_str() );
+        
+        UTILS_MSG( mpiRank == 0, "[Link device kernels (mode %d).]", options.linkKernels );
       }
       
       // handle the given stream (by ID) as null stream
@@ -329,6 +375,10 @@ namespace casita
       {
         options.nullStream = 
           atoi( opt.erase( 0, string( "--nullstream=" ).length() ).c_str() );
+        
+        UTILS_MSG( mpiRank == 0, 
+                   "[Handle device stream %d as default stream.]", 
+                   options.nullStream );
       }
 
       // interval analysis
@@ -349,14 +399,14 @@ namespace casita
         // if nothing matches 
       else
       {
-        cout << "Unrecognized option " << opt << endl;
+        UTILS_MSG( mpiRank == 0, "Unrecognized option %s", opt.c_str() );
         return false;
       }
     }
 
     if( options.inFileName.length() == 0 )
     {
-      cout << "No input file specified" << endl;
+      UTILS_MSG( mpiRank == 0, "No input file specified" );
       return false;
     }
     
@@ -378,7 +428,7 @@ namespace casita
 
     setDefaultValues();
 
-    success = processArgs( argc, argv );
+    success = processArgs( mpiRank, argc, argv );
 
     if( success == false )
     {
@@ -549,7 +599,7 @@ namespace casita
     //options.outOtfFile = "casita.otf2";
     options.replaceCASITAoutput = false;
     options.printCriticalPath = false;
-    options.cpaLoopCheck = false;
+    options.cpaLoopCheck = 0;
     options.verbose = 0;
     options.topX = 20;
     options.predictionFilter = "";
@@ -558,7 +608,9 @@ namespace casita
     options.nullStream = -1;
     options.ignoreAsyncMpi = false;
     options.ignoreOffload = false;
+    options.ignoreCUDAevents = false;
     options.blame4deviceIdle = false;
+    options.propagateBlame = false;
     options.extendedBlame = false;
     options.createRatingCSV = true;
   }

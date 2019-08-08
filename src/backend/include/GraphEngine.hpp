@@ -198,17 +198,6 @@ namespace casita
      AnalysisMetric ctrTable;
 
      // >>> query graph objects <<< //
-     bool
-     hasInEdges( GraphNode* n );
-
-     bool
-     hasOutEdges( GraphNode* n );
-
-     const Graph::EdgeList&
-     getInEdges( GraphNode* n ) const;
-
-     const Graph::EdgeList&
-     getOutEdges( GraphNode* n ) const;
 
      GraphNode*
      topGraphNodeStack( uint64_t streamId );
@@ -224,10 +213,6 @@ namespace casita
 
      void
      addNewGraphNodeInternal( GraphNode* node, EventStream* stream );
-
-     //static io::OTF2ParallelTraceWriter::ProcessGroup
-     //streamTypeToGroup( EventStream::EventStreamType pt );
-
  };
 
 }

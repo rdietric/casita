@@ -36,12 +36,14 @@ namespace casita
    int         linkKernels;
    int         nullStream;
    bool        printCriticalPath;
-   bool        cpaLoopCheck;
+   uint32_t    cpaLoopCheck;
    bool        mergeActivities;
    bool        noErrors;
    bool        ignoreAsyncMpi;
    bool        ignoreOffload;
+   bool        ignoreCUDAevents;
    bool        blame4deviceIdle;
+   bool        propagateBlame;
    bool        extendedBlame;
    uint32_t    analysisInterval;
    int         verbose;
@@ -112,7 +114,7 @@ namespace casita
      setOutputDirAndFile();
      
      bool
-     processArgs( int argc, char** argv);
+     processArgs( int mpiRank, int argc, char** argv);
      
      bool
      endsWith( string const& str, string const& ext );

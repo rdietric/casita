@@ -155,13 +155,13 @@ namespace casita
           for ( size_t i = 0; i < recvBufferSize; i += BUFFER_SIZE )
           {
             // blame += last enter time - this enter time
-            total_blame += lastEnterTime - recvBuffer[i]; 
+            total_blame += lastEnterTime - recvBuffer[i];
           }
 
           distributeBlame( analysis,
                            colEnter,
                            total_blame,
-                           streamWalkCallback,
+                           mpiStreamWalkCallback,
                            REASON_MPI_COLLECTIVE );
         }
 

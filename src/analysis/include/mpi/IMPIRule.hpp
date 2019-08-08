@@ -17,6 +17,7 @@
 #include "AbstractRule.hpp"
 #include "AnalysisEngine.hpp"
 #include "MPIRulesCommon.hpp"
+#include "BlameDistribution.hpp"
 
 namespace casita
 {

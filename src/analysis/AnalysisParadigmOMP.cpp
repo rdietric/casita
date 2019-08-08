@@ -95,7 +95,7 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
         // if this is the last barrier in the parallel region
         if( lastBarrier )
         {
-          Edge *edge = commonAnalysis->newEdge(
+          Edge *edge = analysisEngine->newEdge(
             latestBarrierEnter, ( GraphNode * )parallelEnter->getData() );
 
           // in case this edge was a reverse edge, unblock it
@@ -115,7 +115,7 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
             if( !lastBarrier )
             {
               // create inter stream edge
-              Edge *edge = commonAnalysis->newEdge(
+              Edge *edge = analysisEngine->newEdge(
                 latestBarrierEnter, ( GraphNode * )parallelEnter->getData() );
               
               // in case this edge was a reverse edge, unblock it
@@ -137,10 +137,10 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
         //UTILS_WARNING("Distribute blame %" PRIu64 " to %s", blame, 
         //               commonAnalysis->getNodeInfo( latestBarrierEnter).c_str() );
         
-        distributeBlame( commonAnalysis,
+        distributeBlame( analysisEngine,
                          latestBarrierEnter,
                          blame,
-                         streamWalkCallback,
+                         ompHostStreamWalkCallback,
                          REASON_OMP_BARRIER );
 
         // clear barrier vector after processing the respective barrier
@@ -183,7 +183,7 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
     {
       IdNodeMap &parallelMap = ompParallelIdNodeMap;
       EventStream* parallelStream = 
-          commonAnalysis->getStream(parallelEnter->getStreamId());
+          analysisEngine->getStream(parallelEnter->getStreamId());
       if( parallelStream->isDeviceStream() )
       {
         parallelMap = ompDeviceParallelIdNodeMap;
@@ -201,7 +201,7 @@ AnalysisParadigmOMP::omptParallelRule( GraphNode* ompLeave )
         {
           // if parallel node and open node are either both host or device streams
           if( parallelStream->getStreamType() & 
-              commonAnalysis->getStream( (*it)->getStreamId() )->getStreamType() )
+              analysisEngine->getStream( (*it)->getStreamId() )->getStreamType() )
           {
             UTILS_WARNING( "[OMPT] Could not generate dependency for %s",
                            (*it)->getUniqueName().c_str() );
@@ -235,7 +235,7 @@ AnalysisParadigmOMP::omptBarrierRule( GraphNode* syncLeave )
 
     // make all in edges blocking (to not walk this edge in CPA)
     const Graph::EdgeList& inEdges = 
-      commonAnalysis->getGraph().getInEdges( syncLeave );
+      analysisEngine->getGraph().getInEdges( syncLeave );
     for ( Graph::EdgeList::const_iterator eIter = inEdges.begin();
           eIter != inEdges.end( ); ++eIter )
     {
@@ -362,7 +362,7 @@ AnalysisParadigmOMP::handlePostLeave( GraphNode* ompLeave )
     GraphNode* ompSyncEnter = ompLeave->getGraphPair().first;
     
     // get barrier region edge, which is only available if no event is nested
-    Edge *edge = commonAnalysis->getEdge( ompSyncEnter, ompLeave );
+    Edge *edge = analysisEngine->getEdge( ompSyncEnter, ompLeave );
     
     // mark this barrier if it has a synchronization/barrier nested within the region
     if ( !edge )
@@ -373,14 +373,14 @@ AnalysisParadigmOMP::handlePostLeave( GraphNode* ompLeave )
     }
 
     // this is basically the barrier rule for OMPT-based OpenMP traces
-    if( commonAnalysis->haveParadigm( PARADIGM_OMPT ) )
+    if( analysisEngine->haveParadigm( PARADIGM_OMPT ) )
     {
       omptBarrierRule( ompLeave );
     }
   }
   
   // this applies only to OMPT events
-  if( commonAnalysis->haveParadigm( PARADIGM_OMPT ) )
+  if( analysisEngine->haveParadigm( PARADIGM_OMPT ) )
   {
     // handle parallel region events and first event on OpenMP threads of a parallel region
     omptParallelRule( ompLeave );
@@ -400,9 +400,9 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
                                            OTF2KeyValueList* list )
 {
   // if the trace has been generated with OMPT instrumentation
-  if( commonAnalysis->haveParadigm( PARADIGM_OMPT ) )
+  if( analysisEngine->haveParadigm( PARADIGM_OMPT ) )
   {
-    if( commonAnalysis->haveParadigm( PARADIGM_OMP_TARGET ) && 
+    if( analysisEngine->haveParadigm( PARADIGM_OMP_TARGET ) && 
         enterNode->isOMPTarget() )
     {
       int32_t devIdKey = reader->getFirstKey( SCOREP_OMPT_DEVICE_ID );
@@ -444,7 +444,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
         IdNodeMap &parallelMap = ompParallelIdNodeMap;
         
         EventStream* parallelStream = 
-          commonAnalysis->getStream(enterNode->getStreamId());
+          analysisEngine->getStream(enterNode->getStreamId());
         if( parallelStream->isDeviceStream() )
         {
           parallelMap = ompDeviceParallelIdNodeMap;
@@ -455,8 +455,8 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
         {
           UTILS_WARNING( "[OMPT] Overwriting parallel region (%" PRIu64 ") %s with %s!",
                          parallel_id,
-                         commonAnalysis->getNodeInfo( parallelMap[parallel_id] ).c_str(),
-                         commonAnalysis->getNodeInfo( enterNode ).c_str() );
+                         analysisEngine->getNodeInfo( parallelMap[parallel_id] ).c_str(),
+                         analysisEngine->getNodeInfo( enterNode ).c_str() );
         }
         
         // store parallel region ID to associate other threads with this region
@@ -471,7 +471,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
         {
           UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
                 "[OMPT] Fix dependencies for parallel region %" PRIu64 " at %s",
-                parallel_id, commonAnalysis->getNodeInfo( enterNode ).c_str() );
+                parallel_id, analysisEngine->getNodeInfo( enterNode ).c_str() );
           
           GraphNodeVec::iterator it = 
             ompOpenWorkerNodesMap[parallel_id].begin();
@@ -479,10 +479,10 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
           {
             // if parallel node and open node are either both host or device streams
             if( parallelStream->getStreamType() & 
-                commonAnalysis->getStream( (*it)->getStreamId() )->getStreamType() )
+                analysisEngine->getStream( (*it)->getStreamId() )->getStreamType() )
             {
               // add edge for critical path analysis
-              commonAnalysis->newEdge( enterNode, *it );
+              analysisEngine->newEdge( enterNode, *it );
 
               // add link to store dependency for leave event
               (*it)->setLink( enterNode );
@@ -500,7 +500,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
       else if ( enterNode->getCaller() == NULL )
       {
         IdNodeMap &parallelMap = ompParallelIdNodeMap;
-        if( commonAnalysis->getStream( enterNode->getStreamId() )->isDeviceStream() )
+        if( analysisEngine->getStream( enterNode->getStreamId() )->isDeviceStream() )
         {
           parallelMap = ompDeviceParallelIdNodeMap;
         }
@@ -509,7 +509,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
         if( parallelMap.count( parallel_id ) > 0 )
         {
           // add edge for critical path analysis
-          commonAnalysis->newEdge( parallelMap[ parallel_id ], enterNode );
+          analysisEngine->newEdge( parallelMap[ parallel_id ], enterNode );
           
           // add link to store dependency for leave event
           enterNode->setLink( parallelMap[ parallel_id ] );
@@ -519,7 +519,7 @@ AnalysisParadigmOMP::handleKeyValuesEnter( OTF2TraceReader*  reader,
           UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
                      "[OMPT] Parallel region %" PRIu64 " at %s not available!",
                      parallel_id,
-                     commonAnalysis->getNodeInfo( enterNode ).c_str() );
+                     analysisEngine->getNodeInfo( enterNode ).c_str() );
           
           // store in open dependency list (measurement artefacts)
           ompOpenWorkerNodesMap[parallel_id].push_back( enterNode );

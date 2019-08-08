@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2017,
+ * Copyright (c) 2013-2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -13,7 +13,7 @@
 #pragma once
 
 #include "graph/GraphNode.hpp"
-#include "BlameDistribution.hpp"
+#include "../StreamWalk.h"
 
 #define CASITA_MPI_REPLAY_TAG 17
 #define CASITA_MPI_REVERS_REPLAY_TAG 10000
@@ -36,7 +36,7 @@ namespace casita
      *         found, otherwise true.
      */
     static bool
-    streamWalkCallback( void* userData, GraphNode* node )
+    mpiStreamWalkCallback( void* userData, GraphNode* node )
     {
       StreamWalkInfo* listAndWaitTime = (StreamWalkInfo*)userData;
       listAndWaitTime->list.push_back( node );

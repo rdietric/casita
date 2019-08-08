@@ -13,12 +13,12 @@
 #pragma once
 
 #include "graph/GraphNode.hpp"
-#include "BlameDistribution.hpp"
+#include "../StreamWalk.h"
 
 namespace casita
 {
-  namespace offload
-  {
+  //namespace offload
+  //{
 
     /**
      * Add the given node to the stream-walk list and add its waiting time to 
@@ -32,7 +32,7 @@ namespace casita
      *         a process start node has been found, otherwise true.
      */
     static bool
-    streamWalkCallback( void* userData, GraphNode* node )
+    ofldStreamWalkCallback( void* userData, GraphNode* node )
     {
       StreamWalkInfo* listAndWaitTime = (StreamWalkInfo*)userData;
       listAndWaitTime->list.push_back( node );
@@ -40,7 +40,7 @@ namespace casita
       // return false, if we found a process start node or a sync device or 
       // enqueue kernel leave node
       if ( node->isProcess() || ( node->isLeave() && 
-                                  ( /*node->isOffloadWaitAll() ||*/ 
+                                  ( node->isOffloadWaitAll() ||
                                     node->isOffloadEnqueueKernel() ) ) )
       {
         return false;
@@ -52,5 +52,5 @@ namespace casita
 
       return true;
     }
-  }
+  //}
 }

@@ -88,17 +88,25 @@ namespace casita
          }
          if ( paradigm & PARADIGM_MPI )
          {
-           name << ",MPI";
+           if( paradigm != PARADIGM_MPI )
+           {
+             name << ",";
+           }
+           name << "MPI";
          }
          if ( paradigm & PARADIGM_OMP )
          {
-           name << ",OMP";
+           if( paradigm != PARADIGM_OMP )
+           {
+             name << ",";
+           }
+           name << "OMP";
          }
        }
 
        name << ") ";
 
-       if ( isInterProcessEdge() )
+       if ( isInterStreamEdge() )
        {
          name << "(inter)";
        }
@@ -178,7 +186,7 @@ namespace casita
      }
 
      bool
-     isInterProcessEdge() const
+     isInterStreamEdge() const
      {
        return startNode->getStreamId() != endNode->getStreamId();
      }

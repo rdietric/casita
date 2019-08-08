@@ -202,7 +202,7 @@ namespace casita
                   //blame at least until the device wait all or kernel launch
                   totalTimeToBlame = 
                     distributeBlame( analysis, blameStartNode, blame, 
-                                     streamWalkCallback,
+                                     ofldStreamWalkCallback,
                                      REASON_OFLD_DEVICE_IDLE );
                 }
                 /*else{
@@ -229,7 +229,7 @@ namespace casita
                 if( openBlame > 0 )
                 {
                   const Graph::EdgeList* edges =
-                    analysis->getGraph().getOutEdgesPtr( blameStartNode );
+                    analysis->getGraph().getOutEdges( blameStartNode );
                   
                   if( edges && edges->size() == 1 )
                   {

@@ -183,45 +183,6 @@ GraphEngine::getNumDeviceStreams() const
   return streamGroup.getDeviceStreams().size();
 }
 
-bool
-GraphEngine::hasInEdges( GraphNode* n )
-{
-  return graph.hasInEdges( n );
-}
-
-bool
-GraphEngine::hasOutEdges( GraphNode* n )
-{
-  return graph.hasOutEdges( n );
-}
-
-const Graph::EdgeList&
-GraphEngine::getInEdges( GraphNode* n ) const
-{
-  if ( graph.hasInEdges( n ) )
-  {
-    return graph.getInEdges( n );
-  }
-  else
-  {
-    return emptyEdgeList;
-  }
-}
-
-const Graph::EdgeList&
-GraphEngine::getOutEdges( GraphNode* n ) const
-{
-  const Graph::EdgeList *edges = graph.getOutEdgesPtr( n );
-  if ( edges && edges > 0 )
-  {
-    return *edges;
-  }
-  else
-  {
-    return emptyEdgeList;
-  }
-}
-
 GraphNode*
 GraphEngine::newGraphNode( uint64_t      time,
                            uint64_t      streamId,
@@ -306,7 +267,7 @@ Edge*
 GraphEngine::getEdge( GraphNode* source, GraphNode* target )
 {
   // iterate over outgoing edges of source node
-  const Graph::EdgeList *edges = graph.getOutEdgesPtr( source );
+  const Graph::EdgeList *edges = graph.getOutEdges( source );
   
   if( NULL == edges )
   {
@@ -604,19 +565,19 @@ GraphEngine::runSanityCheck( uint32_t mpiRank )
     {
       GraphNode* node = (GraphNode*)( *nIter );
 
-      if ( hasInEdges( node ) )
+      const Graph::EdgeList* inEdges = graph.getInEdgesPtr( node );
+      if( inEdges )
       {
-        Graph::EdgeList inEdges = getInEdges( node );
-        for ( Graph::EdgeList::const_iterator eIter = inEdges.begin();
-              eIter != inEdges.end(); ++eIter )
+        for ( Graph::EdgeList::const_iterator eIter = inEdges->begin();
+              eIter != inEdges->end(); ++eIter )
         {
           sanityCheckEdge( *eIter, mpiRank );
         }
       }
 
-      if ( hasOutEdges( node ) )
+      const Graph::EdgeList *outEdges = graph.getOutEdges( node );
+      if( outEdges )
       {
-        const Graph::EdgeList *outEdges = graph.getOutEdgesPtr( node );
         for ( Graph::EdgeList::const_iterator eIter = outEdges->begin();
               eIter != outEdges->end(); ++eIter )
         {

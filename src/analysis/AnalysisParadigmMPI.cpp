@@ -77,7 +77,7 @@ void
 AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
 {
   MpiStream* stream = 
-    commonAnalysis->getStreamGroup().getMpiStream( node->getStreamId() );
+    analysisEngine->getStreamGroup().getMpiStream( node->getStreamId() );
 
   if( node->isMPIBlocking() ) // handle blocking MPI communication events
   {

@@ -259,7 +259,7 @@ namespace casita
      }
      
      bool
-     isOffload() const
+     isOfld() const
      {
        return paradigm & PARADIGM_OFFLOAD;
      }
@@ -280,48 +280,48 @@ namespace casita
      isOffloadWait() const
      {
 
-       return isOffload() && ( nodeType & OFLD_WAIT );
+       return isOfld() && ( nodeType & OFLD_WAIT );
      }
      
      bool
      isOffloadWaitAll() const
      {
 
-       return isOffload() && ( nodeType & OFLD_WAIT_ALL );
+       return isOfld() && ( nodeType & OFLD_WAIT_ALL );
      }
      
      bool
      isOffloadEnqueueKernel() const
      {
 
-       return isOffload() && ( nodeType & OFLD_ENQUEUE_KERNEL );
+       return isOfld() && ( nodeType & OFLD_ENQUEUE_KERNEL );
      }
      
      bool
      isOffloadKernel() const
      {
 
-       return isOffload() && ( nodeType & OFLD_TASK_KERNEL );
+       return isOfld() && ( nodeType & OFLD_TASK_KERNEL );
      }
      
      bool
      isOffloadWaitEvent() const
      {
 
-       return isOffload() && ( nodeType & OFLD_WAIT_EVT );
+       return isOfld() && ( nodeType & OFLD_WAIT_EVT );
      }
      
      bool
      isOffloadEnqueueTransfer() const
      {
-       return isOffload() && ( nodeType & OFLD_ENQUEUE_DATA );
+       return isOfld() && ( nodeType & OFLD_ENQUEUE_DATA );
      }
 
      bool
      isWaitstate() const
      {
        return ( isOMP()     && ( nodeType & OMP_WAITSTATE ) ) ||
-              ( isOffload() && ( nodeType & OFLD_WAITSTATE ) ) ||
+              ( isOfld() && ( nodeType & OFLD_WAITSTATE ) ) ||
               ( isMPI()     && ( nodeType & MPI_WAITSTATE ) );
      }
 

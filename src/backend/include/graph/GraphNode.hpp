@@ -13,6 +13,7 @@
 #pragma once
 
 #include <list>
+#include <deque>
 #include <set>
 #include <map>
 #include <algorithm> // binary search
@@ -26,6 +27,7 @@ namespace casita
  {
    public:
 
+     //\todo: replace with dequeue
      typedef std::list< GraphNode* > GraphNodeList;
      typedef std::set< GraphNode* > GraphNodeSet;
      typedef std::pair< GraphNode*, GraphNode* > GraphNodePair;
@@ -374,14 +376,15 @@ namespace casita
     }
     
     /**
-     * Binary search for a GraphNode in a list of GraphNodes based on the node ID.
+     * Binary search for a GraphNode in a list or queue of GraphNodes.
      * 
-     * @param nodeId
+     * @param node
      * @param nodes
      * @return 
      */
+    template <typename LIST_OR_QUEUE>
     static bool
-    search( const GraphNode* node, const std::list< GraphNode* >& nodes )
+    binarySearch( const GraphNode* node, const LIST_OR_QUEUE& nodes )
     {
       // the list is empty
       if ( nodes.size() == 0 )
@@ -390,6 +393,50 @@ namespace casita
       }
       
       return std::binary_search( nodes.begin(), nodes.end(), node, Node::compareLess );
+    }
+    
+    /**
+     * Linear search for a GraphNode in a list or queue of GraphNodes.
+     * 
+     * @param node
+     * @param nodes
+     * @return 
+     */
+    template <typename LIST_OR_QUEUE>
+    static bool
+    hasNode( const GraphNode* node, const LIST_OR_QUEUE& nodes )
+    {
+      if ( std::find( nodes.begin(), nodes.end(), node) != nodes.end() )
+      {
+        return true;
+      }
+  
+      return false;
+    }
+    
+    template <typename LIST_OR_QUEUE>
+    static bool
+    findInFirst( const GraphNode* node, const LIST_OR_QUEUE& nodes, short num )
+    {
+      short count = 0;
+      for( typename LIST_OR_QUEUE::const_iterator it = nodes.begin(); it != nodes.end();
+           ++it )
+      {
+        if( count == num )
+        {
+          return false;
+        }
+        
+        GraphNode* g = *it;
+        if( g->getId() == node->getId() )
+        {
+          return true;
+        }
+          
+        count++;
+      }
+      
+      return false;
     }
     
     /**
@@ -536,6 +583,6 @@ namespace casita
      GraphNode*    caller;
      void* data; /**< node specific data pointer */
  };
-
- typedef GraphNode* GraphNodePtr;
+ 
+ typedef std::deque< GraphNode* > GraphNodeQueue;
 }

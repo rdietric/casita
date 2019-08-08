@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013 - 2016, 2018,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -13,12 +13,12 @@
 #pragma once
 
 #include "graph/GraphNode.hpp"
-#include "BlameDistribution.hpp"
+#include "../StreamWalk.h"
 
 namespace casita
 {
-  namespace omp
-  {
+  //namespace omp
+  //{
 
     /**
      * Add the given node to the (host-)stream-walk list and add its waiting 
@@ -31,7 +31,7 @@ namespace casita
      * @return false when a blocking OpenMP leave node has been found or ...
      */
     static bool
-    streamWalkCallback( void* userData, GraphNode* node )
+    ompHostStreamWalkCallback( void* userData, GraphNode* node )
     {
       StreamWalkInfo* listAndWaitTime = (StreamWalkInfo*) userData;
 
@@ -85,7 +85,7 @@ namespace casita
      * @return 
      */
     static bool
-    deviceStreamWalkCallback( void* userData, GraphNode* node )
+    ompDeviceStreamWalkCallback( void* userData, GraphNode* node )
     {
       StreamWalkInfo* listAndWaitTime = (StreamWalkInfo*) userData;
 
@@ -116,5 +116,5 @@ namespace casita
 
       return true;
     }
-  }
+  //}
 }

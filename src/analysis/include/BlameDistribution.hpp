@@ -13,16 +13,25 @@
 #pragma once
 
 #include "AnalysisEngine.hpp"
+#include "StreamWalk.h"
+
+#include "mpi/MPIRulesCommon.hpp"
+#include "omp/OMPRulesCommon.hpp"
+#include "offload/OffloadRulesCommon.hpp"
 
 namespace casita
 {
 
-  typedef struct
-  {
-    GraphNode::GraphNodeList list; //<! list of nodes for the stream walk
-    uint64_t waitStateTime;        //<! accumulated waiting time of the list members, end node waiting time is not included
-    AnalysisEngine* analysis;
-  } StreamWalkInfo;
+//  typedef struct
+//  {
+//    GraphNode::GraphNodeList list; //<! list of nodes for the stream walk
+//    uint64_t waitStateTime;        //<! accumulated waiting time of the list members, end node waiting time is not included
+//    AnalysisEngine* analysis;
+//  } StreamWalkInfo;
+  
+  //static void
+  //propagateBlame( AnalysisEngine* analysis, GraphNode* node,
+  //                double blame, BlameReason reason );
 
   /**
    * Distribute the blame by walking backwards from the given node.
@@ -53,8 +62,8 @@ namespace casita
     StreamWalkInfo walkListInfo;
     walkListInfo.waitStateTime = 0;
     walkListInfo.analysis = analysis;
-    analysis->getStream(node->getStreamId())->walkBackward(
-                                                 node, callback, &walkListInfo);
+    analysis->getStream( node->getStreamId())->walkBackward(
+                                                node, callback, &walkListInfo );
 
     // the walk list includes the interval boundary nodes, e.g. MPI leave as 
     // start node (walklist.front()) and MPI enter as end node (walklist.back())
@@ -131,8 +140,8 @@ namespace casita
 
       UTILS_ASSERT( edge, "[%u] No edge found between %s and %s",
                     analysis->getMPIRank(),
-                    currentWalkNode->getUniqueName().c_str(),
-                    lastWalkNode->getUniqueName().c_str());
+                    analysis->getNodeInfo( currentWalkNode ).c_str(),
+                    analysis->getNodeInfo( lastWalkNode ).c_str() );
       
       //UTILS_MSG( currentWalkNode->getId() == 19, "Current walk node: %s",
       //           currentWalkNode->getUniqueName().c_str() );
@@ -141,12 +150,70 @@ namespace casita
       double blame = (double) totalBlame
                    * (double) edge->getDuration()
                    / (double) totalTimeToBlame;
-
-      edge->addBlame( blame, reason );
+      
+      //// propagate blame (not for MPI) ////
+      if( Parser::getInstance().getProgramOptions().propagateBlame &&
+          edge->isBlocking() && lastWalkNode->isLeave() && !lastWalkNode->isMPI() )
+      {
+        //propagateBlame( lastWalkNode, blame, reason );
+        const Graph::EdgeList* inEdges = 
+          analysis->getGraph().getInEdgesPtr( lastWalkNode );
+        // make sure that there are edges
+        if ( inEdges )
+        {
+          // iterate over the in edges of the node
+          for ( Graph::EdgeList::const_iterator eIt = inEdges->begin();
+                eIt != inEdges->end(); ++eIt )
+          {
+            Edge* interEdge = *eIt;
+            
+            // only for edges between streams (to avoid the wait state)
+            if ( interEdge->isInterStreamEdge() )
+            {
+              if ( lastWalkNode->isOMP() )
+              {
+                distributeBlame( analysis, interEdge->getStartNode(), 
+                                 (uint64_t)blame, ompHostStreamWalkCallback, 
+                                 reason );
+              }
+              else if ( lastWalkNode->isOfld() )
+              {
+                distributeBlame( analysis, interEdge->getStartNode(), 
+                                 (uint64_t)blame, ofldStreamWalkCallback, 
+                                 reason );
+              }
+              else
+              {
+                edge->addBlame( blame, reason );
+              }
+            }
+          }
+        }
+      }
+      else
+      {
+//        UTILS_MSG( analysis->getMPIRank() == 0 && lastWalkNode->isLeave() && 
+//                   strcmp( lastWalkNode->getName(), "!$omp implicit barrier @calculateTauMatrix.cpp:506" ) == 0, 
+//                   "[%u] Blame %s (edge: %s, reason: %d. from %s)", 
+//                   analysis->getMPIRank(), 
+//                   analysis->getNodeInfo( lastWalkNode ).c_str(),
+//                   edge->getName().c_str(),
+//                   reason, analysis->getNodeInfo( node ).c_str());
+        edge->addBlame( blame, reason );
+      }
 
       lastWalkNode = currentWalkNode;
     }
     
     return totalTimeToBlame;
   }
+  
+  //static void
+  //propagateBlame( AnalysisEngine* analysis, GraphNode* node,
+  //                double blame, BlameReason reason )
+  //{
+  
+  //}
 }
+
+  

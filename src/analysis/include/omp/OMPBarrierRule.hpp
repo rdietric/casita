@@ -99,7 +99,7 @@ namespace casita
             // for blocking barrier regions
             if ( barrier.first != latestEnterNode )
             {
-              Edge* barrierEdge = analysisEngine->getEdge( barrierEnter,
+              Edge* barrierEdge = analysisEngine->getEdge( barrier.first,
                                                            barrier.second );
               
               if( barrierEdge )
@@ -109,7 +109,7 @@ namespace casita
               else
               {
                 analysisEngine->newEdge( barrier.first, barrier.second, true );
-              }              
+              }
               
               uint64_t wtime = 
                 latestEnterNode->getTime() - barrier.first->getTime();
@@ -132,7 +132,7 @@ namespace casita
           distributeBlame( analysisEngine,
                            latestEnterNode,
                            blame,
-                           streamWalkCallback,
+                           ompHostStreamWalkCallback,
                            REASON_OMP_BARRIER );
 
           // clear list of buffered barriers

@@ -74,6 +74,8 @@ namespace casita
             return false;
           }
 
+          //\todo: check for reverse edges
+          
           // link the kernel launch enter and kernel enter nodes between each other
           launchEnterEvent->setLink( kernelNode );
           kernelNode->setLink( launchEnterEvent );

@@ -186,7 +186,7 @@ namespace casita
               GraphNode* kernelEnter = kernelLeave->getGraphPair().first;
 
               uint64_t waitOnKernel = std::min( syncLeave->getTime(),
-                                               kernelLeave->getTime() ) -
+                                                kernelLeave->getTime() ) -
                                      std::max( syncEnter->getTime(),
                                                kernelEnter->getTime() );
 

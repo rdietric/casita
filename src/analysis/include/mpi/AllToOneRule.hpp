@@ -157,7 +157,7 @@ namespace casita
           {
             distributeBlame( commonAnalysis, allToOneEnter,
                              allToOneStartTime - rootEnterTime,
-                             streamWalkCallback );
+                             mpiStreamWalkCallback );
           }
 
           if ( lastEnterProcessId == allToOneLeave->getStreamId( ) )

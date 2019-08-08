@@ -585,6 +585,7 @@ namespace casita
          if( directive && directive < directive_end ) // this includes wait_barrier, implicit barrier
          {
            descr->functionType = OMP_SYNC;
+           //fprintf(stderr,"Barrier: %s\n", name );
          }
          else // not a barrier
          {

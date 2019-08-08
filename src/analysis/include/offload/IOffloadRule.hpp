@@ -14,6 +14,7 @@
 
 #include "AbstractRule.hpp"
 #include "OffloadRulesCommon.hpp"
+#include "BlameDistribution.hpp"
 #include "AnalysisEngine.hpp"
 
 namespace casita
