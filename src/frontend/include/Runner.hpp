@@ -35,64 +35,63 @@
 
 namespace casita
 {
-  static int timeFormat = 0;
-  
-  static void
-  setTimeFormat( double runtime )
+  static int printPrecision = -1;
+  static char formattedDuration[16];
+
+  static void 
+  setPrecision( double seconds )
   {
-    if( runtime > 3600 ) // more than 1 hour
+    // if duration is more than an hour, 
+    if( seconds >= 3600 )
     {
-      timeFormat = 2;
+      printPrecision = 0;
     }
-    else if( runtime > 60 ) //more than 1 minute
+    else if( seconds >= 100 )
     {
-      timeFormat = 1;
+      printPrecision = 3; // milliseconds
+    }
+    else
+    {
+      printPrecision = 6; // microseconds
     }
   }
   
   static const char*
-  convertSecondsToStr( double seconds )
+  formatDuration( double seconds )
   {
-    stringstream sout;
-
-    if( timeFormat == 2 ) // force h:m:s
+    // fill with spaces
+    memset(formattedDuration, ' ', 16 );
+    
+    uint32_t hours = 0;
+    if( seconds > 5940 ) // more than 99 minutes (stay within 2 digits)
     {
-      uint32_t hours = 0;
-      if( seconds > 3600 ) // more than 1 hour
-      {
-        hours = seconds/3600;
-        seconds = seconds - ( hours * 3600 );
-      }
-      sout << hours << "h";
+      hours = seconds/3600;
+      seconds -= ( hours * 3600 );
     }
     
-    if( timeFormat > 0 ) // more than 1 minute
+    uint32_t min = 0;
+    if( seconds >= 60 )
     {
-      uint32_t min = 0;
-      if( seconds > 60 )
-      {
-        min = seconds/60;
-        seconds = seconds - ( min * 60 );
-      }
-      sout << std::setfill('0') << std::setw(2) << min << "m";
+      min = seconds/60;
+      seconds -= ( min * 60 );
     }
     
-    sout << std::fixed << std::right;
-    
-    if( timeFormat == 0 )
+    if( hours > 0 )
     {
-      sout.precision(6);
-      sout << std::setw(12) << seconds << " s";
+      snprintf( formattedDuration, 16, "%dh%02dm%.0lf s", hours, min, seconds);
+    }
+    else if( min > 0 )
+    {
+      snprintf( formattedDuration, 16, "%dm%02.*lf s", min, 
+                printPrecision >= 0 ? printPrecision : 3, seconds);
     }
     else
     {
-      sout << std::setw(13) << seconds << "s";
+      snprintf( formattedDuration, 16, "%.*lf s", 
+                printPrecision >= 0 ? printPrecision : 6, seconds);
     }
     
-    const std::string& tmp = sout.str();   
-    const char* cstr = tmp.c_str();
-    
-    return cstr;
+    return formattedDuration;
   }
 
  class Runner

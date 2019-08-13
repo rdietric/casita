@@ -1999,7 +1999,7 @@ Runner::writeActivityRating()
       return;
     }
     
-    setTimeFormat( analysis.getRealTime( definitions.getTraceLength() ) );
+    //setPrecision( analysis.getRealTime( definitions.getTraceLength() ) );
 
     fprintf( sFile, "\n%*s %10s %11s %11s %6s %11s %8s %10s\n",
             RNAMELEN, "Region",
@@ -2115,9 +2115,17 @@ Runner::writeActivityRating()
                 if( casita::typeStrTableBlameReason[ i ].type == 
                     casita::typeStrTableBlameReason[ j ].type )
                 {
-                  fprintf( sFile, "\n -> %3.2f%% (%.6f s) blame for %s", 
-                    blameShare, iter->blame4[i], 
-                    casita::typeStrTableBlameReason[ i ].str );
+                  if(blameShare == 100)
+                  {
+                    fprintf( sFile, "\n -> 100%% blamed for %s", 
+                      casita::typeStrTableBlameReason[ i ].str );
+                  }
+                  else
+                  {
+                    fprintf( sFile, "\n -> %3.2f%% (%.6f s) blame for %s", 
+                      blameShare, iter->blame4[i], 
+                      casita::typeStrTableBlameReason[ i ].str );
+                  }
                   break;
                 }
               }
@@ -2306,12 +2314,13 @@ Runner::writeActivityRating()
              "%-31.31s: %*lf s\n", "Total program runtime", float_width,
              analysis.getRealTime( definitions.getTraceLength() ) );
              //"%-31.31s: %s\n", "Total program runtime",
-             //convertSecondsToStr( analysis.getRealTime( definitions.getTraceLength() ) ) ); 
+             //formatDuration( analysis.getRealTime( definitions.getTraceLength() ) ) ); 
     
     fprintf( sFile, 
-             "%-31.31s: %11lf s",
-             "Total waiting time (host)",
+             "%-31.31s: %*lf s", "Total waiting time (host)", float_width,
              analysis.getRealTime( sumWaitingTime ) );
+             //"%-31.31s: %12s", "Total waiting time (host)",
+             //formatDuration( analysis.getRealTime( sumWaitingTime ) ) );
     
     if( stats.getActivityCounts()[ STAT_HOST_STREAMS ] > 1 )
     {
@@ -2335,12 +2344,24 @@ Runner::writeActivityRating()
 
     if( mpiSize > 1 )
     {
-      fprintf( sFile, "%47c %lf s on rank %d (min) - %s\n", ' ',
-               analysis.getRealTime( this->minWaitingTime ), this->minWtimeRank,
-               this->definitions.getNodeName( this->minWtimeRank ) );
-      fprintf( sFile, "%47c %lf s on rank %d (max) - %s\n", ' ',
-               analysis.getRealTime( this->maxWaitingTime ), this->maxWtimeRank,
-               this->definitions.getNodeName( this->maxWtimeRank ) );
+      const char* minNode = this->definitions.getNodeName( this->minWtimeRank );
+      const char* maxNode = this->definitions.getNodeName( this->maxWtimeRank );
+      if( strcmp( minNode, maxNode ) == 0 )
+      {
+        fprintf( sFile, "%47c %lf s on rank %d (min)\n", ' ',
+                 analysis.getRealTime( this->minWaitingTime ), this->minWtimeRank );
+        fprintf( sFile, "%47c %lf s on rank %d (max)\n", ' ',
+                 analysis.getRealTime( this->maxWaitingTime ), this->maxWtimeRank );
+      }
+      else
+      {
+        fprintf( sFile, "%47c %lf s on rank %d (min) - %s\n", ' ',
+                 analysis.getRealTime( this->minWaitingTime ), this->minWtimeRank,
+                 this->definitions.getNodeName( this->minWtimeRank ) );
+        fprintf( sFile, "%47c %lf s on rank %d (max) - %s\n", ' ',
+                 analysis.getRealTime( this->maxWaitingTime ), this->maxWtimeRank,
+                 this->definitions.getNodeName( this->maxWtimeRank ) );
+      }
     }
               
     fprintf( sFile, "\nPattern summary:\n" );
