@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014, 2017
+ * Copyright (c) 2013-2014, 2017, 2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -22,14 +22,14 @@
 namespace casita
 {
 
- class ErrorUtils
+ class Utils
  {
    public:
 
-     static ErrorUtils&
+     static Utils&
      getInstance( )
      {
-       static ErrorUtils instance;
+       static Utils instance;
        return instance;
      }
      
@@ -114,19 +114,33 @@ namespace casita
        verbose = true;
        //fprintf( stderr, "Enabled verbose output for error utils\n" );
      }
+     
+     void
+     setTimerResolution( uint64_t ticksPerSecond )
+     {
+       this->ticksPerSecond = ticksPerSecond;
+     }
+     
+     double
+     getRealTime( uint64_t t )
+     {
+       return (double)t / (double)(this->ticksPerSecond);
+     }
 
    private:
      bool throwExceptions;
      bool verbose;
+     
+     uint64_t ticksPerSecond;
 
-     ErrorUtils( ) :
+     Utils( ) :
        throwExceptions( true ),
        verbose( false )
      {
 
      }
 
-     ErrorUtils( const ErrorUtils& utils )
+     Utils( const Utils& utils )
      {
 
      }
@@ -134,28 +148,28 @@ namespace casita
 
 #define UTILS_ASSERT( cond, fmt, ... ) \
   if ( !( cond ) ) { \
-    ErrorUtils::getInstance( ).throwError( fmt, ## __VA_ARGS__ ); \
+    Utils::getInstance( ).throwError( fmt, ## __VA_ARGS__ ); \
   }
 
 #define UTILS_OUT( fmt, ... ) \
-   ErrorUtils::getInstance().outputMessage( fmt, ## __VA_ARGS__ );
+   Utils::getInstance().outputMessage( fmt, ## __VA_ARGS__ );
 
 #define UTILS_OUT_NOBR( fmt, ... ) \
-   ErrorUtils::getInstance().outputMessageNoLineBreak( fmt, ## __VA_ARGS__ ); \
+   Utils::getInstance().outputMessageNoLineBreak( fmt, ## __VA_ARGS__ ); \
  
  
 #define UTILS_MSG( cond, fmt, ... ) \
   if ( cond ) { \
-    ErrorUtils::getInstance().outputMessage( fmt, ## __VA_ARGS__ ); \
+    Utils::getInstance().outputMessage( fmt, ## __VA_ARGS__ ); \
   }
  
 #define UTILS_MSG_NOBR( cond, fmt, ... ) \
   if ( cond ) { \
-    ErrorUtils::getInstance().outputMessageNoLineBreak( fmt, ## __VA_ARGS__ ); \
+    Utils::getInstance().outputMessageNoLineBreak( fmt, ## __VA_ARGS__ ); \
   }
  
 #define UTILS_WARNING( fmt, ... ) \
-    ErrorUtils::getInstance().outputMessage( "Warning: " fmt, ## __VA_ARGS__ );
+    Utils::getInstance().outputMessage( "Warning: " fmt, ## __VA_ARGS__ );
  
 /**
  * Emit a warning, but only on first occurrence.
@@ -167,7 +181,7 @@ namespace casita
     if ( !utils_warn_once_##__LINE__ ) \
     { \
       utils_warn_once_##__LINE__ = 1; \
-      ErrorUtils::getInstance().outputMessage( "Warn once: " fmt, ## __VA_ARGS__ ); \
+      Utils::getInstance().outputMessage( "Warn once: " fmt, ## __VA_ARGS__ ); \
     }\
   } while ( 0 )
  
@@ -189,6 +203,10 @@ namespace casita
    UTILS_WARN_ONCE( fmt, __VA_ARGS__ ); \
  }
 
+#define UTILS_GET_REALTIME(ticks) Utils::getInstance().getRealTime(ticks)
+#define UTILS_GET_NODE_REALTIME(node) Utils::getInstance().getRealTime(node->getTime())
+#define UTILS_GET_NODE_INFO(node) node->getUniqueName().c_str(), Utils::getInstance().getRealTime(node->getTime())
+
 // debugging
 #if defined(DEBUG) && defined(DEBUG_LEVEL)
 
@@ -208,7 +226,7 @@ namespace casita
  
   #define UTILS_DBG_MSG( cond, fmt, ... ) \
     if ( cond ) { \
-      ErrorUtils::getInstance( ).outputMessage( fmt, ## __VA_ARGS__ ); \
+      Utils::getInstance( ).outputMessage( fmt, ## __VA_ARGS__ ); \
     }
 #else
   #define UTILS_DBG_MSG( cond, fmt, ... )

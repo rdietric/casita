@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2018,
+ * Copyright (c) 2013-2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -701,6 +701,8 @@ CallbackHandler::handleMPICommGroup( OTF2TraceReader* reader,
  * @param reader pointer to the internal OTF2 trace reader
  * @param streamId ID of the active stream
  * @param receiver ID of the communication partner stream
+ * @param communicator OTF2 communicator reference
+ * @param msgTag MPI message tag
  * @param requestId OTF2 ID of the request handle
  */
 void
@@ -715,7 +717,7 @@ CallbackHandler::handleMPIIsend( OTF2TraceReader* reader,
   MpiStream*       stream  = 
     handler->getAnalysis().getStreamGroup().getMpiStream( streamId );
   
-  stream->handleMPIIsendEventData( requestId, receiver, communicator, msgTag );
+  stream->handleMPIIsend( requestId, receiver, communicator, msgTag );
 }
 
 /**
@@ -743,7 +745,7 @@ CallbackHandler::handleMPIIrecv( OTF2TraceReader* reader,
   MpiStream*       stream  = 
     handler->getAnalysis().getStreamGroup().getMpiStream( streamId );
   
-  stream->handleMPIIrecvEventData( requestId, sender, communicator, msgTag );
+  stream->handleMPIIrecv( requestId, sender, communicator, msgTag );
 }
 
 /**
@@ -765,7 +767,7 @@ CallbackHandler::handleMPIIrecvRequest( OTF2TraceReader* reader,
   MpiStream*       stream  = 
     handler->getAnalysis().getStreamGroup().getMpiStream( streamId );
   
-  stream->saveMPIIrecvRequest( requestId );
+  stream->handleMPIIrecvRequest( requestId );
 }
 
 void
@@ -777,5 +779,5 @@ CallbackHandler::handleMPIIsendComplete( OTF2TraceReader* reader,
   MpiStream*       stream  = 
     handler->getAnalysis().getStreamGroup().getMpiStream( streamId );
   
-  stream->saveMPIIsendRequest( requestId );
+  stream->handleMPIIsendComplete( requestId );
 }

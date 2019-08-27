@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2018,
+ * Copyright (c) 2013-2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -20,7 +20,7 @@
 #include <limits>
 
 #include "EventStream.hpp"
-#include "utils/ErrorUtils.hpp"
+#include "utils/Utils.hpp"
 
 using namespace casita;
 

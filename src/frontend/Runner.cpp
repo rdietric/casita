@@ -51,14 +51,14 @@ Runner::Runner( int mpiRank, int mpiSize ) :
 {
   if ( options.noErrors )
   {
-    ErrorUtils::getInstance().setNoExceptions();
+    Utils::getInstance().setNoExceptions();
   }
 
   if ( options.verbose )
   {
     UTILS_MSG( mpiRank == 0 && options.verbose >= VERBOSE_BASIC,
                "Enabled verbose output for error utils\n" );
-    ErrorUtils::getInstance().setVerbose();
+    Utils::getInstance().setVerbose();
   }
   
   if ( options.mergeActivities ) 
@@ -139,6 +139,7 @@ Runner::prepareAnalysis()
   
   // set the timer resolution in the analysis engine
   uint64_t timerResolution = definitions.getTimerResolution();
+  Utils::getInstance().setTimerResolution( timerResolution );
   analysis.setTimerResolution( timerResolution );
   UTILS_MSG( options.verbose >= VERBOSE_BASIC && mpiRank == 0,
              "[0] Timer resolution = %llu",

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2014, 2017, 2018
+ * Copyright (c) 2013-2014, 2017-2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -440,7 +440,8 @@ namespace casita
     }
     
     /**
-     * Binary search for a GraphNode in a vector of GraphNodes based on the time.
+     * Binary search for the last GraphNode in a vector of GraphNodes that is 
+     * before the given time.
      * 
      * @param nodeId
      * @param nodes
@@ -541,6 +542,144 @@ namespace casita
       if( found )
       {
         if( found->getTime() > time )
+        {
+          std::cerr << "Binary search failed! Wrong node at index " << index << " found: " 
+                    << found->getUniqueName() << " (" << nodes.size() << " nodes)" 
+                    << std::endl;
+          /*if(index > 0)
+            std::cerr << "Node before: " << nodes[index-1]->getUniqueName() << std::endl;
+          if(index+1 < nodes.size())
+            std::cerr << " Node after: " << nodes[index+1]->getUniqueName() << std::endl;
+          */
+          
+          // try to find a node before the found one that satisfies the condition
+          while( index > 0 )
+          {
+            if( nodes[index]->getTime() <= time )
+            {
+              return nodes[index];
+            }
+            index--;
+          }
+
+          std::cerr << "Return node at index " << index << ": " 
+                    << nodes[index]->getUniqueName() << std::endl;
+
+          return nodes[index];
+        }
+        else
+        {
+          return found;
+        }
+      }
+
+      // return first node, if node could not be found
+      std::cerr << "Node not found! Return first node" << std::endl;
+      return nodes.front();
+    }
+    
+    /**
+     * Binary search for the first GraphNode in a vector of GraphNodes that is 
+     * after the given time.
+     * 
+     * @param nodeId
+     * @param nodes
+     * @return 
+     */
+    static GraphNode*
+    findFirstNodeAfter( uint64_t time, const std::vector< GraphNode* >& nodes )
+    {
+      // the vector is empty
+      if ( nodes.size() == 0 )
+      {
+        return NULL;
+      }
+
+      // there is only one node in the vector
+      if ( nodes.size() == 1 )
+      {
+        return nodes.front();
+      }
+      
+      GraphNode* found = NULL;
+
+      // set start boundaries for the search
+      size_t indexMin = 0;
+      size_t indexMax = nodes.size() - 1;
+      
+      size_t index = 0;
+      
+      // do a binary search
+      do
+      {
+        index = indexMax - ( indexMax - indexMin ) / 2;
+        
+        //std::cerr << "Index = " << index << "[" << indexMin << "," << indexMax << "]" << std::endl;
+
+        assert( index < nodes.size() ); //, "index %lu indexMax %lu indexMin %lu", index, indexMax, indexMin );
+
+        // if boundaries are directly next to each other choose the smaller index,
+        // if it fulfills the condition
+        if( indexMin + 1 == indexMax )
+        {
+          if( nodes[indexMin]->getTime() >= time )
+          {
+            found = nodes[indexMin];
+            index = indexMin;
+            break;
+          }
+          else
+          {
+            found = nodes[indexMax];
+            index = indexMax;
+            break;
+          }
+        }
+        // indexMin == indexMax == index
+        // last left node has to fit the condition nodes[indexMax]->getTime() >= time
+        if ( indexMin == indexMax )
+        {
+          if( nodes[indexMax]->getTime() >= time )
+          {
+            //return nodes[indexMax];
+            found = nodes[indexMax];
+            index = indexMax;
+            break;
+          }
+          else
+          {
+            std::cerr << "last left node: " << nodes[indexMax]->getUniqueName() << std::endl;
+            break;
+          }
+        }
+
+        // use the sorted property of the list to halve the search space
+        // if target time is after (greater than) the node at current index
+        if ( time > nodes[index]->getTime() )
+        {
+          // choose right side including the index element, which we did not check
+          indexMin = index;
+        }
+        else
+        {
+          // choose left side including the index element, which we did not check
+          indexMax = index; 
+        }
+
+        // if node could not be found
+        if ( indexMin > indexMax )
+        {
+          std::cerr << "Node not found! Overlapping indices!" << std::endl;
+          break;
+        }
+
+      }
+      while ( true );
+      
+      if( found )
+      {
+        // if the found node does not fulfil the condition
+        if( found->getTime() < time )
         {
           std::cerr << "Binary search failed! Wrong node at index " << index << " found: " 
                     << found->getUniqueName() << " (" << nodes.size() << " nodes)" 

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2017,
+ * Copyright (c) 2017, 2019
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -50,13 +50,14 @@ namespace casita
      
       typedef struct
       {
-        uint32_t    comRef;      //!< MPI communicator  OTF2 reference
-        uint32_t    msgTag;      //!< MPI communication tag
-        uint64_t    requestId;   //!< OTF2 request ID
+        uint32_t    comRef;        //!< MPI communicator  OTF2 reference
+        uint32_t    msgTag;        //!< MPI communication tag
+        uint64_t    requestId;     //!< OTF2 request ID
         MPI_Request requests[ 2 ]; //!< internel MPI_Isend and MPI_Irecv request
         uint64_t    sendBuffer[ CASITA_MPI_P2P_BUF_SIZE ]; //!< MPI_Isend buffer
         uint64_t    recvBuffer[ CASITA_MPI_P2P_BUF_SIZE ]; //!< MPI_Irecv buffer
-        GraphNode*  leaveNode;   //!< pointer to associated MPI_I[send|recv] node
+        GraphNode*  msgNode;       //!< pointer to associated MPI_I[send|recv] leave node
+        GraphNode*  syncNode;      //!< pointer to associated MPI_Test/Wait[all] leave node
       } MPIIcommRecord;
      
       //!< Map of OTF2 request IDs (key) and the corresponding record data
@@ -92,7 +93,7 @@ namespace casita
        * @param requestId OTF2 MPI_Irecv request ID
        */
       void
-      saveMPIIrecvRequest( uint64_t request );
+      handleMPIIrecvRequest( uint64_t request );
      
       /**
        * Temporarily save the MPI_Isend request that is consumed by MPI_Wait leave.
@@ -101,7 +102,7 @@ namespace casita
        * @param request OTF2 MPI_Isend request ID
        */
       void
-      saveMPIIsendRequest( uint64_t request );
+      handleMPIIsendComplete( uint64_t request );
      
       /**
        * Store the MPI_Irecv leave node together with the MPI_Request handle. The 
@@ -112,7 +113,7 @@ namespace casita
        * @param node the graph node of the MPI_Irecv leave record
        */
       void
-      addPendingMPIIrecvNode( GraphNode* node );
+      handleMPIIrecvLeave( GraphNode* node );
      
       /**
        * Set partner stream ID for the given MPI_Irecv request ID.
@@ -124,7 +125,7 @@ namespace casita
        * @param partnerId stream ID of the communication partner
        */
       void
-      handleMPIIrecvEventData ( uint64_t requestId, uint64_t partnerId, 
+      handleMPIIrecv ( uint64_t requestId, uint64_t partnerId, 
                                OTF2_CommRef comm, uint32_t tag );
      
       /**
@@ -135,7 +136,7 @@ namespace casita
        * @param requestId OTF2 MPI_Isend request ID 
        */
       void
-      handleMPIIsendEventData( uint64_t requestId, uint64_t partnerId,
+      handleMPIIsend( uint64_t requestId, uint64_t partnerId,
                                OTF2_CommRef comm, uint32_t tag );
 
       /**
@@ -145,7 +146,7 @@ namespace casita
        * @param node the graph node of the MPI_Isend leave record
        */
       void
-      setMPIIsendNodeData( GraphNode* node );
+      handleMPIIsendLeave( GraphNode* node );
 
       /**
        * Sets node-specific data for the given MPI_Wait leave node.
@@ -154,7 +155,7 @@ namespace casita
        * @param node the graph node of the MPI_Wait leave record
        */
       void
-      setMPIWaitNodeData( GraphNode* node );
+      handleMPIWaitLeave( GraphNode* node );
 
       /**
        * Consumes the pending OTF2 request IDs and sets the given node as 

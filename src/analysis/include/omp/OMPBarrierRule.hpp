@@ -14,7 +14,7 @@
 
 #include "IOMPRule.hpp"
 #include "AnalysisParadigmOMP.hpp"
-#include "utils/ErrorUtils.hpp"
+#include "utils/Utils.hpp"
 
 namespace casita
 {

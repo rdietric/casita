@@ -1,6 +1,8 @@
 ---------------------------------- CASITA 1.9 ----------------------------------
 
 MPI
+- fixed handling of non-blocking two-sided communication (close MPI request 
+  handles with successful MPI_Test operations)
 - do not allow to assign more waiting time to MPI_Wait[all] than its duration
 
 OpenMP

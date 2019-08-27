@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2015-2018,
+ * Copyright (c) 2015-2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -70,11 +70,11 @@ namespace casita
               stream->getPendingMPIIcommRecord( *it );
             
             // wait for MPI_Irecv or MPI_Isend
-            if( !(record->leaveNode->isMPI_Irecv() || record->leaveNode->isMPI_Isend()) )
+            if( !(record->msgNode->isMPI_Irecv() || record->msgNode->isMPI_Isend()) )
             {
               UTILS_OUT( "[%" PRIu64 "] WaitRule: Only MPI_Isend and "
                          "MPI_Irecv are supported! (%s)", waitAllLeave->getStreamId(), 
-                         record->leaveNode->getUniqueName().c_str() );
+                         record->msgNode->getUniqueName().c_str() );
               return false;
             }
             
@@ -130,7 +130,7 @@ namespace casita
               // get communication partner stream ID
               MPIAnalysis& mpiAnalysis = analysis->getMPIAnalysis();
               uint64_t partnerStreamId = mpiAnalysis.getStreamId( 
-                latestRecord->leaveNode->getReferencedStreamId(), 
+                latestRecord->msgNode->getReferencedStreamId(), 
                 latestRecord->comRef );
 
               // add remote edge for critical path analysis

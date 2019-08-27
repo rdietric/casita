@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2014, 2016-2018
+ * Copyright (c) 2014, 2016-2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -20,12 +20,11 @@
 #include "mpi/SendRule.hpp"
 #include "mpi/CollectiveRule.hpp"
 #include "mpi/SendRecvRule.hpp"
-#include "mpi/OneToAllRule.hpp"
-#include "mpi/AllToOneRule.hpp"
 #include "mpi/IRecvRule.hpp"
 #include "mpi/ISendRule.hpp"
 #include "mpi/WaitAllRule.hpp"
 #include "mpi/WaitRule.hpp"
+//#include "mpi/TestRule.hpp"
 
 using namespace casita;
 using namespace casita::mpi;
@@ -42,8 +41,6 @@ AnalysisParadigmMPI::AnalysisParadigmMPI( AnalysisEngine* analysisEngine,
   addRule( new SendRule( 1 ) );
   addRule( new SendRecvRule( 1 ) );
   addRule( new CollectiveRule( 1 ) );
-  //addRule( new OneToAllRule( 1 ) );
-  //addRule( new AllToOneRule( 1 ) );
   
   // do not add the rules for non-blocking MPI communication, if it shall be ignored
   if ( !(Parser::getInstance().getProgramOptions().ignoreAsyncMpi) )
@@ -143,17 +140,17 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
   {
     if( node->isMPI_Isend() )
     {
-      stream->setMPIIsendNodeData( node );
+      stream->handleMPIIsendLeave( node );
       return;
     }
     else  if( node->isMPI_Irecv() )
     {
-      stream->addPendingMPIIrecvNode( node );
+      stream->handleMPIIrecvLeave( node );
       return;
     }
     else if( node->isMPIWait() )
     {
-      stream->setMPIWaitNodeData( node );
+      stream->handleMPIWaitLeave( node );
       return;
     }
     else if( node->isMPI_Test() )

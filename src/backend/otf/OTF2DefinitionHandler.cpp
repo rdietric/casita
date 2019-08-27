@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2017, 2018,
+ * Copyright (c) 2017-2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -12,7 +12,7 @@
 #include <cstring>
 
 #include "common.hpp"
-#include "utils/ErrorUtils.hpp"
+#include "utils/Utils.hpp"
 
 #include "otf/OTF2DefinitionHandler.hpp"
 

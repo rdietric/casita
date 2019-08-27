@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2018,
+ * Copyright (c) 2013-2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -43,6 +43,8 @@ namespace casita
         }
 
         AnalysisEngine* commonAnalysis = analysis->getAnalysisEngine();
+        
+        //UTILS_OUT( "[%" PRIu64 "] %s", recvLeave->getStreamId(), commonAnalysis->getNodeInfo(recvLeave).c_str() );
         
         // count occurrences
         commonAnalysis->getStatistics().countActivity( STAT_MPI_P2P );

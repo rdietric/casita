@@ -169,7 +169,7 @@ namespace casita
               (GraphNode*)launchLeave->getGraphPair().first->getLink();
             if ( !syncKernelEnter )
             {
-              ErrorUtils::getInstance().throwError(
+              Utils::getInstance().throwError(
                 "Depending kernel %s (%f) started before kernel from %s (%f) started"
                 " (event id = %" PRIu64 ", recorded at %f, streamWaitEvent %s)",
                 node->getUniqueName().c_str(),
@@ -185,7 +185,7 @@ namespace casita
             GraphNode* syncKernelLeave = syncKernelEnter->getGraphPair().second;
             if ( !syncKernelLeave )
             {
-              ErrorUtils::getInstance().throwError(
+              Utils::getInstance().throwError(
                 "Depending kernel %s (%f) started before kernel from %s (%f) finished",
                 node->getUniqueName().c_str(),
                 analysis->getRealTime( node->getTime() ),
@@ -284,7 +284,7 @@ namespace casita
               
               if ( !kernelKernelEdge )
               {
-                ErrorUtils::getInstance().throwError(
+                Utils::getInstance().throwError(
                   "Did not find expected edge [%s (p %u), %s (p %u)]",
                   lastLeaveNode->getUniqueName().c_str(),
                   lastLeaveNode->getStreamId(),

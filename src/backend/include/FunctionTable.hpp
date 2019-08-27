@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2018,
+ * Copyright (c) 2013-2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -188,6 +188,16 @@ namespace casita
  {
    "MPI_Waitall"
  };
+ 
+ static const char* FTABLE_MPI_TEST[]          =
+ {
+   "MPI_Test"
+ };
+
+ static const char* FTABLE_MPI_TESTALL[]       =
+ {
+   "MPI_Testall"
+ };
 
  static const char* FTABLE_MPI_ISEND[]         =
  {
@@ -281,11 +291,13 @@ namespace casita
    { MPI_WAITSTATE, 1, FTABLE_GPU_WAITSTATE }
  };
 
- static const size_t      fTableEntriesMPIAsync = 4;
+ static const size_t      fTableEntriesMPIAsync = 6;
  static const FTableEntry fTableMPIAsync[fTableEntriesMPIAsync] =
  {
    { MPI_WAIT, 1, FTABLE_MPI_WAIT },
    { MPI_WAITALL, 1, FTABLE_MPI_WAITALL },
+   { MPI_TEST, 1, FTABLE_MPI_TEST },
+   { MPI_TESTALL, 1, FTABLE_MPI_TESTALL },
    { MPI_IRECV, 1, FTABLE_MPI_IRECV },
    { MPI_ISEND, 2, FTABLE_MPI_ISEND }
  };

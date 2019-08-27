@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2015-2018,
+ * Copyright (c) 2015-2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -49,21 +49,23 @@ namespace casita
           
           AnalysisEngine* analysis = analysisParadigmMPI->getAnalysisEngine();
           
+          //UTILS_OUT( "[%" PRIu64 "] %s", waitLeave->getStreamId(), analysis->getNodeInfo(waitLeave).c_str() );
+          
           analysis->getStatistics().countActivity( STAT_MPI_WAIT );
           
           uint64_t streamId = waitLeave->getStreamId();
           
-          if( !record->leaveNode )
+          if( !record->msgNode )
           {
             return false;
           }
           
           // wait for MPI_Irecv or MPI_Isend
-          if( !(record->leaveNode->isMPI_Irecv() || record->leaveNode->isMPI_Isend()) )
+          if( !(record->msgNode->isMPI_Irecv() || record->msgNode->isMPI_Isend()) )
           {
             UTILS_OUT( "[%" PRIu64 "] WaitRule: Only MPI_Isend and MPI_Irecv"
                        " are supported! (%s)", streamId, 
-                       record->leaveNode->getUniqueName().c_str() );
+                       analysis->getNodeInfo(record->msgNode).c_str() );
             return false;
           }
             
@@ -91,9 +93,6 @@ namespace casita
           // we found a late sender or receiver
           if( waitStartTime < p2pPartnerTime )
           {
-            //UTILS_OUT( "[%"PRIu64"] WaitRule: Found late sender/receiver", 
-            //           waitLeave->getStreamId() );
-
             // mark this leave as a wait state
             Edge* waitEdge = analysis->getEdge(waitEnter, waitLeave);
 
@@ -108,7 +107,7 @@ namespace casita
               // get communication partner stream ID
               MPIAnalysis& mpiAnalysis = analysis->getMPIAnalysis();
               uint64_t partnerStreamId = mpiAnalysis.getStreamId( 
-                record->leaveNode->getReferencedStreamId(), record->comRef );
+                record->msgNode->getReferencedStreamId(), record->comRef );
               
               // add remote edge for critical path analysis
               mpiAnalysis.addRemoteMPIEdge(
@@ -144,6 +143,9 @@ namespace casita
             }
 
             waitLeave->setCounter( WAITING_TIME, wtime );
+            
+            /*UTILS_OUT( "[%" PRIu64 "] WaitRule: Set waiting time %" PRIu64 "for late sender/receiver at %s", 
+                       waitLeave->getStreamId(), wtime, analysis->getNodeInfo(waitLeave).c_str() );*/
           }
 
           // also wait for the other MPI_Request associated with the send buffer

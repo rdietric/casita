@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2018,
+ * Copyright (c) 2013-2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -43,6 +43,8 @@ namespace casita
         }
 
         AnalysisEngine* commonAnalysis = analysis->getAnalysisEngine();
+        
+        //UTILS_OUT( "[%" PRIu64 "] %s", sendLeave->getStreamId(), commonAnalysis->getNodeInfo(sendLeave).c_str() );
         
         commonAnalysis->getStatistics().countActivity(STAT_MPI_P2P);
         
@@ -151,6 +153,12 @@ namespace casita
         {
           uint64_t recvEndTime = buffer[ 1 ];
           
+          /*UTILS_OUT( "[%" PRIu64 "] SendRule: Late sender %s (recv end: %lf, send start: %lf)", 
+                     sendLeave->getStreamId(),
+                     commonAnalysis->getNodeInfo(sendLeave).c_str(), 
+                     commonAnalysis->getRealTime(recvEndTime), 
+                     commonAnalysis->getRealTime(sendStartTime) );*/
+          
           // late sender AND send overlaps with receive
           if( sendStartTime < recvEndTime )
           {
@@ -158,8 +166,11 @@ namespace casita
                              sendStartTime - recvStartTime, 
                              mpiStreamWalkCallback,
                              REASON_MPI_LATE_SENDER );
-            //UTILS_WARNING( "Send blame: %lf", 
-            //               commonAnalysis->getRealTime( sendStartTime - recvStartTime ) );
+            
+            /*UTILS_OUT( "[%" PRIu64 "] SendRule: Distribute blame %lf from %s", 
+                       sendLeave->getStreamId(), 
+                       commonAnalysis->getRealTime( sendStartTime - recvStartTime ),
+                       commonAnalysis->getNodeInfo(sendEnter).c_str() );*/
           }
         }
 

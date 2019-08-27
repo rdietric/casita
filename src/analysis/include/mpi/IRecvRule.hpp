@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016, 2018
+ * Copyright (c) 2013-2016, 2018-2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -47,6 +47,8 @@ namespace casita
         }
         
         AnalysisEngine* commonAnalysis = analysis->getAnalysisEngine();
+        
+        //UTILS_OUT( "[%" PRIu64 "] %s", irecvLeave->getStreamId(), commonAnalysis->getNodeInfo(irecvLeave).c_str() );
 
         MpiStream::MPIIcommRecord* record = 
                           (MpiStream::MPIIcommRecord* )irecvLeave->getData();
@@ -80,8 +82,21 @@ namespace casita
         // send information to communication partner
         // the blocking MPI_Recv can evaluate them and e.g. stop wait state analysis
         uint64_t *buffer_send = record->sendBuffer;
-        buffer_send[0] = irecvEnter->getTime();
-        buffer_send[1] = irecvLeave->getTime();
+        
+        // use the end time of the associated wait operation as receive end
+        if(record->syncNode)
+        {
+          buffer_send[0] = record->syncNode->getGraphPair().first->getTime();
+          buffer_send[1] = record->syncNode->getTime();
+        }
+        else
+        {
+          // the start and end time of MPI_Irecv are rather useless for analysis
+          UTILS_WARNING("[%" PRIu64 "] MPI_Irecv rule: No wait node available!" );
+          buffer_send[0] = irecvEnter->getTime();
+          buffer_send[1] = irecvLeave->getTime();
+        }
+        
         buffer_send[2] = irecvEnter->getId();
         buffer_send[3] = irecvLeave->getId(); // 
         buffer_send[CASITA_MPI_P2P_BUF_LAST] = MPI_IRECV;
@@ -96,9 +111,8 @@ namespace casita
                               communicator, //MPI_COMM_WORLD, 
                               &(record->requests[ 1 ]) ) );
 
-        // collect pending non-blocking MPI operations
+        // try to directly close the MPI request handles
         int finished = 0;
-
         MPI_Test(&(record->requests[0]), &finished, MPI_STATUS_IGNORE);
         if(finished)
         {

@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2013-2016,
+ * Copyright (c) 2013-2016, 2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -51,6 +51,8 @@ namespace casita
         }
 
         AnalysisEngine* commonAnalysis = analysis->getAnalysisEngine();
+        
+        //UTILS_OUT( "[%" PRIu64 "] %s", isendLeave->getStreamId(), commonAnalysis->getNodeInfo(isendLeave).c_str() );
 
         MpiStream::MPIIcommRecord* record = 
                 (MpiStream::MPIIcommRecord* ) isendLeave->getData();
@@ -110,7 +112,7 @@ namespace casita
                   << std::endl;
         */
         
-        // collect pending MPI operations
+        // try to directly close the MPI request handles
         int finished = 0;
         MPI_CHECK( MPI_Test(&(record->requests[1]), &finished, MPI_STATUS_IGNORE ) );
         if(finished)

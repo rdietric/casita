@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2016-2018,
+ * Copyright (c) 2016-2019,
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -63,25 +63,26 @@ namespace casita
   {
     // MPI
      STAT_MPI_COLLECTIVE = 0, // MPI collectives (only blocking)
-     STAT_MPI_P2P = 1,       // MPI send/recv/sendrecv (only blocking)
+     STAT_MPI_P2P = 1,        // MPI send/recv/sendrecv (only blocking)
      STAT_MPI_WAIT = 2,       // MPI wait, including waitall
+     STAT_MPI_TEST = 3,       // MPI test
      
      // OpenMP (OMPT not yet considered)
-     STAT_OMP_JOIN = 3,    // OpenMP fork
-     STAT_OMP_BARRIER = 4, // OpenMP barrier
+     STAT_OMP_JOIN = 4,    // OpenMP fork
+     STAT_OMP_BARRIER = 5, // OpenMP barrier
      
     // offloading
-     STAT_OFLD_KERNEL = 5,      // offload kernels
-     STAT_OFLD_SYNC = 6,        // any offload synchronization, except for events
-     STAT_OFLD_SYNC_EVT = 7,    // offload event synchronization
-     STAT_OFLD_TEST_EVT = 8,    // offload test operation
+     STAT_OFLD_KERNEL = 6,      // offload kernels
+     STAT_OFLD_SYNC = 7,        // any offload synchronization, except for events
+     STAT_OFLD_SYNC_EVT = 8,    // offload event synchronization
+     STAT_OFLD_TEST_EVT = 9,    // offload test operation
      
      // the following three are a hack (move to extra type)
-     STAT_TOTAL_TRACE_EVENTS = 9,
-     STAT_HOST_STREAMS = 10,
-     STAT_DEVICE_NUM = 11,
+     STAT_TOTAL_TRACE_EVENTS = 10,
+     STAT_HOST_STREAMS = 11,
+     STAT_DEVICE_NUM = 12,
 
-     STAT_ACTIVITY_TYPE_NUMBER = 12
+     STAT_ACTIVITY_TYPE_NUMBER = 13
   };
   
   typedef struct
@@ -95,6 +96,7 @@ namespace casita
     { STAT_MPI_COLLECTIVE, "MPI (blocking) collectives" },
     { STAT_MPI_P2P, "MPI (blocking) p2p" },
     { STAT_MPI_WAIT, "MPI wait[all]" },
+    { STAT_MPI_TEST, "MPI test" },
     { STAT_OMP_JOIN, "OpenMP fork/join" },
     { STAT_OMP_BARRIER, "OpenMP barriers" },
     { STAT_OFLD_KERNEL, "Ofld. kernels" },

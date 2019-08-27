@@ -135,10 +135,18 @@ namespace casita
               {
                 blameStartNode =
                   GraphNode::findLastNodeBefore( launchTime, hostStream->getNodes() );
+                  //GraphNode::findFirstNodeAfter( launchTime, hostStream->getNodes() );
                 
-                  // if we start at idleEndTime, we could accidently walk over 
-                  // a cuLaunchKernel which would stop blame distribution early
-                  //GraphNode::findLastNodeBefore( idleEndTime, hostStream->getNodes() );
+                /*if( blameStartNode->isLeave() && 
+                    ( blameStartNode->isOffloadEnqueueKernel() || 
+                      blameStartNode->isOffloadWait() ) )
+                {
+                  blameStartNode = blameStartNode->getGraphPair().first;
+                }*/
+                
+                // if we start at idleEndTime, we could accidently walk over 
+                // a cuLaunchKernel which would stop blame distribution early
+                //GraphNode::findLastNodeBefore( idleEndTime, hostStream->getNodes() );
                 
                 // if no start node for blaming was found, continue on next stream
                 if( blameStartNode == NULL || 
@@ -157,7 +165,7 @@ namespace casita
                   continue;
                 }
                 
-                // if accidently a start node after the launch was found (should not happen)
+                /* if accidently a start node after the launch was found (should not happen) */
                 if ( launchTime < blameStartNode->getTime() )
                 {
                   UTILS_WARNING( "[DeviceIdleRule] Error while reading trace! (%s < %s)",
