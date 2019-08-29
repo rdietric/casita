@@ -355,6 +355,39 @@ GraphEngine::getFirstTimedGraphNode( Paradigm paradigm ) const
 }
 
 /**
+ * Determine the shortest edge for a given graph node and return it.
+ * 
+ * @param node
+ * 
+ * @return 
+ */
+Edge*
+GraphEngine::getShortestInEdge( GraphNode* node ) const
+{
+  Edge* shortestEdge = NULL;
+  
+  // iterate over outgoing edges of source node
+  const Graph::EdgeList *edges = graph.getInEdgesPtr( node );
+  
+  if( NULL == edges )
+  {
+    return NULL;
+  }
+  
+  for ( Graph::EdgeList::const_iterator iter = edges->begin();
+        iter != edges->end(); ++iter )
+  {
+    Edge *edge = *iter;
+    if ( shortestEdge == NULL || edge->getDuration() < shortestEdge->getDuration() )
+    {
+      shortestEdge = edge;
+    }
+  }
+  
+  return shortestEdge;
+}
+
+/**
  * Obtain the last (largest time stamp) graph node for a given paradigm or 
  * set of paradigms.
  * 

@@ -151,6 +151,9 @@ namespace casita
 
      void
      removeEdge( Edge* e );
+     
+     Edge*
+     getShortestInEdge( GraphNode* node ) const;
 
      GraphNode*
      getSourceNode() const;

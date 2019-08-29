@@ -64,8 +64,8 @@ namespace casita
     // MPI
      STAT_MPI_COLLECTIVE = 0, // MPI collectives (only blocking)
      STAT_MPI_P2P = 1,        // MPI send/recv/sendrecv (only blocking)
-     STAT_MPI_WAIT = 2,       // MPI wait, including waitall
-     STAT_MPI_TEST = 3,       // MPI test
+     STAT_MPI_WAIT = 2,       // MPI wait[all]
+     STAT_MPI_TEST = 3,       // MPI test[all]
      
      // OpenMP (OMPT not yet considered)
      STAT_OMP_JOIN = 4,    // OpenMP fork

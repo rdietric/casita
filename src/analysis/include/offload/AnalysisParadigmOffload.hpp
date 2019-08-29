@@ -122,6 +122,10 @@ namespace casita
       void
       createKernelDependencies( GraphNode* kernelEnter ) const;
       
+      uint64_t
+      blameShortestPath( GraphNode* kernelLeave, uint64_t totalBlame, 
+                         BlameReason reason = REASON_UNCLASSIFIED ) const;
+      
       void 
       printDebugInformation( uint64_t eventId );
       

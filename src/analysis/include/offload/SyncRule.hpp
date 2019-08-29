@@ -1,7 +1,7 @@
 /*
  * This file is part of the CASITA software
  *
- * Copyright (c) 2017-2018
+ * Copyright (c) 2017-2019
  * Technische Universitaet Dresden, Germany
  *
  * This software may be modified and distributed under the terms of
@@ -143,11 +143,34 @@ namespace casita
                          analysis->getNodeInfo(syncLeave).c_str(),
                          analysis->getNodeInfo(kernelLeave).c_str() );*/
               
-              // add an edge between the last pending kernel and the sync operation
+              uint64_t totalWaitingTime = 
+                syncLeave->getTime() - syncEnter->getTime();
+
+              // add an edge between the last pending kernel on the stream and 
+              // the sync operation
               if ( isLastKernel )
               {
-                analysis->newEdge( kernelLeave, syncLeave );
                 isLastKernel = false;
+                
+                analysis->newEdge( kernelLeave, syncLeave );
+
+                // if we have edges between kernels, we blame the shortest path
+                // from the last kernel only
+                if ( Parser::getOptions().linkKernels > 0 )
+                {
+                  // blame kernels along the shortest paths until a launch occurs
+                  uint64_t pathStart = ofldAnalysis->blameShortestPath( 
+                    kernelLeave, totalWaitingTime, REASON_OFLD_WAIT4DEVICE );
+
+                  uint64_t waitOnKernel = std::min( syncLeave->getTime(),
+                                                    kernelLeave->getTime() ) -
+                                          std::max( syncEnter->getTime(), 
+                                                    pathStart );
+
+                  // early blocking wait on kernels
+                  analysis->getStatistics().addStatValue( 
+                    OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL, waitOnKernel );
+                }
               }
 
               // make edge between sync enter and leave blocking (early sync)
@@ -157,11 +180,8 @@ namespace casita
               if( !syncEdge )
               {
                 analysis->newEdge( syncEnter, syncLeave, true );
-                
-                uint64_t totalWaitingTime = 
-                 syncLeave->getTime() - syncEnter->getTime();
               
-                // early blocking wait (\todo: considers only kernels yet)
+                // early blocking wait
                 analysis->getStatistics().addStatWithCount( 
                   OFLD_STAT_EARLY_BLOCKING_WAIT, totalWaitingTime );
 
@@ -171,48 +191,47 @@ namespace casita
               else if( !syncEdge->isBlocking() )
               {
                 syncEdge->makeBlocking();
-                
-                uint64_t totalWaitingTime = 
-                 syncLeave->getTime() - syncEnter->getTime();
               
-                // early blocking wait (\todo: considers only kernels yet)
+                // early blocking wait
                 analysis->getStatistics().addStatWithCount( 
                   OFLD_STAT_EARLY_BLOCKING_WAIT, totalWaitingTime );
 
                 // attribute waiting time to sync leave node
                 syncLeave->incCounter( WAITING_TIME, totalWaitingTime );
               }
-
-              GraphNode* kernelEnter = kernelLeave->getGraphPair().first;
-
-              uint64_t waitOnKernel = std::min( syncLeave->getTime(),
-                                                kernelLeave->getTime() ) -
-                                     std::max( syncEnter->getTime(),
-                                               kernelEnter->getTime() );
-
-              // early blocking wait for kernel (accounts only kernel runtime)
-              analysis->getStatistics().addStatValue( 
-                OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL, waitOnKernel );
-
-              // blame the kernel
-              Edge* kernelEdge = analysis->getEdge( kernelEnter, kernelLeave );
-              if( kernelEdge )
+              
+              // if kernels are not linked, blame overlapping kernels
+              if ( Parser::getOptions().linkKernels == 0 )
               {
-                kernelEdge->addBlame( waitOnKernel, REASON_OFLD_WAIT4DEVICE );
-              }
-              else
-              {
-                UTILS_WARNING( "Offload SyncRule: Could not find kernel edge %s -> %s",
-                               analysis->getNodeInfo( kernelEnter ).c_str(),
-                               analysis->getNodeInfo( kernelLeave ).c_str() );
+                GraphNode* kernelEnter = kernelLeave->getGraphPair().first;
+                
+                uint64_t waitOnKernel = std::min( syncLeave->getTime(),
+                                                  kernelLeave->getTime() ) -
+                                        std::max( syncEnter->getTime(), 
+                                                  kernelEnter->getTime() );
+                
+                // early blocking wait for kernel (accounts only kernel runtime)
+                analysis->getStatistics().addStatValue( 
+                  OFLD_STAT_EARLY_BLOCKING_WTIME_KERNEL, waitOnKernel );
+                
+                // blame the kernel
+                Edge* kernelEdge = analysis->getEdge( kernelEnter, kernelLeave );
+                if( kernelEdge )
+                {
+                  kernelEdge->addBlame( waitOnKernel, REASON_OFLD_WAIT4DEVICE );
+                }
+                else
+                {
+                  UTILS_WARNING( "Offload SyncRule: Could not find kernel edge %s -> %s",
+                                 analysis->getNodeInfo( kernelEnter ).c_str(),
+                                 analysis->getNodeInfo( kernelLeave ).c_str() );
+                }
               }
 
               // set link to sync leave node (mark kernel as synchronized)
               kernelLeave->setLink( syncLeave );
 
               isLateSync = false;
-              
-              //\todo: distribute blame over all direct predecessors
             }
             else
             {

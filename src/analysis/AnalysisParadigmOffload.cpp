@@ -993,3 +993,73 @@ AnalysisParadigmOffload::createKernelDependencies( GraphNode* kernelNode ) const
     kernelEnter = prevKernelEnter;
   }
 }
+
+/**
+ * 
+ * @param kernelLeave kernel leave node
+ */
+uint64_t
+AnalysisParadigmOffload::blameShortestPath( GraphNode* kernelLeave, 
+                                            uint64_t totalBlame, 
+                                            BlameReason reason) const
+{
+  uint64_t pathStart = 0;
+  uint64_t totalTimeToBlame = 0; // total time to blame
+  Graph::EdgeList edges2Blame;
+  
+  //GraphNode* kernelLaunchEnter = ( GraphNode* ) kernelEnter->getLink();
+  
+  // get first kernelEdge to blame
+  GraphNode* kernelEnter = kernelLeave->getGraphPair().first;
+  Edge *edge = analysisEngine->getEdge( kernelEnter, kernelLeave );
+  totalTimeToBlame += edge->getDuration();
+  edges2Blame.push_back( edge );
+  
+  while(true)
+  {
+    // get shortest edge between kernels or to the launch
+    edge = analysisEngine->getShortestInEdge( kernelEnter );
+    GraphNode* leaveNode = edge->getStartNode();
+    
+    // end blame distribution when we find the kernel launch leave
+    if( leaveNode->isOffloadEnqueueKernel() )
+    {
+      pathStart = leaveNode->getTime();
+      break;
+    }
+    
+    // set next kernel enter
+    kernelEnter = leaveNode->getGraphPair().first;
+    
+    // get kernel edge to blame
+    edge = analysisEngine->getEdge( kernelEnter, leaveNode );
+    totalTimeToBlame += edge->getDuration();
+    edges2Blame.push_back( edge );
+  }
+  
+  //UTILS_OUT("%lu kernels to blame", edges2Blame.size());
+  double sumBlame = 0;
+  
+  // blame all edges along the path according to their share of the total time
+  for( Graph::EdgeList::const_iterator iter = edges2Blame.begin(); 
+       iter != edges2Blame.end(); ++iter )
+  {
+    Edge *edge = *iter;
+    
+    double blame = (double) totalBlame
+                 * (double) edge->getDuration()
+                 / (double) totalTimeToBlame;
+    
+    //UTILS_OUT( "with %lf blame for %s", blame, 
+    //           analysisEngine->getNodeInfo( edge->getEndNode() ).c_str() );
+    
+    edge->addBlame( blame, reason );
+    
+    sumBlame += blame;
+  }
+  
+  //UTILS_MSG( (sumBlame - (double)totalBlame) > 0.01 , "More blamed than available %lf", 
+  //           sumBlame - (double)totalBlame );
+  
+  return pathStart;
+}

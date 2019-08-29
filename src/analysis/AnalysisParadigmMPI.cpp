@@ -156,6 +156,7 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
     else if( node->isMPI_Test() )
     {
       stream->handleMPITest( node );
+      analysisEngine->getStatistics().countActivity( STAT_MPI_TEST );
       return;
     }
     else if( node->isMPIWaitall() )
@@ -166,6 +167,7 @@ AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
     else if( node->isMPI_Testall() )
     {
       stream->handleMPITestall( node );
+      analysisEngine->getStatistics().countActivity( STAT_MPI_TEST );
       return;
     }
   }

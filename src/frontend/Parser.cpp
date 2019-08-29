@@ -114,7 +114,8 @@ namespace casita
     cout << "     --blame4device-idle  blame the host for not keeping the device computing" << endl;
     cout << "     --propagate-blame    Wait states propagate their blame" << endl;
     cout << " -e [--extended-blame]    divide blame into different types" << endl;
-    cout << " -l  --link-kernels[=0,1,2]  create inter-stream kernel dependencies (default: off)" << endl;
+    cout << " -l  --link-kernels[=0,1,2]  create inter-stream kernel dependencies (default: off)" << endl
+         << "                          (0=off, 1=link kernels, 2=link overlapping kernels)" << endl;
     cout << "     --nullstream=INT     use null stream semantic for the given stream" << endl;
     cout << " -p [--path]              print critical paths" << endl;
     cout << "     --force-cp-check[=UINT] check for circular loops during process-local" << endl; 

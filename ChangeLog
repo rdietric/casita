@@ -27,8 +27,6 @@ MISC
 - added Score-P user instrumentation to analyze CASITA's performance
 - reduced memory footprint by removing members from Node and Edge classes
 - improved merging of activity groups (program regions)
-- added more Score-P user instrumentation for instrumented builds
-- refined summary output
 - disabled OpenMP parallel analysis by default (enable via cmake -DOMP=ON)
 
 
