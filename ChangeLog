@@ -11,6 +11,7 @@ OpenMP
 
 Offloading
 - added rule to blame the host for not keeping the device busy
+- improved blaming the shortest path for offloading kernels
 - refined consecutive transfer detection
 
 MISC
