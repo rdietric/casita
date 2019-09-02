@@ -88,6 +88,8 @@ namespace casita
         {
           buffer_send[0] = record->syncNode->getGraphPair().first->getTime();
           buffer_send[1] = record->syncNode->getTime();
+          buffer_send[2] = record->syncNode->getId();
+          buffer_send[3] = record->syncNode->getId();
         }
         else
         {
@@ -95,10 +97,10 @@ namespace casita
           UTILS_WARNING("[%" PRIu64 "] MPI_Irecv rule: No wait node available!" );
           buffer_send[0] = irecvEnter->getTime();
           buffer_send[1] = irecvLeave->getTime();
+          buffer_send[2] = irecvEnter->getId();
+          buffer_send[3] = irecvLeave->getId();
         }
         
-        buffer_send[2] = irecvEnter->getId();
-        buffer_send[3] = irecvLeave->getId(); // 
         buffer_send[CASITA_MPI_P2P_BUF_LAST] = MPI_IRECV;
 
         // Send indicator that this is an MPI_Irecv
