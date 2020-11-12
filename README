@@ -7,6 +7,14 @@ which rates activities according their potential to improve the program runtime
 and the load balancing. A summary of inefficient patterns exposes waiting times
 in the individual programming models and APIs.
 
+Internally, CASITA constructs a distributed DAG, where each node represents an 
+event in time and edges the dependencies between events on different locations 
+(processes, threads and CUDA streams). Events on the same locations have an
+implicit dependency by the happens-before relation. The local DAGs, one per 
+MPI process, are connected via remote edges. Only MPI, OpenMP and CUDA nodes 
+are represented in the graph. Nevertheless, events from compiler 
+instrumentation are accounted.
+
 Publications:
 
 "CASITA: A Tool for Identifying Critical Optimization Targets in Distributed 
