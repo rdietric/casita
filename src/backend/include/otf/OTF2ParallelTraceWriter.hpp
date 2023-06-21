@@ -366,7 +366,8 @@ namespace casita
                                                   locationGroupType,
                                                   OTF2_SystemTreeNodeRef
                                                   systemTreeParent ,
-                                                  OTF2_LocationGroupRef  creatingLocationGroup);
+                                                  OTF2_LocationGroupRef
+                                                  creatingLocationGroup );
 
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_Location( void*             userData,
@@ -393,7 +394,7 @@ namespace casita
                                          OTF2_StringRef name,
                                          OTF2_GroupRef  group,
                                          OTF2_CommRef   parent,
-                                         OTF2_CommFlag  flags);
+                                         OTF2_CommFlag  flags );
 
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_String( void*          userData,
@@ -454,7 +455,7 @@ namespace casita
                                            OTF2_RmaWinRef self,
                                            OTF2_StringRef name,
                                            OTF2_CommRef   comm,
-                                           OTF2_RmaWinFlag flags);
+                                           OTF2_RmaWinFlag flags );
       
       static OTF2_CallbackCode
       OTF2_DefReaderCallback_MetricMember( 

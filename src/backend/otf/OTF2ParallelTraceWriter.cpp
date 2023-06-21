@@ -2074,7 +2074,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_ClockProperties(
                                                            timerResolution,
                                                            globalOffset,
                                                            traceLength,
-                                                           realtimeTimestamp) );
+                                                           realtimeTimestamp ) );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -2086,7 +2086,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_LocationGroup( void* userD
                                                                      OTF2_StringRef name,
                                                                      OTF2_LocationGroupType locationGroupType,
                                                                      OTF2_SystemTreeNodeRef systemTreeParent,
-                                                                     OTF2_LocationGroupRef  creatingLocationGroup)
+                                                                     OTF2_LocationGroupRef  creatingLocationGroup )
 {
 
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
@@ -2095,7 +2095,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_LocationGroup( void* userD
                                                        self, name,
                                                        locationGroupType,
                                                        systemTreeParent,
-                                                       creatingLocationGroup) );
+                                                       creatingLocationGroup ) );
 
   return OTF2_CALLBACK_SUCCESS;
 }
@@ -2163,7 +2163,7 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Comm( void*          userD
                                                             OTF2_StringRef name,
                                                             OTF2_GroupRef  group,
                                                             OTF2_CommRef   parent,
-                                                            OTF2_CommFlag  flags)
+                                                            OTF2_CommFlag  flags )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
