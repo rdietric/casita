@@ -303,7 +303,7 @@ namespace casita
                                                     uint64_t timerResolution,
                                                     uint64_t globalOffset,
                                                     uint64_t traceLength,
-                                                    uint64_t realtimeTimestamp);
+                                                    uint64_t realtimeTimestamp );
       
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_Location( void*             userData,

@@ -537,7 +537,7 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationGroup(
                                 OTF2_StringRef         name,
                                 OTF2_LocationGroupType locationGroupType,
                                 OTF2_SystemTreeNodeRef systemTreeParent,
-                                OTF2_LocationGroupRef  creatingLocationGroup)
+                                OTF2_LocationGroupRef  creatingLocationGroup )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
