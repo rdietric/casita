@@ -70,7 +70,7 @@ namespace casita
      ignoreOffload();
 
      bool
-     init( int mpiRank, int argc, char** argv ) throw ( std::runtime_error );
+     init( int mpiRank, int argc, char** argv );
      
      ProgramOptions&
      getProgramOptions();

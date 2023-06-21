@@ -431,7 +431,8 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_ClockProperties(
                                                        void*    userData,
                                                        uint64_t timerResolution,
                                                        uint64_t globalOffset,
-                                                       uint64_t traceLength )
+                                                       uint64_t traceLength,
+                                                       uint64_t realtimeTimestamp)
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
@@ -535,7 +536,8 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_LocationGroup(
                                 OTF2_LocationGroupRef  self,
                                 OTF2_StringRef         name,
                                 OTF2_LocationGroupType locationGroupType,
-                                OTF2_SystemTreeNodeRef systemTreeParent)
+                                OTF2_SystemTreeNodeRef systemTreeParent,
+                                OTF2_LocationGroupRef  creatingLocationGroup )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 
@@ -678,7 +680,8 @@ OTF2TraceReader::OTF2_GlobalDefReaderCallback_Comm( void*          userData,
                                                     OTF2_CommRef   self,
                                                     OTF2_StringRef name,
                                                     OTF2_GroupRef  group,
-                                                    OTF2_CommRef   parent )
+                                                    OTF2_CommRef   parent,
+                                                    OTF2_CommFlag  flags )
 {
   OTF2TraceReader* tr = (OTF2TraceReader*)userData;
 

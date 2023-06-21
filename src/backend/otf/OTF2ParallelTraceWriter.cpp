@@ -2063,7 +2063,8 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_ClockProperties(
                                                       void*    userData,
                                                       uint64_t timerResolution,
                                                       uint64_t globalOffset,
-                                                      uint64_t traceLength )
+                                                      uint64_t traceLength,
+                                                      uint64_t realtimeTimestamp )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
@@ -2072,7 +2073,8 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_ClockProperties(
     OTF2_CHECK( OTF2_GlobalDefWriter_WriteClockProperties( tw->otf2GlobalDefWriter,
                                                            timerResolution,
                                                            globalOffset,
-                                                           traceLength ) );
+                                                           traceLength,
+                                                           realtimeTimestamp ) );
   }
 
   return OTF2_CALLBACK_SUCCESS;
@@ -2080,14 +2082,11 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_ClockProperties(
 
 OTF2_CallbackCode
 OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_LocationGroup( void* userData,
-                                                                     OTF2_LocationGroupRef
-                                                                     self,
-                                                                     OTF2_StringRef
-                                                                     name,
-                                                                     OTF2_LocationGroupType
-                                                                     locationGroupType,
-                                                                     OTF2_SystemTreeNodeRef
-                                                                     systemTreeParent )
+                                                                     OTF2_LocationGroupRef self,
+                                                                     OTF2_StringRef name,
+                                                                     OTF2_LocationGroupType locationGroupType,
+                                                                     OTF2_SystemTreeNodeRef systemTreeParent,
+                                                                     OTF2_LocationGroupRef  creatingLocationGroup )
 {
 
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
@@ -2095,7 +2094,8 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_LocationGroup( void* userD
   OTF2_CHECK( OTF2_GlobalDefWriter_WriteLocationGroup( tw->otf2GlobalDefWriter,
                                                        self, name,
                                                        locationGroupType,
-                                                       systemTreeParent ) );
+                                                       systemTreeParent,
+                                                       creatingLocationGroup ) );
 
   return OTF2_CALLBACK_SUCCESS;
 }
@@ -2162,12 +2162,13 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_Comm( void*          userD
                                                             OTF2_CommRef   self,
                                                             OTF2_StringRef name,
                                                             OTF2_GroupRef  group,
-                                                            OTF2_CommRef   parent )
+                                                            OTF2_CommRef   parent,
+                                                            OTF2_CommFlag  flags )
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
   OTF2_CHECK( OTF2_GlobalDefWriter_WriteComm( tw->otf2GlobalDefWriter, self, name,
-                                              group, parent ) );
+                                              group, parent, flags ) );
 
   return OTF2_CALLBACK_SUCCESS;
 }
@@ -2404,12 +2405,13 @@ OTF2ParallelTraceWriter::OTF2_GlobalDefReaderCallback_RmaWin(
                                                         void*          userData,
                                                         OTF2_RmaWinRef self,
                                                         OTF2_StringRef name,
-                                                        OTF2_CommRef   comm )
+                                                        OTF2_CommRef   comm,
+                                                        OTF2_RmaWinFlag flags)
 {
   OTF2ParallelTraceWriter* tw = (OTF2ParallelTraceWriter*)userData;
 
   OTF2_CHECK( OTF2_GlobalDefWriter_WriteRmaWin( tw->otf2GlobalDefWriter, self,
-                                                name, comm ) );
+                                                name, comm, flags ) );
 
   return OTF2_CALLBACK_SUCCESS;
 }
