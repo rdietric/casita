@@ -27,196 +27,195 @@
 namespace casita
 {
 
-  class GraphEngine
-  {
-    private:
+ class GraphEngine
+ {
+   private:
 
-      Graph::EdgeList emptyEdgeList;
-      /*     typedef struct */
-      /*     { */
-      /*       uint64_t startTime; */
-      /*       uint64_t endTime; */
-      /*       uint64_t exclEvtRegTime; //<! time of regions from CPU events between paradigm nodes */
-      /*       uint32_t numberOfEvents; */
-      /*     } EdgeCPUData; */
-      /*  */
-      /*     std::map< uint64_t, EdgeCPUData > cpuDataPerProcess; */
+     Graph::EdgeList emptyEdgeList;
+//     typedef struct
+//     {
+//       uint64_t startTime;
+//       uint64_t endTime;
+//       uint64_t exclEvtRegTime; //<! time of regions from CPU events between paradigm nodes
+//       uint32_t numberOfEvents;
+//     } EdgeCPUData;
+//
+//     std::map< uint64_t, EdgeCPUData > cpuDataPerProcess;
 
-    public:
-      typedef std::stack< GraphNode* > GraphNodeStack;
-      typedef std::map< uint64_t, GraphNodeStack > GraphNodeStackMap;
+   public:
+     typedef std::stack< GraphNode* > GraphNodeStack;
+     typedef std::map< uint64_t, GraphNodeStack > GraphNodeStackMap;
 
-      GraphEngine( );
-      virtual
-      ~GraphEngine( );
+     GraphEngine();
+     virtual
+     ~GraphEngine();
 
-      Graph&
-      getGraph( );
+     Graph&
+     getGraph();
 
-      Graph*
-      getGraph( Paradigm paradigm );
+     Graph*
+     getGraph( Paradigm paradigm );
 
-      AnalysisMetric&
-      getCtrTable( );
+     AnalysisMetric&
+     getCtrTable();
 
-      virtual void
-      reset( );
+     virtual void
+     reset();
 
-      void
-      resetCounters( );
+     void
+     resetCounters();
 
-      EventStream*
-      getStream( uint64_t id ) const;
+     EventStream*
+     getStream( uint64_t id ) const;
+     
+     EventStreamGroup&
+     getStreamGroup();
+     
+     /**
+      * Get a constant reference to a vector of all execution streams.
+      * 
+      * @return constant reference to a vector of all streams.
+      */
+     const EventStreamGroup::EventStreamList&
+     getStreams() const;
 
-      EventStreamGroup&
-      getStreamGroup( );
+     void
+     getStreams( EventStreamGroup::EventStreamList& streams,
+                 Paradigm                           paradigm ) const;
 
-      /**
-       * Get a constant reference to a vector of all execution streams.
-       *
-       * @return constant reference to a vector of all streams.
-       */
-      const EventStreamGroup::EventStreamList&
-      getStreams( ) const;
+     const EventStreamGroup::EventStreamList&
+     getHostStreams() const;
 
-      void
-      getStreams( EventStreamGroup::EventStreamList& streams,
-          Paradigm                                   paradigm ) const;
+     const EventStreamGroup::DeviceStreamList&
+     getDeviceStreams() const;
+     
+     size_t
+     getNumDeviceStreams() const;
+     
+     const EventStreamGroup::DeviceStreamList&
+     getDeviceStreams( int deviceId );
 
-      const EventStreamGroup::EventStreamList&
-      getHostStreams( ) const;
+     void
+     getDeviceStreams( EventStreamGroup::DeviceStreamList& deviceStreams ) const;
 
-      const EventStreamGroup::DeviceStreamList&
-      getDeviceStreams( ) const;
+     /* allocators */
+     void
+     newEventStream( uint64_t                     id,
+                     uint64_t                     parentId,
+                     const std::string            name,
+                     EventStream::EventStreamType streamType );
 
-      size_t
-      getNumDeviceStreams( ) const;
+     Edge*
+     newEdge( GraphNode* n1, GraphNode* n2, 
+              bool blocking = false, Paradigm* paradigm = NULL );
 
-      const EventStreamGroup::DeviceStreamList&
-      getDeviceStreams( int deviceId );
+     GraphNode*
+     newGraphNode( uint64_t          time,
+                   uint64_t          streamId,
+                   const char*       name,
+                   Paradigm          paradigm,
+                   RecordType        recordType,
+                   int               nodeType );
 
-      void
-      getDeviceStreams( EventStreamGroup::DeviceStreamList& deviceStreams ) const;
+     EventNode*
+     newEventNode( uint64_t                      time,
+                   uint64_t                      streamId,
+                   uint64_t                      eventId,
+                   EventNode::FunctionResultType fResult,
+                   const char*                   name,
+                   Paradigm                      paradigm,
+                   RecordType                    recordType,
+                   int                           nodeType );
 
-      /* allocators */
-      void
-      newEventStream( uint64_t         id,
-          uint64_t                     parentId,
-          const std::string            name,
-          EventStream::EventStreamType streamType );
+     GraphNode*
+     addNewGraphNode( uint64_t       time,
+                      EventStream*   stream,
+                      const char*    name,
+                      Paradigm       paradigm,
+                      RecordType     recordType,
+                      int            nodeType );
 
-      Edge*
-      newEdge( GraphNode* n1, GraphNode* n2,
-          bool blocking = false, Paradigm* paradigm = NULL );
+     EventNode*
+     addNewEventNode( uint64_t                      time,
+                      uint64_t                      eventId,
+                      EventNode::FunctionResultType fResult,
+                      EventStream*                  stream,
+                      const char*                   name,
+                      FunctionDescriptor*           desc );
 
-      GraphNode*
-      newGraphNode( uint64_t time,
-          uint64_t           streamId,
-          const char*        name,
-          Paradigm           paradigm,
-          RecordType         recordType,
-          int                nodeType );
+//     void
+//     addCPUEvent( uint64_t time, uint64_t stream, bool isLeave );
 
-      EventNode*
-      newEventNode( uint64_t            time,
-          uint64_t                      streamId,
-          uint64_t                      eventId,
-          EventNode::FunctionResultType fResult,
-          const char*                   name,
-          Paradigm                      paradigm,
-          RecordType                    recordType,
-          int                           nodeType );
+     Edge*
+     getEdge( GraphNode* source, GraphNode* target );
 
-      GraphNode*
-      addNewGraphNode( uint64_t time,
-          EventStream*          stream,
-          const char*           name,
-          Paradigm              paradigm,
-          RecordType            recordType,
-          int                   nodeType );
+     void
+     removeEdge( Edge* e );
+     
+     Edge*
+     getShortestInEdge( GraphNode* node ) const;
 
-      EventNode*
-      addNewEventNode( uint64_t         time,
-          uint64_t                      eventId,
-          EventNode::FunctionResultType fResult,
-          EventStream*                  stream,
-          const char*                   name,
-          FunctionDescriptor*           desc );
+     GraphNode*
+     getSourceNode() const;
 
-      /*     void */
-      /*     addCPUEvent( uint64_t time, uint64_t stream, bool isLeave ); */
+     GraphNode*
+     getFirstTimedGraphNode( Paradigm paradigm ) const;
 
-      Edge*
-      getEdge( GraphNode* source, GraphNode* target );
+     GraphNode*
+     getLastGraphNode( Paradigm paradigm ) const;
 
-      void
-      removeEdge( Edge* e );
+     void
+     getAllNodes( EventStream::SortedGraphNodeList& allNodes ) const;
 
-      Edge*
-      getShortestInEdge( GraphNode* node ) const;
+     void
+     setTimerResolution( uint64_t ticksPerSecond );
 
-      GraphNode*
-      getSourceNode( ) const;
+     uint64_t
+     getTimerResolution();
+     
+     double
+     getRealTime( uint64_t t );
+     
+     const std::string
+     getNodeInfo( Node* node );
+     
+     void
+     streamWalkBackward( GraphNode* node, EventStream::StreamWalkCallback callback, 
+                         void* userData ) const;
 
-      GraphNode*
-      getFirstTimedGraphNode( Paradigm paradigm ) const;
+     uint64_t
+     getDeltaTicks();
 
-      GraphNode*
-      getLastGraphNode( Paradigm paradigm ) const;
+     void
+     runSanityCheck( uint32_t mpiRank );
 
-      void
-      getAllNodes( EventStream::SortedGraphNodeList& allNodes ) const;
+   protected:
+     EventStreamGroup  streamGroup;
+     uint64_t ticksPerSecond;
 
-      void
-      setTimerResolution( uint64_t ticksPerSecond );
+     Graph graph;
+     GraphNode* globalSourceNode;
+     GraphNodeStackMap pendingGraphNodeStackMap;
 
-      uint64_t
-      getTimerResolution( );
+     // create the only instance of AnalysisMetric
+     AnalysisMetric ctrTable;
 
-      double
-      getRealTime( uint64_t t );
+     // >>> query graph objects <<< //
 
-      const std::string
-      getNodeInfo( Node* node );
+     GraphNode*
+     topGraphNodeStack( uint64_t streamId );
 
-      void
-      streamWalkBackward( GraphNode* node, EventStream::StreamWalkCallback callback,
-          void* userData ) const;
+     void
+     popGraphNodeStack( uint64_t streamId );
 
-      uint64_t
-      getDeltaTicks( );
+     void
+     pushGraphNodeStack( GraphNode* node, uint64_t streamId );
 
-      void
-      runSanityCheck( uint32_t mpiRank );
+     void
+     sanityCheckEdge( Edge* edge, uint32_t mpiRank );
 
-    protected:
-      EventStreamGroup  streamGroup;
-      uint64_t ticksPerSecond;
-
-      Graph graph;
-      GraphNode* globalSourceNode;
-      GraphNodeStackMap pendingGraphNodeStackMap;
-
-      /* create the only instance of AnalysisMetric */
-      AnalysisMetric    ctrTable;
-
-      /* >>> query graph objects <<< // */
-
-      GraphNode*
-      topGraphNodeStack( uint64_t streamId );
-
-      void
-      popGraphNodeStack( uint64_t streamId );
-
-      void
-      pushGraphNodeStack( GraphNode* node, uint64_t streamId );
-
-      void
-      sanityCheckEdge( Edge* edge, uint32_t mpiRank );
-
-      void
-      addNewGraphNodeInternal( GraphNode* node, EventStream* stream );
-
-  };
+     void
+     addNewGraphNodeInternal( GraphNode* node, EventStream* stream );
+ };
 
 }

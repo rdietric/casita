@@ -17,40 +17,40 @@
 
 namespace casita
 {
-  /* namespace offload */
-  /* { */
+  //namespace offload
+  //{
 
-  /**
-   * Add the given node to the stream-walk list and add its waiting time to
-   * the stream walk waiting time. Return false when a device synchronization
-   * leave, a launch leave or a process start node has been found.
-   *
-   * @param userData pointer to StreamWalkInfo
-   * @param node the node under investigation
-   *
-   * @return false when a device synchronization leave, a launch leave or
-   *         a process start node has been found, otherwise true.
-   */
-  static bool
-  ofldStreamWalkCallback( void* userData, GraphNode* node )
-  {
-    StreamWalkInfo* listAndWaitTime = (StreamWalkInfo*)userData;
-    listAndWaitTime->list.push_back( node );
-
-    /* return false, if we found a process start node or a sync device or */
-    /* enqueue kernel leave node */
-    if ( node->isProcess( ) || ( node->isLeave( ) &&
-        ( node->isOffloadWaitAll( ) ||
-        node->isOffloadEnqueueKernel( ) ) ) )
+    /**
+     * Add the given node to the stream-walk list and add its waiting time to 
+     * the stream walk waiting time. Return false when a device synchronization
+     * leave, a launch leave or a process start node has been found. 
+     * 
+     * @param userData pointer to StreamWalkInfo
+     * @param node the node under investigation
+     * 
+     * @return false when a device synchronization leave, a launch leave or 
+     *         a process start node has been found, otherwise true.
+     */
+    static bool
+    ofldStreamWalkCallback( void* userData, GraphNode* node )
     {
-      return false;
+      StreamWalkInfo* listAndWaitTime = (StreamWalkInfo*)userData;
+      listAndWaitTime->list.push_back( node );
+
+      // return false, if we found a process start node or a sync device or 
+      // enqueue kernel leave node
+      if ( node->isProcess() || ( node->isLeave() && 
+                                  ( node->isOffloadWaitAll() ||
+                                    node->isOffloadEnqueueKernel() ) ) )
+      {
+        return false;
+      }
+      
+      //UTILS_OUT( "Walk node %s", node->getUniqueName().c_str() );
+
+      //listAndWaitTime->waitStateTime += node->getCounter( WAITING_TIME, NULL );
+
+      return true;
     }
-
-    /* UTILS_OUT( "Walk node %s", node->getUniqueName().c_str() ); */
-
-    /* listAndWaitTime->waitStateTime += node->getCounter( WAITING_TIME, NULL ); */
-
-    return true;
-  }
-  /* } */
+  //}
 }

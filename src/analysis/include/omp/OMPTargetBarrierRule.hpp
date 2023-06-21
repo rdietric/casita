@@ -17,169 +17,169 @@
 
 namespace casita
 {
-  namespace omp
+ namespace omp
+ {
+
+  class OMPTargetBarrierRule :
+    public IOMPRule
   {
+    public:
 
-    class OMPTargetBarrierRule :
-      public IOMPRule
-    {
-      public:
+      OMPTargetBarrierRule( int priority ) :
+        IOMPRule( "OMPTargetBarrierRule", priority )
+      {
 
-        OMPTargetBarrierRule( int priority ) :
-          IOMPRule( "OMPTargetBarrierRule", priority )
+      }
+
+    private:
+      bool
+      apply( AnalysisParadigmOMP* analysis, GraphNode* node )
+      {
+        if ( !node->isOMPSync( ) )
         {
-
+          return false;
         }
 
-      private:
-        bool
-        apply( AnalysisParadigmOMP* analysis, GraphNode* node )
+        AnalysisEngine* commonAnalysis = analysis->getCommon( );
+        EventStream*    nodeStream     = commonAnalysis->getStream(
+          node->getStreamId( ) );
+
+        if ( !nodeStream->isDeviceStream( ) )
         {
-          if ( !node->isOMPSync( ) )
+          return false;
+        }
+
+        if ( node->isEnter( ) )
+        {
+          // enter
+          bool     valid = false;
+          uint64_t matchingId           = node->getCounter( OMPT_REGION_ID, &valid );
+          if ( !valid )
           {
+            ErrorUtils::getInstance( ).throwError(
+              "OMP Target Barrier enter without matching ID (%s)",
+              node->getUniqueName( ).c_str( ) );
             return false;
           }
 
-          AnalysisEngine* commonAnalysis = analysis->getCommon( );
-          EventStream*    nodeStream     = commonAnalysis->getStream(
-            node->getStreamId( ) );
+          /* save barrier enter events to BarrierEventList */
+          analysis->addBarrierEventToList( node, true, matchingId );
 
-          if ( !nodeStream->isDeviceStream( ) )
+          return true;
+        }
+        else
+        {
+          // leave
+          GraphNode* enterEvent  = node->getPartner( );
+          
+          bool valid = false;
+          
+          uint64_t matchingId    = enterEvent->getCounter( OMPT_REGION_ID, &valid );
+          if ( !valid )
           {
+            ErrorUtils::getInstance( ).throwError(
+              "OMP Target Barrier leave without matching ID at partner (%s)",
+              node->getUniqueName( ).c_str( ) );
             return false;
           }
 
-          if ( node->isEnter( ) )
-          {
-            /* enter */
-            bool     valid      = false;
-            uint64_t matchingId = node->getCounter( OMPT_REGION_ID, &valid );
-            if ( !valid )
-            {
-              ErrorUtils::getInstance( ).throwError(
-                "OMP Target Barrier enter without matching ID (%s)",
-                node->getUniqueName( ).c_str( ) );
-              return false;
-            }
+          /* save barrier leave events to BarrierEventList, too */
+          analysis->addBarrierEventToList( node, true, matchingId );
 
-            /* save barrier enter events to BarrierEventList */
-            analysis->addBarrierEventToList( node, true, matchingId );
+          const GraphNode::GraphNodeList& barrierList =
+            analysis->getBarrierEventList( true, NULL, matchingId );
 
-            return true;
-          }
-          else
-          {
-            /* leave */
-            GraphNode* enterEvent = node->getPartner( );
-
-            bool valid = false;
-
-            uint64_t   matchingId = enterEvent->getCounter( OMPT_REGION_ID, &valid );
-            if ( !valid )
-            {
-              ErrorUtils::getInstance( ).throwError(
-                "OMP Target Barrier leave without matching ID at partner (%s)",
-                node->getUniqueName( ).c_str( ) );
-              return false;
-            }
-
-            /* save barrier leave events to BarrierEventList, too */
-            analysis->addBarrierEventToList( node, true, matchingId );
-
-            const GraphNode::GraphNodeList& barrierList =
-                analysis->getBarrierEventList( true, NULL, matchingId );
-
-            size_t numLeaveNodesInList = 0;
-            for ( GraphNode::GraphNodeList::const_reverse_iterator rIter =
-                barrierList.rbegin( );
+          size_t numLeaveNodesInList = 0;
+          for ( GraphNode::GraphNodeList::const_reverse_iterator rIter =
+                  barrierList.rbegin( );
                 rIter != barrierList.rend( ); ++rIter )
+          {
+            if ( ( *rIter )->isEnter( ) )
             {
-              if ( ( *rIter )->isEnter( ) )
-              {
-                break;
-              }
-
-              numLeaveNodesInList++;
+              break;
             }
 
-            /* not yet all barrier leaves found */
-            if ( numLeaveNodesInList * 2 < barrierList.size( ) )
+            numLeaveNodesInList++;
+          }
+
+          /* not yet all barrier leaves found */
+          if ( numLeaveNodesInList * 2 < barrierList.size( ) )
+          {
+            return false;
+          }
+          assert( numLeaveNodesInList * 2 == barrierList.size( ) );
+
+          GraphNode::GraphNodeList tmpBarrierList;
+          tmpBarrierList.assign( barrierList.begin( ), barrierList.end( ) );
+
+          /* no wait states for single-stream barriers */
+          if ( numLeaveNodesInList == 1 )
+          {
+            // ignore this non-blocking barrier for blame distribution
+            tmpBarrierList.front( )->setCounter( OMP_IGNORE_BARRIER, 1 );
+            tmpBarrierList.back( )->setCounter( OMP_IGNORE_BARRIER, 1 );
+
+            analysis->clearBarrierEventList( true, NULL, matchingId );
+            return false;
+          }
+
+          /* remove all leave nodes (which are at end of the list) */
+          for ( size_t i = 0; i < numLeaveNodesInList; ++i )
+          {
+            tmpBarrierList.pop_back( );
+          }
+          GraphNode::GraphNodeList::const_iterator iter = tmpBarrierList.begin( );
+          /* keep enter event with max enter timestamp */
+          GraphNode* maxEnterTimeNode = *iter;
+          uint64_t   blame = 0;
+
+          /* find last barrierEnter */
+          for (; iter != tmpBarrierList.end( ); ++iter )
+          {
+            if ( ( *iter )->getTime( ) > maxEnterTimeNode->getTime( ) )
             {
-              return false;
+              maxEnterTimeNode = *iter;
             }
-            assert( numLeaveNodesInList * 2 == barrierList.size( ) );
-
-            GraphNode::GraphNodeList tmpBarrierList;
-            tmpBarrierList.assign( barrierList.begin( ), barrierList.end( ) );
-
-            /* no wait states for single-stream barriers */
-            if ( numLeaveNodesInList == 1 )
-            {
-              /* ignore this non-blocking barrier for blame distribution */
-              tmpBarrierList.front( )->setCounter( OMP_IGNORE_BARRIER, 1 );
-              tmpBarrierList.back( )->setCounter( OMP_IGNORE_BARRIER, 1 );
-
-              analysis->clearBarrierEventList( true, NULL, matchingId );
-              return false;
-            }
-
-            /* remove all leave nodes (which are at end of the list) */
-            for ( size_t i = 0; i < numLeaveNodesInList; ++i )
-            {
-              tmpBarrierList.pop_back( );
-            }
-            GraphNode::GraphNodeList::const_iterator iter = tmpBarrierList.begin( );
-            /* keep enter event with max enter timestamp */
-            GraphNode* maxEnterTimeNode = *iter;
-            uint64_t   blame = 0;
-
-            /* find last barrierEnter */
-            for (; iter != tmpBarrierList.end( ); ++iter )
-            {
-              if ( ( *iter )->getTime( ) > maxEnterTimeNode->getTime( ) )
-              {
-                maxEnterTimeNode = *iter;
-              }
-              /* accumulate blame, set edges from latest enter to all
-               * other leaves */
-            }
-            for ( iter = tmpBarrierList.begin( );
+            /* accumulate blame, set edges from latest enter to all
+             * other leaves */
+          }
+          for ( iter = tmpBarrierList.begin( );
                 iter != tmpBarrierList.end( );
                 ++iter )
+          {
+            GraphNode::GraphNodePair& barrier = ( *iter )->getGraphPair( );
+            if ( barrier.first != maxEnterTimeNode )
             {
-              GraphNode::GraphNodePair& barrier = ( *iter )->getGraphPair( );
-              if ( barrier.first != maxEnterTimeNode )
-              {
-                Edge* barrierEdge = commonAnalysis->getEdge( barrier.first,
-                        barrier.second );
-                /* make this barrier a blocking waitstate */
-                barrierEdge->makeBlocking( );
-                barrier.first->setCounter( WAITING_TIME,
-                    maxEnterTimeNode->getTime( ) -
-                    barrier.first->getTime( ) );
+              Edge* barrierEdge = commonAnalysis->getEdge( barrier.first,
+                                                           barrier.second );
+              /* make this barrier a blocking waitstate */
+              barrierEdge->makeBlocking( );
+              barrier.first->setCounter( WAITING_TIME,
+                                         maxEnterTimeNode->getTime( ) -
+                                         barrier.first->getTime( ) );
 
-                /* create edge from latest enter to other leaves */
-                commonAnalysis->newEdge( maxEnterTimeNode,
-                    barrier.second,
-                    EDGE_CAUSES_WAITSTATE );
+              /* create edge from latest enter to other leaves */
+              commonAnalysis->newEdge( maxEnterTimeNode,
+                                       barrier.second,
+                                       EDGE_CAUSES_WAITSTATE );
 
-                blame += maxEnterTimeNode->getTime( ) - barrier.first->getTime( );
-              }
+              blame += maxEnterTimeNode->getTime( ) - barrier.first->getTime( );
             }
-
-            distributeBlame( commonAnalysis,
-                maxEnterTimeNode,
-                blame,
-                streamWalkCallback );
-
-            /* clear list of buffered barriers */
-            analysis->clearBarrierEventList( true, NULL, matchingId );
-
-            return true;
           }
+
+          distributeBlame( commonAnalysis,
+                           maxEnterTimeNode,
+                           blame,
+                           streamWalkCallback );
+
+          /* clear list of buffered barriers */
+          analysis->clearBarrierEventList( true, NULL, matchingId );
+
+          return true;
         }
+      }
 
-    };
+  };
 
-  }
+ }
 }

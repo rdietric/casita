@@ -24,78 +24,77 @@
 
 namespace casita
 {
-  class Graph
-  {
-    public:
-      typedef std::vector< Edge* > EdgeList;
-      typedef std::set< Edge* > EdgeSet;
-      typedef std::vector< GraphNode* > NodeList;
-      typedef std::map< GraphNode*, EdgeList > NodeEdges;
+ class Graph
+ {
+   public:
+     typedef std::vector< Edge* > EdgeList;
+     typedef std::set< Edge* > EdgeSet;
+     typedef std::vector< GraphNode* > NodeList;
+     typedef std::map< GraphNode*, EdgeList > NodeEdges;
 
-      Graph( );
-      Graph( bool isSubGraph );
-      virtual
-      ~Graph( );
+     Graph();
+     Graph( bool isSubGraph );
+     virtual
+     ~Graph();
+     
+     /**
+      * Clear all lists in this graph object and deallocate/delete edges.
+      */
+     void
+     cleanup( bool deleteEdges );
 
-      /**
-       * Clear all lists in this graph object and deallocate/delete edges.
-       */
-      void
-      cleanup( bool deleteEdges );
+     void
+     addNode( GraphNode* node );
 
-      void
-      addNode( GraphNode* node );
+     void
+     addEdge( Edge* edge );
 
-      void
-      addEdge( Edge* edge );
+     void
+     removeEdge( Edge* edge );
 
-      void
-      removeEdge( Edge* edge );
+     Graph*
+     getSubGraph( Paradigm paradigm );
 
-      Graph*
-      getSubGraph( Paradigm paradigm );
+     const EdgeList&
+     getInEdges( GraphNode* node ) const;
+     
+     const EdgeList*
+     getInEdgesPtr( GraphNode* node ) const;
+     
+     void
+     printPath( const GraphNode::GraphNodeList& path ) const;
+     
+     const EdgeList*
+     getOutEdges( GraphNode* node ) const;
 
-      const EdgeList&
-      getInEdges( GraphNode* node ) const;
+     const NodeList&
+     getNodes() const;
+     
+     void
+     getCriticalPath( GraphNode* start, GraphNode* end,
+                      GraphNodeQueue& path ) const;
 
-      const EdgeList*
-      getInEdgesPtr( GraphNode* node ) const;
+   protected:
+     NodeList  nodes;
+     NodeEdges inEdges, outEdges;
+     bool      isSubGraph;
 
-      void
-      printPath( const GraphNode::GraphNodeList& path ) const;
+     typedef std::map< GraphNode*, uint64_t > DistanceMap;
 
-      const EdgeList*
-      getOutEdges( GraphNode* node ) const;
+     static bool
+     compareDistancesLess( GraphNode* n1, GraphNode* n2,
+                           DistanceMap& distanceMap );
 
-      const NodeList&
-      getNodes( ) const;
-
-      void
-      getCriticalPath( GraphNode* start, GraphNode* end,
-          GraphNodeQueue& path ) const;
-
-    protected:
-      NodeList  nodes;
-      NodeEdges inEdges, outEdges;
-      bool      isSubGraph;
-
-      typedef std::map< GraphNode*, uint64_t > DistanceMap;
-
-      static bool
-      compareDistancesLess( GraphNode* n1, GraphNode* n2,
-          DistanceMap& distanceMap );
-
-      static void
-      sortedInsert( GraphNode* n, std::list< GraphNode* >& nodes,
-          DistanceMap& distanceMap );
-
-    private:
-      void
-      printInEdges( GraphNode* node ) const;
-
-      void
-      printCircle( GraphNode* node, GraphNodeQueue& nodeList ) const;
-
-  };
+     static void
+     sortedInsert( GraphNode* n, std::list< GraphNode* >& nodes,
+                   DistanceMap& distanceMap );
+   
+   private:     
+     void
+     printInEdges( GraphNode* node ) const;
+     
+     void
+     printCircle( GraphNode* node, GraphNodeQueue& nodeList ) const;
+ };
 
 }

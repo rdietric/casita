@@ -29,10 +29,10 @@ namespace casita
       typedef std::vector< DeviceStream* > DeviceStreamList;
       typedef std::map< uint64_t, EventStream* > EventStreamMap;
 
-      EventStreamGroup( );
+      EventStreamGroup();
 
       virtual
-      ~EventStreamGroup( );
+      ~EventStreamGroup();
 
       void
       addHostStream( EventStream* p );
@@ -45,64 +45,64 @@ namespace casita
 
       void
       setDeviceNullStream( DeviceStream* p );
-
+      
       DeviceStream*
       getDeviceNullStream( int deviceId = -1 );
-
+      
       bool
-      deviceWithNullStreamOnly( ) const;
-
+      deviceWithNullStreamOnly() const;
+      
       EventStream*
       getStream( uint64_t id ) const;
-
+     
       const EventStreamList&
-      getAllStreams( ) const;
+      getAllStreams() const;
 
       void
       getAllStreams( EventStreamList& streams, Paradigm paradigm ) const;
 
       MpiStream*
       getMpiStream( uint64_t id ) const;
-
+      
       const EventStreamList&
-      getHostStreams( ) const;
-
+      getHostStreams() const;
+      
       DeviceStream*
       getDeviceStream( uint64_t id ) const;
 
       const DeviceStreamList&
-      getDeviceStreams( ) const;
-
+      getDeviceStreams() const;
+      
       const DeviceStreamList&
       getDeviceStreams( int deviceId );
 
       void
       getDeviceStreams( DeviceStreamList& newDeviceStreams ) const;
-
+      
       size_t
-      getNumDevices( ) const;
-
+      getNumDevices() const;
+      
       DeviceStream*
       getFirstDeviceStream( int deviceId );
 
     private:
-      /* <! stores stream IDs together with a pointer to the object */
-      EventStreamMap   streamsMap;
-
+      //<! stores stream IDs together with a pointer to the object
+      EventStreamMap streamsMap;
+     
       EventStreamList  hostStreams;
       DeviceStreamList deviceStreams;
       EventStreamList  allStreams;
-
-      /* <! initially false, true if only one device stream that is the null stream exists */
+      
+      //<! initially false, true if only one device stream that is the null stream exists
       bool deviceNullStreamOnly;
-
-      /* associates device ID and corresponding null stream */
-      std::map< int, DeviceStream* >    deviceNullStreamMap;
-
-      std::map< int, DeviceStream* >    deviceFirstStreamMap;
-
-      /* <! collect all device streams per device Id */
-      std::map< int, DeviceStreamList > deviceIdStreamsMap;
-  };
+      
+      // associates device ID and corresponding null stream
+      std::map< int, DeviceStream* > deviceNullStreamMap;
+      
+      std::map< int, DeviceStream* > deviceFirstStreamMap;
+      
+      //<! collect all device streams per device Id
+      std::map< int, DeviceStreamList > deviceIdStreamsMap; 
+ };
 
 }

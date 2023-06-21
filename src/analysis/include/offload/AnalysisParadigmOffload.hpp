@@ -22,155 +22,155 @@ using namespace casita::io;
 
 namespace casita
 {
-  namespace offload
+ namespace offload
+ { 
+  class AnalysisParadigmOffload :
+    public IAnalysisParadigm
   {
-    class AnalysisParadigmOffload :
-      public IAnalysisParadigm
-    {
-      public:
+    public:
 
-        typedef struct
-        {
-          EventNode*           node;
-          std::set< uint32_t > tags;
-        } StreamWaitTagged;
+      typedef struct
+      {
+        EventNode*           node;
+        std::set< uint32_t > tags;
+      } StreamWaitTagged;
 
-        typedef std::list< StreamWaitTagged* > NullStreamWaitList;
+      typedef std::list< StreamWaitTagged* > NullStreamWaitList;
 
-        AnalysisParadigmOffload( AnalysisEngine* analysisEngine );
+      AnalysisParadigmOffload( AnalysisEngine* analysisEngine );
 
-        virtual
-        ~AnalysisParadigmOffload( );
+      virtual
+      ~AnalysisParadigmOffload();
+      
+      void 
+      reset();
 
-        void
-        reset( );
+      Paradigm
+      getParadigm();
 
-        Paradigm
-        getParadigm( );
+      void
+      handlePostEnter( GraphNode* node );
 
-        void
-        handlePostEnter( GraphNode* node );
+      void
+      handlePostLeave( GraphNode* node );
 
-        void
-        handlePostLeave( GraphNode* node );
+      void
+      handleKeyValuesEnter( OTF2TraceReader*  reader,
+                            GraphNode*        node,
+                            OTF2KeyValueList* list );
 
-        void
-        handleKeyValuesEnter( OTF2TraceReader* reader,
-            GraphNode*                         node,
-            OTF2KeyValueList*                  list );
+      void
+      handleKeyValuesLeave( OTF2TraceReader*  reader,
+                            GraphNode*        node,
+                            GraphNode*        oldNode,
+                            OTF2KeyValueList* list );
+      
+      size_t
+      getPendingKernelCount( void ) const;
+      
+      bool
+      isKernelPending( GraphNode* kernelNode );
 
-        void
-        handleKeyValuesLeave( OTF2TraceReader* reader,
-            GraphNode*                         node,
-            GraphNode*                         oldNode,
-            OTF2KeyValueList*                  list );
+      void
+      setLastEventLaunch( EventNode* eventLaunchLeave );
 
-        size_t
-        getPendingKernelCount( void ) const;
+      EventNode*
+      consumeLastEventLaunchLeave( uint64_t eventId );
 
-        bool
-        isKernelPending( GraphNode* kernelNode );
+      EventNode*
+      getEventRecordLeave( uint64_t eventId ) const;
 
-        void
-        setLastEventLaunch( EventNode* eventLaunchLeave );
+      void
+      addEventProcessId( uint64_t eventId, uint64_t streamId );
 
-        EventNode*
-        consumeLastEventLaunchLeave( uint64_t eventId );
+      uint64_t
+      getEventProcessId( uint64_t eventId ) const;
 
-        EventNode*
-        getEventRecordLeave( uint64_t eventId ) const;
+      void
+      addPendingKernelLaunch( GraphNode* launch );
 
-        void
-        addEventProcessId( uint64_t eventId, uint64_t streamId );
+      GraphNode*
+      consumeFirstPendingKernelLaunchEnter( uint64_t kernelStreamId );
 
-        uint64_t
-        getEventProcessId( uint64_t eventId ) const;
+      void
+      addStreamWaitEvent( uint64_t deviceProcId, EventNode* streamWaitLeave );
 
-        void
-        addPendingKernelLaunch( GraphNode* launch );
+      EventNode*
+      getFirstStreamWaitEvent( uint64_t deviceStreamId );
 
-        GraphNode*
-        consumeFirstPendingKernelLaunchEnter( uint64_t kernelStreamId );
+      EventNode*
+      consumeFirstStreamWaitEvent( uint64_t deviceStreamId );
 
-        void
-        addStreamWaitEvent( uint64_t deviceProcId, EventNode* streamWaitLeave );
+      void
+      linkEventQuery( EventNode* eventQueryLeave );
 
-        EventNode*
-        getFirstStreamWaitEvent( uint64_t deviceStreamId );
+      void
+      removeEventQuery( uint64_t eventId );
 
-        EventNode*
-        consumeFirstStreamWaitEvent( uint64_t deviceStreamId );
+      GraphNode*
+      getLastKernelLaunchLeave( uint64_t timestamp, uint64_t deviceStreamId ) const;
+      
+      GraphNode*
+      findFirstLaunchInIdle( uint64_t idle_start_time, GraphNode* searchStartNode ) const;
+      
+      void
+      removeKernelLaunch( GraphNode* kernel );
+      
+      void
+      clearKernelEnqueues( uint64_t streamId );
+      
+      void
+      createKernelDependencies( GraphNode* kernelEnter ) const;
+      
+      uint64_t
+      blameShortestPath( GraphNode* kernelLeave, uint64_t totalBlame, 
+                         BlameReason reason = REASON_UNCLASSIFIED ) const;
+      
+      void 
+      printDebugInformation( uint64_t eventId );
+      
+      //!< number of active compute tasks -- analysis time
+      uint8_t active_compute_tasks;
+      
+      //!< time when device idle starts
+      uint64_t idle_start_time;
+      
+      //!< last overlapping kernel enter, evaluated at analysis time
+      GraphNode* oKernelEnter;
 
-        void
-        linkEventQuery( EventNode* eventQueryLeave );
+      //!< compute overlap interval start time
+      uint64_t overlapIntervalStart;
+      
+      // 500us
+      uint64_t delay500us;
 
-        void
-        removeEventQuery( uint64_t eventId );
+    private:
+      void
+      printKernelLaunchMap();
+      
+      // number of pending kernels (between launch and kernel end) during trace reading
+      size_t pendingKernels;
+      
+      //!< maps event ID to last (cuEventRecord) leave node for this event
+      IdEventNodeMap     eventLaunchMap;
 
-        GraphNode*
-        getLastKernelLaunchLeave( uint64_t timestamp, uint64_t deviceStreamId ) const;
+      //!< maps event ID to (cuEventQuery) leave node
+      IdEventNodeMap     eventQueryMap;
 
-        GraphNode*
-        findFirstLaunchInIdle( uint64_t idle_start_time, GraphNode* searchStartNode ) const;
+      //!< maps (device) stream ID to list of (cuStreamWaitEvent) leave nodes
+      IdEventsListMap    streamWaitMap;
 
-        void
-        removeKernelLaunch( GraphNode* kernel );
+      //!< maps event ID to (device) stream ID
+      IdIdMap            eventProcessMap;
+      
+      //!< 
+      NullStreamWaitList nullStreamWaits;
+      
+      //!< list of kernel launch enter and leave nodes for every (device) stream; 
+      // kernel launch enter nodes are consumed at kernel enter
+      // <device stream, list of kernel launch nodes>
+      IdNodeListMap      pendingKernelLaunchMap;
+  };
 
-        void
-        clearKernelEnqueues( uint64_t streamId );
-
-        void
-        createKernelDependencies( GraphNode* kernelEnter ) const;
-
-        uint64_t
-        blameShortestPath( GraphNode* kernelLeave, uint64_t totalBlame,
-            BlameReason reason = REASON_UNCLASSIFIED ) const;
-
-        void
-        printDebugInformation( uint64_t eventId );
-
-        /* !< number of active compute tasks -- analysis time */
-        uint8_t    active_compute_tasks;
-
-        /* !< time when device idle starts */
-        uint64_t   idle_start_time;
-
-        /* !< last overlapping kernel enter, evaluated at analysis time */
-        GraphNode* oKernelEnter;
-
-        /* !< compute overlap interval start time */
-        uint64_t   overlapIntervalStart;
-
-        /* 500us */
-        uint64_t   delay500us;
-
-      private:
-        void
-        printKernelLaunchMap( );
-
-        /* number of pending kernels (between launch and kernel end) during trace reading */
-        size_t pendingKernels;
-
-        /* !< maps event ID to last (cuEventRecord) leave node for this event */
-        IdEventNodeMap  eventLaunchMap;
-
-        /* !< maps event ID to (cuEventQuery) leave node */
-        IdEventNodeMap  eventQueryMap;
-
-        /* !< maps (device) stream ID to list of (cuStreamWaitEvent) leave nodes */
-        IdEventsListMap streamWaitMap;
-
-        /* !< maps event ID to (device) stream ID */
-        IdIdMap eventProcessMap;
-
-        /* !< */
-        NullStreamWaitList nullStreamWaits;
-
-        /* !< list of kernel launch enter and leave nodes for every (device) stream; */
-        /* kernel launch enter nodes are consumed at kernel enter */
-        /* <device stream, list of kernel launch nodes> */
-        IdNodeListMap      pendingKernelLaunchMap;
-    };
-
-  }
+ }
 }

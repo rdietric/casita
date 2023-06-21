@@ -19,50 +19,50 @@
 namespace casita
 {
 
-  class EventNode :
-    public GraphNode
-  {
-    public:
+ class EventNode :
+   public GraphNode
+ {
+   public:
 
-      typedef std::stack< EventNode* > EventNodeStack;
-      typedef std::list< EventNode* > EventNodeList;
+     typedef std::stack< EventNode* > EventNodeStack;
+     typedef std::list< EventNode* > EventNodeList;
 
-      enum FunctionResultType
-      {
-        FR_UNKNOWN = 0,
-        FR_SUCCESS = 1
-      };
+     enum FunctionResultType
+     {
+       FR_UNKNOWN = 0,
+       FR_SUCCESS = 1
+     };
 
-      EventNode( uint64_t time, uint64_t streamId, uint64_t eventId,
-          FunctionResultType fResult, const char* name,
-          Paradigm paradigm, RecordType recordType, int nodeType ) :
-        GraphNode( time, streamId, name, paradigm, recordType, nodeType ),
-        eventId( eventId ),
-        fResult( fResult )
-      {
-      }
+     EventNode( uint64_t time, uint64_t streamId, uint64_t eventId,
+                FunctionResultType fResult, const char* name,
+                Paradigm paradigm, RecordType recordType, int nodeType ) :
+       GraphNode( time, streamId, name, paradigm, recordType, nodeType ),
+       eventId( eventId ),
+       fResult( fResult )
+     {
+     }
 
-      uint64_t
-      getEventId( ) const
-      {
-        return eventId;
-      }
+     uint64_t
+     getEventId( ) const
+     {
+       return eventId;
+     }
 
-      FunctionResultType
-      getFunctionResult( ) const
-      {
-        return fResult;
-      }
+     FunctionResultType
+     getFunctionResult( ) const
+     {
+       return fResult;
+     }
 
-      bool
-      isEventNode( ) const
-      {
-        return true;
-      }
+     bool
+     isEventNode( ) const
+     {
+       return true;
+     }
 
-    protected:
-      uint64_t eventId;
-      FunctionResultType fResult;
-  };
+   protected:
+     uint64_t eventId;
+     FunctionResultType fResult;
+ };
 
 }

@@ -24,16 +24,16 @@
 #include "mpi/ISendRule.hpp"
 #include "mpi/WaitAllRule.hpp"
 #include "mpi/WaitRule.hpp"
-/* #include "mpi/TestRule.hpp" */
+//#include "mpi/TestRule.hpp"
 
 using namespace casita;
 using namespace casita::mpi;
 
 AnalysisParadigmMPI::AnalysisParadigmMPI( AnalysisEngine* analysisEngine,
-    uint32_t                                              mpiRank,
-    uint32_t                                              mpiSize ) :
+                                          uint32_t        mpiRank,
+                                          uint32_t        mpiSize ) :
   IAnalysisParadigm( analysisEngine ),
-  /* pendingMPIRequests( NULL ), */
+  //pendingMPIRequests( NULL ),
   mpiRank( mpiRank ),
   mpiSize( mpiSize )
 {
@@ -41,133 +41,133 @@ AnalysisParadigmMPI::AnalysisParadigmMPI( AnalysisEngine* analysisEngine,
   addRule( new SendRule( 1 ) );
   addRule( new SendRecvRule( 1 ) );
   addRule( new CollectiveRule( 1 ) );
-
-  /* do not add the rules for non-blocking MPI communication, if it shall be ignored */
-  if ( !( Parser::getInstance( ).getProgramOptions( ).ignoreAsyncMpi ) )
+  
+  // do not add the rules for non-blocking MPI communication, if it shall be ignored
+  if ( !(Parser::getInstance().getProgramOptions().ignoreAsyncMpi) )
   {
     addRule( new IRecvRule( 1 ) );
     addRule( new ISendRule( 1 ) );
     addRule( new WaitAllRule( 1 ) );
     addRule( new WaitRule( 1 ) );
-    /* addRule( new TestRule( 1 ) ); */
+    //addRule( new TestRule( 1 ) );
   }
 }
 
-AnalysisParadigmMPI::~AnalysisParadigmMPI( )
+AnalysisParadigmMPI::~AnalysisParadigmMPI()
 {
 
 }
 
 Paradigm
-AnalysisParadigmMPI::getParadigm( )
+AnalysisParadigmMPI::getParadigm()
 {
   return PARADIGM_MPI;
 }
 
-/* void */
-/* AnalysisParadigmMPI::handlePostEnter( GraphNode* node ) */
-/* { */
-/*  */
-/* } */
+//void
+//AnalysisParadigmMPI::handlePostEnter( GraphNode* node )
+//{
+//  
+//}
 
 void
 AnalysisParadigmMPI::handlePostLeave( GraphNode* node )
 {
-  MpiStream* stream =
-      analysisEngine->getStreamGroup( ).getMpiStream( node->getStreamId( ) );
+  MpiStream* stream = 
+    analysisEngine->getStreamGroup().getMpiStream( node->getStreamId() );
 
-  if ( node->isMPIBlocking( ) ) /* handle blocking MPI communication events */
+  if( node->isMPIBlocking() ) // handle blocking MPI communication events
   {
-    MpiStream::MpiBlockingCommData& commData = stream->getPendingMpiCommRecord( );
+    MpiStream::MpiBlockingCommData& commData = stream->getPendingMpiCommRecord();
 
-    if ( node->isMPISendRecv( ) )
+    if( node->isMPISendRecv() )
     {
-      /* send partner, receive partner, send tag, receive tag. communicator */
+      // send partner, receive partner, send tag, receive tag. communicator
       node->setReferencedStreamId( commData.comRef );
-      uint32_t* tmpId = new uint32_t[4];
+      uint32_t *tmpId = new uint32_t[ 4 ];
       tmpId[0] = commData.sendPartnerId;
       tmpId[1] = commData.sendTag;
       tmpId[2] = commData.recvPartnerId;
       tmpId[3] = commData.recvTag;
       node->setData( tmpId );
     }
-    else
-    if ( node->isMPISend( ) ) {
-      /* partner process, tag, communicator */
+    else if( node->isMPISend() )
+    {
+      // partner process, tag, communicator
       node->setReferencedStreamId( commData.sendPartnerId );
-      uint32_t* tmpId = new uint32_t[2];
+      uint32_t *tmpId = new uint32_t[ 2 ];
       tmpId[0] = commData.sendTag;
       tmpId[1] = commData.comRef;
       node->setData( tmpId );
     }
-    else
-    if ( node->isMPIRecv( ) ) {
-      /* partner process, tag, communicator */
+    else if( node->isMPIRecv() )
+    {
+      // partner process, tag, communicator
       node->setReferencedStreamId( commData.recvPartnerId );
-      uint32_t* tmpId = new uint32_t[2];
+      uint32_t *tmpId = new uint32_t[ 2 ];
       tmpId[0] = commData.recvTag;
       tmpId[1] = commData.comRef;
       node->setData( tmpId );
     }
-    else
-    if ( node->isMPICollective( ) ) {
-      /*UTILS_WARNING( "[%" PRIu64 "] set communicator for %s (group %u)",
-                       node->getStreamId(),
+    else if( node->isMPICollective() )
+    {
+      /*UTILS_WARNING( "[%" PRIu64 "] set communicator for %s (group %u)", 
+                       node->getStreamId(), 
                        node->getUniqueName().c_str(),
                        commData.comRef );*/
-
-      /* MPI_Init and MPI_Finalize do not have a communicator */
-      /* (referenced stream stays 0) */
-      if ( commData.comRef != UINT32_MAX )
+      
+      // MPI_Init and MPI_Finalize do not have a communicator 
+      // (referenced stream stays 0)
+      if( commData.comRef != UINT32_MAX )
       {
         node->setReferencedStreamId( commData.comRef );
       }
     }
-
-    /* invalidate communicator */
+    
+    // invalidate communicator
     commData.comRef = UINT32_MAX;
-
+    
     /* expose this blocking MPI operation, if an offloading kernel is active
     if( commonAnalysis->getAnalysis( PARADIGM_OFFLOAD ) )
     {
-      offload::AnalysisParadigmOffload* ofldAnalysis =
+      offload::AnalysisParadigmOffload* ofldAnalysis = 
         ( offload::AnalysisParadigmOffload* ) commonAnalysis->getAnalysis( PARADIGM_OFFLOAD );
-
+      
       ofldAnalysis->getActiveKernelCount();
     }*/
   }
-  else /* handle non-blocking MPI communication enter/leave events */
+  else // handle non-blocking MPI communication enter/leave events
   {
-    if ( node->isMPI_Isend( ) )
+    if( node->isMPI_Isend() )
     {
       stream->handleMPIIsendLeave( node );
       return;
     }
-    else
-    if ( node->isMPI_Irecv( ) ) {
+    else  if( node->isMPI_Irecv() )
+    {
       stream->handleMPIIrecvLeave( node );
       return;
     }
-    else
-    if ( node->isMPIWait( ) ) {
+    else if( node->isMPIWait() )
+    {
       stream->handleMPIWaitLeave( node );
       return;
     }
-    else
-    if ( node->isMPI_Test( ) ) {
+    else if( node->isMPI_Test() )
+    {
       stream->handleMPITest( node );
-      analysisEngine->getStatistics( ).countActivity( STAT_MPI_TEST );
+      analysisEngine->getStatistics().countActivity( STAT_MPI_TEST );
       return;
     }
-    else
-    if ( node->isMPIWaitall( ) ) {
+    else if( node->isMPIWaitall() )
+    {
       stream->setMPIWaitallNodeData( node );
       return;
     }
-    else
-    if ( node->isMPI_Testall( ) ) {
+    else if( node->isMPI_Testall() )
+    {
       stream->handleMPITestall( node );
-      analysisEngine->getStatistics( ).countActivity( STAT_MPI_TEST );
+      analysisEngine->getStatistics().countActivity( STAT_MPI_TEST );
       return;
     }
   }

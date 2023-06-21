@@ -21,8 +21,8 @@
 #include "graph/EventNode.hpp"
 
 #include "MPIAnalysis.hpp"
-/* #include "cuda/AnalysisParadigmCUDA.hpp" */
-/* #include "opencl/AnalysisParadigmOpenCL.hpp" */
+//#include "cuda/AnalysisParadigmCUDA.hpp"
+//#include "opencl/AnalysisParadigmOpenCL.hpp"
 #include "offload/AnalysisParadigmOffload.hpp"
 #include "omp/AnalysisParadigmOMP.hpp"
 
@@ -40,173 +40,174 @@ namespace casita
     CUDA_EVENTS = ( 1 << 0 )
   };
 
-  class IAnalysisParadigm;
+ class IAnalysisParadigm;
 
-  class AnalysisEngine :
-    public GraphEngine
-  {
-    public:
+ class AnalysisEngine :
+   public GraphEngine
+ {
+   public:
+ 
+     AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize );
 
-      AnalysisEngine( uint32_t mpiRank, uint32_t mpiSize );
+     virtual
+     ~AnalysisEngine();
 
-      virtual
-      ~AnalysisEngine( );
+     uint32_t
+     getMPIRank();
 
-      uint32_t
-      getMPIRank( );
+     uint32_t
+     getMPISize();
 
-      uint32_t
-      getMPISize( );
+     MPIAnalysis&
+     getMPIAnalysis();
+     
+     void
+     setDefinitionHandler( OTF2DefinitionHandler* defHandler );
+     
+     void
+     checkPendingMPIRequests();
+     
+     bool 
+     haveParadigm( Paradigm paradigm ) const;
+     
+     void
+     addDetectedParadigm( Paradigm paradigm );
+     
+     void
+     addAnalysisFeature( AnalysisFeature feature );
+     
+     bool
+     haveAnalysisFeature( AnalysisFeature feature ) const;
 
-      MPIAnalysis&
-      getMPIAnalysis( );
+     
+     void
+     addFilteredRegion( uint32_t regionId );
 
-      void
-      setDefinitionHandler( OTF2DefinitionHandler* defHandler );
+     bool
+     isRegionFiltered( uint32_t regionId );
 
-      void
-      checkPendingMPIRequests( );
+     GraphNode*
+     newGraphNode( uint64_t time, uint64_t streamId,
+                   const char* name, Paradigm paradigm,
+                   RecordType recordType, int nodeType );
 
-      bool
-      haveParadigm( Paradigm paradigm ) const;
+     GraphNode*
+     addNewGraphNode( uint64_t            time,
+                      EventStream*        stream,
+                      const char*         name,
+                      FunctionDescriptor* funcDesc );
 
-      void
-      addDetectedParadigm( Paradigm paradigm );
+     void
+     applyRules( GraphNode* node );
 
-      void
-      addAnalysisFeature( AnalysisFeature feature );
+     void
+     addAnalysis( IAnalysisParadigm* paradigm );
 
-      bool
-      haveAnalysisFeature( AnalysisFeature feature ) const;
+     IAnalysisParadigm*
+     getAnalysis( Paradigm paradigm );
+     
+     void
+     createIntermediateBegin();
 
-      void
-      addFilteredRegion( uint32_t regionId );
+     void
+     handlePostEnter( GraphNode* node );
 
-      bool
-      isRegionFiltered( uint32_t regionId );
+     void
+     handlePostLeave( GraphNode* node );
 
-      GraphNode*
-      newGraphNode( uint64_t time, uint64_t streamId,
-          const char* name, Paradigm paradigm,
-          RecordType recordType, int nodeType );
+     void
+     handleKeyValuesEnter( OTF2TraceReader*  reader,
+                           GraphNode*        node,
+                           OTF2KeyValueList* list );
 
-      GraphNode*
-      addNewGraphNode( uint64_t time,
-          EventStream*          stream,
-          const char*           name,
-          FunctionDescriptor*   funcDesc );
+     void
+     handleKeyValuesLeave( OTF2TraceReader*  reader,
+                           GraphNode*        node,
+                           GraphNode*        oldNode,
+                           OTF2KeyValueList* list );
 
-      void
-      applyRules( GraphNode* node );
+     EventStream*
+     getNullStream() const;
 
-      void
-      addAnalysis( IAnalysisParadigm* paradigm );
+     size_t
+     getNumAllDeviceStreams();
 
-      IAnalysisParadigm*
-      getAnalysis( Paradigm paradigm );
+     GraphNode*
+     getLastLeaveNode( uint64_t timestamp, uint64_t streamId ) const;
+     
+     void
+     getLastLeaveEvent( EventStream **stream, uint64_t *timestamp );
 
-      void
-      createIntermediateBegin( );
+     void
+     reset();
+     
+     /**
+      * Get elapsed time from an event time stamp, e.g. to spot an event in Vampir.
+      * 
+      * @param t event time stamp
+      * @return elapsed time in seconds
+      */
+     double
+     getElapsedTime( uint64_t t );
 
-      void
-      handlePostEnter( GraphNode* node );
+     void
+     runAnalysis();
+     
+     void
+     clearNodes();
+     
+     /**
+      * Add a node to the deferred nodes list that could not be processed.
+      * 
+      * @param node node to be deferred.
+      */
+     void
+     addDeferredNode( GraphNode* node);
+     
+     /**
+      * Process all nodes in the deferred nodes list. 
+      */
+     void
+     processDeferredNodes();
+     
+     Statistics&
+     getStatistics( void );
 
-      void
-      handlePostLeave( GraphNode* node );
+   private:
+     OTF2DefinitionHandler* defHandler;
+     
+     MPIAnalysis mpiAnalysis;
+     
+     Statistics statistics;
 
-      void
-      handleKeyValuesEnter( OTF2TraceReader* reader,
-          GraphNode*                         node,
-          OTF2KeyValueList*                  list );
-
-      void
-      handleKeyValuesLeave( OTF2TraceReader* reader,
-          GraphNode*                         node,
-          GraphNode*                         oldNode,
-          OTF2KeyValueList*                  list );
-
-      EventStream*
-      getNullStream( ) const;
-
-      size_t
-      getNumAllDeviceStreams( );
-
-      GraphNode*
-      getLastLeaveNode( uint64_t timestamp, uint64_t streamId ) const;
-
-      void
-      getLastLeaveEvent( EventStream** stream, uint64_t* timestamp );
-
-      void
-      reset( );
-
-      /**
-       * Get elapsed time from an event time stamp, e.g. to spot an event in Vampir.
-       *
-       * @param t event time stamp
-       * @return elapsed time in seconds
-       */
-      double
-      getElapsedTime( uint64_t t );
-
-      void
-      runAnalysis( );
-
-      void
-      clearNodes( );
-
-      /**
-       * Add a node to the deferred nodes list that could not be processed.
-       *
-       * @param node node to be deferred.
-       */
-      void
-      addDeferredNode( GraphNode* node );
-
-      /**
-       * Process all nodes in the deferred nodes list.
-       */
-      void
-      processDeferredNodes( );
-
-      Statistics&
-      getStatistics( void );
-
-    private:
-      OTF2DefinitionHandler* defHandler;
-
-      MPIAnalysis mpiAnalysis;
-
-      Statistics  statistics;
-
-      /* map of analysis paradigms */
-      typedef std::map< Paradigm, IAnalysisParadigm* > AnalysisParadigmsMap;
-
-      /* map of paradigms and the according analysis */
-      AnalysisParadigmsMap analysisParadigms;
-
-      EventStream::SortedGraphNodeList allNodes;
-
-      /* !< defer nodes that could not be processed */
-      EventStream::SortedGraphNodeList deferredNodes;
-
-      std::set< uint32_t > filteredFunctions;
-
-      /* maximum metric class and member IDs that has been read by the event reader */
-      uint32_t maxMetricClassId;
-      uint32_t maxMetricMemberId;
-
-      /* maximum attribute ID that has been read by the event reader */
-      uint32_t maxAttributeId;
-
-      /* available analysis paradigms (identified during reading the trace) */
-      int      availableParadigms;
-
-      /* available analysis features (set by parsing the OTF2 definitions) */
-      int      analysisFeature;
-
-      /*  */
-      size_t   offloadTasksActive;
-  };
+     // map of analysis paradigms
+     typedef std::map< Paradigm, IAnalysisParadigm* > AnalysisParadigmsMap;
+     
+     // map of paradigms and the according analysis
+     AnalysisParadigmsMap analysisParadigms;
+     
+     EventStream::SortedGraphNodeList allNodes;
+     
+     //!< defer nodes that could not be processed
+     EventStream::SortedGraphNodeList deferredNodes;
+     
+     std::set< uint32_t > filteredFunctions;
+     
+     // maximum metric class and member IDs that has been read by the event reader
+     uint32_t maxMetricClassId;
+     uint32_t maxMetricMemberId;
+     
+     // maximum attribute ID that has been read by the event reader
+     uint32_t maxAttributeId;
+     
+     // available analysis paradigms (identified during reading the trace)
+     int availableParadigms;
+     
+     // available analysis features (set by parsing the OTF2 definitions)
+     int analysisFeature;
+     
+     //
+     size_t offloadTasksActive;
+ };
 
 }
