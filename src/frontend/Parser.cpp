@@ -422,7 +422,6 @@ namespace casita
 
   bool
   Parser::init( int mpiRank, int argc, char** argv )
-  throw( runtime_error)
   {
 
     bool success = false;

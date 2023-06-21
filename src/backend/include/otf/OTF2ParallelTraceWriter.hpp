@@ -355,7 +355,8 @@ namespace casita
       OTF2_GlobalDefReaderCallback_ClockProperties( void*    userData,
                                                     uint64_t timerResolution,
                                                     uint64_t globalOffset,
-                                                    uint64_t traceLength );
+                                                    uint64_t traceLength,
+                                                    uint64_t realtimeTimestamp );
 
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_LocationGroup( void*                 userData,
@@ -364,7 +365,8 @@ namespace casita
                                                   OTF2_LocationGroupType
                                                   locationGroupType,
                                                   OTF2_SystemTreeNodeRef
-                                                  systemTreeParent );
+                                                  systemTreeParent ,
+                                                  OTF2_LocationGroupRef  creatingLocationGroup);
 
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_Location( void*             userData,
@@ -390,7 +392,8 @@ namespace casita
                                          OTF2_CommRef   self,
                                          OTF2_StringRef name,
                                          OTF2_GroupRef  group,
-                                         OTF2_CommRef   parent );
+                                         OTF2_CommRef   parent,
+                                         OTF2_CommFlag  flags);
 
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_String( void*          userData,
@@ -414,22 +417,14 @@ namespace casita
       OTF2_GlobalDefReaderCallback_Region_forParadigmMap( void*          userData,
                                                           OTF2_RegionRef self,
                                                           OTF2_StringRef name,
-                                                          OTF2_StringRef
-                                                          cannonicalName,
-                                                          OTF2_StringRef
-                                                          description,
-                                                          OTF2_RegionRole
-                                                          regionRole,
-                                                          OTF2_Paradigm
-                                                          paradigm,
-                                                          OTF2_RegionFlag
-                                                          regionFlags,
-                                                          OTF2_StringRef
-                                                          sourceFile,
-                                                          uint32_t
-                                                          beginLineNumber,
-                                                          uint32_t
-                                                          endLineNumber );
+                                                          OTF2_StringRef cannonicalName,
+                                                          OTF2_StringRef description,
+                                                          OTF2_RegionRole regionRole,
+                                                          OTF2_Paradigm paradigm,
+                                                          OTF2_RegionFlag regionFlags,
+                                                          OTF2_StringRef sourceFile,
+                                                          uint32_t beginLineNumber,
+                                                          uint32_t endLineNumber );
 
       static OTF2_CallbackCode
       OTF2_GlobalDefReaderCallback_SystemTreeNode( void*                  userData,
@@ -458,7 +453,8 @@ namespace casita
       OTF2_GlobalDefReaderCallback_RmaWin( void*          userData,
                                            OTF2_RmaWinRef self,
                                            OTF2_StringRef name,
-                                           OTF2_CommRef   comm );
+                                           OTF2_CommRef   comm,
+                                           OTF2_RmaWinFlag flags);
       
       static OTF2_CallbackCode
       OTF2_DefReaderCallback_MetricMember( 
