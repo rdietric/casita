@@ -15,111 +15,111 @@
 #include <otf2/otf2.h>
 
 /******** shared with Score-P ***************/
-// CUDA attributes
+/* CUDA attributes */
 #define SCOREP_CUDA_STREAMREF "CUDA_STREAM_REF"
 #define SCOREP_CUDA_EVENTREF "CUDA_EVENT_REF"
 #define SCOREP_CUDA_CURESULT "CUDA_DRV_API_RESULT"
 #define SCOREP_CUDA_NULL_STREAM "CUDA_NULL_STREAM"
 
-// OpenCL attributes
+/* OpenCL attributes */
 #define SCOREP_OPENCL_QUEUEREF "OPENCL_QUEUE_REF"
 
-// OMPT attributes
+/* OMPT attributes */
 #define SCOREP_OMPT_PARALLEL_ID "OMPT_PARALLEL_REGION_ID"
-#define SCOREP_OMPT_DEVICE_ID   "OMPT_DEVICE_ID"
+#define SCOREP_OMPT_DEVICE_ID "OMPT_DEVICE_ID"
 
-// OpenMP target attributes
+/* OpenMP target attributes */
 #define SCOREP_OMP_TARGET_LOCATIONREF "OMP_TARGET_LOCATION_REF"
 #define SCOREP_OMP_TARGET_REGION_ID "OMP_TARGET_REGION_ID"
 #define SCOREP_OMP_TARGET_PARENT_REGION_ID "OMP_TARGET_PARENT_REGION_ID"
 
 namespace casita
 {
- namespace io
- {
-
-  class OTF2KeyValueList
+  namespace io
   {
-    public:
-      
-      enum KeyValueResult
-      {
-        KV_SUCCESS = 0,
-        KV_ERROR   = 1
-      };
 
-      OTF2KeyValueList( ) :
-        list( NULL )
-      {
+    class OTF2KeyValueList
+    {
+      public:
 
-      }
-
-      OTF2KeyValueList( OTF2_AttributeList_struct* list ) :
-        list( list )
-      {
-
-      }
-
-      void
-      setList( OTF2_AttributeList_struct* list )
-      {
-        this->list = list;
-      }
-
-      KeyValueResult
-      getUInt32( uint32_t key, uint32_t* value )
-      {
-        return ( OTF2_AttributeList_GetUint32( list, key,
-                                               value ) == OTF2_SUCCESS ) ?
-               KV_SUCCESS : KV_ERROR;
-      }
-
-      KeyValueResult
-      getLocationRef( uint32_t key, uint64_t* value )
-      {
-        if( OTF2_AttributeList_TestAttributeByID(list, key) )
+        enum KeyValueResult
         {
-          OTF2_ErrorCode otf2error = 
+          KV_SUCCESS = 0,
+          KV_ERROR   = 1
+        };
+
+        OTF2KeyValueList( ) :
+          list( NULL )
+        {
+
+        }
+
+        OTF2KeyValueList( OTF2_AttributeList_struct* list ) :
+          list( list )
+        {
+
+        }
+
+        void
+        setList( OTF2_AttributeList_struct* list )
+        {
+          this->list = list;
+        }
+
+        KeyValueResult
+        getUInt32( uint32_t key, uint32_t* value )
+        {
+          return ( OTF2_AttributeList_GetUint32( list, key,
+                 value ) == OTF2_SUCCESS ) ?
+                 KV_SUCCESS : KV_ERROR;
+        }
+
+        KeyValueResult
+        getLocationRef( uint32_t key, uint64_t* value )
+        {
+          if ( OTF2_AttributeList_TestAttributeByID( list, key ) )
+          {
+            OTF2_ErrorCode otf2error =
                 OTF2_AttributeList_GetLocationRef( list, key, value );
-          
-          return ( otf2error == OTF2_SUCCESS ) ? KV_SUCCESS : KV_ERROR;
+
+            return ( otf2error == OTF2_SUCCESS ) ? KV_SUCCESS : KV_ERROR;
+          }
+          else
+          {
+            return KV_ERROR;
+          }
         }
-        else
+
+        KeyValueResult
+        getUInt64( uint32_t key, uint64_t* value )
         {
-          return KV_ERROR;
+          return ( OTF2_AttributeList_GetUint64( list, key,
+                 value ) == OTF2_SUCCESS ) ?
+                 KV_SUCCESS : KV_ERROR;
         }
-      }
 
-      KeyValueResult
-      getUInt64( uint32_t key, uint64_t* value )
-      {
-        return ( OTF2_AttributeList_GetUint64( list, key,
-                                               value ) == OTF2_SUCCESS ) ?
-               KV_SUCCESS : KV_ERROR;
-      }
+        KeyValueResult
+        getInt32( uint32_t key, int32_t* value )
+        {
+          return ( OTF2_AttributeList_GetInt32( list, key,
+                 value ) == OTF2_SUCCESS ) ?
+                 KV_SUCCESS : KV_ERROR;
+        }
 
-      KeyValueResult
-      getInt32( uint32_t key, int32_t* value )
-      {
-        return ( OTF2_AttributeList_GetInt32( list, key,
-                                              value ) == OTF2_SUCCESS ) ?
-               KV_SUCCESS : KV_ERROR;
-      }
+        uint32_t
+        getSize( )
+        {
+          return OTF2_AttributeList_GetNumberOfElements( list );
+        }
 
-      uint32_t
-      getSize()
-      {
-        return OTF2_AttributeList_GetNumberOfElements( list );
-      }
-      
-      bool
-      testAttribute( uint32_t attrID )
-      {
-        return OTF2_AttributeList_TestAttributeByID( list, attrID );
-      }
+        bool
+        testAttribute( uint32_t attrID )
+        {
+          return OTF2_AttributeList_TestAttributeByID( list, attrID );
+        }
 
-    private:
-      OTF2_AttributeList* list;
-  };
- }
+      private:
+        OTF2_AttributeList* list;
+    };
+  }
 }

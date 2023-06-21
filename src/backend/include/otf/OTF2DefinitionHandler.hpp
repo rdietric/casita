@@ -16,7 +16,7 @@
 
 #include <map>
 
-//#include "AnalysisEngine.hpp"
+/* #include "AnalysisEngine.hpp" */
 
 #define DEVICE_IDLE_STRING "deviceIdle"
 #define DEVICE_COMPUTE_IDLE_STRING "deviceComputeIdle"
@@ -30,105 +30,106 @@ namespace casita
       const char*     name;
       OTF2_Paradigm   paradigm;
       OTF2_RegionRole role;
-    }RegionInfo;
+    } RegionInfo;
 
     class OTF2DefinitionHandler
     {
       public:
-        OTF2DefinitionHandler();
-        virtual ~OTF2DefinitionHandler();
-        
+        OTF2DefinitionHandler( );
+        virtual
+        ~OTF2DefinitionHandler( );
+
         uint64_t
-        getTimerResolution();
+        getTimerResolution( );
 
         void
         setTimerResolution( uint64_t ticksPerSecond );
 
         uint64_t
-        getTimerOffset();
+        getTimerOffset( );
 
         void
         setTimerOffset( uint64_t offset );
 
         uint64_t
-        getTraceLength();
+        getTraceLength( );
 
         void
         setTraceLength( uint64_t length );
-        
+
         void
         storeString( uint32_t stringRef, const char* string );
-        
-        //!< get a new OTF2 string reference
+
+        /* !< get a new OTF2 string reference */
         uint32_t
         getNewStringRef( const char* string );
-        
+
         bool
         haveStringRef( uint32_t stringRef ) const;
-        
+
         const char*
         getName( uint32_t stringRef );
-        
+
         void
-        addRegion( OTF2_RegionRef regionRef, OTF2_Paradigm paradigm, 
-                   OTF2_RegionRole regionRole, OTF2_StringRef stringRef );
-        
-        uint32_t
-        createNewRegion( const char* string, OTF2_Paradigm paradigm );
-        
-        const RegionInfo&
-        getRegionInfo( const uint32_t regionRef ) const;
-     
-        const char*
-        getRegionName( uint32_t id ) const;
-        
-        bool
-        isDeviceFunction( uint32_t id ) const;
-        
-        void
-        addLocationInfo( const uint64_t mpiRank, const char* nodeName );
-        
-        const char*
-        getNodeName( const int mpiRank ) const;
-        
-        void
-        setInternalRegions();
-        
-        uint32_t
-        getWaitStateRegionId() const;
+        addRegion( OTF2_RegionRef regionRef, OTF2_Paradigm paradigm,
+            OTF2_RegionRole regionRole, OTF2_StringRef stringRef );
 
         uint32_t
-        getForkJoinRegionId() const;
-        
+        createNewRegion( const char* string, OTF2_Paradigm paradigm );
+
+        const RegionInfo&
+        getRegionInfo( const uint32_t regionRef ) const;
+
+        const char*
+        getRegionName( uint32_t id ) const;
+
+        bool
+        isDeviceFunction( uint32_t id ) const;
+
+        void
+        addLocationInfo( const uint64_t mpiRank, const char* nodeName );
+
+        const char*
+        getNodeName( const int mpiRank ) const;
+
+        void
+        setInternalRegions( );
+
+        uint32_t
+        getWaitStateRegionId( ) const;
+
+        uint32_t
+        getForkJoinRegionId( ) const;
+
       private:
-        //<! pointer to the one and only analysis engine
-        //AnalysisEngine* analysis;
-        
-        //!< resolution of the trace's timer (ticks per second)
+        /* <! pointer to the one and only analysis engine */
+        /* AnalysisEngine* analysis; */
+
+        /* !< resolution of the trace's timer (ticks per second) */
         uint64_t timerResolution;
         uint64_t timerOffset;
         uint64_t traceLength;
 
-        //!< maps OTF2 IDs to strings (global definitions), maps are ordered by key
+        /* !< maps OTF2 IDs to strings (global definitions), maps are ordered by key */
         std::map< uint32_t, const char* > stringRefMap;
-        
-        //!< store required definitions for a function ID (OTF2 region reference)
-        std::map< uint32_t, RegionInfo > regionInfoMap;
-        
-        //!< maps rank to node name (currently)
+
+        /* !< store required definitions for a function ID (OTF2 region reference) */
+        std::map< uint32_t, RegionInfo >  regionInfoMap;
+
+        /* !< maps rank to node name (currently) */
         std::map< uint64_t, const char* > locationInfoMap;
-        
-        //!< OTF2 region reference for internal wait state region
+
+        /* !< OTF2 region reference for internal wait state region */
         uint32_t waitStateFuncId;
-        
-        //!< OTF2 region reference for internal Fork/Join
+
+        /* !< OTF2 region reference for internal Fork/Join */
         uint32_t ompForkJoinRef;
-        
-        // maximum metric class and member IDs that has been read by the event reader
+
+        /* maximum metric class and member IDs that has been read by the event reader */
         uint32_t maxMetricClassId;
         uint32_t maxMetricMemberId;
 
-        // maximum attribute ID that has been read by the event reader
+        /* maximum attribute ID that has been read by the event reader */
         uint32_t maxAttributeId;
     };
 

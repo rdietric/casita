@@ -21,36 +21,36 @@
 
 namespace casita
 {
- namespace mpi
- {
-  class AnalysisParadigmMPI;
-
-  class IMPIRule :
-    public AbstractRule
+  namespace mpi
   {
-    public:
-      IMPIRule( const char* name, int priority ) :
-        AbstractRule( name, priority )
-      {
+    class AnalysisParadigmMPI;
 
-      }
+    class IMPIRule :
+      public AbstractRule
+    {
+      public:
+        IMPIRule( const char* name, int priority ) :
+          AbstractRule( name, priority )
+        {
 
-      virtual
-      ~IMPIRule( )
-      {
-      }
+        }
 
-      bool
-      applyRule( AnalysisEngine* analysis, GraphNode* node )
-      {
-        return apply( (AnalysisParadigmMPI*)analysis->getAnalysis(
-                        PARADIGM_MPI ), node );
-      }
+        virtual
+        ~IMPIRule( )
+        {
+        }
 
-    protected:
-      virtual bool
-      apply( AnalysisParadigmMPI* analysis, GraphNode* node ) = 0;
+        bool
+        applyRule( AnalysisEngine* analysis, GraphNode* node )
+        {
+          return apply( (AnalysisParadigmMPI*)analysis->getAnalysis(
+                       PARADIGM_MPI ), node );
+        }
 
-  };
- }
+      protected:
+        virtual bool
+        apply( AnalysisParadigmMPI* analysis, GraphNode* node ) = 0;
+
+    };
+  }
 }

@@ -24,15 +24,15 @@ namespace casita
   {
 
     /**
-     * Add the given node to the stream-walk list and add its waiting time to 
-     * the stream walk waiting time. Return false when a blocking MPI node or 
-     * a process start node has been found. However, the blocking MPI node is 
+     * Add the given node to the stream-walk list and add its waiting time to
+     * the stream walk waiting time. Return false when a blocking MPI node or
+     * a process start node has been found. However, the blocking MPI node is
      * included in the list.
-     * 
+     *
      * @param userData pointer to StreamWalkInfo
      * @param node the node under investigation
-     * 
-     * @return false when a blocking MPI node or a process start node has been 
+     *
+     * @return false when a blocking MPI node or a process start node has been
      *         found, otherwise true.
      */
     static bool
@@ -41,14 +41,14 @@ namespace casita
       StreamWalkInfo* listAndWaitTime = (StreamWalkInfo*)userData;
       listAndWaitTime->list.push_back( node );
 
-      // return false, if we found a process start node or a blocking MPI leave node
-      if ( node->isProcess() || ( node->isMPIBlocking() && node->isLeave() ) )
+      /* return false, if we found a process start node or a blocking MPI leave node */
+      if ( node->isProcess( ) || ( node->isMPIBlocking( ) && node->isLeave( ) ) )
       {
         return false;
       }
 
-      // ignore the waiting time of the last node (blocking MPI leave)
-      listAndWaitTime->waitStateTime += node->getWaitingTime();
+      /* ignore the waiting time of the last node (blocking MPI leave) */
+      listAndWaitTime->waitStateTime += node->getWaitingTime( );
 
       return true;
     }

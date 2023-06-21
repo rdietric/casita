@@ -9,7 +9,7 @@
  * directory for details.
  */
 
-// This class collects simple statistics
+/* This class collects simple statistics */
 
 #include <fstream>
 
@@ -20,56 +20,57 @@ using namespace casita;
 /**
  * Constructor
  */
-Statistics::Statistics() 
-{ 
+Statistics::Statistics( )
+{
   /* initialize statistics with zero values and counts */
   std::fill( stats, stats + STAT_NUMBER, 0 );
-  
+
   /* initialize activity counts with zero */
   std::fill( activity_count, activity_count + STAT_ACTIVITY_TYPE_NUMBER, 0 );
 }
 
-
 /**
  * Destructor
  */
-Statistics::~Statistics() { }
+Statistics::~Statistics( )
+{
+}
 
 void
 Statistics::addStatWithCount( StatMetric statType, uint64_t time, uint64_t count )
 {
-  stats[ statType ] += count;
-  stats[ statType + 1 ] += time;
+  stats[statType]     += count;
+  stats[statType + 1] += time;
 }
 
 void
 Statistics::addStatValue( StatMetric statType, uint64_t value )
 {
-  stats[ statType ] += value;
+  stats[statType] += value;
 }
 
 void
 Statistics::addAllStats( uint64_t* stats )
 {
   int i;
-  for( i = 0; i < STAT_NUMBER; ++i )
+  for ( i = 0; i < STAT_NUMBER; ++i )
   {
-    this->stats[ i ] += stats[ i ];
+    this->stats[i] += stats[i];
   }
 }
 
 void
 Statistics::setAllStats( uint64_t* stats )
 {
-  //#pragma omp parallel for
-  for( int i = 0; i < STAT_NUMBER; ++i )
+  /* #pragma omp parallel for */
+  for ( int i = 0; i < STAT_NUMBER; ++i )
   {
-    this->stats[ i ] = stats[ i ];
+    this->stats[i] = stats[i];
   }
 }
 
 uint64_t*
-Statistics::getStats()
+Statistics::getStats( )
 {
   return stats;
 }
@@ -77,26 +78,26 @@ Statistics::getStats()
 void
 Statistics::countActivity( ActivityType activityType )
 {
-  activity_count[ activityType ]++;
+  activity_count[activityType]++;
 }
 
 void
 Statistics::setActivityCount( ActivityType activityType, uint64_t count )
 {
-  activity_count[ activityType ] = count;
+  activity_count[activityType] = count;
 }
 
 void
-Statistics::setActivityCounts( uint64_t *counts )
+Statistics::setActivityCounts( uint64_t* counts )
 {
-  for( int i = 0; i < STAT_ACTIVITY_TYPE_NUMBER; ++i )
+  for ( int i = 0; i < STAT_ACTIVITY_TYPE_NUMBER; ++i )
   {
-    this->activity_count[ i ] = counts[ i ];
+    this->activity_count[i] = counts[i];
   }
 }
 
 uint64_t*
-Statistics::getActivityCounts()
+Statistics::getActivityCounts( )
 {
   return activity_count;
 }
@@ -104,8 +105,8 @@ Statistics::getActivityCounts()
 void
 Statistics::addActivityCounts( uint64_t* counts )
 {
-  for( int i = 0; i < STAT_ACTIVITY_TYPE_NUMBER; ++i )
+  for ( int i = 0; i < STAT_ACTIVITY_TYPE_NUMBER; ++i )
   {
-    this->activity_count[ i ] += counts[ i ];
+    this->activity_count[i] += counts[i];
   }
 }

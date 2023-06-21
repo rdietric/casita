@@ -18,29 +18,28 @@
 #include <assert.h>
 #include <stdexcept>
 
-// the following definition and include is needed for the printf PRIu64 macro
+/* the following definition and include is needed for the printf PRIu64 macro */
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
-#if !defined(UINT64_MAX)
-#include <limits>
-#define UINT64_MAX std::numeric_limits< uint64_t >::max()
+#if !defined( UINT64_MAX )
+# include <limits>
+# define UINT64_MAX std::numeric_limits< uint64_t >::max( )
 #endif
 
-#if !defined(UINT32_MAX)
-#if !defined(UINT64_MAX)
-#include <limits>
-#endif
-#define UINT32_MAX std::numeric_limits< uint32_t >::max()
+#if !defined( UINT32_MAX )
+# if !defined( UINT64_MAX )
+#  include <limits>
+# endif
+# define UINT32_MAX std::numeric_limits< uint32_t >::max( )
 #endif
 
-#define VERBOSE_NONE  0
-#define VERBOSE_TIME  1
+#define VERBOSE_NONE 0
+#define VERBOSE_TIME 1
 #define VERBOSE_BASIC 2
-#define VERBOSE_SOME  3
-#define VERBOSE_ALL   4
+#define VERBOSE_SOME 3
+#define VERBOSE_ALL 4
 #define VERBOSE_ANNOY 5
-
 
 #define OTF2_OMP_FORKJOIN_INTERNAL "__ompforkjoin__internal"
 

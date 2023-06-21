@@ -21,34 +21,34 @@
 
 namespace casita
 {
- namespace mpi
- {
-  class AnalysisParadigmMPI :
-    public IAnalysisParadigm
+  namespace mpi
   {
-    public:
+    class AnalysisParadigmMPI :
+      public IAnalysisParadigm
+    {
+      public:
 
-      AnalysisParadigmMPI( AnalysisEngine* analysisEngine,
-                           uint32_t        mpiRank,
-                           uint32_t        mpiSize );
+        AnalysisParadigmMPI( AnalysisEngine* analysisEngine,
+            uint32_t                         mpiRank,
+            uint32_t                         mpiSize );
 
-      virtual
-      ~AnalysisParadigmMPI( );
+        virtual
+        ~AnalysisParadigmMPI( );
 
-      Paradigm
-      getParadigm( );
-      
-      //void
-      //handlePostEnter ( GraphNode* node );
+        Paradigm
+        getParadigm( );
 
-      void
-      handlePostLeave( GraphNode* node );
+        /* void */
+        /* handlePostEnter ( GraphNode* node ); */
+
+        void
+        handlePostLeave( GraphNode* node );
 
       private:
-        
+
         uint32_t mpiRank;
         uint32_t mpiSize;
-  };
+    };
 
- }
+  }
 }

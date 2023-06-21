@@ -34,228 +34,228 @@
 
 /** MPI type of buffer elements */
 #if MPI_VERSION < 3
-#define CASITA_MPI_P2P_ELEMENT_TYPE MPI_UNSIGNED_LONG
+# define CASITA_MPI_P2P_ELEMENT_TYPE MPI_UNSIGNED_LONG
 #else
-#define CASITA_MPI_P2P_ELEMENT_TYPE MPI_UINT64_T
+# define CASITA_MPI_P2P_ELEMENT_TYPE MPI_UINT64_T
 #endif
 
 namespace casita
 {
 
- class EventStream
- {
-   public:
-     
-     //!< keep numbers to the power of two, as required by stream type identification
-     enum EventStreamType
-     {
-       ES_OPENMP      = ( 1 << 0 ),
-       ES_MPI         = ( 1 << 1 ),
-       ES_DEVICE      = ( 1 << 2 ),
-       ES_DEVICE_NULL = ( 1 << 3 ),
-       
-       ES_HOST = ( ES_OPENMP | ES_MPI )
-     };
+  class EventStream
+  {
+    public:
 
-     typedef std::vector< GraphNode* > SortedGraphNodeList;
+      /* !< keep numbers to the power of two, as required by stream type identification */
+      enum EventStreamType
+      {
+        ES_OPENMP      = ( 1 << 0 ),
+        ES_MPI         = ( 1 << 1 ),
+        ES_DEVICE      = ( 1 << 2 ),
+        ES_DEVICE_NULL = ( 1 << 3 ),
 
-     typedef bool ( *StreamWalkCallback )( void* userData, GraphNode* node );
+        ES_HOST        = ( ES_OPENMP | ES_MPI )
+      };
 
-   private:
+      typedef std::vector< GraphNode* > SortedGraphNodeList;
 
-     typedef struct
-     {
-       GraphNode* firstNode;
-       GraphNode* lastNode;
-     } GraphData;
+      typedef bool ( * StreamWalkCallback )( void* userData, GraphNode* node );
 
-   public:
+    private:
 
-     EventStream( uint64_t id, uint64_t parentId, const std::string name,
-                  EventStreamType eventStreamType );
+      typedef struct
+      {
+        GraphNode* firstNode;
+        GraphNode* lastNode;
+      } GraphData;
 
-     virtual
-     ~EventStream();
+    public:
 
-     uint64_t
-     getId() const;
+      EventStream( uint64_t id, uint64_t parentId, const std::string name,
+          EventStreamType eventStreamType );
 
-     uint64_t
-     getParentId() const;
+      virtual
+      ~EventStream( );
 
-     const char*
-     getName() const;
+      uint64_t
+      getId( ) const;
 
-     void
-     setStreamType( EventStream::EventStreamType type );
+      uint64_t
+      getParentId( ) const;
 
-     EventStream::EventStreamType
-     getStreamType() const;
+      const char*
+      getName( ) const;
 
-     bool
-     isHostStream() const;
-     
-     bool
-     isMpiStream() const;
+      void
+      setStreamType( EventStream::EventStreamType type );
 
-     bool
-     isDeviceStream() const;
+      EventStream::EventStreamType
+      getStreamType( ) const;
 
-     bool
-     isDeviceNullStream() const;
-     
-     /**
-      * Compare function:
-      * Sort the streams by stream id, but with host streams first.
-      */
-     static bool
-     streamSort( const EventStream* p1, const EventStream* p2 )
-     {
-       if ( p1->isDeviceStream() && p2->isHostStream() )
-       {
-         return false;
-       }
-        if ( p2->isDeviceStream() && p1->isHostStream() )
-       {
-         return true;
-       }
-        return p1->getId() <= p2->getId();
-     }
-     
-     /**
-      * Get the stream's first enter and last leave time stamps
-      * 
-      * @return a pair the first enter and last leave time stamp
-      */
-     std::pair< uint64_t, uint64_t >&
-     getPeriod();
-     
-     /**
-      * Does this stream contains the global first critical node?
-      * 
-      * @return true, if the critical path starts on this stream
-      */
-     bool&
-     isFirstCritical();
-     
-     /**
-      * Does this stream contains the global last event (of the trace)?
-      * 
-      * @return true, if the critical path ends on this stream
-      */
-     bool&
-     hasLastGlobalEvent();
+      bool
+      isHostStream( ) const;
 
-     GraphNode*
-     getLastNode() const;
+      bool
+      isMpiStream( ) const;
 
-     GraphNode*
-     getLastNode( Paradigm paradigm ) const;
+      bool
+      isDeviceStream( ) const;
 
-     GraphNode*
-     getLastParadigmNode( Paradigm paradigm ) const;
-     
-     GraphNode*
-     getFirstParadigmNode( Paradigm paradigm ) const;
+      bool
+      isDeviceNullStream( ) const;
 
-     /**
-      * Get the time stamp of the last event read from an event stream. 
-      * (This is often a RMA window destroy event.)
-      * 
-      * @return time stamp of the last event
-      */
-     uint64_t
-     getLastEventTime() const;
-     
-     /**
-      * Set the time of the last read event. 
-      * (This is often a RMA window destroy event.)
-      * 
-      * @param time time to be set.
-      */
-     void
-     setLastEventTime( uint64_t time );
+      /**
+       * Compare function:
+       * Sort the streams by stream id, but with host streams first.
+       */
+      static bool
+      streamSort( const EventStream* p1, const EventStream* p2 )
+      {
+        if ( p1->isDeviceStream( ) && p2->isHostStream( ) )
+        {
+          return false;
+        }
+        if ( p2->isDeviceStream( ) && p1->isHostStream( ) )
+        {
+          return true;
+        }
+        return p1->getId( ) <= p2->getId( );
+      }
 
-     void
-     addGraphNode( GraphNode* node, GraphNode::ParadigmNodeMap* predNodes );
+      /**
+       * Get the stream's first enter and last leave time stamps
+       *
+       * @return a pair the first enter and last leave time stamp
+       */
+      std::pair< uint64_t, uint64_t >&
+      getPeriod( );
 
-     void
-     insertGraphNode( GraphNode*                  node,
-                      GraphNode::ParadigmNodeMap& predNodes,
-                      GraphNode::ParadigmNodeMap& nextNodes );
+      /**
+       * Does this stream contains the global first critical node?
+       *
+       * @return true, if the critical path starts on this stream
+       */
+      bool&
+      isFirstCritical( );
 
-     EventStream::SortedGraphNodeList&
-     getNodes();
-     
-     void
-     clearNodes();
+      /**
+       * Does this stream contains the global last event (of the trace)?
+       *
+       * @return true, if the critical path ends on this stream
+       */
+      bool&
+      hasLastGlobalEvent( );
 
-     void
-     setFilter( bool enable, uint64_t time );
-     
-     bool
-     isFilterOn();
-     
-     uint64_t&
-     getPredictionOffset();
+      GraphNode*
+      getLastNode( ) const;
 
-     bool
-     walkBackward( GraphNode* node, StreamWalkCallback callback, void* userData );
+      GraphNode*
+      getLastNode( Paradigm paradigm ) const;
 
-     bool
-     walkForward( GraphNode* node, StreamWalkCallback callback, void* userData );
-     
-     /**
-      * Did the stream change (new nodes added) since the interval start
-      * 
-      * @return true, if nodes have been added, otherwise false
-      */
-     bool
-     hasNewNodes();
-     
-     virtual void
-     reset();
-     
+      GraphNode*
+      getLastParadigmNode( Paradigm paradigm ) const;
+
+      GraphNode*
+      getFirstParadigmNode( Paradigm paradigm ) const;
+
+      /**
+       * Get the time stamp of the last event read from an event stream.
+       * (This is often a RMA window destroy event.)
+       *
+       * @return time stamp of the last event
+       */
+      uint64_t
+      getLastEventTime( ) const;
+
+      /**
+       * Set the time of the last read event.
+       * (This is often a RMA window destroy event.)
+       *
+       * @param time time to be set.
+       */
+      void
+      setLastEventTime( uint64_t time );
+
+      void
+      addGraphNode( GraphNode* node, GraphNode::ParadigmNodeMap* predNodes );
+
+      void
+      insertGraphNode( GraphNode*     node,
+          GraphNode::ParadigmNodeMap& predNodes,
+          GraphNode::ParadigmNodeMap& nextNodes );
+
+      EventStream::SortedGraphNodeList&
+      getNodes( );
+
+      void
+      clearNodes( );
+
+      void
+      setFilter( bool enable, uint64_t time );
+
+      bool
+      isFilterOn( );
+
+      uint64_t&
+      getPredictionOffset( );
+
+      bool
+      walkBackward( GraphNode* node, StreamWalkCallback callback, void* userData );
+
+      bool
+      walkForward( GraphNode* node, StreamWalkCallback callback, void* userData );
+
+      /**
+       * Did the stream change (new nodes added) since the interval start
+       *
+       * @return true, if nodes have been added, otherwise false
+       */
+      bool
+      hasNewNodes( );
+
+      virtual void
+      reset( );
+
     protected:
       uint64_t id;
 
     private:
-     
-      uint64_t            parentId;
-      const std::string   name;
-      EventStreamType     streamType;
-      bool                nodesAdded; //!< has the stream new nodes?
 
-      //!< first enter and last leave time
-      std::pair< uint64_t, uint64_t > streamPeriod; 
+      uint64_t parentId;
+      const std::string name;
+      EventStreamType streamType;
+      bool     nodesAdded;            /* !< has the stream new nodes? */
 
-      //!< Does this stream contain the first (global) critical path node?
-      bool                hasFirstCriticalNode;
+      /* !< first enter and last leave time */
+      std::pair< uint64_t, uint64_t > streamPeriod;
 
-      //! Does this stream contain the last global event of the trace?
-      bool                hasLastEvent;
+      /* !< Does this stream contain the first (global) critical path node? */
+      bool hasFirstCriticalNode;
 
-      //!< pointer to the last node (paradigm independent) of the analysis interval
-      GraphNode*          lastNode;
+      /* ! Does this stream contain the last global event of the trace? */
+      bool hasLastEvent;
 
-      //! time stamp of the last read event for this stream (e.g. RMA win destroy)
-      uint64_t            lastEventTime;
+      /* !< pointer to the last node (paradigm independent) of the analysis interval */
+      GraphNode* lastNode;
 
-      //<! first and last node of the analysis interval (for each paradigm)
-      GraphData           graphData[ NODE_PARADIGM_COUNT ];
+      /* ! time stamp of the last read event for this stream (e.g. RMA win destroy) */
+      uint64_t   lastEventTime;
 
-      //!< list of nodes in this stream
+      /* <! first and last node of the analysis interval (for each paradigm) */
+      GraphData  graphData[NODE_PARADIGM_COUNT];
+
+      /* !< list of nodes in this stream */
       SortedGraphNodeList nodes;
 
-      bool                isFiltering;
+      bool     isFiltering;
 
-      //!< time stamp when the filter has been enabled
-      uint64_t            filterStartTime;
+      /* !< time stamp when the filter has been enabled */
+      uint64_t filterStartTime;
 
-      //!< time offset due to removal of regions
-      uint64_t            predictionOffset;
-      
-      //!< MPI nodes that have not yet been linked
+      /* !< time offset due to removal of regions */
+      uint64_t predictionOffset;
+
+      /* !< MPI nodes that have not yet been linked */
       SortedGraphNodeList unlinkedMPINodes;
 
       EventStream::SortedGraphNodeList::const_reverse_iterator
@@ -263,6 +263,7 @@ namespace casita
 
       void
       addNodeInternal( SortedGraphNodeList& nodes, GraphNode* node );
- };
+
+  };
 
 }

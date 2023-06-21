@@ -19,36 +19,36 @@
 
 namespace casita
 {
- namespace offload
- {
-  class AnalysisParadigmOffload;
-
-  class IOffloadRule :
-    public AbstractRule
+  namespace offload
   {
-    public:
-      IOffloadRule( const char* name, int priority ) :
-        AbstractRule( name, priority )
-      {
+    class AnalysisParadigmOffload;
 
-      }
+    class IOffloadRule :
+      public AbstractRule
+    {
+      public:
+        IOffloadRule( const char* name, int priority ) :
+          AbstractRule( name, priority )
+        {
 
-      virtual
-      ~IOffloadRule()
-      {
-      }
+        }
 
-      bool
-      applyRule( AnalysisEngine* analysis, GraphNode* node )
-      {
-        return apply( (AnalysisParadigmOffload*)analysis->getAnalysis(
-                      PARADIGM_OFFLOAD ), node );
-      }
+        virtual
+        ~IOffloadRule( )
+        {
+        }
 
-    protected:
-      virtual bool
-      apply( AnalysisParadigmOffload* ofldAnalysis, GraphNode* node ) = 0;
+        bool
+        applyRule( AnalysisEngine* analysis, GraphNode* node )
+        {
+          return apply( (AnalysisParadigmOffload*)analysis->getAnalysis(
+                       PARADIGM_OFFLOAD ), node );
+        }
 
-  };
- }
+      protected:
+        virtual bool
+        apply( AnalysisParadigmOffload* ofldAnalysis, GraphNode* node ) = 0;
+
+    };
+  }
 }

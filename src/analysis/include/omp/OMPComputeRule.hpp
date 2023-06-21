@@ -18,68 +18,68 @@
 namespace casita
 {
 
- namespace omp
- {
-
-  class OMPComputeRule :
-    public IOMPRule
+  namespace omp
   {
-    public:
 
-      OMPComputeRule( int priority ) :
-        IOMPRule( "OMPComputeRule", priority )
-      {
+    class OMPComputeRule :
+      public IOMPRule
+    {
+      public:
 
-      }
-
-    private:
-
-      bool
-      apply( AnalysisParadigmOMP* analysis, GraphNode* node )
-      {
-        // ignore non-OpenMP-compute nodes
-        if ( !( node->isOMPParallel() || node->isOMPImplicitTask() ) )
+        OMPComputeRule( int priority ) :
+          IOMPRule( "OMPComputeRule", priority )
         {
-          return false;
-        }
-        
-        // if node has no caller (e.g. first node on a stream after parallel region begin)
-        if( !node->getCaller() && node->isLeave() )
-        {
-          
+
         }
 
-        // if this is the first compute node (no compute region is set)
-        if ( analysis->getOmpCompute( node->getStreamId() ) == NULL )
-        {
-          GraphNode* pForkJoin = analysis->getInnerMostFork();
+      private:
 
-          // create dependency edge to the innermost fork node
-          // if fork and node are on the same stream the dependency is already created
-          if ( pForkJoin && ( pForkJoin->getStreamId() != node->getStreamId() ) )
+        bool
+        apply( AnalysisParadigmOMP* analysis, GraphNode* node )
+        {
+          /* ignore non-OpenMP-compute nodes */
+          if ( !( node->isOMPParallel( ) || node->isOMPImplicitTask( ) ) )
           {
-            GraphNode* kernelEnter = node->getGraphPair().first;
-
-            // create edge from pending fork to OpenMP compute enter node
-            analysis->getAnalysisEngine()->newEdge( pForkJoin, kernelEnter );
-            /*UTILS_MSG(analysis->getAnalysisEngine()->getMPIRank() == 0 &&
-                      node->getTime() < 781313516,
-                      "Added OpenMP dependency: %s -> %s",
-                      analysis->getAnalysisEngine()->getNodeInfo( pForkJoin ).c_str(),
-                      analysis->getAnalysisEngine()->getNodeInfo( node ).c_str() );*/
+            return false;
           }
-          /*else
-          {
-            UTILS_OUT( "Could not find edge!");
-          }*/
-        }
-        
-        // set node as active OpenMP compute region
-        analysis->setOmpCompute( node, node->getStreamId( ) );
 
-        return true;
-      }
-  };
- }
+          /* if node has no caller (e.g. first node on a stream after parallel region begin) */
+          if ( !node->getCaller( ) && node->isLeave( ) )
+          {
+
+          }
+
+          /* if this is the first compute node (no compute region is set) */
+          if ( analysis->getOmpCompute( node->getStreamId( ) ) == NULL )
+          {
+            GraphNode* pForkJoin = analysis->getInnerMostFork( );
+
+            /* create dependency edge to the innermost fork node */
+            /* if fork and node are on the same stream the dependency is already created */
+            if ( pForkJoin && ( pForkJoin->getStreamId( ) != node->getStreamId( ) ) )
+            {
+              GraphNode* kernelEnter = node->getGraphPair( ).first;
+
+              /* create edge from pending fork to OpenMP compute enter node */
+              analysis->getAnalysisEngine( )->newEdge( pForkJoin, kernelEnter );
+              /*UTILS_MSG(analysis->getAnalysisEngine()->getMPIRank() == 0 &&
+                        node->getTime() < 781313516,
+                        "Added OpenMP dependency: %s -> %s",
+                        analysis->getAnalysisEngine()->getNodeInfo( pForkJoin ).c_str(),
+                        analysis->getAnalysisEngine()->getNodeInfo( node ).c_str() );*/
+            }
+            /*else
+            {
+              UTILS_OUT( "Could not find edge!");
+            }*/
+          }
+
+          /* set node as active OpenMP compute region */
+          analysis->setOmpCompute( node, node->getStreamId( ) );
+
+          return true;
+        }
+    };
+  }
 
 }

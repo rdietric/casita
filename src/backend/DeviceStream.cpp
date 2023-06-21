@@ -13,18 +13,18 @@
 
 using namespace casita;
 
-DeviceStream::DeviceStream( uint64_t id, 
-                            uint64_t parentId, 
-                            const std::string name ) :
+DeviceStream::DeviceStream( uint64_t id,
+    uint64_t                         parentId,
+    const std::string                name ) :
   EventStream( id, parentId, name, ES_DEVICE ),
-  deviceId ( -1 ),
-  nativeStreamId ( -1 ),
-  runningKernelEnter ( NULL )
-  { 
-  
-  }
+  deviceId( -1 ),
+  nativeStreamId( -1 ),
+  runningKernelEnter( NULL )
+{
 
-//DeviceStream::~DeviceStream() { }
+}
+
+/* DeviceStream::~DeviceStream() { } */
 
 void
 DeviceStream::setDeviceId( int deviceId )
@@ -33,13 +33,13 @@ DeviceStream::setDeviceId( int deviceId )
 }
 
 /**
- * Obtain the device ID that has been parsed from the name of the stream. 
+ * Obtain the device ID that has been parsed from the name of the stream.
  * Return -1 if unknown.
- * 
+ *
  * @return the device ID or -1 if unknown
  */
 int
-DeviceStream::getDeviceId() const
+DeviceStream::getDeviceId( ) const
 {
   return deviceId;
 }
@@ -51,7 +51,7 @@ DeviceStream::setNativeStreamId( int streamID )
 }
 
 int
-DeviceStream::getNativeStreamId() const
+DeviceStream::getNativeStreamId( ) const
 {
   return nativeStreamId;
 }
@@ -61,7 +61,7 @@ DeviceStream::setRunningKernel( GraphNode* kernelEnter )
 {
   this->runningKernelEnter = kernelEnter;
 }
-      
+
 GraphNode*
 DeviceStream::getRunningKernel( void ) const
 {
@@ -72,39 +72,39 @@ void
 DeviceStream::addPendingKernel( GraphNode* kernelLeave )
 {
   pendingKernels.push_back( kernelLeave );
-  //std::cerr << "["<< this->id << "] Add pending kernel: " << kernelLeave->getUniqueName() << std::endl;
+  /* std::cerr << "["<< this->id << "] Add pending kernel: " << kernelLeave->getUniqueName() << std::endl; */
 }
 
 /**
  * Retrieve the last pending kernel leave in the vector.
- * 
+ *
  * @return first pending kernel (leave) in the vector
  */
 GraphNode*
-DeviceStream::getLastPendingKernel()
+DeviceStream::getLastPendingKernel( )
 {
-  SortedGraphNodeList::reverse_iterator iter = pendingKernels.rbegin();
-  if ( iter != pendingKernels.rend() )
+  SortedGraphNodeList::reverse_iterator iter = pendingKernels.rbegin( );
+  if ( iter != pendingKernels.rend( ) )
   {
     return *iter;
   }
-  
+
   return NULL;
 }
 
 /**
  * Remove the last pending kernel from the list.
- * 
+ *
  * @return the kernel leave node that has been removed
  */
 GraphNode*
-DeviceStream::consumeLastPendingKernel()
+DeviceStream::consumeLastPendingKernel( )
 {
-  SortedGraphNodeList::reverse_iterator iter = pendingKernels.rbegin();
-  if ( iter != pendingKernels.rend() )
+  SortedGraphNodeList::reverse_iterator iter = pendingKernels.rbegin( );
+  if ( iter != pendingKernels.rend( ) )
   {
     GraphNode* result = *iter;
-    pendingKernels.pop_back();
+    pendingKernels.pop_back( );
     return result;
   }
 
@@ -113,58 +113,60 @@ DeviceStream::consumeLastPendingKernel()
 
 /**
  * Consume all pending kernels before the given node.
- * 
+ *
  * @kernelLeave the kernel leave node
  */
 void
 DeviceStream::consumePendingKernels( GraphNode* kernelLeave )
 {
-  if( !kernelLeave )
+  if ( !kernelLeave )
   {
     UTILS_WARNING( "Cannot consume pending kernels as input node is invalid!" );
     return;
   }
-  
-  // do nothing, if there are no pending kernels
-  if( pendingKernels.empty() )
-    return;
-  
-  // frequent case: kernel is the last one in the list
-  GraphNode*  lastKernel = pendingKernels.back();
-  if( lastKernel == kernelLeave )
+
+  /* do nothing, if there are no pending kernels */
+  if ( pendingKernels.empty( ) )
   {
-    clearPendingKernels();
+    return;
   }
 
-  // erase a range of kernels
-  SortedGraphNodeList::iterator iterBegin = pendingKernels.begin();
-  SortedGraphNodeList::iterator iter = iterBegin;
-  while( iter != pendingKernels.end() )
+  /* frequent case: kernel is the last one in the list */
+  GraphNode* lastKernel = pendingKernels.back( );
+  if ( lastKernel == kernelLeave )
   {
-    if( ( *iter ) == kernelLeave )
+    clearPendingKernels( );
+  }
+
+  /* erase a range of kernels */
+  SortedGraphNodeList::iterator iterBegin = pendingKernels.begin( );
+  SortedGraphNodeList::iterator iter      = iterBegin;
+  while ( iter != pendingKernels.end( ) )
+  {
+    if ( ( *iter ) == kernelLeave )
     {
       break;
     }
-      
+
     ++iter;
   }
-  
+
   pendingKernels.erase( iterBegin, iter );
 }
 
 void
-DeviceStream::clearPendingKernels()
+DeviceStream::clearPendingKernels( )
 {
-  pendingKernels.clear();
+  pendingKernels.clear( );
 }
 
 void
 DeviceStream::setPendingKernelsSyncLink( GraphNode* syncLeave )
 {
-  for( SortedGraphNodeList::iterator it = pendingKernels.begin();
-       it != pendingKernels.end(); ++it )
+  for ( SortedGraphNodeList::iterator it = pendingKernels.begin( );
+      it != pendingKernels.end( ); ++it )
   {
-    (*it)->setLink( syncLeave );
+    ( *it )->setLink( syncLeave );
   }
 }
 
@@ -173,31 +175,31 @@ DeviceStream::setPendingKernelsSyncLink( GraphNode* syncLeave )
  * The routine does not touch the list of nodes!!!
  */
 void
-DeviceStream::reset()
+DeviceStream::reset( )
 {
-  EventStream::reset();
-  
-  // Check pending (unsynchronized) CUDA kernels
-  if( !(this->pendingKernels.empty()) && Parser::getVerboseLevel() > VERBOSE_BASIC )
+  EventStream::reset( );
+
+  /* Check pending (unsynchronized) CUDA kernels */
+  if ( !( this->pendingKernels.empty( ) ) && Parser::getVerboseLevel( ) > VERBOSE_BASIC )
   {
-    UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
-               "[%" PRIu64 "] %lz pending kernels found!", 
-                     this->id, this->pendingKernels.size() );
-    
-    if( Parser::getVerboseLevel() > VERBOSE_BASIC )
+    UTILS_MSG( Parser::getVerboseLevel( ) > VERBOSE_BASIC,
+        "[%" PRIu64 "] %lz pending kernels found!",
+        this->id, this->pendingKernels.size( ) );
+
+    if ( Parser::getVerboseLevel( ) > VERBOSE_BASIC )
     {
-      for( SortedGraphNodeList::const_iterator it = pendingKernels.begin();
-           it != pendingKernels.end(); ++it )
+      for ( SortedGraphNodeList::const_iterator it = pendingKernels.begin( );
+          it != pendingKernels.end( ); ++it )
       {
-        UTILS_MSG( Parser::getVerboseLevel() > VERBOSE_BASIC, 
-                   "   %s", ( *it )->getUniqueName().c_str() );
-        
-        //if( !isKernelPending )
-        //pendingKernels.erase(  )
+        UTILS_MSG( Parser::getVerboseLevel( ) > VERBOSE_BASIC,
+            "   %s", ( *it )->getUniqueName( ).c_str( ) );
+
+        /* if( !isKernelPending ) */
+        /* pendingKernels.erase(  ) */
       }
     }
-    
-    // do not clear pending kernels as they might be required in the following interval
-    //clearPendingKernels();
+
+    /* do not clear pending kernels as they might be required in the following interval */
+    /* clearPendingKernels(); */
   }
 }

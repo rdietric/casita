@@ -15,44 +15,44 @@
 namespace casita
 {
 
- class AnalysisEngine;
- class GraphNode;
+  class AnalysisEngine;
+  class GraphNode;
 
- class AbstractRule
- {
-   public:
+  class AbstractRule
+  {
+    public:
 
-     AbstractRule( const char* name, int priority ) :
-       priority( priority ),
-       name( name )
-     {
+      AbstractRule( const char* name, int priority ) :
+        priority( priority ),
+        name( name )
+      {
 
-     }
+      }
 
-     virtual
-     ~AbstractRule( )
-     {
+      virtual
+      ~AbstractRule( )
+      {
 
-     }
+      }
 
-     const char*
-     getName( )
-     {
-       return name;
-     }
+      const char*
+      getName( )
+      {
+        return name;
+      }
 
-     int
-     getPriority( )
-     {
-       return priority;
-     }
+      int
+      getPriority( )
+      {
+        return priority;
+      }
 
-     virtual bool
-     applyRule( AnalysisEngine* analysis, GraphNode* node ) = 0;
+      virtual bool
+      applyRule( AnalysisEngine* analysis, GraphNode* node ) = 0;
 
-   private:
-     int priority;
-     const char* name;
- };
+    private:
+      int priority;
+      const char* name;
+  };
 
 }

@@ -19,36 +19,36 @@
 
 namespace casita
 {
- namespace omp
- {
-  class AnalysisParadigmOMP;
-
-  class IOMPRule :
-    public AbstractRule
+  namespace omp
   {
-    public:
-      IOMPRule( const char* name, int priority ) :
-        AbstractRule( name, priority )
-      {
+    class AnalysisParadigmOMP;
 
-      }
+    class IOMPRule :
+      public AbstractRule
+    {
+      public:
+        IOMPRule( const char* name, int priority ) :
+          AbstractRule( name, priority )
+        {
 
-      virtual
-      ~IOMPRule( )
-      {
-      }
+        }
 
-      bool
-      applyRule( AnalysisEngine* analysis, GraphNode* node )
-      {
-        return apply( (AnalysisParadigmOMP*)analysis->getAnalysis(
-                        PARADIGM_OMP ), node );
-      }
+        virtual
+        ~IOMPRule( )
+        {
+        }
 
-    protected:
-      virtual bool
-      apply( AnalysisParadigmOMP* analysis, GraphNode* node ) = 0;
+        bool
+        applyRule( AnalysisEngine* analysis, GraphNode* node )
+        {
+          return apply( (AnalysisParadigmOMP*)analysis->getAnalysis(
+                       PARADIGM_OMP ), node );
+        }
 
-  };
- }
+      protected:
+        virtual bool
+        apply( AnalysisParadigmOMP* analysis, GraphNode* node ) = 0;
+
+    };
+  }
 }
